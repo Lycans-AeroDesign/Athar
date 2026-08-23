@@ -1,0 +1,233 @@
+# PR automation: conventional title, size labels, path-based labels.
+#
+# Security: uses pull_request_target so labels work on fork PRs (token can write to the PR).
+# This workflow never checks out or executes PR code.
+#
+# Labels used here (size/*, plus everything in labeler.yml) must exist on the
+# repo first - create them under Settings > Labels or via `gh label create`.
+
+name: PR Checks
+
+on:
+  pull_request_target:
+    types: [opened, edited, synchronize, reopened, closed]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  title:
+    name: Validate PR Title
+    runs-on: ubuntu-latest
+    if: github.event.action != 'closed'
+    timeout-minutes: 5
+
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@v2
+        with:
+          egress-policy: audit
+
+      - name: Check PR title format
+        id: title_check
+        continue-on-error: true
+        uses: amannn/action-semantic-pull-request@v6
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          types: |
+            feat
+            fix
+            docs
+            style
+            refactor
+            perf
+            test
+            build
+            ci
+            chore
+            revert
+          requireScope: false
+          subjectPattern: ^.{1,80}$
+          subjectPatternError: PR title must be 80 characters or less.
+          wip: true
+          validateSingleCommit: false
+
+      - name: Comment title help (on failure)
+        if: steps.title_check.outcome == 'failure' && github.event.pull_request.user.type != 'Bot'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const marker = '<!-- pr-title-conventions -->';
+            const comments = await github.paginate(
+              github.rest.issues.listComments,
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number,
+                per_page: 100
+              }
+            );
+            const body = [
+              marker,
+              '## PR title format',
+              '',
+              'Use [Conventional Commits](https://www.conventionalcommits.org/), for example:',
+              '',
+              '- `feat(backend): add health check endpoint`',
+              '- `fix(frontend): correct nav link routing`',
+              '- `docs: update Docker setup instructions`',
+              '',
+              '**Types:** `feat` `fix` `docs` `style` `refactor` `perf` `test` `ci` `chore` `build` `revert`',
+              '',
+              'Optional scope (e.g. `backend`, `frontend`, `docker`). Subject line ≤ 80 characters.',
+              '',
+              '*Update the PR title to clear this notice.*'
+            ].join('\n');
+
+            const botComment = comments.find(c =>
+              c.user?.type === 'Bot' && c.body?.includes(marker)
+            );
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number,
+                body
+              });
+            }
+
+      - name: Collapse title help (on success)
+        if: steps.title_check.outcome == 'success'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const marker = '<!-- pr-title-conventions -->';
+            const comments = await github.paginate(
+              github.rest.issues.listComments,
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number,
+                per_page: 100
+              }
+            );
+            const botComment = comments.find(c =>
+              c.user?.type === 'Bot' && c.body?.includes(marker)
+            );
+            if (botComment && !botComment.body.includes('(resolved)')) {
+              const minimizedBody = [
+                marker,
+                '<details>',
+                '<summary>PR title help (resolved)</summary>',
+                '',
+                botComment.body.replace(marker, '').trim(),
+                '</details>'
+              ].join('\n');
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: minimizedBody
+              });
+            }
+
+  size:
+    name: Label PR Size
+    runs-on: ubuntu-latest
+    if: github.event.action != 'closed'
+    timeout-minutes: 5
+
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@v2
+        with:
+          egress-policy: audit
+
+      - name: Get current size label
+        id: current
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          CURRENT_LABEL=$(gh api "repos/${GH_REPO}/issues/${PR_NUMBER}/labels" \
+            --jq '.[] | select(.name | startswith("size/")) | .name' | head -1 || true)
+          echo "label=${CURRENT_LABEL}" >> "$GITHUB_OUTPUT"
+
+      - name: Label PR by size
+        continue-on-error: true
+        uses: codelytv/pr-size-labeler@v1
+        with:
+          GITHUB_TOKEN: ${{ github.token }}
+          xs_label: 'size/XS'
+          xs_max_size: 150
+          s_label: 'size/S'
+          s_max_size: 500
+          m_label: 'size/M'
+          m_max_size: 1000
+          l_label: 'size/L'
+          l_max_size: 1500
+          xl_label: 'size/XL'
+          fail_if_xl: false
+          message_if_xl: |
+            ## Large PR
+
+            This PR changes **more than 1500 lines**, which is harder to review safely.
+
+            Consider splitting unrelated changes (e.g. backend + frontend, or refactors vs. features) into separate PRs where possible.
+          files_to_ignore: |
+            CHANGELOG.md
+            package-lock.json
+            uv.lock
+            *.pdf
+
+      - name: Remove outdated size labels
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          OLD_LABEL: ${{ steps.current.outputs.label }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          CURRENT_LABELS=$(gh api "repos/${GH_REPO}/issues/${PR_NUMBER}/labels" \
+            --jq '.[] | select(.name | startswith("size/")) | .name' || true)
+          LABEL_COUNT=$(echo "$CURRENT_LABELS" | grep -c . || echo 0)
+          if [[ "${LABEL_COUNT:-0}" -gt 1 && -n "${OLD_LABEL:-}" ]]; then
+            ENCODED_LABEL="${OLD_LABEL//\//%2F}"
+            gh api "repos/${GH_REPO}/issues/${PR_NUMBER}/labels/${ENCODED_LABEL}" \
+              -X DELETE 2>/dev/null || true
+          fi
+
+  label:
+    name: Label PR by Files
+    runs-on: ubuntu-latest
+    if: github.event.action != 'closed'
+    timeout-minutes: 5
+
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@v2
+        with:
+          egress-policy: audit
+
+      - name: Label PR by changed files
+        uses: actions/labeler@v6
+        with:
+          repo-token: ${{ github.token }}
+          configuration-path: .github/labeler.yml
+          sync-labels: true

@@ -1,0 +1,82 @@
+name: Feature Request
+description: Suggest an improvement or new feature for the Lycans KMS system.
+title: "[Feature]: "
+labels:
+  - feature
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the suggestion. Please describe the feature clearly and include the problem it solves.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Feature Summary
+      description: Provide a short and clear summary of the requested feature.
+      placeholder: Add support for ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / Use Case
+      description: What problem does this solve?
+      placeholder: Currently users cannot ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed_solution
+    attributes:
+      label: Proposed Solution
+      description: Describe how you would like this feature to work.
+      placeholder: The system should ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Describe any alternative solutions or features you considered.
+      placeholder: Another option could be ...
+    validations:
+      required: false
+
+  - type: dropdown
+    id: impact_area
+    attributes:
+      label: Impact Area
+      description: Which part of the project is affected?
+      options:
+        - Backend API
+        - Web Frontend
+        - Documentation
+        - DevOps / CI
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - Nice to have
+        - Medium
+        - High
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context / Mockups / References
+      description: Add screenshots, links, mockups, or related issues if available.
+      placeholder: Related issue, design link, or extra notes.
+    validations:
+      required: false

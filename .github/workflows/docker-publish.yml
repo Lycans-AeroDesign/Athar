@@ -1,0 +1,71 @@
+# Builds and pushes the backend/frontend prod images to GHCR.
+# Manually triggered for now - run from the Actions tab when you actually
+# want to publish an image.
+#
+# To automate this later (e.g. on every GitHub Release), add:
+#   release:
+#     types: [published]
+# and swap the tag inputs below for ${{ github.event.release.tag_name }}.
+
+name: Publish Docker Images
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Image tag to publish (in addition to latest)"
+        required: false
+        default: "manual"
+      next_public_api_url:
+        description: "NEXT_PUBLIC_API_URL to bake into the frontend build"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Compute lowercase image namespace
+        id: repo
+        run: echo "name=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          target: prod
+          push: true
+          tags: |
+            ghcr.io/${{ steps.repo.outputs.name }}-backend:${{ github.event.inputs.tag }}
+            ghcr.io/${{ steps.repo.outputs.name }}-backend:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          target: prod
+          push: true
+          build-args: |
+            NEXT_PUBLIC_API_URL=${{ github.event.inputs.next_public_api_url }}
+          tags: |
+            ghcr.io/${{ steps.repo.outputs.name }}-frontend:${{ github.event.inputs.tag }}
+            ghcr.io/${{ steps.repo.outputs.name }}-frontend:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

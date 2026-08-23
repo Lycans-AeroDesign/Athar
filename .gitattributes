@@ -1,0 +1,5 @@
+# Force shell scripts to LF so they work in Docker (Linux)
+*.sh text eol=lf
+
+# Optional: normalize other text files to LF on commit/checkout
+* text=auto

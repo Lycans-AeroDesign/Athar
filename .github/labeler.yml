@@ -1,0 +1,59 @@
+# https://github.com/actions/labeler
+# Label names must exist on the repo (Settings > Labels, or `gh label create`).
+#
+# Adapted for this repo's actual layout (backend/ Django + frontend/ Next.js,
+# no custom Django apps yet). Add an 'app/<name>' entry here per app as they
+# get scaffolded under backend/, mirroring the prefix convention below.
+
+'docs':
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'docs/**'
+          - 'CONTRIBUTING.md'
+          - 'README.md'
+          - 'SECURITY.md'
+          - 'backend/README.md'
+          - 'frontend/README.md'
+
+'github':
+  - changed-files:
+      - any-glob-to-any-file: '.github/**'
+
+'docker':
+  - changed-files:
+      - any-glob-to-any-file:
+          - '**/Dockerfile'
+          - 'docker-compose.yml'
+          - 'docker-compose.prod.yml'
+          - '**/.dockerignore'
+          - 'backend/docker/**'
+
+'deps':
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'backend/pyproject.toml'
+          - 'backend/uv.lock'
+          - 'frontend/package.json'
+          - 'frontend/package-lock.json'
+
+'migrations':
+  - changed-files:
+      - any-glob-to-any-file: 'backend/**/migrations/**'
+
+'tests':
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'backend/**/tests.py'
+          - 'backend/**/tests/**'
+          - 'backend/**/test_*.py'
+          - 'frontend/**/*.test.ts'
+          - 'frontend/**/*.test.tsx'
+          - 'frontend/**/__tests__/**'
+
+'backend':
+  - changed-files:
+      - any-glob-to-any-file: 'backend/**'
+
+'frontend':
+  - changed-files:
+      - any-glob-to-any-file: 'frontend/**'
