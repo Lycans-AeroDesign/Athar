@@ -72,3 +72,69 @@ export interface OrganizationSettings {
   secondary_color_dark: string;
   updated_at: string;
 }
+
+export interface KnowledgeAuthor {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+}
+
+export interface Category {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  article_count: number;
+}
+
+export interface Tag {
+  id: string;
+  name: string;
+}
+
+export type ArticleStatus = "DRAFT" | "IN_REVIEW" | "PUBLISHED" | "REJECTED" | "ARCHIVED";
+
+export interface ArticleSummary {
+  id: string;
+  title: string;
+  slug: string;
+  excerpt: string;
+  status: ArticleStatus;
+  category: Category | null;
+  tags: Tag[];
+  author: KnowledgeAuthor | null;
+  created_at: string;
+  updated_at: string;
+  published_at: string | null;
+}
+
+export interface ArticleDetail extends ArticleSummary {
+  content: string;
+}
+
+export interface Answer {
+  id: string;
+  question_id: string;
+  body: string;
+  author: KnowledgeAuthor | null;
+  is_accepted: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface QuestionSummary {
+  id: string;
+  title: string;
+  tags: Tag[];
+  author: KnowledgeAuthor | null;
+  answer_count: number;
+  has_accepted_answer: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface QuestionDetail extends QuestionSummary {
+  body: string;
+  answers: Answer[];
+}

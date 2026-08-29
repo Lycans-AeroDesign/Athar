@@ -47,3 +47,26 @@ export function formatTime(utcIsoString: string | null | undefined): string {
   const date = utcToLocalDate(utcIsoString);
   return date ? timeFormatter.format(date) : "—";
 }
+
+const relativeTimeFormatter = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
+const RELATIVE_TIME_UNITS: Array<[Intl.RelativeTimeFormatUnit, number]> = [
+  ["year", 60 * 60 * 24 * 365],
+  ["month", 60 * 60 * 24 * 30],
+  ["week", 60 * 60 * 24 * 7],
+  ["day", 60 * 60 * 24],
+  ["hour", 60 * 60],
+  ["minute", 60],
+];
+
+/** "2 hours ago" / "in 3 days" style formatting, falling back to a plain date past ~a year. */
+export function formatRelativeTime(utcIsoString: string | null | undefined): string {
+  const date = utcToLocalDate(utcIsoString);
+  if (!date) return "—";
+  const seconds = (date.getTime() - Date.now()) / 1000;
+  for (const [unit, unitSeconds] of RELATIVE_TIME_UNITS) {
+    if (Math.abs(seconds) >= unitSeconds) {
+      return relativeTimeFormatter.format(Math.round(seconds / unitSeconds), unit);
+    }
+  }
+  return relativeTimeFormatter.format(Math.round(seconds), "second");
+}

@@ -8,6 +8,7 @@ v1_patterns = [
     path("audit/", include("audit.urls")),
     path("files/", include("files.urls")),
     path("organization/", include("organization.urls")),
+    path("knowledge/", include("knowledge.urls")),
 ]
 
 urlpatterns = [

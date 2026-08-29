@@ -60,6 +60,7 @@ INSTALLED_APPS = [
     "audit",
     "files",
     "organization",
+    "knowledge",
 ]
 
 AUTH_USER_MODEL = "accounts.User"
