@@ -23,12 +23,15 @@
   --color-surface-tint: #2151da;
   --color-primary: #00247d;
   --color-on-primary: #ffffff;
+  --color-primary-hover: #001f6a;
   --color-primary-container: #1d4ed8;
+  --color-primary-container-hover: #1942b8;
   --color-on-primary-container: #cad3ff;
   --color-inverse-primary: #b7c4ff;
   --color-secondary: #505f76;
   --color-on-secondary: #ffffff;
   --color-secondary-container: #d4e3ff;
+  --color-secondary-container-hover: #b4c1d9;
   --color-on-secondary-container: #56657c;
   --color-tertiary: #3d445a;
   --color-on-tertiary: #ffffff;
@@ -77,12 +80,15 @@
     --color-surface-tint: #b7c4ff;
     --color-primary: #b7c4ff;
     --color-on-primary: #001551;
+    --color-primary-hover: #c5d0ff;
     --color-primary-container: #10318f;
+    --color-primary-container-hover: #405aa5;
     --color-on-primary-container: #dce1ff;
     --color-inverse-primary: #00247d;
     --color-secondary: #b8c7e2;
     --color-on-secondary: #1b2a3f;
     --color-secondary-container: #39485e;
+    --color-secondary-container-hover: #616d7e;
     --color-on-secondary-container: #d4e3ff;
     --color-tertiary: #ffb4a2;
     --color-on-tertiary: #5c1900;
@@ -130,12 +136,15 @@
   --color-surface-tint: #b7c4ff;
   --color-primary: #b7c4ff;
   --color-on-primary: #001551;
+  --color-primary-hover: #c5d0ff;
   --color-primary-container: #10318f;
+  --color-primary-container-hover: #405aa5;
   --color-on-primary-container: #dce1ff;
   --color-inverse-primary: #00247d;
   --color-secondary: #b8c7e2;
   --color-on-secondary: #1b2a3f;
   --color-secondary-container: #39485e;
+  --color-secondary-container-hover: #616d7e;
   --color-on-secondary-container: #d4e3ff;
   --color-tertiary: #ffb4a2;
   --color-on-tertiary: #5c1900;
@@ -180,12 +189,15 @@
   --color-surface-tint: var(--color-surface-tint);
   --color-primary: var(--color-primary);
   --color-on-primary: var(--color-on-primary);
+  --color-primary-hover: var(--color-primary-hover);
   --color-primary-container: var(--color-primary-container);
+  --color-primary-container-hover: var(--color-primary-container-hover);
   --color-on-primary-container: var(--color-on-primary-container);
   --color-inverse-primary: var(--color-inverse-primary);
   --color-secondary: var(--color-secondary);
   --color-on-secondary: var(--color-on-secondary);
   --color-secondary-container: var(--color-secondary-container);
+  --color-secondary-container-hover: var(--color-secondary-container-hover);
   --color-on-secondary-container: var(--color-on-secondary-container);
   --color-tertiary: var(--color-tertiary);
   --color-on-tertiary: var(--color-on-tertiary);
@@ -264,24 +276,4 @@
 body {
   background: var(--color-background);
   color: var(--color-on-background);
-}
-
-/* Material Symbols Outlined - loaded via <link> in app/layout.tsx (not a
-   next/font-supported family). Defaults per Google's usage guidance. */
-.material-symbols-outlined {
-  font-family: "Material Symbols Outlined";
-  font-weight: normal;
-  font-style: normal;
-  line-height: 1;
-  letter-spacing: normal;
-  text-transform: none;
-  display: inline-block;
-  white-space: nowrap;
-  word-wrap: normal;
-  direction: ltr;
-  font-variation-settings:
-    "FILL" 0,
-    "wght" 400,
-    "GRAD" 0,
-    "opsz" 24;
 }

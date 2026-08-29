@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 
+import { Can } from "@/components/auth/Can";
 import { BrandMark } from "@/components/ui/BrandMark";
 import { Icon } from "@/components/ui/Icon";
 import { Link, usePathname } from "@/i18n/navigation";
@@ -10,14 +11,17 @@ import { useOrganization } from "@/lib/organization/OrganizationProvider";
 
 // Routes are placeholders - pages get filled in later. Keeping the list here
 // (rather than inline in JSX) makes it a single place to add the next page.
-const NAV_ITEMS = [
+// `permission` is optional: omit it for anything every authenticated user can
+// see; set it once a route enforces a real permission on its backing
+// endpoint(s), and this list stops showing it to users who'd just hit a 403.
+const NAV_ITEMS: ReadonlyArray<{ href: string; labelKey: string; icon: string; permission?: string }> = [
   { href: "/", labelKey: "dashboard", icon: "dashboard" },
   { href: "/knowledge", labelKey: "knowledge", icon: "menu_book" },
   { href: "/projects", labelKey: "projects", icon: "architecture" },
   { href: "/components", labelKey: "components", icon: "settings_input_component" },
   { href: "/sops", labelKey: "sops", icon: "description" },
   { href: "/failures", labelKey: "failures", icon: "report_problem" },
-] as const;
+];
 
 export function SideNav() {
   const pathname = usePathname();
@@ -25,7 +29,7 @@ export function SideNav() {
   const { settings } = useOrganization();
 
   return (
-    <nav className="bg-surface-container-low text-primary font-body-md text-body-md h-screen w-64 border-r border-outline-variant flex flex-col fixed left-0 top-0 z-20">
+    <nav className="bg-surface-container-low text-primary font-body-md text-body-md h-screen w-64 border-e border-outline-variant flex flex-col fixed start-0 top-0 z-20">
       <div className="p-6 border-b border-outline-variant">
         <div className="flex items-center gap-2">
           {settings?.logo_url ? (
@@ -53,18 +57,19 @@ export function SideNav() {
         {NAV_ITEMS.map((item) => {
           const isActive = pathname === item.href;
           return (
-            <Link
-              key={item.href}
-              className={
-                isActive
-                  ? "flex items-center gap-4 px-4 py-2 bg-secondary-container text-on-secondary-container font-bold rounded-xl transition-colors"
-                  : "flex items-center gap-4 px-4 py-2 text-on-surface-variant hover:bg-surface-variant transition-colors duration-150 rounded-xl"
-              }
-              href={item.href}
-            >
-              <Icon name={item.icon} filled={isActive} />
-              {t(item.labelKey)}
-            </Link>
+            <Can key={item.href} permission={item.permission}>
+              <Link
+                className={
+                  isActive
+                    ? "flex items-center gap-4 px-4 py-2 bg-primary-container text-on-primary-container font-bold rounded-xl transition-colors"
+                    : "flex items-center gap-4 px-4 py-2 text-on-surface-variant hover:bg-surface-variant transition-colors duration-150 rounded-xl"
+                }
+                href={item.href}
+              >
+                <Icon name={item.icon} filled={isActive} />
+                {t(item.labelKey)}
+              </Link>
+            </Can>
           );
         })}
       </div>
@@ -73,7 +78,7 @@ export function SideNav() {
         <Link
           className={
             pathname === "/settings"
-              ? "flex items-center gap-4 px-4 py-2 bg-secondary-container text-on-secondary-container font-bold rounded-xl transition-colors"
+              ? "flex items-center gap-4 px-4 py-2 bg-primary-container text-on-primary-container font-bold rounded-xl transition-colors"
               : "flex items-center gap-4 px-4 py-2 text-on-surface-variant hover:bg-surface-variant transition-colors duration-150 rounded-xl"
           }
           href="/settings"

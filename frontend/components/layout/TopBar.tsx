@@ -1,12 +1,13 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Icon } from "@/components/ui/Icon";
 import { Menu } from "@/components/ui/Menu";
-import { Link, useRouter } from "@/i18n/navigation";
+import { Link, usePathname, useRouter } from "@/i18n/navigation";
+import { locales, localeNames, type Locale } from "@/i18n/request";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { useOrganization } from "@/lib/organization/OrganizationProvider";
 import { useTheme } from "@/lib/theme/ThemeProvider";
@@ -16,6 +17,8 @@ export function TopBar() {
   const { user, logout } = useAuth();
   const { theme, setTheme } = useTheme();
   const { settings } = useOrganization();
+  const locale = useLocale();
+  const pathname = usePathname();
   const router = useRouter();
   const t = useTranslations("topbar");
   const [confirmLogoutOpen, setConfirmLogoutOpen] = useState(false);
@@ -35,17 +38,17 @@ export function TopBar() {
         <div className="relative w-full">
           <Icon
             name="search"
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-outline"
+            className="absolute start-4 top-1/2 -translate-y-1/2 text-outline"
           />
           <input
-            className="w-full bg-surface-container-low border border-outline-variant rounded-xl py-2 pl-[40px] pr-4 text-body-md font-body-md text-on-surface placeholder:text-outline focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+            className="w-full bg-surface-container-low border border-outline-variant rounded-xl py-2 ps-[40px] pe-4 text-body-md font-body-md text-on-surface placeholder:text-outline focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
             placeholder={t("searchPlaceholder")}
             type="text"
           />
         </div>
       </div>
 
-      <div className="flex items-center gap-4 ml-auto">
+      <div className="flex items-center gap-4">
         <button
           className="text-on-surface-variant hover:text-primary opacity-80 hover:opacity-100 transition-opacity"
           type="button"
@@ -64,11 +67,11 @@ export function TopBar() {
         <Menu
           trigger={
             <button
-              className="flex items-center gap-2 rounded-xl px-2 py-1 bg-surface-container hover:bg-surface-container-high transition-colors cursor-pointer"
+              className="flex items-center gap-2 rounded-xl border border-outline-variant ps-4 pe-2 py-1 bg-surface-container hover:bg-surface-container-high transition-colors cursor-pointer"
               type="button"
               aria-label={t("accountMenu")}
             >
-              <span className="flex flex-col items-end leading-tight text-right">
+              <span className="flex flex-col items-end leading-tight text-end">
                 <span className="font-body-md text-body-md font-semibold text-on-surface normal-case">
                   {displayName}
                 </span>
@@ -78,7 +81,7 @@ export function TopBar() {
                   </span>
                 )}
               </span>
-              <span className="h-8 w-8 shrink-0 rounded-full border border-outline-variant bg-primary-container text-on-primary flex items-center justify-center font-label-caps text-label-caps">
+              <span className="h-8 w-8 shrink-0 rounded-full border border-outline-variant bg-primary text-on-primary flex items-center justify-center font-label-caps text-label-caps">
                 {initial}
               </span>
             </button>
@@ -96,6 +99,14 @@ export function TopBar() {
                 { value: "dark", label: t("themeDark"), icon: "dark_mode" },
                 { value: "system", label: t("themeSystem"), icon: "computer" },
               ],
+            },
+            {
+              type: "submenu",
+              label: t("language"),
+              icon: "language",
+              value: locale,
+              onChange: (value) => router.replace(pathname, { locale: value as Locale }),
+              options: locales.map((code) => ({ value: code, label: localeNames[code] })),
             },
             { label: t("logout"), onSelect: () => setConfirmLogoutOpen(true), danger: true },
           ]}

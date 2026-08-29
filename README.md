@@ -84,6 +84,15 @@ docs/VISION.md                full product specification
 
 The frontend is fully translation-driven (`next-intl`) — no UI text is hardcoded, it all comes from `frontend/i18n/messages/<locale>.json`. Routes are locale-prefixed (`/en/...`, `/ar/...`).
 
+**Supported languages:**
+
+| Code | Language | Direction | Status |
+|---|---|---|---|
+| `en` | English | LTR | ✅ Fully supported (source language) |
+| `ar` | العربية (Arabic) | RTL | ⚠️ File exists, needs translation — `frontend/i18n/messages/ar.json` is currently an untranslated English copy |
+
+A language only reaches "file exists" status once it's registered in `frontend/i18n/request.ts` (see below) *and* has a `messages/<code>.json` file — at that point it's selectable in Settings > General even before translation is complete, since next-intl has no per-key fallback. Update this table whenever a language's status changes.
+
 **To add a new language:**
 
 1. Add its code to `locales` in `frontend/i18n/request.ts`.

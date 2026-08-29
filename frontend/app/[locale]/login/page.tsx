@@ -101,7 +101,7 @@ function LoginForm() {
 
             <div>
               <button
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-lg bg-primary-container font-label-caps text-label-caps text-on-primary hover:bg-on-primary-fixed-variant focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors duration-150 uppercase shadow-[0_1px_3px_0_rgba(0,0,0,0.05)] disabled:opacity-60 disabled:cursor-not-allowed"
+                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-lg bg-primary font-label-caps text-label-caps text-on-primary hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors duration-150 uppercase shadow-[0_1px_3px_0_rgba(0,0,0,0.05)] disabled:opacity-60 disabled:cursor-not-allowed"
                 disabled={isSubmitting}
                 type="submit"
               >

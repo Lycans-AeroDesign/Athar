@@ -156,6 +156,17 @@ The app is routed under `app/[locale]/...` (via `next-intl`, `frontend/i18n/requ
 - **Adding a new language**: add its code to `locales` in `frontend/i18n/request.ts`, give it a display name in `localeNames` and a text direction in `localeDirections` (also in `request.ts`), then add a `frontend/i18n/messages/<code>.json` file with the same keys as `en.json` (copy `en.json` as a starting point and translate the values). The Settings > General language picker is generated from `locales`/`localeNames`, so a language only appears there once its message file exists — there's no separate hardcoded language catalogue to update.
 - Translations for languages other than `en` may lag behind in wording quality (e.g. `ar.json` currently ships as an English copy of `en.json`, pending real translation) — that's expected. What's not acceptable is a key present in `en.json` but missing from another locale's file, since next-intl has no per-key fallback configured and will error on a genuinely missing key — keep every locale file's key set in sync with `en.json` even before it's translated.
 
+### 4.7 Permission gating (client-side)
+
+The backend is the only real access-control boundary — see §6. This section is purely about UX: don't render a control that would just 403 if the user clicked it.
+
+- `frontend/lib/auth/permissions.ts` exports `useHasPermission(codename?)`, a hook reading `user.permissions` (populated from `GET /api/v1/auth/me/`, which mirrors `User.permission_codenames()` on the backend — see `backend/accounts/models.py`). Omitting `codename` always returns `true`, so optional per-item checks don't need a separate branch.
+- `frontend/components/auth/Can.tsx` wraps that hook for declarative JSX gating: `<Can permission="role.manage">...</Can>` renders nothing (or a `fallback`) when the permission is missing.
+- **Menus/nav items**: give the item's config an optional `permission` field and gate it with `<Can>` (see `NAV_ITEMS` in `frontend/components/layout/SideNav.tsx`) instead of a scattered `{condition && <Link>}`.
+- **Pages with multiple independently-gated parts**: compute one `useHasPermission(...)` boolean per part and only fetch/render that part when it's true — don't fetch data the user's permission set can't reach (see `frontend/components/settings/RolesSettingsForm.tsx`, which gates its permissions-catalogue section on `permission.manage` and its user-assignment section on `user.manage` independently).
+- **Read-only-for-everyone vs gated-read**: if an endpoint is genuinely public to read and only writes are gated (e.g. organization general/branding settings), keep rendering the view and gate just the edit controls via a `canEdit` boolean prop passed down from the page (see `GeneralSettingsForm`/`BrandingSettingsForm`). If the *read* itself requires a permission (e.g. `role.manage` on `GET /rbac/roles/`), gate the whole section/tab instead — there's nothing to show without it.
+- **Adding a new permission codename**: add it to `PERMISSION_CATALOGUE` (and to a `ROLE_CATALOGUE` entry, if a default role should grant it) in `backend/rbac/management/commands/seed_rbac.py`, then re-run `uv run manage.py seed_rbac`. Enforce it on the view with `rbac.permissions.require_permission("your.codename")` — don't build a parallel authorization mechanism per app.
+
 ---
 
 ## 5. Backend/frontend contract
@@ -192,6 +203,7 @@ The app is routed under `app/[locale]/...` (via `next-intl`, `frontend/i18n/requ
 - [ ] **Frontend**: `npm run lint` and `npm run build` pass; dark mode works; no secrets in `NEXT_PUBLIC_*`.
 - [ ] **i18n**: no hardcoded UI text — every string goes through `useTranslations`/`getTranslations`; new keys added to `en.json` (and kept in sync, even if untranslated, in every other locale file).
 - [ ] **Security**: no new endpoint relies on frontend-only access control; no secrets committed or logged.
+- [ ] **Permission gating** (§4.7): new gated UI uses `useHasPermission`/`<Can>` rather than ad hoc `user.permissions.includes(...)`; any new codename is added to `seed_rbac.py`'s catalogue and enforced server-side with `require_permission`.
 - [ ] **CI**: `ci.yml` passes (backend, frontend, docker jobs).
 
 If you have questions, open an issue or ask the maintainers.

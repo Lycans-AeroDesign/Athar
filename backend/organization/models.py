@@ -16,10 +16,12 @@ class OrganizationSettings(models.Model):
     # General
     # No stored timezone - every timestamp is rendered in the viewer's local
     # timezone client-side (see frontend/lib/datetime.ts), auto-detected via
-    # the browser, not configured per-organization.
+    # the browser, not configured per-organization. Language is likewise not
+    # stored here - it's a per-viewer preference persisted client-side as the
+    # NEXT_LOCALE cookie (see frontend/components/layout/TopBar.tsx), not an
+    # org-wide default.
     name = models.CharField(max_length=200, default="AeroKMS")
     primary_domain = models.CharField(max_length=255, blank=True)
-    default_language = models.CharField(max_length=20, default="en-US")
 
     # Branding
     logo = models.ForeignKey(
@@ -30,6 +32,13 @@ class OrganizationSettings(models.Model):
     )
     primary_color = models.CharField(max_length=7, default="#1D4ED8")
     secondary_color = models.CharField(max_length=7, default="#505F76")
+    # Dark-theme counterparts - the frontend applies whichever pair matches
+    # the viewer's currently active theme (light/dark, resolving "system" via
+    # prefers-color-scheme) rather than one fixed color for both. Defaults
+    # match the app's built-in dark palette (frontend/app/[locale]/globals.css)
+    # so existing installs look unchanged until an admin customizes them.
+    primary_color_dark = models.CharField(max_length=7, default="#B7C4FF")
+    secondary_color_dark = models.CharField(max_length=7, default="#B8C7E2")
 
     updated_at = models.DateTimeField(auto_now=True)
 

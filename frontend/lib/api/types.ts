@@ -61,7 +61,6 @@ export interface OrganizationSettings {
   id: string;
   name: string;
   primary_domain: string;
-  default_language: string;
   logo: StoredFileRef | null;
   favicon: StoredFileRef | null;
   /** Always-public URL (no auth needed) - use this to actually render the image. */
@@ -69,5 +68,7 @@ export interface OrganizationSettings {
   favicon_url: string | null;
   primary_color: string;
   secondary_color: string;
+  primary_color_dark: string;
+  secondary_color_dark: string;
   updated_at: string;
 }

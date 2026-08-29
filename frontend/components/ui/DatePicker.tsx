@@ -33,7 +33,7 @@ const DAY_PICKER_CLASS_NAMES = {
   day: "w-9 h-9 flex items-center justify-center",
   day_button: "h-8 w-8 flex items-center justify-center rounded-lg text-on-surface hover:bg-surface-variant transition-colors",
   today: "font-bold text-primary",
-  selected: "[&>button]:bg-primary-container [&>button]:text-on-primary [&>button]:hover:bg-primary-container",
+  selected: "[&>button]:bg-primary [&>button]:text-on-primary [&>button]:hover:bg-primary-hover",
   outside: "text-outline",
   disabled: "text-outline opacity-50",
 };

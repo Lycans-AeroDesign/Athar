@@ -8,7 +8,6 @@ export function getOrganizationSettings(): Promise<OrganizationSettings> {
 export function updateGeneralSettings(payload: {
   name?: string;
   primary_domain?: string;
-  default_language?: string;
 }): Promise<OrganizationSettings> {
   return apiJson<OrganizationSettings>("/api/v1/organization/settings/general/", {
     method: "PATCH",
@@ -22,6 +21,8 @@ export function updateBrandingSettings(payload: {
   favicon_id?: string | null;
   primary_color?: string;
   secondary_color?: string;
+  primary_color_dark?: string;
+  secondary_color_dark?: string;
 }): Promise<OrganizationSettings> {
   return apiJson<OrganizationSettings>("/api/v1/organization/settings/branding/", {
     method: "PATCH",
@@ -35,6 +36,12 @@ export async function uploadFile(file: File, requiredPermission = "file.read"): 
   formData.append("file", file);
   formData.append("required_permission", requiredPermission);
   const res = await apiFetch("/api/v1/files/upload/", { method: "POST", body: formData });
-  if (!res.ok) throw new Error(`Upload failed with ${res.status}`);
+  if (!res.ok) {
+    // DRF validation errors come back as {"file": ["message"]} (see
+    // files/serializers.py's validate_file, e.g. the size-limit check) -
+    // surface that message instead of just the status code.
+    const body: { file?: string[]; detail?: string } | null = await res.json().catch(() => null);
+    throw new Error(body?.file?.[0] ?? body?.detail ?? `Upload failed with ${res.status}`);
+  }
   return res.json();
 }

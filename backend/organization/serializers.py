@@ -22,13 +22,14 @@ class OrganizationSettingsSerializer(serializers.ModelSerializer):
             "id",
             "name",
             "primary_domain",
-            "default_language",
             "logo",
             "favicon",
             "logo_url",
             "favicon_url",
             "primary_color",
             "secondary_color",
+            "primary_color_dark",
+            "secondary_color_dark",
             "updated_at",
         ]
 
@@ -42,7 +43,7 @@ class OrganizationSettingsSerializer(serializers.ModelSerializer):
 class OrganizationGeneralUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = OrganizationSettings
-        fields = ["name", "primary_domain", "default_language"]
+        fields = ["name", "primary_domain"]
 
 
 class OrganizationBrandingUpdateSerializer(serializers.ModelSerializer):
@@ -55,4 +56,11 @@ class OrganizationBrandingUpdateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = OrganizationSettings
-        fields = ["logo_id", "favicon_id", "primary_color", "secondary_color"]
+        fields = [
+            "logo_id",
+            "favicon_id",
+            "primary_color",
+            "secondary_color",
+            "primary_color_dark",
+            "secondary_color_dark",
+        ]

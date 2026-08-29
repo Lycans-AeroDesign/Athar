@@ -1,9 +1,11 @@
+import { DirectionProvider } from "@radix-ui/react-direction";
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages, setRequestLocale } from "next-intl/server";
+import { BrandColorSync } from "@/components/theme/BrandColorSync";
 import { AuthProvider } from "@/lib/auth/AuthProvider";
 import { OrganizationProvider } from "@/lib/organization/OrganizationProvider";
 import { ThemeProvider } from "@/lib/theme/ThemeProvider";
@@ -59,24 +61,23 @@ export default async function LocaleLayout({
       data-theme={dataTheme}
       className={`${inter.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
-      <head>
-        {/* Material Symbols isn't served via next/font - loaded the same way the
-            Stitch reference designs under ref/ (see e.g. aerokms_login/code.html) load it.
-            This IS the App Router's root layout (not pages/_document.js), so it
-            already applies to every route - the lint rule predates the app/ convention. */}
-        {/* eslint-disable-next-line @next/next/no-page-custom-font */}
-        <link
-          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap"
-          rel="stylesheet"
-        />
-      </head>
       <body className="min-h-full flex flex-col font-body-md text-body-md">
         <NextIntlClientProvider messages={messages}>
-          <ThemeProvider initialTheme={theme}>
-            <AuthProvider>
-              <OrganizationProvider>{children}</OrganizationProvider>
-            </AuthProvider>
-          </ThemeProvider>
+          {/* Radix primitives (DropdownMenu, Dialog, ...) default their own
+              internal direction to ltr unless told otherwise - they don't
+              read the <html dir> attribute themselves. Without this, submenu
+              open-side, alignment keywords, and arrow-key nav inside those
+              components would stay LTR even on an RTL page. */}
+          <DirectionProvider dir={localeDirections[locale as Locale]}>
+            <ThemeProvider initialTheme={theme}>
+              <AuthProvider>
+                <OrganizationProvider>
+                  <BrandColorSync />
+                  {children}
+                </OrganizationProvider>
+              </AuthProvider>
+            </ThemeProvider>
+          </DirectionProvider>
         </NextIntlClientProvider>
       </body>
     </html>

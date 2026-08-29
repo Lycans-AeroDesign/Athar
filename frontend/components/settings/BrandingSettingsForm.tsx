@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { updateBrandingSettings, uploadFile } from "@/lib/api/organization";
 import type { OrganizationSettings, StoredFileRef } from "@/lib/api/types";
+import { hasLowContrast } from "@/lib/theme/brandColors";
 
 // Matches backend/config/settings.py MAX_UPLOAD_SIZE_MB's default - shown
 // here for the description text only, not enforced client-side (the
@@ -25,6 +26,8 @@ export function BrandingSettingsForm({ settings, onUpdate, canEdit }: BrandingSe
   const commonT = useTranslations("common");
   const [primaryColor, setPrimaryColor] = useState(settings.primary_color);
   const [secondaryColor, setSecondaryColor] = useState(settings.secondary_color);
+  const [primaryColorDark, setPrimaryColorDark] = useState(settings.primary_color_dark);
+  const [secondaryColorDark, setSecondaryColorDark] = useState(settings.secondary_color_dark);
   // undefined = unchanged from saved settings; null = explicitly cleared;
   // StoredFileRef = a newly uploaded file staged but not yet saved.
   const [pendingLogo, setPendingLogo] = useState<StoredFileRef | null | undefined>(undefined);
@@ -32,12 +35,16 @@ export function BrandingSettingsForm({ settings, onUpdate, canEdit }: BrandingSe
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [isUploadingFavicon, setIsUploadingFavicon] = useState(false);
+  const [logoError, setLogoError] = useState<string | null>(null);
+  const [faviconError, setFaviconError] = useState<string | null>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const faviconInputRef = useRef<HTMLInputElement>(null);
 
   const isDirty =
     primaryColor !== settings.primary_color ||
     secondaryColor !== settings.secondary_color ||
+    primaryColorDark !== settings.primary_color_dark ||
+    secondaryColorDark !== settings.secondary_color_dark ||
     pendingLogo !== undefined ||
     pendingFavicon !== undefined;
 
@@ -46,11 +53,14 @@ export function BrandingSettingsForm({ settings, onUpdate, canEdit }: BrandingSe
 
   async function handleLogoSelected(file: File) {
     setIsUploadingLogo(true);
+    setLogoError(null);
     try {
       // Uploading stages the file (and lets us preview it) - it isn't
       // assigned as the org's logo until Save Changes is clicked.
       const uploaded = await uploadFile(file);
       setPendingLogo(uploaded);
+    } catch (err) {
+      setLogoError(err instanceof Error ? err.message : String(err));
     } finally {
       setIsUploadingLogo(false);
     }
@@ -58,9 +68,12 @@ export function BrandingSettingsForm({ settings, onUpdate, canEdit }: BrandingSe
 
   async function handleFaviconSelected(file: File) {
     setIsUploadingFavicon(true);
+    setFaviconError(null);
     try {
       const uploaded = await uploadFile(file);
       setPendingFavicon(uploaded);
+    } catch (err) {
+      setFaviconError(err instanceof Error ? err.message : String(err));
     } finally {
       setIsUploadingFavicon(false);
     }
@@ -72,6 +85,8 @@ export function BrandingSettingsForm({ settings, onUpdate, canEdit }: BrandingSe
       const updated = await updateBrandingSettings({
         primary_color: primaryColor,
         secondary_color: secondaryColor,
+        primary_color_dark: primaryColorDark,
+        secondary_color_dark: secondaryColorDark,
         ...(pendingLogo !== undefined ? { logo_id: pendingLogo?.id ?? null } : {}),
         ...(pendingFavicon !== undefined ? { favicon_id: pendingFavicon?.id ?? null } : {}),
       });
@@ -86,6 +101,8 @@ export function BrandingSettingsForm({ settings, onUpdate, canEdit }: BrandingSe
   function handleDiscard() {
     setPrimaryColor(settings.primary_color);
     setSecondaryColor(settings.secondary_color);
+    setPrimaryColorDark(settings.primary_color_dark);
+    setSecondaryColorDark(settings.secondary_color_dark);
     setPendingLogo(undefined);
     setPendingFavicon(undefined);
   }
@@ -131,6 +148,11 @@ export function BrandingSettingsForm({ settings, onUpdate, canEdit }: BrandingSe
             {isUploadingLogo ? t("uploading") : t("uploadLogo")}
           </Button>
         </div>
+        {logoError && (
+          <p className="font-body-md text-body-md text-error" role="alert">
+            {logoError}
+          </p>
+        )}
       </div>
 
       <div className="bg-surface rounded-xl border border-outline-variant p-6 space-y-4">
@@ -171,55 +193,58 @@ export function BrandingSettingsForm({ settings, onUpdate, canEdit }: BrandingSe
             {isUploadingFavicon ? t("uploading") : t("uploadFavicon")}
           </Button>
         </div>
+        {faviconError && (
+          <p className="font-body-md text-body-md text-error" role="alert">
+            {faviconError}
+          </p>
+        )}
       </div>
 
-      <div className="bg-surface rounded-xl border border-outline-variant p-6 space-y-4">
+      <div className="bg-surface rounded-xl border border-outline-variant p-6 space-y-6">
         <div>
           <h2 className="font-headline-md text-headline-md text-on-surface">{t("colorsTitle")}</h2>
           <p className="font-body-md text-body-md text-on-surface-variant mt-1">
             {t("colorsDescription")}
           </p>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase">
-              {t("primaryAccent")}
-            </label>
-            <div className="flex items-center gap-2">
-              <input
-                type="color"
-                className="h-9 w-9 rounded-lg border border-outline-variant bg-transparent disabled:opacity-60"
-                disabled={!canEdit}
-                value={primaryColor}
-                onChange={(e) => setPrimaryColor(e.target.value)}
-              />
-              <input
-                className="flex-1 px-4 py-2 font-mono-sm text-mono-sm text-on-surface bg-surface-container border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors disabled:opacity-60"
-                disabled={!canEdit}
-                value={primaryColor}
-                onChange={(e) => setPrimaryColor(e.target.value)}
-              />
-            </div>
+
+        <div className="space-y-3">
+          <h3 className="font-label-caps text-label-caps text-on-surface-variant uppercase">
+            {t("lightThemeLabel")}
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <ColorInputField
+              label={t("primaryAccent")}
+              value={primaryColor}
+              onChange={setPrimaryColor}
+              canEdit={canEdit}
+            />
+            <ColorInputField
+              label={t("secondaryColor")}
+              value={secondaryColor}
+              onChange={setSecondaryColor}
+              canEdit={canEdit}
+            />
           </div>
-          <div className="space-y-2">
-            <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase">
-              {t("secondaryColor")}
-            </label>
-            <div className="flex items-center gap-2">
-              <input
-                type="color"
-                className="h-9 w-9 rounded-lg border border-outline-variant bg-transparent disabled:opacity-60"
-                disabled={!canEdit}
-                value={secondaryColor}
-                onChange={(e) => setSecondaryColor(e.target.value)}
-              />
-              <input
-                className="flex-1 px-4 py-2 font-mono-sm text-mono-sm text-on-surface bg-surface-container border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors disabled:opacity-60"
-                disabled={!canEdit}
-                value={secondaryColor}
-                onChange={(e) => setSecondaryColor(e.target.value)}
-              />
-            </div>
+        </div>
+
+        <div className="space-y-3">
+          <h3 className="font-label-caps text-label-caps text-on-surface-variant uppercase">
+            {t("darkThemeLabel")}
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <ColorInputField
+              label={t("primaryAccent")}
+              value={primaryColorDark}
+              onChange={setPrimaryColorDark}
+              canEdit={canEdit}
+            />
+            <ColorInputField
+              label={t("secondaryColor")}
+              value={secondaryColorDark}
+              onChange={setSecondaryColorDark}
+              canEdit={canEdit}
+            />
           </div>
         </div>
       </div>
@@ -233,6 +258,47 @@ export function BrandingSettingsForm({ settings, onUpdate, canEdit }: BrandingSe
             {isSaving ? commonT("saving") : commonT("save")}
           </Button>
         </div>
+      )}
+    </div>
+  );
+}
+
+interface ColorInputFieldProps {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  canEdit: boolean;
+}
+
+function ColorInputField({ label, value, onChange, canEdit }: ColorInputFieldProps) {
+  const t = useTranslations("settings.branding");
+  const lowContrast = hasLowContrast(value);
+
+  return (
+    <div className="space-y-2">
+      <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase">
+        {label}
+      </label>
+      <div className="flex items-center gap-2">
+        <input
+          type="color"
+          className="h-9 w-9 rounded-lg border border-outline-variant bg-transparent disabled:opacity-60"
+          disabled={!canEdit}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+        />
+        <input
+          className="flex-1 px-4 py-2 font-mono-sm text-mono-sm text-on-surface bg-surface-container border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors disabled:opacity-60"
+          disabled={!canEdit}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      </div>
+      {lowContrast && (
+        <p className="flex items-center gap-1 font-body-md text-body-md text-error" role="alert">
+          <Icon name="report_problem" size={14} />
+          {t("lowContrastWarning")}
+        </p>
       )}
     </div>
   );
