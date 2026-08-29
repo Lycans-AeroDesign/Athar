@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
+from datetime import timedelta
 from pathlib import Path
 
 import environ
@@ -50,7 +51,18 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "corsheaders",
+    "rest_framework",
+    "rest_framework_simplejwt",
+    "rest_framework_simplejwt.token_blacklist",
+    "drf_spectacular",
+    "accounts",
+    "rbac",
+    "audit",
+    "files",
+    "organization",
 ]
+
+AUTH_USER_MODEL = "accounts.User"
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -88,7 +100,9 @@ WSGI_APPLICATION = "config.wsgi.application"
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
 
 DATABASES = {
-    "default": env.db("DATABASE_URL", default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}"),
+    # No SQLite fallback - DATABASE_URL (Postgres) is required in every
+    # environment, dev included. Raises ImproperlyConfigured if unset.
+    "default": env.db("DATABASE_URL"),
 }
 
 
@@ -129,23 +143,95 @@ USE_TZ = True
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
+# In DEBUG, skip collectstatic entirely (see docker/entrypoint.sh) - WhiteNoise
+# serves straight from each app's static/ dir via Django's staticfiles finders
+# instead of the collected STATIC_ROOT, and {% static %} resolves URLs
+# directly rather than through the collectstatic-generated hash manifest
+# (which wouldn't exist yet without it).
+if DEBUG:
+    WHITENOISE_USE_FINDERS = True
+    WHITENOISE_AUTOREFRESH = True
+
 STORAGES = {
     "default": {
         "BACKEND": "django.core.files.storage.FileSystemStorage",
     },
     "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        "BACKEND": (
+            "django.contrib.staticfiles.storage.StaticFilesStorage"
+            if DEBUG
+            else "whitenoise.storage.CompressedManifestStaticFilesStorage"
+        ),
     },
 }
 
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
+# Branding logo/favicon uploads are the only thing that uses the generic file
+# upload endpoint today, hence a small default matching the Stitch design's
+# "Max size: 2MB" note - raise this (or make it per-endpoint) once general
+# document/resource uploads are built.
+MAX_UPLOAD_SIZE_MB = env.int("MAX_UPLOAD_SIZE_MB", default=2)
+
 
 # CORS
 # https://github.com/adamchainz/django-cors-headers
 
 CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=["http://localhost:3000"])
+# Required so the browser sends/receives the httpOnly refresh-token cookie on
+# cross-origin requests made with fetch(..., { credentials: "include" }).
+CORS_ALLOW_CREDENTIALS = True
+
+
+# Django REST Framework / JWT auth
+# https://www.django-rest-framework.org/  https://django-rest-framework-simplejwt.readthedocs.io/
+
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ],
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
+    ],
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+}
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "AeroKMS API",
+    "DESCRIPTION": "AeroKMS backend API - see docs/VISION.md for the product spec.",
+    "VERSION": "0.1.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+}
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(
+        minutes=env.int("JWT_ACCESS_TOKEN_LIFETIME_MINUTES", default=15)
+    ),
+    "REFRESH_TOKEN_LIFETIME": timedelta(
+        days=env.int("JWT_REFRESH_TOKEN_LIFETIME_DAYS", default=7)
+    ),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+    "UPDATE_LAST_LOGIN": True,
+    "SIGNING_KEY": env("JWT_SIGNING_KEY", default="") or SECRET_KEY,
+    "AUTH_HEADER_TYPES": ("Bearer",),
+}
+
+# The refresh token is never sent in a JSON body - it only ever travels as this
+# httpOnly cookie, scoped to the auth endpoints that need to read it.
+JWT_REFRESH_COOKIE_NAME = env("JWT_REFRESH_COOKIE_NAME", default="refresh_token")
+# Deliberately "/" (not scoped to /api/v1/auth/): the Next.js proxy (proxy.ts)
+# needs to see this cookie's presence on every page route on the frontend
+# origin to decide whether to redirect to /login - cookie Path scoping is
+# independent of which server ends up receiving the request, so a narrower
+# path would make the cookie invisible to page requests entirely.
+JWT_REFRESH_COOKIE_PATH = "/"
+JWT_REFRESH_COOKIE_SECURE = env.bool("JWT_REFRESH_COOKIE_SECURE", default=not DEBUG)
+JWT_REFRESH_COOKIE_SAMESITE = env("JWT_REFRESH_COOKIE_SAMESITE", default="Lax")
+JWT_REFRESH_COOKIE_DOMAIN = env("JWT_REFRESH_COOKIE_DOMAIN", default="") or None
+
+ENABLE_REGISTRATION = env.bool("ENABLE_REGISTRATION", default=True)
 
 
 # Email

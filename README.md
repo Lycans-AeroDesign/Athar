@@ -51,9 +51,11 @@ docker compose -f docker-compose.prod.yml up --build
 
 **Backend** (from `backend/`):
 
+Requires a running Postgres instance and `DATABASE_URL` set in `backend/.env` (copy from `backend/.env.example`) - there is no SQLite fallback.
+
 ```bash
 uv sync                          # install dependencies into .venv
-uv run manage.py migrate         # apply migrations (uses SQLite unless DATABASE_URL is set)
+uv run manage.py migrate         # apply migrations
 uv run manage.py runserver       # start dev server
 ```
 
@@ -77,6 +79,18 @@ scripts/generate_env.py      generates local .env files with real secrets
 docs/VISION.md                full product specification
 .github/                      CI, PR automation, issue/PR templates
 ```
+
+## Internationalization
+
+The frontend is fully translation-driven (`next-intl`) — no UI text is hardcoded, it all comes from `frontend/i18n/messages/<locale>.json`. Routes are locale-prefixed (`/en/...`, `/ar/...`).
+
+**To add a new language:**
+
+1. Add its code to `locales` in `frontend/i18n/request.ts`.
+2. Give it a display name (`localeNames`) and text direction (`localeDirections`), also in `frontend/i18n/request.ts`.
+3. Copy `frontend/i18n/messages/en.json` to `frontend/i18n/messages/<code>.json` and translate the values (keep the same keys).
+
+The language picker in Settings > General is generated from `locales`/`localeNames`, so the new language appears there automatically once its message file exists.
 
 ## Roadmap
 

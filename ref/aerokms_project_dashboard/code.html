@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AeroKMS - Project Dashboard: PRJ-X900-Valkyrie</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=JetBrains+Mono:wght@400&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+                "surface-container": "#eeedf7",
+                "outline": "#747686",
+                "secondary-container": "#d4e3ff",
+                "surface-variant": "#e2e1ec",
+                "inverse-surface": "#2f3038",
+                "tertiary-fixed": "#ffdbd2",
+                "on-secondary-fixed": "#0c1c30",
+                "on-secondary-fixed-variant": "#39485e",
+                "on-primary": "#ffffff",
+                "on-surface": "#1a1b22",
+                "on-tertiary-fixed-variant": "#872004",
+                "error": "#ba1a1a",
+                "primary-fixed-dim": "#b7c4ff",
+                "on-primary-fixed": "#001551",
+                "error-container": "#ffdad6",
+                "tertiary-fixed-dim": "#ffb4a2",
+                "secondary": "#505f76",
+                "primary": "#00247d",
+                "tertiary": "#3d445a",
+                "surface-container-lowest": "#ffffff",
+                "on-secondary": "#ffffff",
+                "surface-tint": "#2151da",
+                "surface-container-low": "#f4f2fd",
+                "on-background": "#1a1b22",
+                "on-secondary-container": "#56657c",
+                "surface-bright": "#faf8ff",
+                "primary-fixed": "#dce1ff",
+                "on-primary-container": "#cad3ff",
+                "on-surface-variant": "#444654",
+                "secondary-fixed": "#d4e3ff",
+                "background": "#faf8ff",
+                "inverse-primary": "#b7c4ff",
+                "inverse-on-surface": "#f1f0fa",
+                "on-error": "#ffffff",
+                "on-tertiary-container": "#ff967b",
+                "outline-variant": "#c4c5d6",
+                "on-error-container": "#93000a",
+                "on-tertiary-fixed": "#3c0800",
+                "surface": "#faf8ff",
+                "surface-container-highest": "#e2e1ec",
+                "surface-dim": "#dad9e3",
+                "secondary-fixed-dim": "#b8c7e2",
+                "tertiary-container": "#841e02",
+                "primary-container": "#1d4ed8",
+                "surface-container-high": "#e8e7f2",
+                "on-tertiary": "#ffffff",
+                "on-primary-fixed-variant": "#063ab2"
+        },
+        "borderRadius": {
+                "DEFAULT": "0.25rem",
+                "lg": "0.5rem",
+                "xl": "0.75rem",
+                "full": "9999px"
+        },
+        "spacing": {
+                "xl": "32px",
+                "layout-margin": "40px",
+                "lg": "24px",
+                "layout-gutter": "20px",
+                "xs": "4px",
+                "unit": "4px",
+                "sm": "8px",
+                "md": "16px"
+        },
+        "fontFamily": {
+                "headline-lg": [
+                        "Inter"
+                ],
+                "body-lg": [
+                        "Inter"
+                ],
+                "body-md": [
+                        "Inter"
+                ],
+                "label-caps": [
+                        "Inter"
+                ],
+                "display": [
+                        "Inter"
+                ],
+                "headline-md": [
+                        "Inter"
+                ],
+                "mono-sm": [
+                        "JetBrains Mono"
+                ]
+        },
+        "fontSize": {
+                "headline-lg": [
+                        "28px",
+                        {
+                                "lineHeight": "36px",
+                                "fontWeight": "600"
+                        }
+                ],
+                "body-lg": [
+                        "16px",
+                        {
+                                "lineHeight": "26px",
+                                "fontWeight": "400"
+                        }
+                ],
+                "body-md": [
+                        "14px",
+                        {
+                                "lineHeight": "20px",
+                                "fontWeight": "400"
+                        }
+                ],
+                "label-caps": [
+                        "12px",
+                        {
+                                "lineHeight": "16px",
+                                "letterSpacing": "0.05em",
+                                "fontWeight": "600"
+                        }
+                ],
+                "display": [
+                        "36px",
+                        {
+                                "lineHeight": "44px",
+                                "letterSpacing": "-0.02em",
+                                "fontWeight": "700"
+                        }
+                ],
+                "headline-md": [
+                        "20px",
+                        {
+                                "lineHeight": "28px",
+                                "fontWeight": "600"
+                        }
+                ],
+                "mono-sm": [
+                        "13px",
+                        {
+                                "lineHeight": "18px",
+                                "fontWeight": "400"
+                        }
+                ]
+        }
+},
+    },
+  }
+</script>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen flex flex-col md:flex-row">
+<!-- SideNavBar -->
+<nav class="hidden md:flex flex-col h-screen fixed left-0 top-0 w-64 border-r border-outline-variant bg-surface-container-low z-20">
+<div class="p-lg flex items-center gap-md border-b border-outline-variant">
+<div class="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-on-primary font-headline-md font-bold">AK</div>
+<div>
+<h1 class="font-headline-md text-headline-md font-bold text-primary">AeroKMS</h1>
+<p class="font-label-caps text-label-caps text-on-surface-variant">Engineering Knowledge System</p>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto py-md px-sm">
+<ul class="space-y-sm">
+<li><a class="flex items-center gap-md px-md py-sm text-on-surface-variant hover:bg-surface-variant transition-colors duration-150 rounded-lg" href="#"><span class="material-symbols-outlined" data-icon="dashboard">dashboard</span><span>Dashboard</span></a></li>
+<li><a class="flex items-center gap-md px-md py-sm text-on-surface-variant hover:bg-surface-variant transition-colors duration-150 rounded-lg" href="#"><span class="material-symbols-outlined" data-icon="menu_book">menu_book</span><span>Knowledge</span></a></li>
+<li><a class="flex items-center gap-md px-md py-sm bg-secondary-container text-on-secondary-container font-bold rounded-lg" href="#"><span class="material-symbols-outlined" data-icon="architecture" style="font-variation-settings: 'FILL' 1;">architecture</span><span>Projects</span></a></li>
+<li><a class="flex items-center gap-md px-md py-sm text-on-surface-variant hover:bg-surface-variant transition-colors duration-150 rounded-lg" href="#"><span class="material-symbols-outlined" data-icon="settings_input_component">settings_input_component</span><span>Components</span></a></li>
+<li><a class="flex items-center gap-md px-md py-sm text-on-surface-variant hover:bg-surface-variant transition-colors duration-150 rounded-lg" href="#"><span class="material-symbols-outlined" data-icon="description">description</span><span>SOPs</span></a></li>
+<li><a class="flex items-center gap-md px-md py-sm text-on-surface-variant hover:bg-surface-variant transition-colors duration-150 rounded-lg" href="#"><span class="material-symbols-outlined" data-icon="report_problem">report_problem</span><span>Failures</span></a></li>
+</ul>
+</div>
+<div class="p-md border-t border-outline-variant">
+<a class="flex items-center gap-md px-md py-sm text-on-surface-variant hover:bg-surface-variant transition-colors duration-150 rounded-lg" href="#"><span class="material-symbols-outlined" data-icon="info">info</span><span>About Lycans</span></a>
+</div>
+</nav>
+<!-- Main Content Area -->
+<div class="flex-1 flex flex-col md:ml-64 relative min-h-screen">
+<!-- TopNavBar -->
+<header class="flex items-center justify-between px-lg h-16 bg-surface border-b border-outline-variant z-10 sticky top-0 w-full">
+<div class="flex items-center gap-md">
+<span class="material-symbols-outlined text-on-surface-variant md:hidden" data-icon="menu">menu</span>
+<span class="font-headline-md text-headline-md font-bold text-primary md:hidden">AeroKMS</span>
+<div class="hidden md:flex items-center gap-md text-on-surface-variant">
+<span class="font-label-caps text-label-caps">PROJECT</span>
+<span class="material-symbols-outlined text-[16px]" data-icon="chevron_right">chevron_right</span>
+<span class="font-mono-sm text-mono-sm text-primary font-bold">PRJ-X900-Valkyrie</span>
+</div>
+</div>
+<div class="flex items-center gap-lg">
+<div class="relative hidden sm:block">
+<span class="material-symbols-outlined absolute left-sm top-1/2 -translate-y-1/2 text-on-surface-variant" data-icon="search">search</span>
+<input class="pl-xl pr-md py-xs rounded-full border border-outline-variant bg-surface-container-lowest text-on-surface focus:outline-none focus:border-primary font-body-md text-body-md w-64" placeholder="Search project..." type="text"/>
+</div>
+<div class="flex items-center gap-md">
+<button class="text-on-surface-variant hover:text-primary opacity-80 hover:opacity-100 transition-opacity"><span class="material-symbols-outlined" data-icon="notifications">notifications</span></button>
+<button class="text-on-surface-variant hover:text-primary opacity-80 hover:opacity-100 transition-opacity"><span class="material-symbols-outlined" data-icon="settings">settings</span></button>
+<img alt="User Avatar" class="w-8 h-8 rounded-full border border-outline-variant object-cover" data-alt="Professional headshot of a corporate engineer in a well-lit office, looking directly at the camera, conveying expertise and confidence, high resolution, modern corporate aesthetic" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCIXzdnMamfOjr7dxBHeErzw2PWiW77yxVzOG0erq-R1Hc8v_4k-0fogdTadX0jlYv0WBJ5g2X7oAL1vR89rbcpebk0EUbAUP_6CZE_vv7XuDjNu0rESBiwvIs7rPY0F_LTr2gr0XAd2MelsEyzz2csD4ZoMzR7Ncwtt5QvofGyPID2JDjYfdUmCNGzWpzaqUsMvDRpcLhOueYlIA1lr-FA3As6dhEP87Z3UiN9no8kofjbv19EkJXv"/>
+</div>
+</div>
+</header>
+<!-- Dashboard Content -->
+<main class="flex-1 p-lg md:p-layout-margin bg-surface-container-lowest overflow-y-auto">
+<!-- Project Header -->
+<div class="flex flex-col lg:flex-row lg:items-end justify-between gap-xl mb-xl">
+<div>
+<div class="flex items-center gap-md mb-sm">
+<span class="px-sm py-xs bg-primary-container text-on-primary-container rounded font-label-caps text-label-caps">ACTIVE</span>
+<span class="font-mono-sm text-mono-sm text-on-surface-variant">ID: PRJ-X900</span>
+</div>
+<h2 class="font-display text-display text-on-surface mb-xs">Valkyrie Propulsion System</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-3xl">Next-generation atmospheric re-entry propulsion module focusing on high-density thermal management and rapid thrust vectoring capabilities.</p>
+</div>
+<div class="flex gap-md">
+<button class="px-md py-sm bg-surface-container-lowest border border-outline-variant text-on-surface font-body-md font-semibold rounded-lg hover:bg-surface-variant transition-colors flex items-center gap-xs">
+<span class="material-symbols-outlined text-[18px]" data-icon="edit">edit</span> Edit Details
+                    </button>
+<button class="px-md py-sm bg-primary text-on-primary font-body-md font-semibold rounded-lg hover:bg-surface-tint transition-colors shadow-sm flex items-center gap-xs">
+<span class="material-symbols-outlined text-[18px]" data-icon="add">add</span> New Component
+                    </button>
+</div>
+</div>
+<!-- Project Navigation Tabs -->
+<div class="border-b border-outline-variant mb-xl flex overflow-x-auto hide-scrollbar">
+<a class="px-md py-sm font-label-caps text-label-caps text-primary border-b-2 border-primary whitespace-nowrap" href="#">OVERVIEW</a>
+<a class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant hover:text-primary transition-colors whitespace-nowrap" href="#">REQUIREMENTS</a>
+<a class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant hover:text-primary transition-colors whitespace-nowrap" href="#">TIMELINE</a>
+<a class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant hover:text-primary transition-colors whitespace-nowrap" href="#">COMPONENTS</a>
+<a class="px-md py-sm font-label-caps text-label-caps text-on-surface-variant hover:text-primary transition-colors whitespace-nowrap" href="#">FAILURES (2)</a>
+</div>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-layout-gutter">
+<!-- Status & Progress (Col Span 8) -->
+<div class="md:col-span-8 bg-surface-container-lowest border border-outline-variant rounded-xl p-lg shadow-sm">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-lg flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary" data-icon="trending_up">trending_up</span> Project Status
+                    </h3>
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-lg mb-lg">
+<div class="p-md bg-surface-container-low rounded-lg border border-outline-variant">
+<p class="font-label-caps text-label-caps text-on-surface-variant mb-xs">PHASE</p>
+<p class="font-headline-md text-headline-md text-on-surface">Design Review</p>
+</div>
+<div class="p-md bg-surface-container-low rounded-lg border border-outline-variant">
+<p class="font-label-caps text-label-caps text-on-surface-variant mb-xs">BUDGET BURN</p>
+<p class="font-headline-md text-headline-md text-on-surface">42.5%</p>
+</div>
+<div class="p-md bg-surface-container-low rounded-lg border border-outline-variant">
+<p class="font-label-caps text-label-caps text-on-surface-variant mb-xs">CRITICAL PATH DELAY</p>
+<p class="font-headline-md text-headline-md text-error flex items-center gap-xs">
+<span class="material-symbols-outlined text-[18px]" data-icon="warning">warning</span> +2 Days
+                            </p>
+</div>
+</div>
+<div class="mb-md">
+<div class="flex justify-between items-end mb-sm">
+<span class="font-label-caps text-label-caps text-on-surface-variant">OVERALL PROGRESS</span>
+<span class="font-mono-sm text-mono-sm text-primary font-bold">68%</span>
+</div>
+<div class="w-full bg-surface-variant rounded-full h-2">
+<div class="bg-primary h-2 rounded-full" style="width: 68%"></div>
+</div>
+</div>
+</div>
+<!-- Team Members (Col Span 4) -->
+<div class="md:col-span-4 bg-surface-container-lowest border border-outline-variant rounded-xl p-lg shadow-sm flex flex-col">
+<div class="flex justify-between items-center mb-md">
+<h3 class="font-headline-md text-headline-md text-on-surface flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary" data-icon="group">group</span> Team
+                        </h3>
+<button class="text-primary hover:text-surface-tint font-label-caps text-label-caps">MANAGE</button>
+</div>
+<ul class="space-y-md flex-1 overflow-y-auto">
+<li class="flex items-center gap-md">
+<img alt="Sarah Jenkins" class="w-10 h-10 rounded-full border border-outline-variant object-cover" data-alt="Professional headshot of a female lead engineer looking confident, light background, modern corporate style" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB6-64f4xjEYl28DeRbg0RoQ7j3ypFmMiLlg8jkYz1oYFFv0TN3Dm7nqWWCgOpUz_5YPf4WC6iYMyHE1RFhmoWdjEbefV-BGSHfvq8xDBLOPgZHaZkagQ0DTp8nYlPxwXWiNiRUbSc_mbOu7lC4HkQr20vyuNb4Hhlx3Orqr3l_7RuozLHbQOdmyIDeFNr2q1AHJ5-Wn45V_OsuG0ilW2oWsjqfDDSepSYbsA2EoxPyY49zTjG2QWDC"/>
+<div>
+<p class="font-body-md font-semibold text-on-surface">Sarah Jenkins</p>
+<p class="font-label-caps text-label-caps text-on-surface-variant">Lead Engineer</p>
+</div>
+</li>
+<li class="flex items-center gap-md">
+<img alt="Dr. Aris Thorne" class="w-10 h-10 rounded-full border border-outline-variant object-cover" data-alt="Professional headshot of a male thermal specialist, glasses, looking analytical, modern corporate style" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBxVeJ28njlzInAXfYsGG3nbqkOxIse6MQ0y7WTxfvrZ1fWvw2epZTKhYUAd1FuqEk_S-s2cdfDd_WWAhI1N_jlKTR7FczgmMSpPU47vYnuOo16jk2zAqCX1F9hzUuhpvQ2LID1ldZb2RjDoetmb4u8_YtMMVWp45_j9oloeYISYZa3QppZKpxuQd69ZIG6yoRvkZ2km6_1v46xtwQ3R2ZwoQPVELrggMZ1mlSxNdjvlFwnMihZ0W2w"/>
+<div>
+<p class="font-body-md font-semibold text-on-surface">Dr. Aris Thorne</p>
+<p class="font-label-caps text-label-caps text-on-surface-variant">Thermal Specialist</p>
+</div>
+</li>
+<li class="flex items-center gap-md">
+<img alt="Elena Rostova" class="w-10 h-10 rounded-full border border-outline-variant object-cover" data-alt="Professional headshot of a female materials scientist, looking focused, modern corporate style" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA0sQoA02rMA_saoyDr8Unls0IWf_YoZdctPKFrkkHumJJftZCi9YZY8dhDZTqhQW5ej9h-4sI8c5O4SFCdRi0OXal2tDxpo-9zPljrd0tJoLVfGMSrTMPhm8NuOOaZsbpWd3GHlwo3I2N-VtECrlRXOYP4BDOFRFe5461RQfsyGDhiHHsVwxCAoaMJzS-O3mcprW0RDH3ImXcBylfbNyXxpDiaqa0VpVrzfNBwZSXfufXOXsqUOFom"/>
+<div>
+<p class="font-body-md font-semibold text-on-surface">Elena Rostova</p>
+<p class="font-label-caps text-label-caps text-on-surface-variant">Materials Scientist</p>
+</div>
+</li>
+</ul>
+</div>
+</div>
+</main>
+</div>
+</body></html>

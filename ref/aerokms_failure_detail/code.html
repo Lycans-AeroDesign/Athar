@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+
+<html class="h-full" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AeroKMS - F-2023-081: IMU Desync</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=JetBrains+Mono:wght@400&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+                "surface-container": "#eeedf7",
+                "outline": "#747686",
+                "secondary-container": "#d4e3ff",
+                "surface-variant": "#e2e1ec",
+                "inverse-surface": "#2f3038",
+                "tertiary-fixed": "#ffdbd2",
+                "on-secondary-fixed": "#0c1c30",
+                "on-secondary-fixed-variant": "#39485e",
+                "on-primary": "#ffffff",
+                "on-surface": "#1a1b22",
+                "on-tertiary-fixed-variant": "#872004",
+                "error": "#ba1a1a",
+                "primary-fixed-dim": "#b7c4ff",
+                "on-primary-fixed": "#001551",
+                "error-container": "#ffdad6",
+                "tertiary-fixed-dim": "#ffb4a2",
+                "secondary": "#505f76",
+                "primary": "#00247d",
+                "tertiary": "#3d445a",
+                "surface-container-lowest": "#ffffff",
+                "on-secondary": "#ffffff",
+                "surface-tint": "#2151da",
+                "surface-container-low": "#f4f2fd",
+                "on-background": "#1a1b22",
+                "on-secondary-container": "#56657c",
+                "surface-bright": "#faf8ff",
+                "primary-fixed": "#dce1ff",
+                "on-primary-container": "#cad3ff",
+                "on-surface-variant": "#444654",
+                "secondary-fixed": "#d4e3ff",
+                "background": "#faf8ff",
+                "inverse-primary": "#b7c4ff",
+                "inverse-on-surface": "#f1f0fa",
+                "on-error": "#ffffff",
+                "on-tertiary-container": "#ff967b",
+                "outline-variant": "#c4c5d6",
+                "on-error-container": "#93000a",
+                "on-tertiary-fixed": "#3c0800",
+                "surface": "#faf8ff",
+                "surface-container-highest": "#e2e1ec",
+                "surface-dim": "#dad9e3",
+                "secondary-fixed-dim": "#b8c7e2",
+                "tertiary-container": "#841e02",
+                "primary-container": "#1d4ed8",
+                "surface-container-high": "#e8e7f2",
+                "on-tertiary": "#ffffff",
+                "on-primary-fixed-variant": "#063ab2"
+        },
+        "borderRadius": {
+                "DEFAULT": "0.25rem",
+                "lg": "0.5rem",
+                "xl": "0.75rem",
+                "full": "9999px"
+        },
+        "spacing": {
+                "xl": "32px",
+                "layout-margin": "40px",
+                "lg": "24px",
+                "layout-gutter": "20px",
+                "xs": "4px",
+                "unit": "4px",
+                "sm": "8px",
+                "md": "16px"
+        },
+        "fontFamily": {
+                "headline-lg": [
+                        "Inter"
+                ],
+                "body-lg": [
+                        "Inter"
+                ],
+                "body-md": [
+                        "Inter"
+                ],
+                "label-caps": [
+                        "Inter"
+                ],
+                "display": [
+                        "Inter"
+                ],
+                "headline-md": [
+                        "Inter"
+                ],
+                "mono-sm": [
+                        "JetBrains Mono"
+                ]
+        },
+        "fontSize": {
+                "headline-lg": [
+                        "28px",
+                        {
+                                "lineHeight": "36px",
+                                "fontWeight": "600"
+                        }
+                ],
+                "body-lg": [
+                        "16px",
+                        {
+                                "lineHeight": "26px",
+                                "fontWeight": "400"
+                        }
+                ],
+                "body-md": [
+                        "14px",
+                        {
+                                "lineHeight": "20px",
+                                "fontWeight": "400"
+                        }
+                ],
+                "label-caps": [
+                        "12px",
+                        {
+                                "lineHeight": "16px",
+                                "letterSpacing": "0.05em",
+                                "fontWeight": "600"
+                        }
+                ],
+                "display": [
+                        "36px",
+                        {
+                                "lineHeight": "44px",
+                                "letterSpacing": "-0.02em",
+                                "fontWeight": "700"
+                        }
+                ],
+                "headline-md": [
+                        "20px",
+                        {
+                                "lineHeight": "28px",
+                                "fontWeight": "600"
+                        }
+                ],
+                "mono-sm": [
+                        "13px",
+                        {
+                                "lineHeight": "18px",
+                                "fontWeight": "400"
+                        }
+                ]
+        }
+},
+    },
+  }
+</script>
+</head>
+<body class="bg-background text-on-background h-full font-body-md flex overflow-hidden">
+<!-- SideNavBar -->
+<nav class="bg-surface-container-low dark:bg-surface-container-low docked left-0 h-full w-64 border-r border-outline-variant dark:border-outline flat no shadows flex flex-col fixed left-0 top-0 z-20">
+<div class="p-lg border-b border-outline-variant flex items-center gap-md">
+<div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-on-primary font-bold">A</div>
+<div>
+<h1 class="font-headline-md text-headline-md font-bold text-primary dark:text-inverse-primary">AeroKMS</h1>
+<p class="font-label-caps text-label-caps text-on-surface-variant">Engineering Knowledge System</p>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto py-md px-sm space-y-unit">
+<a class="flex items-center gap-md px-md py-sm rounded-xl text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-variant dark:hover:bg-surface-variant transition-colors duration-150 scale-95 transition-transform font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">dashboard</span>
+<span>Dashboard</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm rounded-xl text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-variant dark:hover:bg-surface-variant transition-colors duration-150 scale-95 transition-transform font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">menu_book</span>
+<span>Knowledge</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm rounded-xl text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-variant dark:hover:bg-surface-variant transition-colors duration-150 scale-95 transition-transform font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">architecture</span>
+<span>Projects</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm rounded-xl text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-variant dark:hover:bg-surface-variant transition-colors duration-150 scale-95 transition-transform font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">settings_input_component</span>
+<span>Components</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm rounded-xl text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-variant dark:hover:bg-surface-variant transition-colors duration-150 scale-95 transition-transform font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">description</span>
+<span>SOPs</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm rounded-xl bg-secondary-container dark:bg-secondary-container text-on-secondary-container dark:text-on-secondary-container font-bold scale-95 transition-transform font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">report_problem</span>
+<span>Failures</span>
+</a>
+</div>
+<div class="p-sm border-t border-outline-variant">
+<a class="flex items-center gap-md px-md py-sm rounded-xl text-on-surface-variant hover:bg-surface-variant transition-colors duration-150 font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined">info</span>
+<span>About Lycans</span>
+</a>
+</div>
+</nav>
+<!-- Main Content Area -->
+<div class="flex-1 flex flex-col ml-64 h-full relative">
+<!-- TopNavBar -->
+<header class="bg-surface dark:bg-surface docked top-0 w-full border-b border-outline-variant dark:border-outline flat no shadows flex items-center justify-between px-lg h-16 z-10">
+<div class="flex items-center gap-md">
+<!-- Search -->
+<div class="relative w-64">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">search</span>
+<input class="w-full bg-surface-container-low border border-outline-variant rounded-full py-1.5 pl-10 pr-4 text-body-md focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow" placeholder="Search..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-md">
+<button class="text-on-surface-variant dark:text-on-surface-variant hover:text-primary dark:hover:text-inverse-primary opacity-80 hover:opacity-100 transition-opacity">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="text-on-surface-variant dark:text-on-surface-variant hover:text-primary dark:hover:text-inverse-primary opacity-80 hover:opacity-100 transition-opacity">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<div class="w-8 h-8 rounded-full bg-tertiary-container overflow-hidden ml-sm cursor-pointer border border-outline-variant">
+<img class="w-full h-full object-cover" data-alt="A small, professional user avatar portrait of an engineer against a light blue, modern corporate background. The lighting is bright and evenly distributed." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB-H2YOhTmu07TgFFCeAnEPkuPdfzmHNBvKqq3520j_dACPSoDsoftKkmUHo26B2Cc2U1brXby2Uz30tMofBYQ1yd018ys6x5tlh0_Bfg_1QuR3ZHJkgpxKpZjWHX16sYosYB5hZ49QZlVZ__KOGP38M3rMg3vQ_rK8P45oDYqXnZdBbETbLdCrpg-OgW8RPb-aPgTlXtqN6N-Li2V_z8rrr_N6yd-sH3MaZABwgGrKcO8_6Y5e3S2r"/>
+</div>
+</div>
+</header>
+<!-- Content Canvas -->
+<main class="flex-1 flex overflow-hidden">
+<!-- Failure Report Document -->
+<div class="flex-1 overflow-y-auto bg-surface-container-lowest p-layout-margin">
+<div class="max-w-[800px] mx-auto">
+<!-- Header -->
+<div class="border-t-4 border-error pt-lg mb-xl rounded-t-sm">
+<div class="flex items-center gap-sm mb-sm text-error font-label-caps text-label-caps">
+<span class="material-symbols-outlined text-sm">report</span>
+<span>CRITICAL INCIDENT</span>
+</div>
+<h1 class="font-display text-display text-on-background mb-unit">F-2023-081: IMU Desync</h1>
+<div class="flex items-center gap-lg text-on-surface-variant font-mono-sm text-mono-sm mt-sm">
+<span class="flex items-center gap-xs"><span class="material-symbols-outlined text-sm">calendar_today</span> 2023-10-14</span>
+<span class="flex items-center gap-xs"><span class="material-symbols-outlined text-sm">person</span> Author: J. Miller</span>
+<span class="px-2 py-1 bg-surface-container rounded-md border border-outline-variant">Status: Resolved</span>
+</div>
+</div>
+<!-- Summary -->
+<section class="mb-xl">
+<h2 class="font-headline-md text-headline-md mb-md text-on-background border-b border-outline-variant pb-xs">Summary</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant mb-md leading-relaxed">
+                            During high-speed lateral maneuvers in phase 3 flight testing of the DBF 2027 prototype, the primary and secondary Inertial Measurement Units (IMUs) experienced a critical desynchronization event. This resulted in an uncommanded 15-degree roll anomaly and an immediate transition to the failsafe recovery mode. Telemetry analysis indicated a delta of &gt;50ms between data streams before the logic gate triggered the abort sequence.
+                        </p>
+<div class="p-md bg-surface-container-low rounded-xl border border-outline-variant">
+<div class="grid grid-cols-2 gap-md font-mono-sm text-mono-sm">
+<div><span class="text-outline">Platform:</span> DBF 2027 Archangel</div>
+<div><span class="text-outline">Subsystem:</span> Flight Control (FCS)</div>
+<div><span class="text-outline">Component:</span> Pixhawk 6X (Hardware Rev B)</div>
+<div><span class="text-outline">Firmware:</span> ArduPilot v4.4.2-custom</div>
+</div>
+</div>
+</section>
+<!-- Root Cause -->
+<section class="mb-xl">
+<h2 class="font-headline-md text-headline-md mb-md text-on-background border-b border-outline-variant pb-xs">Root Cause</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant mb-md leading-relaxed">
+                            Investigation revealed that the Pixhawk 6X internal vibration isolation was overwhelmed by specific harmonic frequencies generated during aggressive control surface deflections. These frequencies caused mechanical aliasing in the primary IMU (ICM-42688-P), leading to corrupted timestamp data being pushed to the EKF (Extended Kalman Filter). The secondary IMU remained stable, but the synchronization logic in the custom firmware stack failed to gracefully handle the corrupted primary timestamps, causing a software-level lockup of the synchronization thread.
+                        </p>
+</section>
+<!-- Corrective Action -->
+<section class="mb-xl">
+<h2 class="font-headline-md text-headline-md mb-md text-on-background border-b border-outline-variant pb-xs">Corrective Action</h2>
+<ul class="list-disc pl-lg space-y-sm font-body-lg text-body-lg text-on-surface-variant">
+<li>Implemented a software patch (PR #1402) in the ArduPilot fork to improve EKF timestamp validation and reject mechanically aliased data packets before they enter the sync logic.</li>
+<li>Re-calibrated the failsafe transition thresholds to be less sensitive to transient desync events (&lt;100ms) to prevent unnecessary aborts while maintaining safety margins.</li>
+</ul>
+</section>
+<!-- Preventive Action -->
+<section class="mb-xl">
+<h2 class="font-headline-md text-headline-md mb-md text-on-background border-b border-outline-variant pb-xs">Preventive Action</h2>
+<ul class="list-disc pl-lg space-y-sm font-body-lg text-body-lg text-on-surface-variant">
+<li>Updated the physical mounting hardware for the Pixhawk 6X, incorporating custom 3D-printed TPU dampers tuned specifically for the harmonic profile of the DBF 2027 airframe.</li>
+<li>Revised the <span class="font-mono-sm bg-surface-container px-1 py-0.5 rounded-md border border-outline-variant text-on-surface">IMU Calibration SOP (DOC-772)</span> to include mandatory harmonic sweep testing on the vibration table prior to flight integration.</li>
+</ul>
+</section>
+</div>
+</div>
+<!-- Relationship Panel -->
+<aside class="w-80 bg-surface-container-low border-l border-outline-variant flex flex-col shrink-0">
+<div class="p-md border-b border-outline-variant">
+<h3 class="font-label-caps text-label-caps text-on-surface-variant">RELATED KNOWLEDGE</h3>
+</div>
+<div class="p-md space-y-lg overflow-y-auto flex-1">
+<!-- Related Component -->
+<div>
+<div class="flex items-center gap-sm mb-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-sm">settings_input_component</span>
+<span class="font-label-caps text-label-caps">COMPONENT</span>
+</div>
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-sm hover:bg-surface-variant cursor-pointer transition-colors relative">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-l-xl"></div>
+<div class="pl-sm">
+<h4 class="font-body-md text-body-md font-semibold text-on-background">Pixhawk 6X</h4>
+<p class="font-mono-sm text-mono-sm text-on-surface-variant mt-xs">P/N: PX4-6X-REV-B</p>
+</div>
+</div>
+</div>
+<!-- Related Project -->
+<div>
+<div class="flex items-center gap-sm mb-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-sm">architecture</span>
+<span class="font-label-caps text-label-caps">PROJECT</span>
+</div>
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-sm hover:bg-surface-variant cursor-pointer transition-colors relative">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-secondary rounded-l-xl"></div>
+<div class="pl-sm">
+<h4 class="font-body-md text-body-md font-semibold text-on-background">DBF 2027</h4>
+<p class="font-mono-sm text-mono-sm text-on-surface-variant mt-xs">Phase: Flight Testing</p>
+</div>
+</div>
+</div>
+<!-- Related SOP -->
+<div>
+<div class="flex items-center gap-sm mb-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-sm">description</span>
+<span class="font-label-caps text-label-caps">SOP</span>
+</div>
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-sm hover:bg-surface-variant cursor-pointer transition-colors relative">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-tertiary rounded-l-xl"></div>
+<div class="pl-sm">
+<h4 class="font-body-md text-body-md font-semibold text-on-background">IMU Calibration SOP</h4>
+<p class="font-mono-sm text-mono-sm text-on-surface-variant mt-xs">DOC-772 (Rev 3)</p>
+</div>
+</div>
+</div>
+</div>
+</aside>
+</main>
+</div>
+</body></html>

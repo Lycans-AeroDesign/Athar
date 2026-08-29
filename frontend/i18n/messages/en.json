@@ -1,0 +1,116 @@
+{
+  "common": {
+    "save": "Save Changes",
+    "saving": "Saving...",
+    "saved": "Saved.",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "working": "Working...",
+    "discard": "Discard",
+    "loading": "Loading...",
+    "select": "Select...",
+    "selectDate": "Select a date",
+    "typeToSearch": "Type to search...",
+    "noResultsFound": "No results found."
+  },
+  "auth": {
+    "emailLabel": "Email Address",
+    "passwordLabel": "Password",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "login": {
+      "tagline": "Engineering Knowledge System",
+      "submit": "Login",
+      "submitting": "Logging in...",
+      "error": "Invalid email or password.",
+      "credit": "Developed by Lycans AeroDesign Team"
+    }
+  },
+  "nav": {
+    "tagline": "Engineering Knowledge System",
+    "dashboard": "Dashboard",
+    "knowledge": "Knowledge",
+    "projects": "Projects",
+    "components": "Components",
+    "sops": "SOPs",
+    "failures": "Failures",
+    "settings": "Settings",
+    "about": "About Lycans"
+  },
+  "topbar": {
+    "searchPlaceholder": "What knowledge do you need today?",
+    "notifications": "Notifications",
+    "settings": "Settings",
+    "accountMenu": "Account menu",
+    "theme": "Theme",
+    "themeLight": "Light",
+    "themeDark": "Dark",
+    "themeSystem": "Match System",
+    "logout": "Logout",
+    "logoutConfirmTitle": "Log out?",
+    "logoutConfirmDescription": "You'll need to log in again to access {orgName}.",
+    "logoutConfirmAction": "Log out"
+  },
+  "dashboard": {
+    "welcome": "Welcome",
+    "welcomeWithName": "Welcome, {name}",
+    "placeholder": "Dashboard content is coming soon."
+  },
+  "settings": {
+    "title": "Organization Settings",
+    "description": "Manage your engineering workspace configuration and branding.",
+    "tabs": {
+      "general": "General",
+      "branding": "Branding",
+      "permissions": "Roles & Permissions"
+    },
+    "general": {
+      "title": "General Details",
+      "nameLabel": "Organization Name",
+      "domainLabel": "Primary Domain",
+      "domainPlaceholder": "aerokms.example.com",
+      "languageLabel": "Default Language"
+    },
+    "branding": {
+      "logoTitle": "Organization Logo",
+      "logoDescription": "Used in the sidebar and login screen. SVG or PNG recommended. Max size {maxSize}MB.",
+      "uploadLogo": "Upload New Logo",
+      "uploading": "Uploading...",
+      "faviconTitle": "Favicon",
+      "faviconDescription": "Appears in browser tabs and bookmarks. Must be a square image.",
+      "uploadFavicon": "Upload Favicon",
+      "colorsTitle": "Theme Colors",
+      "colorsDescription": "Define the primary accents for your workspace.",
+      "primaryAccent": "Primary Accent",
+      "secondaryColor": "Secondary Color"
+    },
+    "permissions": {
+      "title": "Roles",
+      "description": "Manage roles and the permissions each one grants.",
+      "newRole": "New Role",
+      "systemRole": "System",
+      "permissionsHeading": "Permissions",
+      "usersHeading": "Users",
+      "deleteRole": "Delete Role",
+      "deleteRoleConfirmTitle": "Delete role \"{name}\"?",
+      "deleteRoleConfirmDescription": "Users with this role will lose the permissions it grants. This can't be undone.",
+      "grantPermission": "Grant a permission",
+      "removePermission": "Remove",
+      "noPermissions": "This role has no permissions yet.",
+      "roleNameLabel": "Role Name",
+      "roleDescriptionLabel": "Description",
+      "createRole": "Create Role"
+    }
+  },
+  "modal": {
+    "close": "Close",
+    "discardTitle": "Discard unsaved changes?",
+    "discardDescription": "You have unsaved changes. Closing now will lose them.",
+    "keepEditing": "Keep editing"
+  },
+  "notFound": {
+    "title": "Page not found",
+    "description": "The page you're looking for doesn't exist or has moved.",
+    "backHome": "Back to Dashboard"
+  }
+}

@@ -15,6 +15,23 @@ jobs:
         working-directory: backend
     env:
       SECRET_KEY: ci-test-secret-key
+      # No SQLite fallback (backend/config/settings.py) - DATABASE_URL is
+      # required, so CI needs a real Postgres service to point it at.
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
 

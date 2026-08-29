@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AeroKMS - Branding Configuration</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary-fixed": "#dce1ff",
+                        "surface-dim": "#dad9e3",
+                        "surface-container-lowest": "#ffffff",
+                        "on-primary-fixed-variant": "#063ab2",
+                        "on-secondary-fixed-variant": "#39485e",
+                        "on-tertiary-fixed-variant": "#872004",
+                        "inverse-surface": "#2f3038",
+                        "primary-container": "#1d4ed8",
+                        "surface": "#faf8ff",
+                        "outline-variant": "#c4c5d6",
+                        "tertiary": "#3d445a",
+                        "on-background": "#1a1b22",
+                        "outline": "#747686",
+                        "inverse-primary": "#b7c4ff",
+                        "on-error": "#ffffff",
+                        "on-primary-fixed": "#001551",
+                        "error-container": "#ffdad6",
+                        "tertiary-fixed-dim": "#ffb4a2",
+                        "tertiary-container": "#841e02",
+                        "primary-fixed-dim": "#b7c4ff",
+                        "surface-variant": "#e2e1ec",
+                        "background": "#faf8ff",
+                        "tertiary-fixed": "#ffdbd2",
+                        "on-primary-container": "#cad3ff",
+                        "on-secondary-fixed": "#0c1c30",
+                        "surface-container-high": "#e8e7f2",
+                        "surface-container": "#eeedf7",
+                        "surface-container-low": "#f4f2fd",
+                        "secondary": "#505f76",
+                        "error": "#ba1a1a",
+                        "surface-tint": "#2151da",
+                        "secondary-fixed-dim": "#b8c7e2",
+                        "secondary-container": "#d4e3ff",
+                        "on-error-container": "#93000a",
+                        "on-surface": "#1a1b22",
+                        "on-tertiary-fixed": "#3c0800",
+                        "on-secondary-container": "#56657c",
+                        "surface-bright": "#faf8ff",
+                        "on-tertiary": "#ffffff",
+                        "surface-container-highest": "#e2e1ec",
+                        "primary": "#00247d",
+                        "secondary-fixed": "#d4e3ff",
+                        "on-primary": "#ffffff",
+                        "inverse-on-surface": "#f1f0fa",
+                        "on-surface-variant": "#444654",
+                        "on-tertiary-container": "#ff967b",
+                        "on-secondary": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "layout-gutter": "20px",
+                        "xs": "4px",
+                        "sm": "8px",
+                        "xl": "32px",
+                        "lg": "24px",
+                        "md": "16px",
+                        "unit": "4px",
+                        "layout-margin": "40px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Inter"],
+                        "label-caps": ["Inter"],
+                        "mono-sm": ["JetBrains Mono"],
+                        "body-md": ["Inter"],
+                        "display": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "body-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "mono-sm": ["13px", { "lineHeight": "18px", "fontWeight": "400" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "display": ["36px", { "lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-lg": ["28px", { "lineHeight": "36px", "fontWeight": "600" }],
+                        "body-lg": ["16px", { "lineHeight": "26px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .icon-fill-1 {
+            font-variation-settings: 'FILL' 1;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen flex antialiased">
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-0 h-full w-64 z-50 bg-surface-container-low dark:bg-surface-container-lowest border-r border-outline-variant dark:border-outline flex flex-col py-md px-sm gap-sm hidden md:flex">
+<div class="px-md py-lg flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary text-3xl">flight_takeoff</span>
+<div>
+<h1 class="font-headline-lg text-headline-lg text-primary leading-tight">AeroKMS</h1>
+<p class="font-label-caps text-label-caps text-on-surface-variant">Engineering Intelligence</p>
+</div>
+</div>
+<button class="mx-md mb-md bg-primary text-on-primary rounded-lg py-sm px-md flex items-center justify-center gap-xs font-label-caps text-label-caps hover:bg-primary-container transition-colors shadow-sm">
+<span class="material-symbols-outlined" style="font-size: 18px;">add</span> New Document
+        </button>
+<nav class="flex-1 overflow-y-auto flex flex-col gap-xs">
+<a class="flex items-center gap-md px-md py-sm rounded-lg text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined">dashboard</span> <span class="font-body-md text-body-md font-medium">Dashboard</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm rounded-lg text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined">auto_stories</span> <span class="font-body-md text-body-md font-medium">Knowledge</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm rounded-lg text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined">account_tree</span> <span class="font-body-md text-body-md font-medium">Projects</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm rounded-lg bg-secondary-container dark:bg-secondary text-on-secondary-container dark:text-on-secondary transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined icon-fill-1">settings_input_component</span> <span class="font-body-md text-body-md font-medium">Components</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm rounded-lg text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined">rule</span> <span class="font-body-md text-body-md font-medium">SOPs</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm rounded-lg text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined">report_problem</span> <span class="font-body-md text-body-md font-medium">Failures</span>
+</a>
+</nav>
+<div class="mt-auto px-md py-md border-t border-outline-variant/30">
+<div class="flex items-center gap-sm">
+<img class="w-8 h-8 rounded-full object-cover" data-alt="A small profile thumbnail of an engineer in a clean, brightly lit, professional workspace, wearing modern smart casual attire. The image is a sharp, high-quality photograph typical of a corporate headshot on a modern technical platform, emphasizing clarity and approachability." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDS8tHh324gMbIM8ZIWV81GbNHBZkEfWr2oeycbmZrEXz4GjxmCoVFNp2cFLx-1KC7h7KyZBwlXewDcTctDbegQ-pa8_MjRDIUQEj8bJW61U_PPjJxYAZ734N74SjlZB7VS5Wzi5ynyVg5ZnBDw44CDqj36WQDX8kL2e7TeJuz4WrvAmYzC6rTz2DRXfKfMVseA9meImsUI38HGCZVRxL2wjWyVrjnmDOQsr5WRnGlJDr7mXM47xv67"/>
+<div class="flex flex-col">
+<span class="font-body-md text-body-md font-medium text-on-surface">Dr. Aris Thorne</span>
+<span class="font-label-caps text-label-caps text-on-surface-variant">System Admin</span>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content Wrapper -->
+<div class="flex-1 flex flex-col md:ml-64 w-full">
+<!-- TopNavBar -->
+<header class="sticky top-0 w-full z-40 bg-surface dark:bg-inverse-surface border-b border-outline-variant dark:border-outline flex justify-between items-center px-layout-margin h-16">
+<div class="flex items-center md:hidden">
+<span class="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed">AeroKMS</span>
+</div>
+<div class="hidden md:flex items-center flex-1 max-w-md">
+<div class="relative w-full">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+<input class="w-full bg-surface-container-low border border-outline-variant rounded-full py-2 pl-10 pr-4 text-on-surface font-body-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all" placeholder="Search knowledge base..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-md ml-auto">
+<button class="p-2 text-on-surface-variant dark:text-surface-variant hover:bg-surface-container dark:hover:bg-surface-container-highest transition-colors cursor-pointer active:opacity-80 rounded-full">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 text-on-surface-variant dark:text-surface-variant hover:bg-surface-container dark:hover:bg-surface-container-highest transition-colors cursor-pointer active:opacity-80 rounded-full">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<button class="p-2 text-on-surface-variant dark:text-surface-variant hover:bg-surface-container dark:hover:bg-surface-container-highest transition-colors cursor-pointer active:opacity-80 rounded-full md:hidden">
+<span class="material-symbols-outlined">person</span>
+</button>
+</div>
+</header>
+<!-- Page Content -->
+<main class="flex-1 p-layout-margin overflow-y-auto">
+<div class="max-w-5xl mx-auto">
+<!-- Header Section -->
+<div class="mb-lg">
+<h2 class="font-headline-lg text-headline-lg text-on-surface mb-xs">Branding Configuration</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Customize the visual identity of your AeroKMS instance.</p>
+</div>
+<!-- Settings Navigation -->
+<div class="border-b border-outline-variant mb-xl">
+<nav class="flex gap-lg overflow-x-auto">
+<a class="py-sm px-xs font-body-md text-body-md font-medium text-on-surface-variant hover:text-on-surface border-b-2 border-transparent transition-colors whitespace-nowrap" href="#">General</a>
+<a class="py-sm px-xs font-body-md text-body-md font-medium text-on-surface-variant hover:text-on-surface border-b-2 border-transparent transition-colors whitespace-nowrap" href="#">Authentication</a>
+<a class="py-sm px-xs font-body-md text-body-md font-medium text-on-surface-variant hover:text-on-surface border-b-2 border-transparent transition-colors whitespace-nowrap" href="#">Teams</a>
+<a class="py-sm px-xs font-body-md text-body-md font-medium text-on-surface-variant hover:text-on-surface border-b-2 border-transparent transition-colors whitespace-nowrap" href="#">Visibility</a>
+<a class="py-sm px-xs font-body-md text-body-md font-medium text-on-surface-variant hover:text-on-surface border-b-2 border-transparent transition-colors whitespace-nowrap" href="#">Notifications</a>
+<a class="py-sm px-xs font-body-md text-body-md font-medium text-on-surface-variant hover:text-on-surface border-b-2 border-transparent transition-colors whitespace-nowrap" href="#">Storage</a>
+<a class="py-sm px-xs font-body-md text-body-md font-medium text-primary border-b-2 border-primary whitespace-nowrap" href="#">Branding</a>
+</nav>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-xl">
+<!-- Branding Form Area -->
+<div class="lg:col-span-2 space-y-xl">
+<!-- Logo Upload Section -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-lg shadow-sm">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-sm">Organization Logo</h3>
+<p class="font-body-md text-body-md text-on-surface-variant mb-md">Used in the sidebar, login screen, and email templates. SVG or PNG recommended.</p>
+<div class="flex items-start gap-lg">
+<div class="w-32 h-32 border-2 border-dashed border-outline-variant rounded-xl flex items-center justify-center bg-surface overflow-hidden group relative">
+<img alt="Current Logo" class="w-24 h-24 object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1U9Mbut5b5x5j8zZBpUXmGGyxn4og0NlO4ryas-6MjycUUbyOb3tWyKfw3ayRzT7_Q6MQry39YBPvTqks-xZNtb5MjO0O2xoxiQKdgspapcWXWwMx5Yd9RXYz0polv0d7azwXkxnahlPrqe6gudgLo2yKvu_Y8XgtDwSNCUEMtf_RQitCud_jPBjZCsePp8msws1V0b6leW9Rk7yB86T4sBE02bBR0bBGrC50sOwvnibeB7FW18kGccwg"/>
+<div class="absolute inset-0 bg-inverse-surface/50 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+<span class="material-symbols-outlined text-on-error">upload</span>
+<span class="font-label-caps text-label-caps text-on-error mt-xs">Change</span>
+</div>
+</div>
+<div class="flex-1 space-y-md">
+<button class="bg-surface-container border border-outline-variant text-on-surface font-body-md font-medium py-2 px-md rounded-lg hover:bg-surface-container-high transition-colors flex items-center gap-sm">
+<span class="material-symbols-outlined text-sm">cloud_upload</span> Upload New Logo
+                                    </button>
+<p class="font-body-md text-body-md text-on-surface-variant text-sm">Max size: 2MB. Recommended dimensions: 512x512px.</p>
+</div>
+</div>
+</div>
+<!-- Favicon Upload Section -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-lg shadow-sm">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-sm">Favicon</h3>
+<p class="font-body-md text-body-md text-on-surface-variant mb-md">Appears in browser tabs and bookmarks. Must be a square image.</p>
+<div class="flex items-center gap-md">
+<div class="w-12 h-12 border border-outline-variant rounded-lg flex items-center justify-center bg-surface overflow-hidden">
+<span class="material-symbols-outlined text-outline">language</span>
+</div>
+<button class="text-primary font-body-md font-medium hover:underline flex items-center gap-xs">
+                                     Upload Favicon
+                                </button>
+</div>
+</div>
+<!-- Theme Colors Section -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-lg shadow-sm">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-sm">Theme Colors</h3>
+<p class="font-body-md text-body-md text-on-surface-variant mb-lg">Define the primary accents for your workspace.</p>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-md">
+<div>
+<label class="block font-body-md text-body-md font-medium text-on-surface mb-xs">Primary Accent</label>
+<div class="flex items-center gap-sm">
+<div class="w-10 h-10 rounded-lg bg-primary border border-outline-variant shadow-sm cursor-pointer ring-2 ring-offset-2 ring-primary"></div>
+<input class="flex-1 bg-surface-container-low border border-outline-variant rounded-lg py-2 px-3 text-on-surface font-mono-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" type="text" value="#1D4ED8"/>
+</div>
+</div>
+<div>
+<label class="block font-body-md text-body-md font-medium text-on-surface mb-xs">Secondary Color</label>
+<div class="flex items-center gap-sm">
+<div class="w-10 h-10 rounded-lg bg-secondary border border-outline-variant shadow-sm cursor-pointer"></div>
+<input class="flex-1 bg-surface-container-low border border-outline-variant rounded-lg py-2 px-3 text-on-surface font-mono-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" type="text" value="#505F76"/>
+</div>
+</div>
+</div>
+</div>
+<div class="flex justify-end gap-md pt-md">
+<button class="bg-surface border border-outline text-on-surface font-body-md font-medium py-2 px-lg rounded-lg hover:bg-surface-container transition-colors">Discard</button>
+<button class="bg-primary text-on-primary font-body-md font-medium py-2 px-lg rounded-lg hover:bg-primary-container transition-colors shadow-sm">Save Changes</button>
+</div>
+</div>
+<!-- Live Preview Panel -->
+<div class="lg:col-span-1">
+<div class="sticky top-24 bg-surface-container-low rounded-xl border border-outline-variant overflow-hidden shadow-sm flex flex-col h-[500px]">
+<div class="p-md bg-surface-container border-b border-outline-variant flex items-center justify-between">
+<span class="font-headline-md text-headline-md text-on-surface text-sm">Live Preview</span>
+<div class="flex gap-xs">
+<span class="w-3 h-3 rounded-full bg-outline-variant"></span>
+<span class="w-3 h-3 rounded-full bg-outline-variant"></span>
+<span class="w-3 h-3 rounded-full bg-outline-variant"></span>
+</div>
+</div>
+<div class="flex-1 bg-background p-md flex flex-col">
+<!-- Mock Topbar -->
+<div class="h-10 border-b border-outline-variant flex items-center px-sm gap-sm mb-md">
+<img alt="Preview Logo" class="w-6 h-6 object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1U9Mbut5b5x5j8zZBpUXmGGyxn4og0NlO4ryas-6MjycUUbyOb3tWyKfw3ayRzT7_Q6MQry39YBPvTqks-xZNtb5MjO0O2xoxiQKdgspapcWXWwMx5Yd9RXYz0polv0d7azwXkxnahlPrqe6gudgLo2yKvu_Y8XgtDwSNCUEMtf_RQitCud_jPBjZCsePp8msws1V0b6leW9Rk7yB86T4sBE02bBR0bBGrC50sOwvnibeB7FW18kGccwg"/>
+<div class="h-4 w-24 bg-surface-container-high rounded-full"></div>
+<div class="ml-auto h-6 w-6 rounded-full bg-primary flex items-center justify-center text-[10px] text-on-primary font-bold">AT</div>
+</div>
+<!-- Mock Login -->
+<div class="flex-1 border border-outline-variant rounded-lg bg-surface flex flex-col items-center justify-center p-lg text-center relative overflow-hidden">
+<div class="absolute inset-0 opacity-5 pointer-events-none" style="background-image: radial-gradient(#1d4ed8 1px, transparent 1px); background-size: 16px 16px;"></div>
+<img alt="Login Logo" class="w-16 h-16 object-contain mb-sm relative z-10" src="https://lh3.googleusercontent.com/aida/AEtjO1U9Mbut5b5x5j8zZBpUXmGGyxn4og0NlO4ryas-6MjycUUbyOb3tWyKfw3ayRzT7_Q6MQry39YBPvTqks-xZNtb5MjO0O2xoxiQKdgspapcWXWwMx5Yd9RXYz0polv0d7azwXkxnahlPrqe6gudgLo2yKvu_Y8XgtDwSNCUEMtf_RQitCud_jPBjZCsePp8msws1V0b6leW9Rk7yB86T4sBE02bBR0bBGrC50sOwvnibeB7FW18kGccwg"/>
+<div class="h-6 w-32 bg-surface-container-highest rounded-full mb-lg relative z-10"></div>
+<div class="w-full h-10 bg-surface-container border border-outline-variant rounded-lg mb-sm relative z-10"></div>
+<div class="w-full h-10 bg-surface-container border border-outline-variant rounded-lg mb-md relative z-10"></div>
+<div class="w-full h-10 bg-primary rounded-lg relative z-10 opacity-90"></div>
+</div>
+</div>
+</div>
+<div class="mt-md text-center">
+<p class="font-mono-sm text-mono-sm text-outline flex items-start justify-center gap-xs text-xs">
+<span class="material-symbols-outlined text-[14px]">info</span>
+<span>Note: 'Developed by Lycans AeroDesign Team' is the platform developer attribution and remains visible in the footer.</span>
+</p>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

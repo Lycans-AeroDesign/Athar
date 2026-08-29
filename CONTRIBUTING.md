@@ -146,6 +146,16 @@ Follow the [Angular commit message conventions](https://github.com/angular/angul
 - Styling uses Tailwind CSS; follow existing class naming and responsive breakpoints.
 - **Dark mode**: all UI must work in both themes. Don't use a hardcoded light background/text class (`bg-white`, `text-slate-900`) without its dark counterpart (`dark:bg-slate-900`, `dark:text-white`). Prefer CSS variables that adapt automatically where the design system provides them.
 
+### 4.6 Internationalization (i18n)
+
+The app is routed under `app/[locale]/...` (via `next-intl`, `frontend/i18n/request.ts`) with `localePrefix: "always"` — every route is prefixed (`/en/...`, `/ar/...`), and `frontend/proxy.ts` handles both the locale redirect and the auth check together.
+
+- **No static text.** Every user-facing string — labels, button text, placeholders, `aria-label`s, error/success messages — must come from `useTranslations()` (client components) or `getTranslations()` (server components), reading from `frontend/i18n/messages/en.json`. Never hardcode English (or any language) directly in JSX. The one narrow exception is the top-level `app/not-found.tsx`/error boundaries that can render before a locale is even resolved.
+- Use `Link`, `useRouter`, `usePathname`, `redirect` from `@/i18n/navigation` (not `next/link` / `next/navigation`) anywhere under `app/[locale]/` — with `localePrefix: "always"`, plain Next.js navigation APIs won't carry the locale prefix and will produce broken links.
+- Keys are namespaced by feature/component (see `en.json`'s existing structure: `common`, `auth`, `nav`, `topbar`, `settings.general`, `settings.branding`, etc.) — add new keys under the relevant namespace rather than a flat top-level key.
+- **Adding a new language**: add its code to `locales` in `frontend/i18n/request.ts`, give it a display name in `localeNames` and a text direction in `localeDirections` (also in `request.ts`), then add a `frontend/i18n/messages/<code>.json` file with the same keys as `en.json` (copy `en.json` as a starting point and translate the values). The Settings > General language picker is generated from `locales`/`localeNames`, so a language only appears there once its message file exists — there's no separate hardcoded language catalogue to update.
+- Translations for languages other than `en` may lag behind in wording quality (e.g. `ar.json` currently ships as an English copy of `en.json`, pending real translation) — that's expected. What's not acceptable is a key present in `en.json` but missing from another locale's file, since next-intl has no per-key fallback configured and will error on a genuinely missing key — keep every locale file's key set in sync with `en.json` even before it's translated.
+
 ---
 
 ## 5. Backend/frontend contract
@@ -180,6 +190,7 @@ Follow the [Angular commit message conventions](https://github.com/angular/angul
 - [ ] **Utils vs services**: helpers in `utils.py`, business logic in `services.py`; no duplicated logic.
 - [ ] **Reuse**: existing utils/services/serializers/components used instead of parallel implementations.
 - [ ] **Frontend**: `npm run lint` and `npm run build` pass; dark mode works; no secrets in `NEXT_PUBLIC_*`.
+- [ ] **i18n**: no hardcoded UI text — every string goes through `useTranslations`/`getTranslations`; new keys added to `en.json` (and kept in sync, even if untranslated, in every other locale file).
 - [ ] **Security**: no new endpoint relies on frontend-only access control; no secrets committed or logged.
 - [ ] **CI**: `ci.yml` passes (backend, frontend, docker jobs).
 

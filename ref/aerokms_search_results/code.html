@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AeroKMS - Global Search Results</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=JetBrains+Mono:wght@400&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+                "surface-container": "#eeedf7",
+                "outline": "#747686",
+                "secondary-container": "#d4e3ff",
+                "surface-variant": "#e2e1ec",
+                "inverse-surface": "#2f3038",
+                "tertiary-fixed": "#ffdbd2",
+                "on-secondary-fixed": "#0c1c30",
+                "on-secondary-fixed-variant": "#39485e",
+                "on-primary": "#ffffff",
+                "on-surface": "#1a1b22",
+                "on-tertiary-fixed-variant": "#872004",
+                "error": "#ba1a1a",
+                "primary-fixed-dim": "#b7c4ff",
+                "on-primary-fixed": "#001551",
+                "error-container": "#ffdad6",
+                "tertiary-fixed-dim": "#ffb4a2",
+                "secondary": "#505f76",
+                "primary": "#00247d",
+                "tertiary": "#3d445a",
+                "surface-container-lowest": "#ffffff",
+                "on-secondary": "#ffffff",
+                "surface-tint": "#2151da",
+                "surface-container-low": "#f4f2fd",
+                "on-background": "#1a1b22",
+                "on-secondary-container": "#56657c",
+                "surface-bright": "#faf8ff",
+                "primary-fixed": "#dce1ff",
+                "on-primary-container": "#cad3ff",
+                "on-surface-variant": "#444654",
+                "secondary-fixed": "#d4e3ff",
+                "background": "#faf8ff",
+                "inverse-primary": "#b7c4ff",
+                "inverse-on-surface": "#f1f0fa",
+                "on-error": "#ffffff",
+                "on-tertiary-container": "#ff967b",
+                "outline-variant": "#c4c5d6",
+                "on-error-container": "#93000a",
+                "on-tertiary-fixed": "#3c0800",
+                "surface": "#faf8ff",
+                "surface-container-highest": "#e2e1ec",
+                "surface-dim": "#dad9e3",
+                "secondary-fixed-dim": "#b8c7e2",
+                "tertiary-container": "#841e02",
+                "primary-container": "#1d4ed8",
+                "surface-container-high": "#e8e7f2",
+                "on-tertiary": "#ffffff",
+                "on-primary-fixed-variant": "#063ab2"
+        },
+        "borderRadius": {
+                "DEFAULT": "0.25rem",
+                "lg": "0.5rem",
+                "xl": "0.75rem",
+                "full": "9999px"
+        },
+        "spacing": {
+                "xl": "32px",
+                "layout-margin": "40px",
+                "lg": "24px",
+                "layout-gutter": "20px",
+                "xs": "4px",
+                "unit": "4px",
+                "sm": "8px",
+                "md": "16px"
+        },
+        "fontFamily": {
+                "headline-lg": [
+                        "Inter"
+                ],
+                "body-lg": [
+                        "Inter"
+                ],
+                "body-md": [
+                        "Inter"
+                ],
+                "label-caps": [
+                        "Inter"
+                ],
+                "display": [
+                        "Inter"
+                ],
+                "headline-md": [
+                        "Inter"
+                ],
+                "mono-sm": [
+                        "JetBrains Mono"
+                ]
+        },
+        "fontSize": {
+                "headline-lg": [
+                        "28px",
+                        {
+                                "lineHeight": "36px",
+                                "fontWeight": "600"
+                        }
+                ],
+                "body-lg": [
+                        "16px",
+                        {
+                                "lineHeight": "26px",
+                                "fontWeight": "400"
+                        }
+                ],
+                "body-md": [
+                        "14px",
+                        {
+                                "lineHeight": "20px",
+                                "fontWeight": "400"
+                        }
+                ],
+                "label-caps": [
+                        "12px",
+                        {
+                                "lineHeight": "16px",
+                                "letterSpacing": "0.05em",
+                                "fontWeight": "600"
+                        }
+                ],
+                "display": [
+                        "36px",
+                        {
+                                "lineHeight": "44px",
+                                "letterSpacing": "-0.02em",
+                                "fontWeight": "700"
+                        }
+                ],
+                "headline-md": [
+                        "20px",
+                        {
+                                "lineHeight": "28px",
+                                "fontWeight": "600"
+                        }
+                ],
+                "mono-sm": [
+                        "13px",
+                        {
+                                "lineHeight": "18px",
+                                "fontWeight": "400"
+                        }
+                ]
+        }
+},
+    },
+  }
+</script>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen flex">
+<!-- SideNavBar -->
+<nav class="bg-surface-container-low border-r border-outline-variant flex flex-col h-screen fixed left-0 top-0 w-64 z-20 hidden md:flex">
+<div class="p-lg flex flex-col gap-unit items-start justify-center h-16 border-b border-outline-variant">
+<h1 class="font-headline-md text-headline-md font-bold text-primary">AeroKMS</h1>
+<span class="font-label-caps text-label-caps text-on-surface-variant">Engineering Knowledge System</span>
+</div>
+<div class="flex-1 py-md flex flex-col gap-sm overflow-y-auto px-md">
+<!-- Explore isn't in JSON, Search page means generic active or none. Given JSON labels, Knowledge is closest for Search. -->
+<a class="flex items-center gap-md px-md py-sm rounded-xl text-on-surface-variant hover:bg-surface-variant transition-colors duration-150" href="#">
+<span aria-hidden="true" class="material-symbols-outlined">dashboard</span>
+<span class="font-body-md text-body-md">Dashboard</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm rounded-xl bg-secondary-container text-on-secondary-container font-bold rounded-xl scale-95 transition-transform" href="#">
+<span aria-hidden="true" class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">menu_book</span>
+<span class="font-body-md text-body-md">Knowledge</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm rounded-xl text-on-surface-variant hover:bg-surface-variant transition-colors duration-150" href="#">
+<span aria-hidden="true" class="material-symbols-outlined">architecture</span>
+<span class="font-body-md text-body-md">Projects</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm rounded-xl text-on-surface-variant hover:bg-surface-variant transition-colors duration-150" href="#">
+<span aria-hidden="true" class="material-symbols-outlined">settings_input_component</span>
+<span class="font-body-md text-body-md">Components</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm rounded-xl text-on-surface-variant hover:bg-surface-variant transition-colors duration-150" href="#">
+<span aria-hidden="true" class="material-symbols-outlined">description</span>
+<span class="font-body-md text-body-md">SOPs</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm rounded-xl text-on-surface-variant hover:bg-surface-variant transition-colors duration-150" href="#">
+<span aria-hidden="true" class="material-symbols-outlined">report_problem</span>
+<span class="font-body-md text-body-md">Failures</span>
+</a>
+</div>
+<div class="p-md border-t border-outline-variant">
+<a class="flex items-center gap-md px-md py-sm rounded-xl text-on-surface-variant hover:bg-surface-variant transition-colors duration-150" href="#">
+<span aria-hidden="true" class="material-symbols-outlined">info</span>
+<span class="font-body-md text-body-md">About Lycans</span>
+</a>
+</div>
+</nav>
+<!-- Main Content Area -->
+<div class="flex-1 flex flex-col md:ml-64 min-h-screen">
+<!-- TopNavBar -->
+<header class="bg-surface border-b border-outline-variant flex items-center justify-between px-lg h-16 sticky top-0 z-10 w-full">
+<div class="flex items-center gap-lg flex-1">
+<div class="md:hidden flex items-center gap-sm">
+<h1 class="font-headline-md text-headline-md font-bold text-primary">AeroKMS</h1>
+</div>
+<!-- Search Bar -->
+<div class="relative w-full max-w-2xl flex items-center">
+<span aria-hidden="true" class="material-symbols-outlined absolute left-sm text-outline">search</span>
+<input class="w-full bg-surface-container-low border border-outline-variant rounded-full text-on-surface font-body-md text-body-md pl-layout-margin pr-md py-xs focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary h-10" placeholder="Search knowledge base..." type="text" value="Pixhawk"/>
+<button class="absolute right-xs p-xs text-outline hover:text-primary transition-colors">
+<span aria-hidden="true" class="material-symbols-outlined text-[18px]">close</span>
+</button>
+</div>
+</div>
+<div class="flex items-center gap-sm ml-auto">
+<button class="p-sm text-on-surface-variant hover:text-primary transition-colors opacity-80 hover:opacity-100">
+<span aria-hidden="true" class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-sm text-on-surface-variant hover:text-primary transition-colors opacity-80 hover:opacity-100">
+<span aria-hidden="true" class="material-symbols-outlined">settings</span>
+</button>
+<div class="ml-sm w-8 h-8 rounded-full overflow-hidden border border-outline-variant cursor-pointer">
+<img alt="User Avatar" class="w-full h-full object-cover" data-alt="A small circular avatar image of an engineering professional wearing safety glasses in a clean, modern aerospace laboratory setting with bright white lighting and a cool color palette." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDcLUIv5d2w9Ywz4dawOM0-JpfATKgIRtuAWc7Qus61qPjLORyoh0nqexVL7Fa7VhZ93y8oAeNuRQJTApNvUM_bE40zFg700tn_A8C4kOSOqRtXN6IhrBnYnSxPEpJvI3WzhS4GIIc9p4Zo5-7aRqf9n2o4WlDLdBxNWxY-7O7BIGVURyluCFpDz_f7ZTfzcfx6vvWTXVThTM4vYz5l9rd5oIMzN48BlrN48c7t8NNyYPP-DFoDqwN-"/>
+</div>
+</div>
+</header>
+<!-- Search Layout -->
+<main class="flex-1 flex flex-col lg:flex-row max-w-[1600px] w-full mx-auto relative">
+<!-- Filter Sidebar -->
+<aside class="w-full lg:w-64 border-b lg:border-b-0 lg:border-r border-outline-variant bg-surface-bright flex flex-col lg:sticky lg:top-16 lg:h-[calc(100vh-4rem)] overflow-y-auto">
+<div class="p-md lg:p-lg flex flex-col gap-lg">
+<h2 class="font-label-caps text-label-caps text-on-surface-variant">Filters</h2>
+<!-- Content Type -->
+<div class="flex flex-col gap-sm">
+<h3 class="font-body-md text-body-md font-bold text-on-surface">Content Type</h3>
+<label class="flex items-center gap-sm cursor-pointer group">
+<input checked="" class="rounded border-outline-variant text-primary focus:ring-primary w-4 h-4" type="checkbox"/>
+<span class="font-body-md text-body-md text-on-surface-variant group-hover:text-on-surface">All Results</span>
+<span class="font-mono-sm text-mono-sm text-outline ml-auto bg-surface-container px-xs rounded-full">42</span>
+</label>
+<label class="flex items-center gap-sm cursor-pointer group">
+<input class="rounded border-outline-variant text-primary focus:ring-primary w-4 h-4" type="checkbox"/>
+<span class="font-body-md text-body-md text-on-surface-variant group-hover:text-on-surface">Articles</span>
+<span class="font-mono-sm text-mono-sm text-outline ml-auto bg-surface-container px-xs rounded-full">15</span>
+</label>
+<label class="flex items-center gap-sm cursor-pointer group">
+<input class="rounded border-outline-variant text-primary focus:ring-primary w-4 h-4" type="checkbox"/>
+<span class="font-body-md text-body-md text-on-surface-variant group-hover:text-on-surface">Components</span>
+<span class="font-mono-sm text-mono-sm text-outline ml-auto bg-surface-container px-xs rounded-full">12</span>
+</label>
+<label class="flex items-center gap-sm cursor-pointer group">
+<input class="rounded border-outline-variant text-primary focus:ring-primary w-4 h-4" type="checkbox"/>
+<span class="font-body-md text-body-md text-on-surface-variant group-hover:text-on-surface">SOPs</span>
+<span class="font-mono-sm text-mono-sm text-outline ml-auto bg-surface-container px-xs rounded-full">8</span>
+</label>
+</div>
+<hr class="border-outline-variant border-t"/>
+<!-- Team -->
+<div class="flex flex-col gap-sm">
+<h3 class="font-body-md text-body-md font-bold text-on-surface">Team</h3>
+<select class="bg-surface border border-outline-variant rounded-lg font-body-md text-body-md text-on-surface focus:border-primary focus:ring-1 focus:ring-primary py-xs px-sm w-full">
+<option>Any Team</option>
+<option>Avionics</option>
+<option>Propulsion</option>
+<option>Structural</option>
+</select>
+</div>
+<hr class="border-outline-variant border-t"/>
+<!-- Date Range -->
+<div class="flex flex-col gap-sm">
+<h3 class="font-body-md text-body-md font-bold text-on-surface">Last Updated</h3>
+<label class="flex items-center gap-sm cursor-pointer group">
+<input checked="" class="border-outline-variant text-primary focus:ring-primary w-4 h-4" name="date" type="radio"/>
+<span class="font-body-md text-body-md text-on-surface-variant group-hover:text-on-surface">Any time</span>
+</label>
+<label class="flex items-center gap-sm cursor-pointer group">
+<input class="border-outline-variant text-primary focus:ring-primary w-4 h-4" name="date" type="radio"/>
+<span class="font-body-md text-body-md text-on-surface-variant group-hover:text-on-surface">Past 30 days</span>
+</label>
+<label class="flex items-center gap-sm cursor-pointer group">
+<input class="border-outline-variant text-primary focus:ring-primary w-4 h-4" name="date" type="radio"/>
+<span class="font-body-md text-body-md text-on-surface-variant group-hover:text-on-surface">Past year</span>
+</label>
+</div>
+</div>
+</aside>
+<!-- Results List -->
+<section class="flex-1 p-md lg:p-xl bg-surface">
+<div class="max-w-[800px]">
+<div class="flex items-center justify-between mb-lg">
+<p class="font-body-md text-body-md text-on-surface-variant">Showing <span class="font-bold text-on-surface">1-10</span> of 42 results for "<span class="font-mono-sm text-mono-sm text-on-surface bg-surface-container px-xs py-1 rounded-lg">Pixhawk</span>"</p>
+<div class="flex items-center gap-sm">
+<span class="font-label-caps text-label-caps text-outline">Sort by</span>
+<select class="bg-transparent border-none font-body-md text-body-md text-primary font-bold focus:ring-0 cursor-pointer p-0 rounded-lg">
+<option>Relevance</option>
+<option>Date (Newest)</option>
+<option>Date (Oldest)</option>
+</select>
+</div>
+</div>
+<!-- Search Result Items -->
+<div class="flex flex-col gap-lg">
+<!-- Item 1: Component -->
+<article class="bg-surface-container-lowest border border-outline-variant rounded-xl p-md lg:p-lg hover:shadow-[0_1px_3px_0_rgba(0,0,0,0.05)] transition-shadow group flex flex-col gap-sm">
+<div class="flex items-start justify-between gap-md">
+<div class="flex flex-col gap-xs">
+<div class="flex items-center gap-xs">
+<span aria-hidden="true" class="material-symbols-outlined text-[16px] text-tertiary">settings_input_component</span>
+<span class="font-label-caps text-label-caps text-tertiary">Component</span>
+<span class="font-mono-sm text-mono-sm text-outline ml-sm">PN: PX4-V6X-001</span>
+</div>
+<h3 class="font-headline-md text-headline-md font-bold text-primary group-hover:underline cursor-pointer">Pixhawk 6X Flight Controller</h3>
+</div>
+<span class="font-label-caps text-label-caps text-outline whitespace-nowrap bg-surface-container-high px-sm py-xs rounded-full">v1.4 Active</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant leading-relaxed">
+                                The <strong class="text-on-surface bg-yellow-100 dark:bg-yellow-900/30 px-1 rounded-lg">Pixhawk</strong> 6X is the latest iteration of the open-standard flight controller, featuring triple redundant IMUs, isolated sensor domains, and Ethernet capability for advanced aerospace applications.
+                            </p>
+<div class="flex flex-wrap gap-xs mt-sm">
+<span class="bg-surface-container px-sm py-xs rounded-full border border-outline-variant font-mono-sm text-mono-sm text-on-surface-variant">Avionics</span>
+<span class="bg-surface-container px-sm py-xs rounded-full border border-outline-variant font-mono-sm text-mono-sm text-on-surface-variant">Hardware</span>
+<span class="bg-surface-container px-sm py-xs rounded-full border border-outline-variant font-mono-sm text-mono-sm text-on-surface-variant">FCS</span>
+</div>
+<div class="mt-sm border-t border-outline-variant pt-sm flex items-center gap-md">
+<span class="font-label-caps text-label-caps text-outline">Related:</span>
+<a class="font-body-md text-body-md text-secondary hover:text-primary flex items-center gap-xs" href="#">
+<span aria-hidden="true" class="material-symbols-outlined text-[14px]">description</span> Wiring Diagram
+                                </a>
+<a class="font-body-md text-body-md text-secondary hover:text-primary flex items-center gap-xs" href="#">
+<span aria-hidden="true" class="material-symbols-outlined text-[14px]">architecture</span> Project Alpha
+                                </a>
+</div>
+</article>
+<!-- Item 2: Article -->
+<article class="bg-surface-container-lowest border border-outline-variant rounded-xl p-md lg:p-lg hover:shadow-[0_1px_3px_0_rgba(0,0,0,0.05)] transition-shadow group flex flex-col gap-sm">
+<div class="flex items-start justify-between gap-md">
+<div class="flex flex-col gap-xs">
+<div class="flex items-center gap-xs">
+<span aria-hidden="true" class="material-symbols-outlined text-[16px] text-secondary">menu_book</span>
+<span class="font-label-caps text-label-caps text-secondary">Knowledge Article</span>
+</div>
+<h3 class="font-headline-md text-headline-md font-bold text-primary group-hover:underline cursor-pointer">Integrating Pixhawk 6X with CAN Nodes</h3>
+</div>
+<span class="font-label-caps text-label-caps text-outline whitespace-nowrap">Updated 2d ago</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant leading-relaxed">
+                                Detailed technical guide on establishing reliable UAVCAN communication between the <strong class="text-on-surface bg-yellow-100 dark:bg-yellow-900/30 px-1 rounded-lg">Pixhawk</strong> 6X flight management unit and distributed sensor networks...
+                            </p>
+<div class="flex flex-wrap gap-xs mt-sm">
+<span class="bg-surface-container px-sm py-xs rounded-full border border-outline-variant font-mono-sm text-mono-sm text-on-surface-variant">CAN bus</span>
+<span class="bg-surface-container px-sm py-xs rounded-full border border-outline-variant font-mono-sm text-mono-sm text-on-surface-variant">Integration</span>
+</div>
+</article>
+<!-- Item 3: SOP -->
+<article class="bg-surface-container-lowest border border-outline-variant rounded-xl p-md lg:p-lg hover:shadow-[0_1px_3px_0_rgba(0,0,0,0.05)] transition-shadow group flex flex-col gap-sm">
+<div class="flex items-start justify-between gap-md">
+<div class="flex flex-col gap-xs">
+<div class="flex items-center gap-xs">
+<span aria-hidden="true" class="material-symbols-outlined text-[16px] text-on-surface-variant">description</span>
+<span class="font-label-caps text-label-caps text-on-surface-variant">SOP</span>
+<span class="font-mono-sm text-mono-sm text-outline ml-sm">DOC-QA-092</span>
+</div>
+<h3 class="font-headline-md text-headline-md font-bold text-primary group-hover:underline cursor-pointer">Pre-Flight Calibration Procedure: Pixhawk Systems</h3>
+</div>
+<span class="font-label-caps text-label-caps text-outline whitespace-nowrap bg-error-container text-on-error-container px-sm py-xs rounded-full">Mandatory</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant leading-relaxed">
+                                Standard operating procedure for sensor calibration (Mag, Accel, Gyro) required prior to maiden flights of any airframe equipped with a <strong class="text-on-surface bg-yellow-100 dark:bg-yellow-900/30 px-1 rounded-lg">Pixhawk</strong> architecture autopilot.
+                            </p>
+<div class="mt-sm border-t border-outline-variant pt-sm flex items-center gap-md">
+<span class="font-label-caps text-label-caps text-outline">Related:</span>
+<a class="font-body-md text-body-md text-secondary hover:text-primary flex items-center gap-xs" href="#">
+<span aria-hidden="true" class="material-symbols-outlined text-[14px]">architecture</span> Project Beta
+                                </a>
+</div>
+</article>
+</div>
+<!-- Pagination -->
+<div class="mt-xl flex items-center justify-center gap-sm">
+<button class="px-md py-sm border border-outline-variant rounded-xl bg-surface hover:bg-surface-variant text-on-surface-variant transition-colors disabled:opacity-50" disabled="">Previous</button>
+<button class="w-10 h-10 border border-primary bg-primary text-on-primary rounded-xl font-bold">1</button>
+<button class="w-10 h-10 border border-outline-variant bg-surface hover:bg-surface-variant text-on-surface-variant rounded-xl transition-colors">2</button>
+<button class="w-10 h-10 border border-outline-variant bg-surface hover:bg-surface-variant text-on-surface-variant rounded-xl transition-colors">3</button>
+<span class="text-outline mx-xs">...</span>
+<button class="w-10 h-10 border border-outline-variant bg-surface hover:bg-surface-variant text-on-surface-variant rounded-xl transition-colors">5</button>
+<button class="px-md py-sm border border-outline-variant rounded-xl bg-surface hover:bg-surface-variant text-on-surface-variant transition-colors">Next</button>
+</div>
+</div>
+</section>
+</main>
+</div>
+</body></html>

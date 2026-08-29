@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AeroKMS - Pixhawk 6X Component Detail</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=JetBrains+Mono:wght@400&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+                "surface-container": "#eeedf7",
+                "outline": "#747686",
+                "secondary-container": "#d4e3ff",
+                "surface-variant": "#e2e1ec",
+                "inverse-surface": "#2f3038",
+                "tertiary-fixed": "#ffdbd2",
+                "on-secondary-fixed": "#0c1c30",
+                "on-secondary-fixed-variant": "#39485e",
+                "on-primary": "#ffffff",
+                "on-surface": "#1a1b22",
+                "on-tertiary-fixed-variant": "#872004",
+                "error": "#ba1a1a",
+                "primary-fixed-dim": "#b7c4ff",
+                "on-primary-fixed": "#001551",
+                "error-container": "#ffdad6",
+                "tertiary-fixed-dim": "#ffb4a2",
+                "secondary": "#505f76",
+                "primary": "#00247d",
+                "tertiary": "#3d445a",
+                "surface-container-lowest": "#ffffff",
+                "on-secondary": "#ffffff",
+                "surface-tint": "#2151da",
+                "surface-container-low": "#f4f2fd",
+                "on-background": "#1a1b22",
+                "on-secondary-container": "#56657c",
+                "surface-bright": "#faf8ff",
+                "primary-fixed": "#dce1ff",
+                "on-primary-container": "#cad3ff",
+                "on-surface-variant": "#444654",
+                "secondary-fixed": "#d4e3ff",
+                "background": "#faf8ff",
+                "inverse-primary": "#b7c4ff",
+                "inverse-on-surface": "#f1f0fa",
+                "on-error": "#ffffff",
+                "on-tertiary-container": "#ff967b",
+                "outline-variant": "#c4c5d6",
+                "on-error-container": "#93000a",
+                "on-tertiary-fixed": "#3c0800",
+                "surface": "#faf8ff",
+                "surface-container-highest": "#e2e1ec",
+                "surface-dim": "#dad9e3",
+                "secondary-fixed-dim": "#b8c7e2",
+                "tertiary-container": "#841e02",
+                "primary-container": "#1d4ed8",
+                "surface-container-high": "#e8e7f2",
+                "on-tertiary": "#ffffff",
+                "on-primary-fixed-variant": "#063ab2"
+        },
+        "borderRadius": {
+                "DEFAULT": "0.25rem",
+                "lg": "0.5rem",
+                "xl": "0.75rem",
+                "full": "9999px"
+        },
+        "spacing": {
+                "xl": "32px",
+                "layout-margin": "40px",
+                "lg": "24px",
+                "layout-gutter": "20px",
+                "xs": "4px",
+                "unit": "4px",
+                "sm": "8px",
+                "md": "16px"
+        },
+        "fontFamily": {
+                "headline-lg": [
+                        "Inter"
+                ],
+                "body-lg": [
+                        "Inter"
+                ],
+                "body-md": [
+                        "Inter"
+                ],
+                "label-caps": [
+                        "Inter"
+                ],
+                "display": [
+                        "Inter"
+                ],
+                "headline-md": [
+                        "Inter"
+                ],
+                "mono-sm": [
+                        "JetBrains Mono"
+                ]
+        },
+        "fontSize": {
+                "headline-lg": [
+                        "28px",
+                        {
+                                "lineHeight": "36px",
+                                "fontWeight": "600"
+                        }
+                ],
+                "body-lg": [
+                        "16px",
+                        {
+                                "lineHeight": "26px",
+                                "fontWeight": "400"
+                        }
+                ],
+                "body-md": [
+                        "14px",
+                        {
+                                "lineHeight": "20px",
+                                "fontWeight": "400"
+                        }
+                ],
+                "label-caps": [
+                        "12px",
+                        {
+                                "lineHeight": "16px",
+                                "letterSpacing": "0.05em",
+                                "fontWeight": "600"
+                        }
+                ],
+                "display": [
+                        "36px",
+                        {
+                                "lineHeight": "44px",
+                                "letterSpacing": "-0.02em",
+                                "fontWeight": "700"
+                        }
+                ],
+                "headline-md": [
+                        "20px",
+                        {
+                                "lineHeight": "28px",
+                                "fontWeight": "600"
+                        }
+                ],
+                "mono-sm": [
+                        "13px",
+                        {
+                                "lineHeight": "18px",
+                                "fontWeight": "400"
+                        }
+                ]
+        }
+},
+    },
+  }
+</script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.filled {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md antialiased min-h-screen flex flex-col md:flex-row">
+<!-- SideNavBar -->
+<nav class="bg-surface-container-low dark:bg-surface-container-low border-r border-outline-variant dark:border-outline hidden md:flex flex-col h-screen fixed left-0 top-0 docked left-0 h-full w-64 flat no shadows z-50">
+<div class="flex items-center px-lg py-6 border-b border-outline-variant">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-primary-container text-on-primary flex items-center justify-center font-bold">A</div>
+<div>
+<h1 class="font-headline-md text-headline-md font-bold text-primary dark:text-inverse-primary">AeroKMS</h1>
+<p class="font-label-caps text-label-caps text-on-surface-variant">Engineering Knowledge System</p>
+</div>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto py-4">
+<ul class="flex flex-col gap-1 px-3">
+<li><a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-variant dark:hover:bg-surface-variant transition-colors duration-150 rounded-lg group" href="#"><span class="material-symbols-outlined group-hover:scale-95 transition-transform">dashboard</span><span class="font-body-md text-body-md">Dashboard</span></a></li>
+<li><a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-variant dark:hover:bg-surface-variant transition-colors duration-150 rounded-lg group" href="#"><span class="material-symbols-outlined group-hover:scale-95 transition-transform">menu_book</span><span class="font-body-md text-body-md">Knowledge</span></a></li>
+<li><a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-variant dark:hover:bg-surface-variant transition-colors duration-150 rounded-lg group" href="#"><span class="material-symbols-outlined group-hover:scale-95 transition-transform">architecture</span><span class="font-body-md text-body-md">Projects</span></a></li>
+<li><a class="flex items-center gap-3 px-3 py-2 bg-secondary-container dark:bg-secondary-container text-on-secondary-container dark:text-on-secondary-container font-bold rounded-lg transition-colors duration-150 group" href="#"><span class="material-symbols-outlined filled group-hover:scale-95 transition-transform">settings_input_component</span><span class="font-body-md text-body-md">Components</span></a></li>
+<li><a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-variant dark:hover:bg-surface-variant transition-colors duration-150 rounded-lg group" href="#"><span class="material-symbols-outlined group-hover:scale-95 transition-transform">description</span><span class="font-body-md text-body-md">SOPs</span></a></li>
+<li><a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-variant dark:hover:bg-surface-variant transition-colors duration-150 rounded-lg group" href="#"><span class="material-symbols-outlined group-hover:scale-95 transition-transform">report_problem</span><span class="font-body-md text-body-md">Failures</span></a></li>
+</ul>
+</div>
+<div class="p-4 border-t border-outline-variant">
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:bg-surface-variant transition-colors duration-150 rounded-lg group" href="#"><span class="material-symbols-outlined group-hover:scale-95 transition-transform">info</span><span class="font-body-md text-body-md">About Lycans</span></a>
+</div>
+</nav>
+<div class="flex-1 flex flex-col md:ml-64 min-w-0">
+<!-- TopNavBar -->
+<header class="bg-surface dark:bg-surface border-b border-outline-variant dark:border-outline docked top-0 w-full flat no shadows flex items-center justify-between px-lg h-16 sticky z-40">
+<div class="flex items-center gap-4 flex-1">
+<button class="md:hidden text-on-surface-variant p-2 -ml-2 rounded hover:bg-surface-variant transition-colors">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<div class="relative max-w-md w-full hidden sm:block">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">search</span>
+<input class="w-full bg-surface-container-low border border-outline-variant rounded-lg pl-10 pr-4 py-1.5 font-body-md text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors" placeholder="Search knowledge base..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<button class="p-2 text-on-surface-variant hover:text-primary transition-colors duration-150 opacity-80 hover:opacity-100 rounded-full hover:bg-surface-variant">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:text-primary transition-colors duration-150 opacity-80 hover:opacity-100 rounded-full hover:bg-surface-variant">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<div class="w-8 h-8 rounded-full bg-tertiary text-on-tertiary flex items-center justify-center font-bold ml-2 cursor-pointer border border-outline-variant overflow-hidden">
+<img alt="User Avatar" class="w-full h-full object-cover" data-alt="A highly detailed close-up shot of a professional user avatar featuring a neutral, technical aesthetic with bright white lighting and a cool blue background, appropriate for a modern corporate application. The mood is calm and professional." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB5nwf4akZ2WxTyBTF3BvR_TRLFw1fTqU--q66WqzG8qbwBOntrkt4LsE6zeaYPI_ltnTg-Scxu0wJMmOVr6OhwceI_GuGh7bhI7MomU8hhd5ggpqaLgGEBSbC0kS0aE9Twa_7x1u_huPE6DWyUHL5xttahQrGFXN0VRjektyVDpc7fPmAtTEF-jvTiyLUkHK0g6h7i72kd7B8ZriXRb9s8erc5qlNvnq9V5klAFrXuxpoDNTHXrKC9"/>
+</div>
+</div>
+</header>
+<!-- Main Content -->
+<main class="flex-1 p-lg md:p-layout-margin flex flex-col lg:flex-row gap-layout-gutter">
+<!-- Left/Center Canvas (Articles & Specs) -->
+<div class="flex-1 flex flex-col gap-xl max-w-4xl">
+<!-- Header -->
+<div class="flex flex-col gap-2">
+<div class="flex items-center gap-2 text-secondary font-label-caps text-label-caps uppercase tracking-wider">
+<span>Component</span>
+<span class="material-symbols-outlined text-sm">chevron_right</span>
+<span>Flight Controllers</span>
+<span class="material-symbols-outlined text-sm">chevron_right</span>
+<span>PX4 Autopilot Series</span>
+</div>
+<div class="flex items-start justify-between gap-4 flex-wrap">
+<div>
+<h1 class="font-headline-lg text-headline-lg text-on-surface m-0 flex items-center gap-3">
+                                Pixhawk 6X
+                                <span class="bg-surface-container-highest border border-outline-variant text-on-surface px-2 py-0.5 rounded font-mono-sm text-mono-sm uppercase tracking-normal mt-1">v6X.2</span>
+</h1>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Manufacturer: Holybro | Part No: HB-PX6X-001</p>
+</div>
+<div class="flex gap-2">
+<button class="px-4 py-2 bg-surface text-on-surface border border-outline-variant rounded-lg font-body-md text-body-md hover:bg-surface-variant transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">download</span> Export
+                            </button>
+<button class="px-4 py-2 bg-primary-container text-on-primary rounded-lg font-body-md text-body-md hover:opacity-90 transition-opacity flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">edit</span> Edit
+                            </button>
+</div>
+</div>
+</div>
+<!-- Tabs -->
+<div class="border-b border-outline-variant flex overflow-x-auto hide-scrollbar">
+<button class="px-4 py-3 text-primary border-b-2 border-primary font-label-caps text-label-caps whitespace-nowrap transition-colors uppercase">Overview</button>
+<button class="px-4 py-3 text-on-surface-variant hover:text-on-surface border-b-2 border-transparent font-label-caps text-label-caps whitespace-nowrap transition-colors uppercase">Specifications</button>
+<button class="px-4 py-3 text-on-surface-variant hover:text-on-surface border-b-2 border-transparent font-label-caps text-label-caps whitespace-nowrap transition-colors uppercase">Documentation</button>
+<button class="px-4 py-3 text-on-surface-variant hover:text-on-surface border-b-2 border-transparent font-label-caps text-label-caps whitespace-nowrap transition-colors uppercase md:hidden">Related Knowledge</button>
+<button class="px-4 py-3 text-on-surface-variant hover:text-on-surface border-b-2 border-transparent font-label-caps text-label-caps whitespace-nowrap transition-colors uppercase">History</button>
+</div>
+<!-- Tab Content: Overview -->
+<div class="flex flex-col gap-lg">
+<div class="bg-surface-container-lowest border border-outline-variant p-6 rounded-lg shadow-sm">
+<h2 class="font-headline-md text-headline-md text-on-surface mb-4">Component Summary</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant leading-relaxed">
+                            The Pixhawk 6X is a highly capable flight controller utilizing the STM32H753 processor. Engineered for demanding industrial and commercial applications, it features triple-redundant IMUs mounted on isolated, vibration-damped domains. This specific iteration guarantees robust performance in high-EMI environments typical of heavy-lift multicopters and fixed-wing VTOL transition aircraft.
+                        </p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg overflow-hidden">
+<div class="bg-surface-container-low px-4 py-2 border-b border-outline-variant flex items-center justify-between">
+<span class="font-label-caps text-label-caps text-on-surface uppercase">Core Parameters</span>
+</div>
+<div class="p-0">
+<table class="w-full text-left border-collapse">
+<tbody><tr class="border-b border-outline-variant hover:bg-surface-container-low transition-colors">
+<th class="px-4 py-2 font-body-md text-body-md text-on-surface-variant font-normal w-1/3">Processor</th>
+<td class="px-4 py-2 font-mono-sm text-mono-sm text-on-surface">STM32H753 32-bit Arm Cortex-M7, 480MHz</td>
+</tr>
+<tr class="border-b border-outline-variant hover:bg-surface-container-low transition-colors">
+<th class="px-4 py-2 font-body-md text-body-md text-on-surface-variant font-normal">Input Voltage</th>
+<td class="px-4 py-2 font-mono-sm text-mono-sm text-on-surface">4.75 ~ 5.5V DC</td>
+</tr>
+<tr class="border-b border-outline-variant hover:bg-surface-container-low transition-colors">
+<th class="px-4 py-2 font-body-md text-body-md text-on-surface-variant font-normal">Weight</th>
+<td class="px-4 py-2 font-mono-sm text-mono-sm text-on-surface">36.5g (without baseboard)</td>
+</tr>
+<tr class="hover:bg-surface-container-low transition-colors">
+<th class="px-4 py-2 font-body-md text-body-md text-on-surface-variant font-normal">Dimensions</th>
+<td class="px-4 py-2 font-mono-sm text-mono-sm text-on-surface">38.8 x 38.8 x 17.5 mm</td>
+</tr>
+</tbody></table>
+</div>
+</div>
+<!-- Attachments / Files -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg flex flex-col">
+<div class="bg-surface-container-low px-4 py-2 border-b border-outline-variant flex items-center justify-between">
+<span class="font-label-caps text-label-caps text-on-surface uppercase">Technical Assets</span>
+<span class="material-symbols-outlined text-sm text-on-surface-variant">folder_open</span>
+</div>
+<div class="flex flex-col flex-1 p-2 gap-1">
+<a class="flex items-center gap-3 p-2 rounded hover:bg-surface-container-low transition-colors border border-transparent hover:border-outline-variant group" href="#">
+<span class="material-symbols-outlined text-error">picture_as_pdf</span>
+<div class="flex-1 min-w-0">
+<div class="font-body-md text-body-md text-on-surface truncate group-hover:text-primary transition-colors">Holybro_Pixhawk6X_Datasheet_v1.2.pdf</div>
+<div class="font-mono-sm text-mono-sm text-on-surface-variant text-[11px]">2.4 MB • Updated Oct 12</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant opacity-0 group-hover:opacity-100 transition-opacity">download</span>
+</a>
+<a class="flex items-center gap-3 p-2 rounded hover:bg-surface-container-low transition-colors border border-transparent hover:border-outline-variant group" href="#">
+<span class="material-symbols-outlined text-primary">view_in_ar</span>
+<div class="flex-1 min-w-0">
+<div class="font-body-md text-body-md text-on-surface truncate group-hover:text-primary transition-colors">Pixhawk6X_Baseboard_CAD.step</div>
+<div class="font-mono-sm text-mono-sm text-on-surface-variant text-[11px]">18.1 MB • Updated Sep 04</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant opacity-0 group-hover:opacity-100 transition-opacity">download</span>
+</a>
+<a class="flex items-center gap-3 p-2 rounded hover:bg-surface-container-low transition-colors border border-transparent hover:border-outline-variant group" href="#">
+<span class="material-symbols-outlined text-secondary">code</span>
+<div class="flex-1 min-w-0">
+<div class="font-body-md text-body-md text-on-surface truncate group-hover:text-primary transition-colors">PX4_Custom_Firmware_Build_v1.14.zip</div>
+<div class="font-mono-sm text-mono-sm text-on-surface-variant text-[11px]">12.5 MB • Updated Nov 01</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant opacity-0 group-hover:opacity-100 transition-opacity">download</span>
+</a>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Panel (Relationship Sidebar) -->
+<aside class="hidden lg:flex flex-col w-80 shrink-0 bg-surface-container-low border border-outline-variant rounded-lg self-start sticky top-24">
+<div class="p-4 border-b border-outline-variant bg-surface-container-highest rounded-t-lg">
+<h3 class="font-label-caps text-label-caps text-on-surface uppercase tracking-widest flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">hub</span> Related Knowledge
+                    </h3>
+</div>
+<div class="flex flex-col p-4 gap-6">
+<!-- Projects -->
+<div>
+<h4 class="font-label-caps text-label-caps text-on-surface-variant mb-3 flex items-center gap-2">
+<span class="w-1 h-3 bg-secondary rounded-full"></span> Projects Used In
+                        </h4>
+<ul class="flex flex-col gap-2 relative before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-[1px] before:bg-outline-variant">
+<li class="pl-6 relative">
+<div class="absolute left-[9px] top-1.5 w-1.5 h-1.5 rounded-full bg-outline-variant border-2 border-surface-container-low ring-1 ring-outline-variant"></div>
+<a class="block hover:bg-surface-variant p-2 -my-2 rounded transition-colors group" href="#">
+<div class="font-mono-sm text-mono-sm text-primary group-hover:underline">PRJ-X900-Valkyrie</div>
+<div class="font-body-md text-body-md text-on-surface-variant text-xs mt-0.5">Heavy Lift Quadcopter</div>
+</a>
+</li>
+<li class="pl-6 relative">
+<div class="absolute left-[9px] top-1.5 w-1.5 h-1.5 rounded-full bg-outline-variant border-2 border-surface-container-low ring-1 ring-outline-variant"></div>
+<a class="block hover:bg-surface-variant p-2 -my-2 rounded transition-colors group" href="#">
+<div class="font-mono-sm text-mono-sm text-primary group-hover:underline">PRJ-A200-Surveyor</div>
+<div class="font-body-md text-body-md text-on-surface-variant text-xs mt-0.5">VTOL Fixed Wing</div>
+</a>
+</li>
+</ul>
+</div>
+<!-- Failures -->
+<div>
+<h4 class="font-label-caps text-label-caps text-error mb-3 flex items-center gap-2">
+<span class="w-1 h-3 bg-error rounded-full"></span> Known Failures
+                        </h4>
+<ul class="flex flex-col gap-2">
+<li>
+<a class="flex flex-col p-2 bg-error-container/20 border border-error-container rounded hover:bg-error-container/40 transition-colors group" href="#">
+<div class="flex items-center justify-between">
+<span class="font-mono-sm text-mono-sm text-on-error-container">F-2023-081</span>
+<span class="material-symbols-outlined text-error text-xs group-hover:translate-x-1 transition-transform">arrow_forward</span>
+</div>
+<div class="font-body-md text-body-md text-on-surface text-sm mt-1">IMU3 desync during sustained high-frequency vibration.</div>
+</a>
+</li>
+</ul>
+</div>
+<!-- SOPs -->
+<div>
+<h4 class="font-label-caps text-label-caps text-on-surface-variant mb-3 flex items-center gap-2">
+<span class="w-1 h-3 bg-tertiary rounded-full"></span> Standard Procedures
+                        </h4>
+<ul class="flex flex-col gap-1">
+<li>
+<a class="flex items-center gap-2 font-mono-sm text-mono-sm text-on-surface hover:text-primary transition-colors py-1" href="#">
+<span class="material-symbols-outlined text-sm text-on-surface-variant">description</span> SOP-CAL-04: IMU Thermal Calibration
+                                </a>
+</li>
+<li>
+<a class="flex items-center gap-2 font-mono-sm text-mono-sm text-on-surface hover:text-primary transition-colors py-1" href="#">
+<span class="material-symbols-outlined text-sm text-on-surface-variant">description</span> SOP-MNT-12: Vibration Damping Assembly
+                                </a>
+</li>
+</ul>
+</div>
+</div>
+</aside>
+</main>
+</div>
+</body></html>

@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AeroKMS - Main Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=JetBrains+Mono:wght@400&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+                "surface-container": "#eeedf7",
+                "outline": "#747686",
+                "secondary-container": "#d4e3ff",
+                "surface-variant": "#e2e1ec",
+                "inverse-surface": "#2f3038",
+                "tertiary-fixed": "#ffdbd2",
+                "on-secondary-fixed": "#0c1c30",
+                "on-secondary-fixed-variant": "#39485e",
+                "on-primary": "#ffffff",
+                "on-surface": "#1a1b22",
+                "on-tertiary-fixed-variant": "#872004",
+                "error": "#ba1a1a",
+                "primary-fixed-dim": "#b7c4ff",
+                "on-primary-fixed": "#001551",
+                "error-container": "#ffdad6",
+                "tertiary-fixed-dim": "#ffb4a2",
+                "secondary": "#505f76",
+                "primary": "#00247d",
+                "tertiary": "#3d445a",
+                "surface-container-lowest": "#ffffff",
+                "on-secondary": "#ffffff",
+                "surface-tint": "#2151da",
+                "surface-container-low": "#f4f2fd",
+                "on-background": "#1a1b22",
+                "on-secondary-container": "#56657c",
+                "surface-bright": "#faf8ff",
+                "primary-fixed": "#dce1ff",
+                "on-primary-container": "#cad3ff",
+                "on-surface-variant": "#444654",
+                "secondary-fixed": "#d4e3ff",
+                "background": "#faf8ff",
+                "inverse-primary": "#b7c4ff",
+                "inverse-on-surface": "#f1f0fa",
+                "on-error": "#ffffff",
+                "on-tertiary-container": "#ff967b",
+                "outline-variant": "#c4c5d6",
+                "on-error-container": "#93000a",
+                "on-tertiary-fixed": "#3c0800",
+                "surface": "#faf8ff",
+                "surface-container-highest": "#e2e1ec",
+                "surface-dim": "#dad9e3",
+                "secondary-fixed-dim": "#b8c7e2",
+                "tertiary-container": "#841e02",
+                "primary-container": "#1d4ed8",
+                "surface-container-high": "#e8e7f2",
+                "on-tertiary": "#ffffff",
+                "on-primary-fixed-variant": "#063ab2"
+        },
+        "borderRadius": {
+                "DEFAULT": "0.25rem",
+                "lg": "0.5rem",
+                "xl": "0.75rem",
+                "full": "9999px"
+        },
+        "spacing": {
+                "xl": "32px",
+                "layout-margin": "40px",
+                "lg": "24px",
+                "layout-gutter": "20px",
+                "xs": "4px",
+                "unit": "4px",
+                "sm": "8px",
+                "md": "16px"
+        },
+        "fontFamily": {
+                "headline-lg": [
+                        "Inter"
+                ],
+                "body-lg": [
+                        "Inter"
+                ],
+                "body-md": [
+                        "Inter"
+                ],
+                "label-caps": [
+                        "Inter"
+                ],
+                "display": [
+                        "Inter"
+                ],
+                "headline-md": [
+                        "Inter"
+                ],
+                "mono-sm": [
+                        "JetBrains Mono"
+                ]
+        },
+        "fontSize": {
+                "headline-lg": [
+                        "28px",
+                        {
+                                "lineHeight": "36px",
+                                "fontWeight": "600"
+                        }
+                ],
+                "body-lg": [
+                        "16px",
+                        {
+                                "lineHeight": "26px",
+                                "fontWeight": "400"
+                        }
+                ],
+                "body-md": [
+                        "14px",
+                        {
+                                "lineHeight": "20px",
+                                "fontWeight": "400"
+                        }
+                ],
+                "label-caps": [
+                        "12px",
+                        {
+                                "lineHeight": "16px",
+                                "letterSpacing": "0.05em",
+                                "fontWeight": "600"
+                        }
+                ],
+                "display": [
+                        "36px",
+                        {
+                                "lineHeight": "44px",
+                                "letterSpacing": "-0.02em",
+                                "fontWeight": "700"
+                        }
+                ],
+                "headline-md": [
+                        "20px",
+                        {
+                                "lineHeight": "28px",
+                                "fontWeight": "600"
+                        }
+                ],
+                "mono-sm": [
+                        "13px",
+                        {
+                                "lineHeight": "18px",
+                                "fontWeight": "400"
+                        }
+                ]
+        }
+},
+    },
+  }
+</script>
+<style>
+        body { font-family: 'Inter', sans-serif; background-color: #faf8ff; }
+        .tech-border { border: 1px solid #c4c5d6; }
+        .shadow-subtle { box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05); }
+    </style>
+</head>
+<body class="bg-background text-on-background flex h-screen overflow-hidden">
+<!-- SideNavBar -->
+<nav class="bg-surface-container-low text-primary font-body-md text-body-md docked left-0 h-full w-64 border-r border-outline-variant flat no shadows flex flex-col h-screen fixed left-0 top-0 z-20">
+<div class="p-lg border-b border-outline-variant">
+<div class="flex items-center gap-sm">
+<img alt="AeroKMS Logo" class="h-8 w-8 rounded-lg object-cover" data-alt="A minimalist, geometric logo of a modern aerospace or engineering firm, featuring sharp angles and a corporate blue color palette, set against a bright, clean white background. High-key lighting, professional aesthetic, no text." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCG3rri6L7v9dCwtnGPc3ERuagaC6DTU0oyfF12WfU4wbdueH2xXFwK45r7-r4b24vipCl8pyrBt3XH5L21Dh9_uqVWt5EqQMdMOVixS175sgwTHfhSJIGeJLpokcu-BmvgJh8yjx2-evFfvMhEAFvEYNqtHhBDh4RKG0KAqGAZMwrsMhXvsmuRHHhsSA0s7DK8r_Mlc4MQpBhTuDOHRblv0n1hTDWR-H0LzGrDgDXe8na5XyNCgIAD"/>
+<div class="flex flex-col">
+<span class="font-headline-md text-headline-md font-bold text-primary">AeroKMS</span>
+<span class="font-label-caps text-label-caps text-on-surface-variant">Engineering Knowledge System</span>
+</div>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto py-md px-sm space-y-xs">
+<a class="flex items-center gap-md px-md py-sm bg-secondary-container text-on-secondary-container font-bold rounded-xl scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">dashboard</span>
+                Dashboard
+            </a>
+<a class="flex items-center gap-md px-md py-sm text-on-surface-variant hover:bg-surface-variant transition-colors duration-150 rounded-xl scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined">menu_book</span>
+                Knowledge
+            </a>
+<a class="flex items-center gap-md px-md py-sm text-on-surface-variant hover:bg-surface-variant transition-colors duration-150 rounded-xl scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined">architecture</span>
+                Projects
+            </a>
+<a class="flex items-center gap-md px-md py-sm text-on-surface-variant hover:bg-surface-variant transition-colors duration-150 rounded-xl scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined">settings_input_component</span>
+                Components
+            </a>
+<a class="flex items-center gap-md px-md py-sm text-on-surface-variant hover:bg-surface-variant transition-colors duration-150 rounded-xl scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined">description</span>
+                SOPs
+            </a>
+<a class="flex items-center gap-md px-md py-sm text-on-surface-variant hover:bg-surface-variant transition-colors duration-150 rounded-xl scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined">report_problem</span>
+                Failures
+            </a>
+</div>
+<div class="mt-auto p-sm border-t border-outline-variant">
+<a class="flex items-center gap-md px-md py-sm text-on-surface-variant hover:bg-surface-variant transition-colors duration-150 rounded-xl scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined">info</span>
+                About Lycans
+            </a>
+</div>
+</nav>
+<!-- Main Content Area -->
+<div class="flex-1 flex flex-col ml-64 overflow-hidden bg-background">
+<!-- TopNavBar -->
+<header class="bg-surface text-primary font-label-caps text-label-caps docked top-0 w-full border-b border-outline-variant flat no shadows flex items-center justify-between px-lg h-16 z-10">
+<div class="flex-1 flex items-center max-w-2xl">
+<div class="relative w-full">
+<span class="material-symbols-outlined absolute left-md top-1/2 -translate-y-1/2 text-outline">search</span>
+<input class="w-full bg-surface-container-low border border-outline-variant rounded-full py-sm pl-[40px] pr-md text-body-md font-body-md text-on-surface placeholder:text-outline focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all" placeholder="What knowledge do you need today?" type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-md ml-auto">
+<button class="text-on-surface-variant hover:text-primary opacity-80 hover:opacity-100 transition-opacity">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary opacity-80 hover:opacity-100 transition-opacity">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<div class="h-8 w-px bg-outline-variant mx-xs"></div>
+<img alt="User Avatar" class="h-8 w-8 rounded-full border border-outline-variant object-cover cursor-pointer" data-alt="A professional headshot of a young male engineer in a crisp white shirt, set against a solid light gray background. High-key corporate lighting, sharp focus, modern and clean aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD-DSU6ib-CjgkjjlQkP295XzuVT5KD0au058yPzHtl3_oTMKrHCwxv3ushJJNps0fGYEyXoTKPOq6Kzz2fOkhfROB2Ro3el723XRTIh91IesoEGzylQmEuv7insz7Uva6Yi-CFnlG9FflPCHsREXVW_S4PYbjveaIAhyATInKqlR-50G7u0qc1Vi2sJpQFtmcX7a1XHCBSBlklAikLTCJJULbKKbQo1mof0Sng4Jl2SUcj7IAUeijC"/>
+</div>
+</header>
+<!-- Dashboard Canvas -->
+<main class="flex-1 overflow-y-auto p-layout-margin bg-background">
+<div class="max-w-[1200px] mx-auto space-y-xl">
+<!-- Welcome & Quick Actions -->
+<section class="flex flex-col md:flex-row justify-between items-start md:items-center gap-lg">
+<div>
+<h1 class="font-display text-display text-on-surface">Good morning, Engineer Ahmad</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant mt-sm">Here is the latest telemetry and knowledge landscape.</p>
+</div>
+<div class="flex gap-sm">
+<button class="bg-primary text-on-primary font-label-caps text-label-caps px-md py-sm rounded-xl flex items-center gap-xs hover:bg-on-primary-fixed-variant transition-colors shadow-subtle">
+<span class="material-symbols-outlined text-[16px]">add</span>
+                            New Article
+                        </button>
+<button class="bg-surface text-on-surface font-label-caps text-label-caps px-md py-sm rounded-xl tech-border flex items-center gap-xs hover:bg-surface-variant transition-colors shadow-subtle">
+<span class="material-symbols-outlined text-[16px]">help</span>
+                            Ask Question
+                        </button>
+</div>
+</section>
+<!-- Stats Overview Bento -->
+<section class="grid grid-cols-1 md:grid-cols-4 gap-md">
+<div class="bg-surface p-lg rounded-xl tech-border flex flex-col justify-between shadow-subtle">
+<div class="flex justify-between items-start">
+<span class="font-label-caps text-label-caps text-on-surface-variant">Knowledge Articles</span>
+<span class="material-symbols-outlined text-outline">menu_book</span>
+</div>
+<div class="mt-md">
+<span class="font-headline-lg text-headline-lg text-on-surface">1,204</span>
+<div class="flex items-center gap-xs text-primary font-body-md text-body-md mt-xs">
+<span class="material-symbols-outlined text-[14px]">arrow_upward</span>
+                                12 this week
+                            </div>
+</div>
+</div>
+<div class="bg-surface p-lg rounded-xl tech-border flex flex-col justify-between shadow-subtle">
+<div class="flex justify-between items-start">
+<span class="font-label-caps text-label-caps text-on-surface-variant">Open Questions</span>
+<span class="material-symbols-outlined text-outline">forum</span>
+</div>
+<div class="mt-md">
+<span class="font-headline-lg text-headline-lg text-on-surface">43</span>
+<div class="flex items-center gap-xs text-on-surface-variant font-body-md text-body-md mt-xs">
+<span class="material-symbols-outlined text-[14px]">remove</span>
+                                Stable
+                            </div>
+</div>
+</div>
+<div class="bg-surface p-lg rounded-xl tech-border border-t-2 border-t-[#D97706] flex flex-col justify-between shadow-subtle">
+<div class="flex justify-between items-start">
+<span class="font-label-caps text-label-caps text-on-surface-variant">Unresolved Failures</span>
+<span class="material-symbols-outlined text-outline">report_problem</span>
+</div>
+<div class="mt-md">
+<span class="font-headline-lg text-headline-lg text-on-surface">7</span>
+<div class="flex items-center gap-xs text-error font-body-md text-body-md mt-xs">
+<span class="material-symbols-outlined text-[14px]">priority_high</span>
+                                Requires Attention
+                            </div>
+</div>
+</div>
+<div class="bg-surface p-lg rounded-xl tech-border flex flex-col justify-between shadow-subtle">
+<div class="flex justify-between items-start">
+<span class="font-label-caps text-label-caps text-on-surface-variant">Active Projects</span>
+<span class="material-symbols-outlined text-outline">architecture</span>
+</div>
+<div class="mt-md">
+<span class="font-headline-lg text-headline-lg text-on-surface">28</span>
+<div class="flex items-center gap-xs text-primary font-body-md text-body-md mt-xs">
+<span class="material-symbols-outlined text-[14px]">arrow_upward</span>
+                                3 new
+                            </div>
+</div>
+</div>
+</section>
+<!-- Grid Layout for Main Content -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-lg">
+<!-- Left Column: Knowledge & Learning -->
+<div class="lg:col-span-2 space-y-lg">
+<!-- Recently Updated -->
+<section class="bg-surface rounded-xl tech-border shadow-subtle flex flex-col overflow-hidden">
+<div class="p-md border-b border-outline-variant flex justify-between items-center">
+<h2 class="font-headline-md text-headline-md text-on-surface">Recently Updated Knowledge</h2>
+<button class="font-label-caps text-label-caps text-primary hover:underline">View All</button>
+</div>
+<div class="flex flex-col">
+<!-- Article Row -->
+<a class="p-md border-b border-outline-variant hover:bg-surface-variant transition-colors flex justify-between items-center group" href="#">
+<div class="flex items-center gap-md">
+<div class="h-10 w-10 bg-primary-container text-on-primary-container rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined">settings_input_component</span>
+</div>
+<div>
+<h3 class="font-body-lg text-body-lg text-on-surface font-semibold group-hover:text-primary transition-colors">Hydraulic Valve X-90 Torque Specs</h3>
+<div class="flex items-center gap-sm mt-xs">
+<span class="font-mono-sm text-mono-sm text-on-surface-variant bg-surface-container px-sm py-xs rounded-lg">Component</span>
+<span class="font-body-md text-body-md text-on-surface-variant">Updated 2h ago by J. Smith</span>
+</div>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors">chevron_right</span>
+</a>
+<!-- Article Row -->
+<a class="p-md border-b border-outline-variant hover:bg-surface-variant transition-colors flex justify-between items-center group" href="#">
+<div class="flex items-center gap-md">
+<div class="h-10 w-10 bg-tertiary-container text-on-tertiary-container rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined">description</span>
+</div>
+<div>
+<h3 class="font-body-lg text-body-lg text-on-surface font-semibold group-hover:text-primary transition-colors">SOP: Thermal Shield Installation</h3>
+<div class="flex items-center gap-sm mt-xs">
+<span class="font-mono-sm text-mono-sm text-on-surface-variant bg-surface-container px-sm py-xs rounded-lg">Procedure</span>
+<span class="font-body-md text-body-md text-on-surface-variant">Updated 5h ago by M. Lee</span>
+</div>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline group-hover:text-primary transition-colors">chevron_right</span>
+</a>
+</div>
+</section>
+</div>
+<!-- Right Column: Activity Panel -->
+<div class="space-y-lg">
+<section class="bg-surface-container-low rounded-xl tech-border shadow-subtle p-md h-full">
+<h2 class="font-headline-md text-headline-md text-on-surface mb-md">Recent Team Activity</h2>
+<div class="relative pl-md border-l border-outline-variant space-y-md">
+<!-- Activity Item -->
+<div class="relative">
+<div class="absolute -left-[25px] h-3 w-3 bg-primary rounded-full border-2 border-surface"></div>
+<p class="font-body-md text-body-md text-on-surface"><span class="font-semibold">Sarah K.</span> resolved failure report <a class="text-primary hover:underline font-mono-sm" href="#">FR-992</a></p>
+<span class="font-label-caps text-label-caps text-outline block mt-xs">10 min ago</span>
+</div>
+<!-- Activity Item -->
+<div class="relative">
+<div class="absolute -left-[25px] h-3 w-3 bg-outline rounded-full border-2 border-surface"></div>
+<p class="font-body-md text-body-md text-on-surface"><span class="font-semibold">David R.</span> commented on <a class="text-primary hover:underline" href="#">Project Alpha Draft</a></p>
+<span class="font-label-caps text-label-caps text-outline block mt-xs">1 hr ago</span>
+</div>
+</div>
+</section>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

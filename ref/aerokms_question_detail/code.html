@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+
+<html class="h-full" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AeroKMS - M10 GPS EKF Tuning Question</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=JetBrains+Mono:wght@400&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+                "surface-container": "#eeedf7",
+                "outline": "#747686",
+                "secondary-container": "#d4e3ff",
+                "surface-variant": "#e2e1ec",
+                "inverse-surface": "#2f3038",
+                "tertiary-fixed": "#ffdbd2",
+                "on-secondary-fixed": "#0c1c30",
+                "on-secondary-fixed-variant": "#39485e",
+                "on-primary": "#ffffff",
+                "on-surface": "#1a1b22",
+                "on-tertiary-fixed-variant": "#872004",
+                "error": "#ba1a1a",
+                "primary-fixed-dim": "#b7c4ff",
+                "on-primary-fixed": "#001551",
+                "error-container": "#ffdad6",
+                "tertiary-fixed-dim": "#ffb4a2",
+                "secondary": "#505f76",
+                "primary": "#00247d",
+                "tertiary": "#3d445a",
+                "surface-container-lowest": "#ffffff",
+                "on-secondary": "#ffffff",
+                "surface-tint": "#2151da",
+                "surface-container-low": "#f4f2fd",
+                "on-background": "#1a1b22",
+                "on-secondary-container": "#56657c",
+                "surface-bright": "#faf8ff",
+                "primary-fixed": "#dce1ff",
+                "on-primary-container": "#cad3ff",
+                "on-surface-variant": "#444654",
+                "secondary-fixed": "#d4e3ff",
+                "background": "#faf8ff",
+                "inverse-primary": "#b7c4ff",
+                "inverse-on-surface": "#f1f0fa",
+                "on-error": "#ffffff",
+                "on-tertiary-container": "#ff967b",
+                "outline-variant": "#c4c5d6",
+                "on-error-container": "#93000a",
+                "on-tertiary-fixed": "#3c0800",
+                "surface": "#faf8ff",
+                "surface-container-highest": "#e2e1ec",
+                "surface-dim": "#dad9e3",
+                "secondary-fixed-dim": "#b8c7e2",
+                "tertiary-container": "#841e02",
+                "primary-container": "#1d4ed8",
+                "surface-container-high": "#e8e7f2",
+                "on-tertiary": "#ffffff",
+                "on-primary-fixed-variant": "#063ab2"
+        },
+        "borderRadius": {
+                "DEFAULT": "0.25rem",
+                "lg": "0.5rem",
+                "xl": "0.75rem",
+                "full": "9999px"
+        },
+        "spacing": {
+                "xl": "32px",
+                "layout-margin": "40px",
+                "lg": "24px",
+                "layout-gutter": "20px",
+                "xs": "4px",
+                "unit": "4px",
+                "sm": "8px",
+                "md": "16px"
+        },
+        "fontFamily": {
+                "headline-lg": [
+                        "Inter"
+                ],
+                "body-lg": [
+                        "Inter"
+                ],
+                "body-md": [
+                        "Inter"
+                ],
+                "label-caps": [
+                        "Inter"
+                ],
+                "display": [
+                        "Inter"
+                ],
+                "headline-md": [
+                        "Inter"
+                ],
+                "mono-sm": [
+                        "JetBrains Mono"
+                ]
+        },
+        "fontSize": {
+                "headline-lg": [
+                        "28px",
+                        {
+                                "lineHeight": "36px",
+                                "fontWeight": "600"
+                        }
+                ],
+                "body-lg": [
+                        "16px",
+                        {
+                                "lineHeight": "26px",
+                                "fontWeight": "400"
+                        }
+                ],
+                "body-md": [
+                        "14px",
+                        {
+                                "lineHeight": "20px",
+                                "fontWeight": "400"
+                        }
+                ],
+                "label-caps": [
+                        "12px",
+                        {
+                                "lineHeight": "16px",
+                                "letterSpacing": "0.05em",
+                                "fontWeight": "600"
+                        }
+                ],
+                "display": [
+                        "36px",
+                        {
+                                "lineHeight": "44px",
+                                "letterSpacing": "-0.02em",
+                                "fontWeight": "700"
+                        }
+                ],
+                "headline-md": [
+                        "20px",
+                        {
+                                "lineHeight": "28px",
+                                "fontWeight": "600"
+                        }
+                ],
+                "mono-sm": [
+                        "13px",
+                        {
+                                "lineHeight": "18px",
+                                "fontWeight": "400"
+                        }
+                ]
+        }
+},
+    },
+  }
+</script>
+</head>
+<body class="bg-surface text-on-surface h-full flex overflow-hidden font-body-md antialiased">
+<!-- SideNavBar -->
+<nav class="docked left-0 h-full w-64 border-r border-outline-variant bg-surface-container-low flex flex-col fixed top-0 z-20">
+<div class="flex items-center gap-md px-lg py-md">
+<div class="h-8 w-8 rounded-full bg-primary flex items-center justify-center shrink-0 overflow-hidden">
+<img class="object-cover h-full w-full" data-alt="A clean, minimalist 3D rendering of an aerospace engineering logo featuring a stylized metallic gear and a soaring wing motif, set against a pristine white background. High-key lighting emphasizes the brushed metal texture and professional aesthetic, representing technical precision and knowledge management." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCEXnlA_LmrKZkxMMXnm3x2c0Pl-mAKsvs9-aur-dP-mqDHmKxygzAsS0TyHb4p_36eptPXdHJQ9D4lEsCS8ro9K8YgZCPRFidbkAnoVwJPgouMicvVNCdN7OGzx1zNpppqDjvAqVBHjCSu1VRFZ6HuGa47Bj-7xmJFTmWDtRDMMWr8VcUH9-MSd1aUzesGSvf3pnzW5qxAk3qIWLxU-BGVxsVQe1nLGeA7SxF3uwPCIMOLp6xD7we3"/>
+</div>
+<div>
+<h1 class="font-headline-md text-headline-md font-bold text-primary">AeroKMS</h1>
+<p class="font-label-caps text-label-caps text-on-surface-variant">Engineering Knowledge System</p>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto py-md px-sm">
+<ul class="space-y-sm">
+<li>
+<a class="flex items-center gap-md px-md py-sm rounded-full text-on-surface-variant hover:bg-surface-variant transition-colors duration-150 scale-95 hover:scale-100 font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+                        Dashboard
+                    </a>
+</li>
+<li>
+<a class="flex items-center gap-md px-md py-sm rounded-full bg-secondary-container text-on-secondary-container font-bold transition-colors duration-150 scale-95 hover:scale-100 font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined" data-icon="menu_book" data-weight="fill" style="font-variation-settings: 'FILL' 1;">menu_book</span>
+                        Knowledge
+                    </a>
+</li>
+<li>
+<a class="flex items-center gap-md px-md py-sm rounded-full text-on-surface-variant hover:bg-surface-variant transition-colors duration-150 scale-95 hover:scale-100 font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined" data-icon="architecture">architecture</span>
+                        Projects
+                    </a>
+</li>
+<li>
+<a class="flex items-center gap-md px-md py-sm rounded-full text-on-surface-variant hover:bg-surface-variant transition-colors duration-150 scale-95 hover:scale-100 font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined" data-icon="settings_input_component">settings_input_component</span>
+                        Components
+                    </a>
+</li>
+<li>
+<a class="flex items-center gap-md px-md py-sm rounded-full text-on-surface-variant hover:bg-surface-variant transition-colors duration-150 scale-95 hover:scale-100 font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined" data-icon="description">description</span>
+                        SOPs
+                    </a>
+</li>
+<li>
+<a class="flex items-center gap-md px-md py-sm rounded-full text-on-surface-variant hover:bg-surface-variant transition-colors duration-150 scale-95 hover:scale-100 font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined" data-icon="report_problem">report_problem</span>
+                        Failures
+                    </a>
+</li>
+</ul>
+</div>
+<div class="px-sm pb-md">
+<a class="flex items-center gap-md px-md py-sm rounded-full text-on-surface-variant hover:bg-surface-variant transition-colors duration-150 scale-95 hover:scale-100 font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined" data-icon="info">info</span>
+                About Lycans
+            </a>
+</div>
+</nav>
+<!-- Main Content Area -->
+<div class="flex-1 flex flex-col ml-64 h-full relative bg-surface">
+<!-- TopNavBar -->
+<header class="docked top-0 w-full bg-surface border-b border-outline-variant flex items-center justify-between px-lg h-16 z-10">
+<div class="flex-1 max-w-xl">
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-sm top-1/2 -translate-y-1/2 text-on-surface-variant group-focus-within:text-primary">search</span>
+<input class="w-full bg-surface-container-low border-outline-variant rounded-full py-sm pl-layout-margin pr-md font-body-md text-body-md focus:ring-1 focus:ring-primary focus:border-primary transition-all" placeholder="Search knowledge base..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-md ml-lg">
+<button class="text-on-surface-variant hover:text-primary opacity-80 hover:opacity-100 transition-all p-sm rounded-full hover:bg-surface-variant">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary opacity-80 hover:opacity-100 transition-all p-sm rounded-full hover:bg-surface-variant">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+<div class="h-8 w-8 rounded-full border border-outline-variant overflow-hidden cursor-pointer ml-sm">
+<img class="object-cover h-full w-full" data-alt="A professional headshot of an aerospace engineer in a brightly lit modern laboratory environment. The subject wears a crisp white lab coat over a light blue collared shirt, exuding competence and technical expertise. The background features blurred, high-tech testing equipment, emphasizing a modern corporate engineering setting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAiDJxICFnmSH7Syuuu6esmKqgX9ZbGhm3OLUGaN0C0XtL5k1XykTnv3_STgEK9lTAyY5w8JE4FKwo5-5pAMQs85Bp838jCyOcOqNeka4PzBvNkdr9uW8zIazdCUpoYRBsncMMkiCC4T2gQePSxZ9v39GNAWpFOXK4x15Y2rTiuN17ur3F_IdcM-OujWSNIYOXgcEzSgy9am9XZCt7fYpiXMofxYQmD68dLgkQhViHlArLgFBTWBEZu"/>
+</div>
+</div>
+</header>
+<!-- Content & Panel Split -->
+<main class="flex-1 flex overflow-hidden">
+<!-- Technical Article Canvas (Left) -->
+<div class="flex-1 overflow-y-auto px-layout-margin py-xl bg-surface-container-lowest relative">
+<div class="max-w-[800px] mx-auto">
+<!-- Question Header -->
+<div class="mb-lg pb-md border-b border-outline-variant">
+<div class="flex items-center gap-sm mb-sm text-on-surface-variant font-mono-sm text-mono-sm">
+<span class="material-symbols-outlined text-base">forum</span>
+<span>Q-4921</span>
+<span>•</span>
+<span>Posted by J. Miller</span>
+<span>•</span>
+<span>2 days ago</span>
+</div>
+<h2 class="font-headline-lg text-headline-lg text-on-surface mb-md">M10 GPS EKF tuning for high-vibration environments</h2>
+<div class="flex flex-wrap gap-sm mb-md">
+<span class="px-sm py-xs rounded-full bg-surface-container-low text-on-surface-variant font-label-caps text-label-caps border border-outline-variant">AVIONICS</span>
+<span class="px-sm py-xs rounded-full bg-surface-container-low text-on-surface-variant font-label-caps text-label-caps border border-outline-variant">NAVIGATION</span>
+<span class="px-sm py-xs rounded-full bg-surface-container-low text-on-surface-variant font-label-caps text-label-caps border border-outline-variant">EKF3</span>
+</div>
+</div>
+<!-- Question Body -->
+<div class="font-body-lg text-body-lg text-on-surface mb-xl prose prose-slate max-w-none">
+<p class="mb-md">We are experiencing intermittent position fly-aways on the VTOL test platform when transitioning from hover to forward flight. Log analysis shows high innovations in velocity (VelN/VelE) right as the rear motor spins up.</p>
+<p class="mb-md">The platform uses the standard M10 GPS module (P/N: NAV-M10-02) hard-mounted to the carbon fiber avionics deck. We've confirmed no magnetic interference issues with the compass.</p>
+<pre class="bg-surface-container-low p-md rounded-xl border border-outline-variant font-mono-sm text-mono-sm text-on-surface-variant overflow-x-auto mb-md">EKF3 IMU0 is using GPS
+EKF3 IMU1 is using GPS
+ERR: EKF3 vel variance
+MSG: GPS Glitch or Compass error</pre>
+<p>I suspect vibration is causing the EKF to reject the GPS velocity data. Should we adjust `EK3_VELNE_M_NSE` or focus entirely on mechanical isolation first?</p>
+</div>
+<!-- Action Bar -->
+<div class="flex items-center justify-between p-md bg-primary-container/5 rounded-xl border border-primary/20 mb-xl">
+<div class="flex items-center gap-md text-primary font-body-md text-body-md">
+<span class="material-symbols-outlined">auto_awesome</span>
+<span>This question and its accepted answer contain high-value technical knowledge.</span>
+</div>
+<button class="flex items-center gap-sm bg-primary text-on-primary px-md py-sm rounded-full font-label-caps text-label-caps hover:bg-surface-tint transition-colors">
+<span class="material-symbols-outlined text-sm">publish</span>
+                            Promote to Knowledge Article
+                        </button>
+</div>
+<!-- Answers Section -->
+<div>
+<h3 class="font-headline-md text-headline-md text-on-surface mb-lg flex items-center gap-sm">
+<span class="material-symbols-outlined">question_answer</span>
+                            Answers (2)
+                        </h3>
+<!-- Accepted Answer -->
+<div class="border border-secondary-fixed rounded-xl bg-surface-container-lowest p-lg mb-md relative overflow-hidden shadow-[0_1px_3px_0_rgba(0,0,0,0.05)]">
+<div class="absolute top-0 left-0 w-1 h-full bg-primary"></div>
+<div class="flex items-center justify-between mb-md">
+<div class="flex items-center gap-sm">
+<div class="h-8 w-8 rounded-full border border-outline-variant overflow-hidden">
+<img class="object-cover h-full w-full" data-alt="A close-up headshot of a senior female aerospace systems engineer with short gray hair and glasses, wearing a dark navy corporate polo shirt. She is looking confidently slightly off-camera. The lighting is crisp and cool, set in an office environment with blurred technical diagrams in the background, conveying deep expertise and authority." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAlZs7FIdWnGnwTlZCipygSpt8OLpbZW4F1CZOE_PeYfjf__iF7wMVeClmn6yp2wFrZamnDThTvh4NqOQnMDKNh1L2uFg_s6aQ8naolhgrElNUrYyV5J9TPxshHb9T13a9PYPATjemOdglwYb1u_mZxwEJUl13z1kWDO_hwy_xIm3y_nOnMiJSuTYp13WH0oNqqylTxhwdDpd9OdJXnasbcXdGC__B6pn7ps311gHuwNFRPyTR-BFSc"/>
+</div>
+<div>
+<div class="font-body-md text-body-md font-bold text-on-surface">Dr. Sarah Chen</div>
+<div class="font-mono-sm text-mono-sm text-on-surface-variant">Lead Systems Integration • 1 day ago</div>
+</div>
+</div>
+<div class="flex items-center gap-sm text-primary bg-primary-fixed/30 px-sm py-xs rounded-full font-label-caps text-label-caps">
+<span class="material-symbols-outlined text-sm" data-weight="fill" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                                     Accepted Answer
+                                 </div>
+</div>
+<div class="font-body-lg text-body-lg text-on-surface prose prose-slate max-w-none">
+<p class="mb-md">Mechanical isolation is absolutely critical here. Do not try to tune out a fundamentally bad mechanical setup via EKF parameters; you will only mask the problem and degrade overall navigation performance.</p>
+<p class="mb-md">The M10 module is highly sensitive to high-frequency vibrations typically seen on rigid carbon frames. Follow this sequence:</p>
+<ol class="list-decimal pl-layout-margin mb-md space-y-sm">
+<li>Implement SOP-NAV-014 (Vibration Isolation Mounting for IMU/GPS) using Kyosho Zeal gel pads.</li>
+<li>Run a brief hover test and check the `VIBE` log messages. `VibeX` and `VibeY` must be consistently below 30m/s/s, ideally below 15m/s/s.</li>
+<li>Only if vibrations are acceptable but position glitches persist during specific transitions, consider increasing `EK3_VELNE_M_NSE` slightly (from default 0.5 to 0.7) to make the filter less trusting of instantaneous velocity spikes.</li>
+</ol>
+<p>Also, verify your wiring harness isn't transmitting vibrations mechanically to the module casing.</p>
+</div>
+<div class="mt-md pt-md border-t border-outline-variant flex gap-md">
+<button class="flex items-center gap-xs text-on-surface-variant hover:text-primary transition-colors font-mono-sm text-mono-sm rounded-full">
+<span class="material-symbols-outlined text-base">thumb_up</span> Helpful (12)
+                                 </button>
+<button class="flex items-center gap-xs text-on-surface-variant hover:text-primary transition-colors font-mono-sm text-mono-sm rounded-full">
+<span class="material-symbols-outlined text-base">reply</span> Reply
+                                 </button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Relationship Panel (Right) -->
+<aside class="w-80 bg-surface-container-low border-l border-outline-variant hidden xl:flex flex-col h-full overflow-y-auto">
+<div class="p-md border-b border-outline-variant sticky top-0 bg-surface-container-low/95 backdrop-blur z-10">
+<h3 class="font-label-caps text-label-caps text-on-surface-variant tracking-wider">CONTEXT &amp; RELATIONSHIPS</h3>
+</div>
+<div class="p-md space-y-lg">
+<!-- Related Components -->
+<div>
+<h4 class="font-mono-sm text-mono-sm text-on-surface mb-sm flex items-center gap-xs">
+<span class="material-symbols-outlined text-base text-tertiary">settings_input_component</span>
+                            Mentioned Components
+                        </h4>
+<div class="space-y-unit relative before:content-[''] before:absolute before:left-[11px] before:top-[16px] before:bottom-[16px] before:w-[1px] before:bg-outline-variant">
+<a class="block bg-surface p-sm rounded-xl border border-outline-variant hover:border-primary transition-colors ml-lg relative group" href="#">
+<div class="absolute -left-[20px] top-1/2 w-[20px] h-[1px] bg-outline-variant group-hover:bg-primary transition-colors"></div>
+<div class="font-label-caps text-label-caps text-primary mb-xs">NAV-M10-02</div>
+<div class="font-mono-sm text-mono-sm text-on-surface-variant truncate">uBlox M10 GPS Module</div>
+</a>
+<a class="block bg-surface p-sm rounded-xl border border-outline-variant hover:border-primary transition-colors ml-lg relative group" href="#">
+<div class="absolute -left-[20px] top-1/2 w-[20px] h-[1px] bg-outline-variant group-hover:bg-primary transition-colors"></div>
+<div class="font-label-caps text-label-caps text-primary mb-xs">ISO-GEL-01</div>
+<div class="font-mono-sm text-mono-sm text-on-surface-variant truncate">Vibration Damping Gel</div>
+</a>
+</div>
+</div>
+<!-- Related SOPs -->
+<div>
+<h4 class="font-mono-sm text-mono-sm text-on-surface mb-sm flex items-center gap-xs">
+<span class="material-symbols-outlined text-base text-tertiary">description</span>
+                            Referenced SOPs
+                        </h4>
+<div class="space-y-unit relative before:content-[''] before:absolute before:left-[11px] before:top-[16px] before:bottom-[16px] before:w-[1px] before:bg-outline-variant">
+<a class="block bg-surface p-sm rounded-xl border border-outline-variant hover:border-primary transition-colors ml-lg relative group" href="#">
+<div class="absolute -left-[20px] top-1/2 w-[20px] h-[1px] bg-outline-variant group-hover:bg-primary transition-colors"></div>
+<div class="font-label-caps text-label-caps text-tertiary mb-xs flex justify-between">
+                                    SOP-NAV-014
+                                    <span class="text-[10px] bg-surface-variant px-1 rounded-full">V2.1</span>
+</div>
+<div class="font-mono-sm text-mono-sm text-on-surface-variant line-clamp-2">Vibration Isolation Mounting for IMU/GPS</div>
+</a>
+</div>
+</div>
+<!-- Similar Issues -->
+<div>
+<h4 class="font-mono-sm text-mono-sm text-on-surface mb-sm flex items-center gap-xs">
+<span class="material-symbols-outlined text-base text-error">report_problem</span>
+                            Related Failures
+                        </h4>
+<ul class="space-y-sm">
+<li>
+<a class="flex gap-sm group" href="#">
+<span class="material-symbols-outlined text-sm text-error mt-xs">warning</span>
+<div>
+<div class="font-body-md text-body-md text-on-surface group-hover:text-primary transition-colors line-clamp-2 leading-tight">FR-112: In-flight EKF variance spike causing failsafe RTL</div>
+<div class="font-mono-sm text-mono-sm text-on-surface-variant mt-xs">Closed • Fixed</div>
+</div>
+</a>
+</li>
+</ul>
+</div>
+</div>
+</aside>
+</main>
+</div>
+</body></html>

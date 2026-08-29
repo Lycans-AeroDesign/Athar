@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AeroKMS - Permission Management</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=JetBrains+Mono:wght@400&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+                "surface-container": "#eeedf7",
+                "outline": "#747686",
+                "secondary-container": "#d4e3ff",
+                "surface-variant": "#e2e1ec",
+                "inverse-surface": "#2f3038",
+                "tertiary-fixed": "#ffdbd2",
+                "on-secondary-fixed": "#0c1c30",
+                "on-secondary-fixed-variant": "#39485e",
+                "on-primary": "#ffffff",
+                "on-surface": "#1a1b22",
+                "on-tertiary-fixed-variant": "#872004",
+                "error": "#ba1a1a",
+                "primary-fixed-dim": "#b7c4ff",
+                "on-primary-fixed": "#001551",
+                "error-container": "#ffdad6",
+                "tertiary-fixed-dim": "#ffb4a2",
+                "secondary": "#505f76",
+                "primary": "#00247d",
+                "tertiary": "#3d445a",
+                "surface-container-lowest": "#ffffff",
+                "on-secondary": "#ffffff",
+                "surface-tint": "#2151da",
+                "surface-container-low": "#f4f2fd",
+                "on-background": "#1a1b22",
+                "on-secondary-container": "#56657c",
+                "surface-bright": "#faf8ff",
+                "primary-fixed": "#dce1ff",
+                "on-primary-container": "#cad3ff",
+                "on-surface-variant": "#444654",
+                "secondary-fixed": "#d4e3ff",
+                "background": "#faf8ff",
+                "inverse-primary": "#b7c4ff",
+                "inverse-on-surface": "#f1f0fa",
+                "on-error": "#ffffff",
+                "on-tertiary-container": "#ff967b",
+                "outline-variant": "#c4c5d6",
+                "on-error-container": "#93000a",
+                "on-tertiary-fixed": "#3c0800",
+                "surface": "#faf8ff",
+                "surface-container-highest": "#e2e1ec",
+                "surface-dim": "#dad9e3",
+                "secondary-fixed-dim": "#b8c7e2",
+                "tertiary-container": "#841e02",
+                "primary-container": "#1d4ed8",
+                "surface-container-high": "#e8e7f2",
+                "on-tertiary": "#ffffff",
+                "on-primary-fixed-variant": "#063ab2"
+        },
+        "borderRadius": {
+                "DEFAULT": "0.25rem",
+                "lg": "0.5rem",
+                "xl": "0.75rem",
+                "full": "9999px"
+        },
+        "spacing": {
+                "xl": "32px",
+                "layout-margin": "40px",
+                "lg": "24px",
+                "layout-gutter": "20px",
+                "xs": "4px",
+                "unit": "4px",
+                "sm": "8px",
+                "md": "16px"
+        },
+        "fontFamily": {
+                "headline-lg": [
+                        "Inter"
+                ],
+                "body-lg": [
+                        "Inter"
+                ],
+                "body-md": [
+                        "Inter"
+                ],
+                "label-caps": [
+                        "Inter"
+                ],
+                "display": [
+                        "Inter"
+                ],
+                "headline-md": [
+                        "Inter"
+                ],
+                "mono-sm": [
+                        "JetBrains Mono"
+                ]
+        },
+        "fontSize": {
+                "headline-lg": [
+                        "28px",
+                        {
+                                "lineHeight": "36px",
+                                "fontWeight": "600"
+                        }
+                ],
+                "body-lg": [
+                        "16px",
+                        {
+                                "lineHeight": "26px",
+                                "fontWeight": "400"
+                        }
+                ],
+                "body-md": [
+                        "14px",
+                        {
+                                "lineHeight": "20px",
+                                "fontWeight": "400"
+                        }
+                ],
+                "label-caps": [
+                        "12px",
+                        {
+                                "lineHeight": "16px",
+                                "letterSpacing": "0.05em",
+                                "fontWeight": "600"
+                        }
+                ],
+                "display": [
+                        "36px",
+                        {
+                                "lineHeight": "44px",
+                                "letterSpacing": "-0.02em",
+                                "fontWeight": "700"
+                        }
+                ],
+                "headline-md": [
+                        "20px",
+                        {
+                                "lineHeight": "28px",
+                                "fontWeight": "600"
+                        }
+                ],
+                "mono-sm": [
+                        "13px",
+                        {
+                                "lineHeight": "18px",
+                                "fontWeight": "400"
+                        }
+                ]
+        }
+},
+    },
+  }
+</script>
+</head>
+<body class="bg-background text-on-background font-body-md text-body-md antialiased overflow-hidden">
+<!-- Top Navigation Bar -->
+<nav class="bg-surface dark:bg-surface text-primary dark:text-inverse-primary font-label-caps text-label-caps flex items-center justify-between px-lg h-16 ml-64 border-b border-outline-variant dark:border-outline fixed top-0 w-[calc(100%-16rem)] z-50">
+<div class="flex items-center gap-4">
+<span class="font-headline-md text-headline-md font-bold text-primary dark:text-inverse-primary">AeroKMS</span>
+<div class="relative ml-8">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" data-icon="search">search</span>
+<input class="pl-10 pr-4 py-2 bg-surface-variant rounded-full text-on-surface focus:outline-none focus:ring-2 focus:ring-primary w-64 border-none text-body-md font-body-md placeholder-on-surface-variant" placeholder="Search..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<button class="opacity-80 hover:opacity-100 hover:text-primary dark:hover:text-inverse-primary transition-opacity flex items-center">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="opacity-80 hover:opacity-100 text-primary dark:text-inverse-primary border-b-2 border-primary pb-4 mt-4 transition-opacity flex items-center">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+<div class="h-8 w-8 rounded-full overflow-hidden border border-outline-variant">
+<img alt="User Avatar" class="w-full h-full object-cover" data-alt="A professional headshot of an aerospace engineer in a brightly lit modern office setting. The lighting is soft and natural, emphasizing a clean, corporate aesthetic consistent with light mode design." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCy3nOEEfxDWu90zA9tNuWcXzLuFCCeJxpzGP0EGxtZNQnReEKiDgsma4ZZt20VIRe1A-3pC9f7n9E64mKqiouiwnkYkHLQ5Dcr8o0nVpZGuDNxzNY88Z_dRgkvrqAB_SQATWDZcftGbpg02_dbJhyaUPBpW8HLEHU8DDGIcLQphl_hzGqLW-5tvpGEVMceejulw5HwSn9edMOaA0Kt4izo_pKW3elebIwDWuvxXXHKtrD_3GDcEXVl"/>
+</div>
+</div>
+</nav>
+<!-- Side Navigation Bar -->
+<aside class="bg-surface-container-low dark:bg-surface-container-low text-primary dark:text-inverse-primary font-body-md text-body-md docked left-0 h-full w-64 border-r border-outline-variant dark:border-outline flat no shadows flex flex-col h-screen fixed left-0 top-0 z-40 pt-6">
+<div class="px-6 mb-8 flex items-center gap-3">
+<div class="h-10 w-10 rounded-xl bg-primary-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-on-primary-container" data-icon="rocket_launch">rocket_launch</span>
+</div>
+<div>
+<h1 class="font-headline-md text-headline-md font-bold text-primary dark:text-inverse-primary leading-tight">AeroKMS</h1>
+<p class="text-xs text-on-surface-variant">Engineering Knowledge System</p>
+</div>
+</div>
+<div class="flex-1 px-4 space-y-2 overflow-y-auto">
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-variant dark:hover:bg-surface-variant rounded-xl transition-colors duration-150 group" href="#">
+<span class="material-symbols-outlined group-hover:scale-95 transition-transform" data-icon="dashboard">dashboard</span>
+<span>Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-variant dark:hover:bg-surface-variant rounded-xl transition-colors duration-150 group" href="#">
+<span class="material-symbols-outlined group-hover:scale-95 transition-transform" data-icon="menu_book">menu_book</span>
+<span>Knowledge</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-variant dark:hover:bg-surface-variant rounded-xl transition-colors duration-150 group" href="#">
+<span class="material-symbols-outlined group-hover:scale-95 transition-transform" data-icon="architecture">architecture</span>
+<span>Projects</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-variant dark:hover:bg-surface-variant rounded-xl transition-colors duration-150 group" href="#">
+<span class="material-symbols-outlined group-hover:scale-95 transition-transform" data-icon="settings_input_component">settings_input_component</span>
+<span>Components</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-variant dark:hover:bg-surface-variant rounded-xl transition-colors duration-150 group" href="#">
+<span class="material-symbols-outlined group-hover:scale-95 transition-transform" data-icon="description">description</span>
+<span>SOPs</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-variant dark:hover:bg-surface-variant rounded-xl transition-colors duration-150 group" href="#">
+<span class="material-symbols-outlined group-hover:scale-95 transition-transform" data-icon="report_problem">report_problem</span>
+<span>Failures</span>
+</a>
+</div>
+<div class="p-4 border-t border-outline-variant mt-auto">
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-variant dark:hover:bg-surface-variant rounded-xl transition-colors duration-150 group" href="#">
+<span class="material-symbols-outlined group-hover:scale-95 transition-transform" data-icon="info">info</span>
+<span>About Lycans</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="ml-64 mt-16 p-layout-margin h-[calc(100vh-4rem)] overflow-y-auto">
+<div class="max-w-[1200px] mx-auto">
+<header class="mb-xl flex justify-between items-end">
+<div>
+<h2 class="font-display text-display text-primary mb-2">Permission Management</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant">Configure role-based access control across AeroKMS modules.</p>
+</div>
+<div class="flex gap-4">
+<button class="px-6 py-2 bg-surface text-on-surface border border-outline rounded-xl font-label-caps text-label-caps hover:bg-surface-variant transition-colors">Discard Changes</button>
+<button class="px-6 py-2 bg-primary-container text-on-primary-container rounded-xl font-label-caps text-label-caps hover:opacity-90 transition-opacity">Save Configuration</button>
+</div>
+</header>
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden shadow-sm">
+<!-- Matrix Header -->
+<div class="grid grid-cols-[250px_1fr_1fr_1fr] bg-surface-container border-b border-outline-variant">
+<div class="p-md font-label-caps text-label-caps text-on-surface-variant flex items-center border-r border-outline-variant">
+                        Module / Resource
+                    </div>
+<div class="p-md text-center border-r border-outline-variant">
+<span class="font-headline-md text-headline-md text-on-surface block mb-1">Admin</span>
+<span class="font-body-md text-body-md text-on-surface-variant">Full System Access</span>
+</div>
+<div class="p-md text-center border-r border-outline-variant">
+<span class="font-headline-md text-headline-md text-on-surface block mb-1">Lead Engineer</span>
+<span class="font-body-md text-body-md text-on-surface-variant">Project Authority</span>
+</div>
+<div class="p-md text-center">
+<span class="font-headline-md text-headline-md text-on-surface block mb-1">Member</span>
+<span class="font-body-md text-body-md text-on-surface-variant">Read / Contribute</span>
+</div>
+</div>
+<!-- Matrix Body -->
+<div class="divide-y divide-outline-variant">
+<!-- Row Group: Articles -->
+<div class="grid grid-cols-[250px_1fr_1fr_1fr] hover:bg-surface-variant transition-colors group">
+<div class="p-md border-r border-outline-variant flex flex-col justify-center">
+<span class="font-headline-md text-headline-md text-on-surface">Knowledge Articles</span>
+<span class="font-mono-sm text-mono-sm text-on-surface-variant mt-1">mod_articles</span>
+</div>
+<div class="p-md border-r border-outline-variant flex items-center justify-center gap-6">
+<label class="flex items-center gap-2 cursor-pointer">
+<input checked="" class="form-checkbox text-primary rounded-lg border-outline focus:ring-primary w-5 h-5 opacity-50 cursor-not-allowed" disabled="" type="checkbox"/>
+<span class="font-mono-sm text-mono-sm text-on-surface-variant">R/W/D</span>
+</label>
+</div>
+<div class="p-md border-r border-outline-variant flex items-center justify-center gap-6">
+<label class="flex items-center gap-2 cursor-pointer">
+<input checked="" class="form-checkbox text-primary rounded-lg border-outline focus:ring-primary w-5 h-5" type="checkbox"/>
+<span class="font-mono-sm text-mono-sm text-on-surface-variant">R/W</span>
+</label>
+</div>
+<div class="p-md flex items-center justify-center gap-6">
+<label class="flex items-center gap-2 cursor-pointer">
+<input checked="" class="form-checkbox text-primary rounded-lg border-outline focus:ring-primary w-5 h-5" type="checkbox"/>
+<span class="font-mono-sm text-mono-sm text-on-surface-variant">Read</span>
+</label>
+</div>
+</div>
+<!-- Row Group: Projects -->
+<div class="grid grid-cols-[250px_1fr_1fr_1fr] hover:bg-surface-variant transition-colors group bg-surface">
+<div class="p-md border-r border-outline-variant flex flex-col justify-center">
+<span class="font-headline-md text-headline-md text-on-surface">Engineering Projects</span>
+<span class="font-mono-sm text-mono-sm text-on-surface-variant mt-1">mod_projects</span>
+</div>
+<div class="p-md border-r border-outline-variant flex items-center justify-center gap-6">
+<label class="flex items-center gap-2 cursor-pointer">
+<input checked="" class="form-checkbox text-primary rounded-lg border-outline focus:ring-primary w-5 h-5 opacity-50 cursor-not-allowed" disabled="" type="checkbox"/>
+<span class="font-mono-sm text-mono-sm text-on-surface-variant">R/W/D</span>
+</label>
+</div>
+<div class="p-md border-r border-outline-variant flex items-center justify-center gap-6">
+<label class="flex items-center gap-2 cursor-pointer">
+<input checked="" class="form-checkbox text-primary rounded-lg border-outline focus:ring-primary w-5 h-5" type="checkbox"/>
+<span class="font-mono-sm text-mono-sm text-on-surface-variant">R/W/D</span>
+</label>
+</div>
+<div class="p-md flex items-center justify-center gap-6">
+<label class="flex items-center gap-2 cursor-pointer">
+<input class="form-checkbox text-primary rounded-lg border-outline focus:ring-primary w-5 h-5" type="checkbox"/>
+<span class="font-mono-sm text-mono-sm text-on-surface-variant">None</span>
+</label>
+</div>
+</div>
+<!-- Row Group: Failures -->
+<div class="grid grid-cols-[250px_1fr_1fr_1fr] hover:bg-surface-variant transition-colors group">
+<div class="p-md border-r border-outline-variant flex flex-col justify-center border-l-4 border-l-error">
+<span class="font-headline-md text-headline-md text-on-surface">Failure Reports</span>
+<span class="font-mono-sm text-mono-sm text-on-surface-variant mt-1">mod_failures</span>
+</div>
+<div class="p-md border-r border-outline-variant flex items-center justify-center gap-6">
+<label class="flex items-center gap-2 cursor-pointer">
+<input checked="" class="form-checkbox text-primary rounded-lg border-outline focus:ring-primary w-5 h-5 opacity-50 cursor-not-allowed" disabled="" type="checkbox"/>
+<span class="font-mono-sm text-mono-sm text-on-surface-variant">R/W/D</span>
+</label>
+</div>
+<div class="p-md border-r border-outline-variant flex items-center justify-center gap-6">
+<label class="flex items-center gap-2 cursor-pointer">
+<input checked="" class="form-checkbox text-primary rounded-lg border-outline focus:ring-primary w-5 h-5" type="checkbox"/>
+<span class="font-mono-sm text-mono-sm text-on-surface-variant">R/W</span>
+</label>
+</div>
+<div class="p-md flex items-center justify-center gap-6">
+<label class="flex items-center gap-2 cursor-pointer">
+<input checked="" class="form-checkbox text-primary rounded-lg border-outline focus:ring-primary w-5 h-5" type="checkbox"/>
+<span class="font-mono-sm text-mono-sm text-on-surface-variant">Report Only</span>
+</label>
+</div>
+</div>
+</div>
+</div>
+<div class="mt-lg text-right">
+<p class="font-mono-sm text-mono-sm text-outline">Last modified: 2 hours ago by System Admin</p>
+</div>
+</div>
+</main>
+</body></html>

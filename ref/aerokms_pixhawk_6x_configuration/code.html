@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AeroKMS - Pixhawk 6X Configuration</title>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 24px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }
+    </style>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Config from Guidelines -->
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+                "surface-container": "#eeedf7",
+                "outline": "#747686",
+                "secondary-container": "#d4e3ff",
+                "surface-variant": "#e2e1ec",
+                "inverse-surface": "#2f3038",
+                "tertiary-fixed": "#ffdbd2",
+                "on-secondary-fixed": "#0c1c30",
+                "on-secondary-fixed-variant": "#39485e",
+                "on-primary": "#ffffff",
+                "on-surface": "#1a1b22",
+                "on-tertiary-fixed-variant": "#872004",
+                "error": "#ba1a1a",
+                "primary-fixed-dim": "#b7c4ff",
+                "on-primary-fixed": "#001551",
+                "error-container": "#ffdad6",
+                "tertiary-fixed-dim": "#ffb4a2",
+                "secondary": "#505f76",
+                "primary": "#00247d",
+                "tertiary": "#3d445a",
+                "surface-container-lowest": "#ffffff",
+                "on-secondary": "#ffffff",
+                "surface-tint": "#2151da",
+                "surface-container-low": "#f4f2fd",
+                "on-background": "#1a1b22",
+                "on-secondary-container": "#56657c",
+                "surface-bright": "#faf8ff",
+                "primary-fixed": "#dce1ff",
+                "on-primary-container": "#cad3ff",
+                "on-surface-variant": "#444654",
+                "secondary-fixed": "#d4e3ff",
+                "background": "#faf8ff",
+                "inverse-primary": "#b7c4ff",
+                "inverse-on-surface": "#f1f0fa",
+                "on-error": "#ffffff",
+                "on-tertiary-container": "#ff967b",
+                "outline-variant": "#c4c5d6",
+                "on-error-container": "#93000a",
+                "on-tertiary-fixed": "#3c0800",
+                "surface": "#faf8ff",
+                "surface-container-highest": "#e2e1ec",
+                "surface-dim": "#dad9e3",
+                "secondary-fixed-dim": "#b8c7e2",
+                "tertiary-container": "#841e02",
+                "primary-container": "#1d4ed8",
+                "surface-container-high": "#e8e7f2",
+                "on-tertiary": "#ffffff",
+                "on-primary-fixed-variant": "#063ab2"
+        },
+        "borderRadius": {
+                "DEFAULT": "0.25rem",
+                "lg": "0.5rem",
+                "xl": "0.75rem",
+                "full": "9999px"
+        },
+        "spacing": {
+                "xl": "32px",
+                "layout-margin": "40px",
+                "lg": "24px",
+                "layout-gutter": "20px",
+                "xs": "4px",
+                "unit": "4px",
+                "sm": "8px",
+                "md": "16px"
+        },
+        "fontFamily": {
+                "headline-lg": [
+                        "Inter"
+                ],
+                "body-lg": [
+                        "Inter"
+                ],
+                "body-md": [
+                        "Inter"
+                ],
+                "label-caps": [
+                        "Inter"
+                ],
+                "display": [
+                        "Inter"
+                ],
+                "headline-md": [
+                        "Inter"
+                ],
+                "mono-sm": [
+                        "JetBrains Mono"
+                ]
+        },
+        "fontSize": {
+                "headline-lg": [
+                        "28px",
+                        {
+                                "lineHeight": "36px",
+                                "fontWeight": "600"
+                        }
+                ],
+                "body-lg": [
+                        "16px",
+                        {
+                                "lineHeight": "26px",
+                                "fontWeight": "400"
+                        }
+                ],
+                "body-md": [
+                        "14px",
+                        {
+                                "lineHeight": "20px",
+                                "fontWeight": "400"
+                        }
+                ],
+                "label-caps": [
+                        "12px",
+                        {
+                                "lineHeight": "16px",
+                                "letterSpacing": "0.05em",
+                                "fontWeight": "600"
+                        }
+                ],
+                "display": [
+                        "36px",
+                        {
+                                "lineHeight": "44px",
+                                "letterSpacing": "-0.02em",
+                                "fontWeight": "700"
+                        }
+                ],
+                "headline-md": [
+                        "20px",
+                        {
+                                "lineHeight": "28px",
+                                "fontWeight": "600"
+                        }
+                ],
+                "mono-sm": [
+                        "13px",
+                        {
+                                "lineHeight": "18px",
+                                "fontWeight": "400"
+                        }
+                ]
+        }
+},
+    },
+  }
+</script>
+</head>
+<body class="bg-background text-on-background font-body-md text-body-md antialiased overflow-x-hidden selection:bg-primary-fixed selection:text-on-primary-fixed">
+<!-- JSON Component: SideNavBar -->
+<nav class="flex flex-col h-screen fixed left-0 top-0 docked left-0 h-full w-64 border-r border-outline-variant bg-surface-container-low z-20">
+<!-- Header -->
+<div class="p-lg border-b border-outline-variant flex items-center gap-md">
+<div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-on-primary font-headline-md text-headline-md">A</div>
+<div>
+<h1 class="font-headline-md text-headline-md font-bold text-primary">AeroKMS</h1>
+<p class="font-label-caps text-label-caps text-on-surface-variant uppercase">Engineering Knowledge System</p>
+</div>
+</div>
+<!-- Main Tabs -->
+<div class="flex-1 overflow-y-auto py-md px-sm flex flex-col gap-xs">
+<a class="flex items-center gap-md px-md py-sm rounded-lg text-on-surface-variant hover:bg-surface-variant scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span>Dashboard</span>
+</a>
+<!-- ACTIVE TAB: Knowledge (matches Article intent) -->
+<a class="flex items-center gap-md px-md py-sm rounded-lg bg-secondary-container text-on-secondary-container font-bold scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">menu_book</span>
+<span>Knowledge</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm rounded-lg text-on-surface-variant hover:bg-surface-variant scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined">architecture</span>
+<span>Projects</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm rounded-lg text-on-surface-variant hover:bg-surface-variant scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined">settings_input_component</span>
+<span>Components</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm rounded-lg text-on-surface-variant hover:bg-surface-variant scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined">description</span>
+<span>SOPs</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm rounded-lg text-on-surface-variant hover:bg-surface-variant scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined">report_problem</span>
+<span>Failures</span>
+</a>
+</div>
+<!-- Footer Tab -->
+<div class="p-md border-t border-outline-variant">
+<a class="flex items-center gap-md px-md py-sm rounded-lg text-on-surface-variant hover:bg-surface-variant transition-colors duration-150" href="#">
+<span class="material-symbols-outlined">info</span>
+<span>About Lycans</span>
+</a>
+</div>
+</nav>
+<!-- Main Content Wrapper -->
+<div class="ml-64 flex flex-col min-h-screen">
+<!-- JSON Component: TopNavBar -->
+<header class="flex items-center justify-between px-lg h-16 docked top-0 w-full border-b border-outline-variant bg-surface sticky z-10">
+<!-- Left Search -->
+<div class="flex-1 flex items-center">
+<div class="relative w-96">
+<span class="material-symbols-outlined absolute left-sm top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+<input class="w-full pl-xl pr-md py-xs bg-surface-container-high border-none rounded-full focus:ring-1 focus:ring-primary text-body-md font-body-md placeholder:text-on-surface-variant" placeholder="Search Knowledge System..." type="text"/>
+</div>
+</div>
+<!-- Right Actions -->
+<div class="flex items-center gap-md">
+<button class="p-sm text-on-surface-variant hover:text-primary opacity-80 hover:opacity-100 transition-opacity">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-sm text-on-surface-variant hover:text-primary opacity-80 hover:opacity-100 transition-opacity">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<div class="w-8 h-8 rounded-full bg-tertiary-container border border-outline ml-sm overflow-hidden flex items-center justify-center">
+<span class="material-symbols-outlined text-on-tertiary-container" style="font-variation-settings: 'FILL' 1;">person</span>
+</div>
+</div>
+</header>
+<!-- 3-Pane Layout -->
+<main class="flex-1 flex flex-row overflow-hidden">
+<!-- Left Pane: Table of Contents -->
+<aside class="w-64 border-r border-outline-variant bg-surface hidden lg:block overflow-y-auto p-lg">
+<div class="sticky top-0">
+<h3 class="font-label-caps text-label-caps text-on-surface-variant uppercase mb-md tracking-wider">Contents</h3>
+<ul class="flex flex-col gap-sm font-body-md text-body-md text-on-surface">
+<li><a class="hover:text-primary transition-colors border-l-2 border-transparent hover:border-primary pl-sm" href="#overview">1. Overview</a></li>
+<li><a class="hover:text-primary transition-colors border-l-2 border-transparent hover:border-primary pl-sm" href="#prerequisites">2. Prerequisites</a></li>
+<li>
+<a class="hover:text-primary transition-colors border-l-2 border-transparent hover:border-primary pl-sm" href="#wiring">3. Hardware Wiring</a>
+<ul class="flex flex-col gap-xs mt-xs ml-md text-on-surface-variant">
+<li><a class="hover:text-primary transition-colors" href="#power">3.1 Power Module</a></li>
+<li><a class="hover:text-primary transition-colors" href="#gps">3.2 GPS / RTK</a></li>
+</ul>
+</li>
+<li><a class="hover:text-primary transition-colors border-l-2 border-transparent hover:border-primary pl-sm" href="#firmware">4. Firmware Flashing</a></li>
+<li><a class="hover:text-primary transition-colors border-l-2 border-transparent hover:border-primary pl-sm" href="#parameters">5. Initial Parameters</a></li>
+</ul>
+</div>
+</aside>
+<!-- Center Pane: Technical Article -->
+<article class="flex-1 bg-surface-container-lowest overflow-y-auto p-xl relative">
+<div class="max-w-[800px] mx-auto pb-xl">
+<!-- Article Header -->
+<div class="mb-lg">
+<div class="flex items-center gap-sm mb-md">
+<span class="inline-flex items-center px-sm py-xs rounded-lg bg-primary-fixed text-on-primary-fixed font-label-caps text-label-caps uppercase tracking-wider">Article</span>
+<span class="text-on-surface-variant font-mono-sm text-mono-sm">DOC-772A</span>
+</div>
+<h1 class="font-display text-display text-on-surface mb-md">Pixhawk 6X Configuration Standard</h1>
+<!-- Meta -->
+<div class="flex items-center gap-lg text-on-surface-variant font-body-md text-body-md border-b border-outline-variant pb-md">
+<div class="flex items-center gap-xs">
+<span class="material-symbols-outlined text-[18px]">calendar_today</span>
+<span>Last updated: Aug 21, 2023</span>
+</div>
+<div class="flex items-center gap-xs">
+<span class="material-symbols-outlined text-[18px]">person</span>
+<span>Author: Ahmad R.</span>
+</div>
+<div class="flex items-center gap-xs">
+<span class="material-symbols-outlined text-[18px]">history</span>
+<span>Version 5</span>
+</div>
+</div>
+</div>
+<!-- Article Body -->
+<div class="flex flex-col gap-lg font-body-lg text-body-lg text-on-surface leading-relaxed">
+<p id="overview">The Pixhawk 6X is the standard flight controller for all heavy-lift and experimental fixed-wing platforms in the DBF series. This document outlines the mandatory configuration steps required before flight testing to ensure telemetry consistency and EKF stability.</p>
+<!-- Warning Note -->
+<div class="bg-error-container border-l-4 border-error p-md rounded-r-xl flex gap-md items-start my-sm">
+<span class="material-symbols-outlined text-on-error-container mt-xs" style="font-variation-settings: 'FILL' 1;">warning</span>
+<div>
+<h4 class="font-headline-md text-headline-md text-on-error-container mb-xs">Critical EKF Dependency</h4>
+<p class="text-on-error-container font-body-md text-body-md">Do not attempt to arm the vehicle without establishing a 3D GPS fix with HDOP &lt; 1.0. The 6X relies heavily on primary GPS for EKF3 origin alignment. Failure to do so has resulted in previously documented roll-inversions upon takeoff.</p>
+</div>
+</div>
+<h2 class="font-headline-lg text-headline-lg text-on-surface mt-md border-b border-surface-variant pb-xs" id="wiring">Hardware Wiring Topology</h2>
+<p>Standardized wiring ensures ground loop prevention. Route high-current ESC traces away from the primary compass module located on the I2C bus.</p>
+<!-- Diagram Placeholder -->
+<figure class="my-md p-md bg-surface-container rounded-xl border border-outline-variant">
+<img class="w-full h-auto rounded-lg" data-alt="A highly detailed technical vector schematic showing the wiring diagram of a Pixhawk 6X flight controller. The diagram uses a clean, modern, light-mode blueprint aesthetic with precise lines, clear labels in monospace font, and subtle blue and gray tones. It shows connections to power modules, GPS receivers, and telemetry radios on a pristine white background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB-0_9cP8NZYn7HoaHCN8Iu2qdR65FRqyx01OO7OYUapR3zHwC6mzO1jdPxNorjOus7hcs5h3ypn64MpyhpH8X3TqEPA3c6rNv5TU8xkyY_T-KypU55kt2_IKE7hT4WUcMPlwIoAPxuXSr87SaK1Qd_tVed9cYggMrm6zy3dtYfD7sf8EWnNK_sv8qMtX6zsEwYyFR8sNynf8c5APWe699vOjBWaI8kUxYAysvEeBAUoNTSur-STcS3"/>
+<figcaption class="text-center text-on-surface-variant font-mono-sm text-mono-sm mt-sm">Figure 1: Standard DBF 2027 Telemetry and Power Routing</figcaption>
+</figure>
+<h2 class="font-headline-lg text-headline-lg text-on-surface mt-md border-b border-surface-variant pb-xs" id="parameters">Initial Parameters (Base Config)</h2>
+<p>Apply the following parameter block via Mission Planner prior to accelerometer calibration. These values disable legacy filters and enable the high-rate IMU logging required for post-flight vibration analysis.</p>
+<!-- Code Block -->
+<div class="bg-inverse-surface rounded-xl border border-outline overflow-hidden my-sm">
+<div class="flex items-center justify-between px-md py-xs bg-tertiary text-on-tertiary font-mono-sm text-mono-sm border-b border-outline">
+<span>base_config.param</span>
+<button class="hover:text-primary-fixed transition-colors"><span class="material-symbols-outlined text-[16px]">content_copy</span></button>
+</div>
+<pre class="p-md font-mono-sm text-mono-sm text-inverse-on-surface overflow-x-auto"><code>INS_LOG_BAT_MASK, 7
+INS_LOG_BAT_OPT, 0
+AHRS_EKF_TYPE, 3
+EK2_ENABLE, 0
+EK3_ENABLE, 1
+GPS_TYPE, 1
+GPS_TYPE2, 1
+SERIAL3_PROTOCOL, 1
+SERIAL4_PROTOCOL, 5</code></pre>
+</div>
+</div>
+<!-- Comments & History -->
+<div class="mt-xl pt-lg border-t border-outline-variant">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-md">Revision History &amp; Comments</h3>
+<div class="flex flex-col gap-md">
+<!-- Comment/Rev Item -->
+<div class="flex gap-md bg-surface p-md rounded-xl border border-outline-variant">
+<div class="w-10 h-10 rounded-full bg-secondary-container flex items-center justify-center flex-shrink-0">
+<span class="font-label-caps text-label-caps text-on-secondary-container">AR</span>
+</div>
+<div class="flex-1">
+<div class="flex items-center justify-between mb-xs">
+<span class="font-headline-md text-headline-md text-on-surface text-[16px]">Ahmad R.</span>
+<span class="font-mono-sm text-mono-sm text-on-surface-variant">Aug 21, 2023 - v5</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface">Updated parameters for EK3 enforcement. Removed legacy EK2 fallback configs per DBF-2027 systems review.</p>
+</div>
+</div>
+<!-- Comment/Rev Item -->
+<div class="flex gap-md bg-surface p-md rounded-xl border border-outline-variant">
+<div class="w-10 h-10 rounded-full bg-surface-variant flex items-center justify-center flex-shrink-0">
+<span class="font-label-caps text-label-caps text-on-surface-variant">S</span>
+</div>
+<div class="flex-1">
+<div class="flex items-center justify-between mb-xs">
+<span class="font-headline-md text-headline-md text-on-surface text-[16px]">System</span>
+<span class="font-mono-sm text-mono-sm text-on-surface-variant">Jun 14, 2023 - v4</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface">Automated structural update. Migrated diagrams to centralized asset repository.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</article>
+<!-- Right Pane: Relationship Panel (Critical) -->
+<aside class="w-80 border-l border-outline-variant bg-surface-container-low hidden xl:flex flex-col overflow-y-auto">
+<div class="p-md border-b border-outline-variant sticky top-0 bg-surface-container-low z-10 flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary">account_tree</span>
+<h2 class="font-label-caps text-label-caps text-on-surface uppercase tracking-widest">Related Knowledge</h2>
+</div>
+<div class="p-md flex flex-col gap-lg font-mono-sm text-mono-sm">
+<!-- Relation: Component -->
+<div>
+<h4 class="font-label-caps text-label-caps text-on-surface-variant mb-sm">Component Def</h4>
+<div class="border-l border-outline-variant pl-sm ml-sm flex flex-col gap-xs">
+<a class="flex items-center gap-xs p-xs rounded-lg hover:bg-surface-variant text-on-surface transition-colors group" href="#">
+<span class="material-symbols-outlined text-[16px] text-tertiary group-hover:text-primary">settings_input_component</span>
+<span>Pixhawk 6X Base</span>
+</a>
+</div>
+</div>
+<!-- Relation: Project -->
+<div>
+<h4 class="font-label-caps text-label-caps text-on-surface-variant mb-sm">Used In Project</h4>
+<div class="border-l border-outline-variant pl-sm ml-sm flex flex-col gap-xs">
+<a class="flex items-center gap-xs p-xs rounded-lg hover:bg-surface-variant text-on-surface transition-colors group" href="#">
+<span class="material-symbols-outlined text-[16px] text-tertiary group-hover:text-primary">architecture</span>
+<span class="font-bold">DBF 2027</span>
+</a>
+<a class="flex items-center gap-xs p-xs rounded-lg hover:bg-surface-variant text-on-surface transition-colors group" href="#">
+<span class="material-symbols-outlined text-[16px] text-tertiary group-hover:text-primary">architecture</span>
+<span>HL-Quad V2</span>
+</a>
+</div>
+</div>
+<!-- Relation: SOP -->
+<div>
+<h4 class="font-label-caps text-label-caps text-on-surface-variant mb-sm">Procedures</h4>
+<div class="border-l border-outline-variant pl-sm ml-sm flex flex-col gap-xs">
+<a class="flex items-center gap-xs p-xs rounded-lg hover:bg-surface-variant text-on-surface transition-colors group" href="#">
+<span class="material-symbols-outlined text-[16px] text-tertiary group-hover:text-primary">description</span>
+<span>Pixhawk Setup Guide</span>
+</a>
+</div>
+</div>
+<!-- Relation: Failure -->
+<div>
+<h4 class="font-label-caps text-label-caps text-on-surface-variant mb-sm">Known Failures</h4>
+<div class="border-l border-error pl-sm ml-sm flex flex-col gap-xs">
+<a class="flex items-center gap-xs p-xs rounded-lg hover:bg-error-container text-on-surface transition-colors group" href="#">
+<span class="material-symbols-outlined text-[16px] text-error">report_problem</span>
+<span>GPS EKF Consistency</span>
+</a>
+</div>
+</div>
+<!-- Relation: Questions -->
+<div>
+<h4 class="font-label-caps text-label-caps text-on-surface-variant mb-sm">Open Questions</h4>
+<div class="border-l border-outline-variant pl-sm ml-sm flex flex-col gap-xs">
+<a class="flex items-center gap-xs p-xs rounded-lg hover:bg-surface-variant text-on-surface transition-colors group italic" href="#">
+<span class="material-symbols-outlined text-[16px] text-tertiary group-hover:text-primary">help</span>
+<span>"How to tune PIDs on 6X?"</span>
+</a>
+</div>
+</div>
+</div>
+</aside>
+</main>
+</div>
+</body></html>
