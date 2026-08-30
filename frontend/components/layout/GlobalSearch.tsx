@@ -33,13 +33,22 @@ export function GlobalSearch() {
       setIsSearching(true);
       searchKnowledge(trimmed, scope === "all" ? undefined : scope)
         .then((data) => {
-          setResults(data);
+          setResults(data.results);
           setIsOpen(true);
         })
         .finally(() => setIsSearching(false));
     }, 300);
     return () => clearTimeout(handle);
   }, [query, scope]);
+
+  function goToSearchPage() {
+    const trimmed = query.trim();
+    if (!trimmed) return;
+    setIsOpen(false);
+    const params = new URLSearchParams({ q: trimmed });
+    if (scope !== "all") params.set("type", scope);
+    router.push(`/knowledge/search?${params.toString()}`);
+  }
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -76,6 +85,7 @@ export function GlobalSearch() {
         onFocus={() => results && setIsOpen(true)}
         onKeyDown={(e) => {
           if (e.key === "Escape") setIsOpen(false);
+          if (e.key === "Enter") goToSearchPage();
         }}
       />
       <div className="absolute end-2 top-1/2 -translate-y-1/2">
@@ -130,6 +140,15 @@ export function GlobalSearch() {
                   </button>
                 </li>
               ))}
+              <li className="border-t border-outline-variant mt-1 pt-1">
+                <button
+                  type="button"
+                  onClick={goToSearchPage}
+                  className="w-full px-4 py-2.5 text-start font-label-caps text-label-caps uppercase text-primary hover:bg-surface-variant transition-colors"
+                >
+                  {t("seeAllResults", { query })}
+                </button>
+              </li>
             </ul>
           )}
         </div>

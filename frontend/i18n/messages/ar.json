@@ -15,7 +15,10 @@
     "copyCode": "نسخ الكود",
     "copied": "تم النسخ!",
     "share": "مشاركة",
-    "copiedLink": "تم نسخ الرابط!"
+    "copiedLink": "تم نسخ الرابط!",
+    "previous": "السابق",
+    "next": "التالي",
+    "resultCount": "{count, plural, =0 {لا توجد نتائج} one {نتيجة واحدة} two {نتيجتان} few {# نتائج} many {# نتيجة} other {# نتيجة}}"
   },
   "auth": {
     "emailLabel": "البريد الإلكتروني",
@@ -49,6 +52,7 @@
     "searchScopeQuestions": "الأسئلة",
     "searching": "جارٍ البحث...",
     "noSearchResults": "لا توجد نتائج.",
+    "seeAllResults": "عرض كل النتائج لـ \"{query}\"",
     "notifications": "الإشعارات",
     "settings": "الإعدادات",
     "accountMenu": "قائمة الحساب",
@@ -66,7 +70,28 @@
   "dashboard": {
     "welcome": "مرحبًا",
     "welcomeWithName": "مرحبًا، {name}",
-    "placeholder": "محتوى لوحة التحكم قادم قريبًا."
+    "subtitle": "إليك آخر المستجدات في قاعدة المعرفة.",
+    "newArticleButton": "مقالة جديدة",
+    "askQuestionButton": "اطرح سؤالاً",
+    "statArticlesLabel": "مقالات المعرفة",
+    "statQuestionsLabel": "الأسئلة المفتوحة",
+    "recentlyUpdatedTitle": "آخر تحديثات المعرفة",
+    "viewAllLink": "عرض الكل",
+    "recentEmptyState": "لا يوجد شيء هنا بعد.",
+    "activityTitle": "نشاط الفريق الأخير",
+    "activityEmptyState": "لا يوجد نشاط حديث بعد.",
+    "activityLoading": "جارٍ التحميل...",
+    "systemActor": "النظام",
+    "activityActions": {
+      "articlePublish": "نشر",
+      "articleSubmit": "أرسل للمراجعة",
+      "articleReject": "رفض",
+      "articleArchive": "أرشف",
+      "questionCreate": "طرح",
+      "questionAnswer": "أجاب على",
+      "questionAcceptAnswer": "قبل إجابة على",
+      "questionPromote": "رقّى"
+    }
   },
   "settings": {
     "title": "إعدادات المؤسسة",
@@ -75,7 +100,8 @@
       "general": "عام",
       "branding": "الهوية البصرية",
       "categories": "الفئات",
-      "permissions": "الأدوار والصلاحيات"
+      "permissions": "الأدوار والصلاحيات",
+      "audit": "سجل التدقيق"
     },
     "general": {
       "title": "التفاصيل العامة",
@@ -140,6 +166,16 @@
       "roleNameLabel": "اسم الدور",
       "roleDescriptionLabel": "الوصف",
       "createRole": "إنشاء الدور"
+    },
+    "audit": {
+      "title": "سجل التدقيق",
+      "description": "سجل بالإجراءات الحساسة عبر المؤسسة.",
+      "emptyState": "لا توجد سجلات تدقيق بعد.",
+      "actionColumn": "الإجراء",
+      "targetColumn": "الهدف",
+      "actorColumn": "المستخدم",
+      "timeColumn": "الوقت",
+      "systemActor": "النظام"
     }
   },
   "account": {
@@ -163,6 +199,19 @@
       "newArticleButton": "مقالة جديدة",
       "emptyState": "لا يوجد شيء هنا بعد.",
       "loading": "جارٍ التحميل..."
+    },
+    "search": {
+      "title": "البحث",
+      "titleWithQuery": "نتائج البحث عن \"{query}\"",
+      "filtersTitle": "نوع المحتوى",
+      "filterAll": "كل النتائج",
+      "filterArticles": "المقالات",
+      "filterQuestions": "الأسئلة",
+      "emptyQuery": "اكتب شيئًا للبحث.",
+      "loading": "جارٍ التحميل...",
+      "noResults": "لا توجد نتائج لـ \"{query}\".",
+      "badgeArticle": "مقالة",
+      "badgeQuestion": "سؤال"
     },
     "status": {
       "draft": "مسودة",
@@ -208,10 +257,16 @@
       "archiveConfirmBody": "لن تظهر بعد الآن في قاعدة المعرفة المنشورة.",
       "historyModalTitle": "سجل المراجعات",
       "systemAuthor": "النظام",
-      "tableOfContents": "المحتويات"
+      "tableOfContents": "المحتويات",
+      "visibilityLabel": "مستوى الظهور",
+      "visibilityPUBLIC": "عام",
+      "visibilityORGANIZATION": "المؤسسة",
+      "visibilityRESTRICTED": "مقيّد"
     },
     "question": {
       "badgeLabel": "سؤال",
+      "backToKnowledge": "العودة إلى قاعدة المعرفة",
+      "createPermissionRequired": "لا تملك صلاحية طرح الأسئلة.",
       "answerCount": "{count, plural, =0 {لا توجد إجابات بعد} one {إجابة واحدة} two {إجابتان} few {# إجابات} many {# إجابة} other {# إجابة}}",
       "askButton": "اطرح سؤالاً",
       "asking": "جارٍ الطرح...",
@@ -234,7 +289,24 @@
       "closedNotice": "هذا السؤال مغلق أمام الإجابات الجديدة.",
       "promoteButton": "ترقية إلى مقالة",
       "promoteBannerText": "يحتوي هذا السؤال وإجابته المقبولة على معرفة تقنية عالية القيمة.",
-      "viewPromotedArticle": "عرض المقالة"
+      "viewPromotedArticle": "عرض المقالة",
+      "visibilityRESTRICTED": "مقيّد"
+    },
+    "relations": {
+      "title": "محتوى ذو صلة",
+      "addButton": "إضافة محتوى ذي صلة",
+      "removeButton": "إزالة",
+      "emptyState": "لا يوجد محتوى ذو صلة بعد.",
+      "searchPlaceholder": "ابحث عن مقالات وأسئلة لربطها...",
+      "searching": "جارٍ البحث..."
+    },
+    "attachments": {
+      "title": "المرفقات",
+      "addButton": "إضافة ملف",
+      "uploading": "جارٍ الرفع...",
+      "removeButton": "إزالة",
+      "downloadButton": "تنزيل",
+      "emptyState": "لا توجد مرفقات بعد."
     },
     "editor": {
       "boldTooltip": "غامق",

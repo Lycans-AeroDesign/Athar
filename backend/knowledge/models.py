@@ -1,7 +1,25 @@
 import uuid
 
 from django.conf import settings
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
 from django.db import models
+
+from files.models import StoredFile
+
+
+class Visibility(models.TextChoices):
+    """Shared by Article and Question. PUBLIC and ORGANIZATION currently
+    enforce identically (both just mean "anyone with article.read/
+    question access") - there's no unauthenticated-facing view yet for
+    PUBLIC to actually mean "even without login", and no Team model for a
+    TEAM tier to mean anything. Both are real, forward-compatible values;
+    RESTRICTED is the one that changes behavior today (author + reviewer/
+    publisher only, even once published) - see _visible_article_or_404."""
+
+    PUBLIC = "PUBLIC", "Public"
+    ORGANIZATION = "ORGANIZATION", "Organization"
+    RESTRICTED = "RESTRICTED", "Restricted"
 
 
 class Category(models.Model):
@@ -50,6 +68,7 @@ class Article(models.Model):
     excerpt = models.CharField(max_length=300, blank=True)
     content = models.TextField(blank=True)  # markdown source
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT)
+    visibility = models.CharField(max_length=20, choices=Visibility.choices, default=Visibility.PUBLIC)
     category = models.ForeignKey(
         Category, null=True, blank=True, on_delete=models.SET_NULL, related_name="articles"
     )
@@ -109,6 +128,7 @@ class Question(models.Model):
     # Derived from accepted_answer/answers by services.py (_recomputed_open_status)
     # rather than set directly by callers, except for the explicit CLOSED transition.
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.OPEN)
+    visibility = models.CharField(max_length=20, choices=Visibility.choices, default=Visibility.PUBLIC)
     tags = models.ManyToManyField(Tag, blank=True, related_name="questions")
     author = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -158,3 +178,90 @@ class Answer(models.Model):
 
     def __str__(self):
         return f"Answer to {self.question_id}"
+
+
+class KnowledgeRelation(models.Model):
+    """Generic "this is related to that" link, source -> target. Mirrors
+    audit.models.AuditLog's GenericForeignKey pattern (the one precedent for
+    this in the codebase). Only Article and Question exist as real content
+    types today - services.create_relation() enforces that allowlist at the
+    service layer (not here, since ContentType itself can't express it) and
+    the comment there explains why. relation_type is a single free-form
+    value ("RELATED") for now; distinct values (USED_IN, INVOLVED_IN, ...)
+    arrive once Component/Project/Failure are real models to relate to."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    source_content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, related_name="+")
+    source_object_id = models.UUIDField()
+    source = GenericForeignKey("source_content_type", "source_object_id")
+
+    target_content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, related_name="+")
+    target_object_id = models.UUIDField()
+    target = GenericForeignKey("target_content_type", "target_object_id")
+
+    relation_type = models.CharField(max_length=50, default="RELATED")
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["source_content_type", "source_object_id"]),
+            models.Index(fields=["target_content_type", "target_object_id"]),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=[
+                    "source_content_type",
+                    "source_object_id",
+                    "target_content_type",
+                    "target_object_id",
+                    "relation_type",
+                ],
+                name="unique_knowledge_relation",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.source} -> {self.relation_type} -> {self.target}"
+
+
+class ArticleAttachment(models.Model):
+    """The file itself is uploaded standalone first via files.FileUploadView
+    (same two-phase pattern as OrganizationSettings.logo_id/favicon_id) -
+    this row just persists the association. No generic ContentType design
+    here since `files` has no such precedent and a per-model join table is
+    simpler with only two owning models."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    article = models.ForeignKey(Article, on_delete=models.CASCADE, related_name="attachments")
+    file = models.ForeignKey(StoredFile, on_delete=models.CASCADE, related_name="+")
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.article_id} <- {self.file_id}"
+
+
+class QuestionAttachment(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name="attachments")
+    file = models.ForeignKey(StoredFile, on_delete=models.CASCADE, related_name="+")
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.question_id} <- {self.file_id}"

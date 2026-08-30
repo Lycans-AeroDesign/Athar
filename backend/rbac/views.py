@@ -7,6 +7,7 @@ from rest_framework.views import APIView
 from accounts.models import User
 from accounts.serializers import UserSerializer
 from config.openapi import BAD_REQUEST, COMMON_ERRORS, NOT_FOUND
+from config.pagination import paginated_response
 
 from . import services
 from .models import Permission, Role
@@ -19,7 +20,7 @@ class UserListView(APIView):
 
     @extend_schema(tags=["RBAC"], summary="List all users", responses={200: UserSerializer(many=True), **COMMON_ERRORS})
     def get(self, request):
-        return Response(UserSerializer(User.objects.all(), many=True).data)
+        return paginated_response(request, User.objects.all(), UserSerializer)
 
 
 class RoleListCreateView(APIView):
@@ -27,7 +28,7 @@ class RoleListCreateView(APIView):
 
     @extend_schema(tags=["RBAC"], summary="List all roles", responses={200: RoleSerializer(many=True), **COMMON_ERRORS})
     def get(self, request):
-        return Response(RoleSerializer(Role.objects.all(), many=True).data)
+        return paginated_response(request, Role.objects.all(), RoleSerializer)
 
     @extend_schema(
         tags=["RBAC"],
@@ -85,7 +86,7 @@ class PermissionListView(APIView):
         responses={200: PermissionSerializer(many=True), **COMMON_ERRORS},
     )
     def get(self, request):
-        return Response(PermissionSerializer(Permission.objects.all(), many=True).data)
+        return paginated_response(request, Permission.objects.all(), PermissionSerializer)
 
 
 class RolePermissionsView(APIView):

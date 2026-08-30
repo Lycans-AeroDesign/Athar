@@ -15,7 +15,10 @@
     "copyCode": "Copy code",
     "copied": "Copied!",
     "share": "Share",
-    "copiedLink": "Link copied!"
+    "copiedLink": "Link copied!",
+    "previous": "Previous",
+    "next": "Next",
+    "resultCount": "{count, plural, =0 {No results} one {# result} other {# results}}"
   },
   "auth": {
     "emailLabel": "Email Address",
@@ -49,6 +52,7 @@
     "searchScopeQuestions": "Questions",
     "searching": "Searching...",
     "noSearchResults": "No results found.",
+    "seeAllResults": "See all results for \"{query}\"",
     "notifications": "Notifications",
     "settings": "Settings",
     "accountMenu": "Account menu",
@@ -66,7 +70,28 @@
   "dashboard": {
     "welcome": "Welcome",
     "welcomeWithName": "Welcome, {name}",
-    "placeholder": "Dashboard content is coming soon."
+    "subtitle": "Here's what's new in the knowledge base.",
+    "newArticleButton": "New Article",
+    "askQuestionButton": "Ask Question",
+    "statArticlesLabel": "Knowledge Articles",
+    "statQuestionsLabel": "Open Questions",
+    "recentlyUpdatedTitle": "Recently Updated Knowledge",
+    "viewAllLink": "View All",
+    "recentEmptyState": "Nothing here yet.",
+    "activityTitle": "Recent Team Activity",
+    "activityEmptyState": "No recent activity yet.",
+    "activityLoading": "Loading...",
+    "systemActor": "System",
+    "activityActions": {
+      "articlePublish": "published",
+      "articleSubmit": "submitted",
+      "articleReject": "rejected",
+      "articleArchive": "archived",
+      "questionCreate": "asked",
+      "questionAnswer": "answered",
+      "questionAcceptAnswer": "accepted an answer for",
+      "questionPromote": "promoted"
+    }
   },
   "settings": {
     "title": "Organization Settings",
@@ -75,7 +100,8 @@
       "general": "General",
       "branding": "Branding",
       "categories": "Categories",
-      "permissions": "Roles & Permissions"
+      "permissions": "Roles & Permissions",
+      "audit": "Audit Log"
     },
     "general": {
       "title": "General Details",
@@ -140,6 +166,16 @@
       "roleNameLabel": "Role Name",
       "roleDescriptionLabel": "Description",
       "createRole": "Create Role"
+    },
+    "audit": {
+      "title": "Audit Log",
+      "description": "A record of sensitive actions across the organization.",
+      "emptyState": "No audit log entries yet.",
+      "actionColumn": "Action",
+      "targetColumn": "Target",
+      "actorColumn": "Actor",
+      "timeColumn": "Time",
+      "systemActor": "System"
     }
   },
   "account": {
@@ -163,6 +199,19 @@
       "newArticleButton": "New Article",
       "emptyState": "Nothing here yet.",
       "loading": "Loading..."
+    },
+    "search": {
+      "title": "Search",
+      "titleWithQuery": "Search results for \"{query}\"",
+      "filtersTitle": "Content Type",
+      "filterAll": "All Results",
+      "filterArticles": "Articles",
+      "filterQuestions": "Questions",
+      "emptyQuery": "Type something to search.",
+      "loading": "Loading...",
+      "noResults": "No results found for \"{query}\".",
+      "badgeArticle": "Article",
+      "badgeQuestion": "Question"
     },
     "status": {
       "draft": "Draft",
@@ -208,10 +257,16 @@
       "archiveConfirmBody": "It will no longer appear in the published knowledge base.",
       "historyModalTitle": "Revision History",
       "systemAuthor": "System",
-      "tableOfContents": "Contents"
+      "tableOfContents": "Contents",
+      "visibilityLabel": "Visibility",
+      "visibilityPUBLIC": "Public",
+      "visibilityORGANIZATION": "Organization",
+      "visibilityRESTRICTED": "Restricted"
     },
     "question": {
       "badgeLabel": "Question",
+      "backToKnowledge": "Back to Knowledge Base",
+      "createPermissionRequired": "You don't have permission to ask questions.",
       "answerCount": "{count, plural, =0 {No answers yet} one {# answer} other {# answers}}",
       "askButton": "Ask a Question",
       "asking": "Asking...",
@@ -234,7 +289,24 @@
       "closedNotice": "This question is closed to new answers.",
       "promoteButton": "Promote to Article",
       "promoteBannerText": "This question and its accepted answer contain high-value technical knowledge.",
-      "viewPromotedArticle": "View Article"
+      "viewPromotedArticle": "View Article",
+      "visibilityRESTRICTED": "Restricted"
+    },
+    "relations": {
+      "title": "Related Content",
+      "addButton": "Add Related",
+      "removeButton": "Remove",
+      "emptyState": "No related content yet.",
+      "searchPlaceholder": "Search articles and questions to link...",
+      "searching": "Searching..."
+    },
+    "attachments": {
+      "title": "Attachments",
+      "addButton": "Add File",
+      "uploading": "Uploading...",
+      "removeButton": "Remove",
+      "downloadButton": "Download",
+      "emptyState": "No attachments yet."
     },
     "editor": {
       "boldTooltip": "Bold",

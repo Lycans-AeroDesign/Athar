@@ -5,7 +5,6 @@ import { useEffect, useMemo, useState } from "react";
 
 import { ArticleCard } from "@/components/knowledge/ArticleCard";
 import { CategoryPanel } from "@/components/knowledge/CategoryPanel";
-import { NewQuestionModal } from "@/components/knowledge/NewQuestionModal";
 import { QuestionCard } from "@/components/knowledge/QuestionCard";
 import { TagPanel } from "@/components/knowledge/TagPanel";
 import { Can } from "@/components/auth/Can";
@@ -23,7 +22,6 @@ export default function KnowledgePage() {
   const [tags, setTags] = useState<Tag[]>([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [selectedTagId, setSelectedTagId] = useState<string | null>(null);
-  const [askQuestionOpen, setAskQuestionOpen] = useState(false);
 
   useEffect(() => {
     getArticles().then(setArticles);
@@ -69,10 +67,12 @@ export default function KnowledgePage() {
         <h1 className="font-display text-display text-on-surface">{t("heroTitle")}</h1>
         <div className="flex items-center justify-center gap-3">
           <Can permission="question.create">
-            <Button variant="secondary" onClick={() => setAskQuestionOpen(true)}>
-              <Icon name="forum" size={18} />
-              {t("askQuestionButton")}
-            </Button>
+            <Link href="/knowledge/questions/new">
+              <Button variant="secondary">
+                <Icon name="forum" size={18} />
+                {t("askQuestionButton")}
+              </Button>
+            </Link>
           </Can>
           <Can permission="article.create">
             <Link href="/knowledge/articles/new">
@@ -126,8 +126,6 @@ export default function KnowledgePage() {
           )}
         </div>
       </div>
-
-      <NewQuestionModal open={askQuestionOpen} onOpenChange={setAskQuestionOpen} />
     </div>
   );
 }

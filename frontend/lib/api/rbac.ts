@@ -1,8 +1,11 @@
 import { apiJson, apiVoid } from "./client";
-import type { Permission, Role, User } from "./types";
+import type { Paginated, Permission, Role, User } from "./types";
 
+// See knowledge.ts's top-of-file note - these unwrap the paginated envelope
+// and return page 1 (20 items) as a bare array for now; RolesSettingsForm's
+// "load more" pagination lands separately.
 export function getRoles(): Promise<Role[]> {
-  return apiJson<Role[]>("/api/v1/rbac/roles/");
+  return apiJson<Paginated<Role>>("/api/v1/rbac/roles/").then((data) => data.results);
 }
 
 export function createRole(payload: { name: string; description?: string }): Promise<Role> {
@@ -18,7 +21,7 @@ export function deleteRole(roleId: string): Promise<void> {
 }
 
 export function getPermissions(): Promise<Permission[]> {
-  return apiJson<Permission[]>("/api/v1/rbac/permissions/");
+  return apiJson<Paginated<Permission>>("/api/v1/rbac/permissions/").then((data) => data.results);
 }
 
 export function grantPermission(roleId: string, permissionId: string): Promise<Permission[]> {
@@ -34,7 +37,7 @@ export function revokePermission(roleId: string, permissionId: string): Promise<
 }
 
 export function getUsers(): Promise<User[]> {
-  return apiJson<User[]>("/api/v1/rbac/users/");
+  return apiJson<Paginated<User>>("/api/v1/rbac/users/").then((data) => data.results);
 }
 
 export function assignRole(userId: string, roleId: string): Promise<void> {

@@ -1,3 +1,4 @@
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
 from django.urls import reverse
 from rest_framework import status
@@ -7,7 +8,17 @@ from accounts.models import User
 from audit.models import AuditLog
 from rbac.models import Role
 
-from .models import Answer, Article, ArticleRevision, Category, Question, Tag
+from .models import (
+    Answer,
+    Article,
+    ArticleAttachment,
+    ArticleRevision,
+    Category,
+    KnowledgeRelation,
+    Question,
+    QuestionAttachment,
+    Tag,
+)
 
 
 class KnowledgeTestCase(APITestCase):
@@ -60,7 +71,7 @@ class ArticleTests(KnowledgeTestCase):
         _, other_access = self._login_with_role("other@example.com", "Member")
         response = self.client.get(reverse("knowledge-article-list-create"), **self._auth(other_access))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 0)
+        self.assertEqual(response.data["count"], 0)
 
     def test_detail_hides_draft_from_non_author_non_reviewer(self):
         author, author_access = self._login_with_role("author2@example.com", "Member")
@@ -317,7 +328,7 @@ class CategoryAndTagTests(KnowledgeTestCase):
         _, guest_access = self._login_with_role("guest3@example.com", "Guest")
         response = self.client.get(reverse("knowledge-category-list"), **self._auth(guest_access))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertGreater(len(response.data), 0)
+        self.assertGreater(response.data["count"], 0)
 
         response = self.client.get(reverse("knowledge-tag-list"), **self._auth(guest_access))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -681,3 +692,247 @@ class SearchTests(KnowledgeTestCase):
         response = self.client.get(reverse("knowledge-search") + "?q=pixhawk&type=question", **self._auth(author_access))
         self.assertTrue(all(r["type"] == "question" for r in response.data["results"]))
         self.assertTrue(any("rebooting" in r["title"] for r in response.data["results"]))
+
+
+class VisibilityTests(KnowledgeTestCase):
+    def test_restricted_article_hidden_from_non_privileged_even_when_published(self):
+        author, author_access = self._login_with_role("visauthor@example.com", "Member")
+        article = self.client.post(
+            reverse("knowledge-article-list-create"),
+            {"title": "Sensitive Doc", "content": "Body", "visibility": "RESTRICTED"},
+            format="json",
+            **self._auth(author_access),
+        ).data
+        self.assertEqual(article["visibility"], "RESTRICTED")
+
+        _, head_access = self._login_with_role("vishead@example.com", "Team/Subteam Head")
+        self.client.post(reverse("knowledge-article-submit", args=[article["id"]]), **self._auth(author_access))
+        self.client.post(reverse("knowledge-article-publish", args=[article["id"]]), **self._auth(head_access))
+
+        _, other_access = self._login_with_role("visother@example.com", "Member")
+        response = self.client.get(reverse("knowledge-article-detail", args=[article["id"]]), **self._auth(other_access))
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        # Not in the published list either.
+        response = self.client.get(reverse("knowledge-article-list-create"), **self._auth(other_access))
+        self.assertNotIn(article["id"], {a["id"] for a in response.data["results"]})
+
+        # But the author and a reviewer/publisher can still see it.
+        response = self.client.get(reverse("knowledge-article-detail", args=[article["id"]]), **self._auth(author_access))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        response = self.client.get(reverse("knowledge-article-detail", args=[article["id"]]), **self._auth(head_access))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_public_visibility_is_default_and_unaffected(self):
+        _, author_access = self._login_with_role("visauthor2@example.com", "Member")
+        article = self.client.post(
+            reverse("knowledge-article-list-create"),
+            {"title": "Normal Doc", "content": "Body"},
+            format="json",
+            **self._auth(author_access),
+        ).data
+        self.assertEqual(article["visibility"], "PUBLIC")
+
+    def test_restricted_question_hidden_from_non_moderators(self):
+        author, author_access = self._login_with_role("visqauthor@example.com", "Member")
+        question = self.client.post(
+            reverse("knowledge-question-list-create"),
+            {"title": "Private Q", "body": "...", "visibility": "RESTRICTED"},
+            format="json",
+            **self._auth(author_access),
+        ).data
+
+        _, other_access = self._login_with_role("visqother@example.com", "Member")
+        response = self.client.get(reverse("knowledge-question-detail", args=[question["id"]]), **self._auth(other_access))
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        response = self.client.get(reverse("knowledge-question-detail", args=[question["id"]]), **self._auth(author_access))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+
+class KnowledgeRelationTests(KnowledgeTestCase):
+    def test_create_list_and_delete_relation_between_two_articles(self):
+        author, author_access = self._login_with_role("relauthor@example.com", "Member")
+        article_a = self.client.post(
+            reverse("knowledge-article-list-create"),
+            {"title": "Article A", "content": "Body"},
+            format="json",
+            **self._auth(author_access),
+        ).data
+        article_b = self.client.post(
+            reverse("knowledge-article-list-create"),
+            {"title": "Article B", "content": "Body"},
+            format="json",
+            **self._auth(author_access),
+        ).data
+
+        response = self.client.post(
+            reverse("knowledge-relation-create"),
+            {"source_type": "article", "source_id": article_a["id"], "target_type": "article", "target_id": article_b["id"]},
+            format="json",
+            **self._auth(author_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["other_type"], "article")
+        self.assertEqual(response.data["other_id"], article_b["id"])
+        relation_id = response.data["id"]
+
+        # Visible from both sides, each showing "the other one".
+        response = self.client.get(reverse("knowledge-article-relations", args=[article_a["id"]]), **self._auth(author_access))
+        self.assertEqual(response.data[0]["other_id"], article_b["id"])
+        response = self.client.get(reverse("knowledge-article-relations", args=[article_b["id"]]), **self._auth(author_access))
+        self.assertEqual(response.data[0]["other_id"], article_a["id"])
+
+        # Duplicate creation is idempotent (get_or_create), not an error or a second row.
+        self.client.post(
+            reverse("knowledge-relation-create"),
+            {"source_type": "article", "source_id": article_a["id"], "target_type": "article", "target_id": article_b["id"]},
+            format="json",
+            **self._auth(author_access),
+        )
+        self.assertEqual(KnowledgeRelation.objects.count(), 1)
+
+        _, other_access = self._login_with_role("relother@example.com", "Member")
+        response = self.client.delete(reverse("knowledge-relation-detail", args=[relation_id]), **self._auth(other_access))
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        response = self.client.delete(reverse("knowledge-relation-detail", args=[relation_id]), **self._auth(author_access))
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(KnowledgeRelation.objects.exists())
+
+    def test_cannot_relate_to_self_or_unknown_type(self):
+        _, author_access = self._login_with_role("relauthor2@example.com", "Member")
+        article = self.client.post(
+            reverse("knowledge-article-list-create"),
+            {"title": "Solo Article", "content": "Body"},
+            format="json",
+            **self._auth(author_access),
+        ).data
+
+        response = self.client.post(
+            reverse("knowledge-relation-create"),
+            {"source_type": "article", "source_id": article["id"], "target_type": "article", "target_id": article["id"]},
+            format="json",
+            **self._auth(author_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_create_relation_requires_edit_rights_on_source(self):
+        _, author_access = self._login_with_role("relauthor3@example.com", "Member")
+        article = self.client.post(
+            reverse("knowledge-article-list-create"),
+            {"title": "Owned Article", "content": "Body"},
+            format="json",
+            **self._auth(author_access),
+        ).data
+        question = self.client.post(
+            reverse("knowledge-question-list-create"),
+            {"title": "Someone's Question", "body": "..."},
+            format="json",
+            **self._auth(author_access),
+        ).data
+
+        _, other_access = self._login_with_role("relother2@example.com", "Member")
+        response = self.client.post(
+            reverse("knowledge-relation-create"),
+            {"source_type": "question", "source_id": question["id"], "target_type": "article", "target_id": article["id"]},
+            format="json",
+            **self._auth(other_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+
+class ArticleAttachmentTests(KnowledgeTestCase):
+    def _upload(self, access_token, filename="datasheet.txt"):
+        upload = self.client.post(
+            reverse("files-upload"),
+            {"file": SimpleUploadedFile(filename, b"some file content")},
+            format="multipart",
+            **self._auth(access_token),
+        )
+        self.assertEqual(upload.status_code, status.HTTP_201_CREATED)
+        return upload.data["id"]
+
+    def test_add_list_and_remove_article_attachment(self):
+        _, author_access = self._login_with_role("attachauthor@example.com", "Member")
+        article = self.client.post(
+            reverse("knowledge-article-list-create"),
+            {"title": "Attach Article", "content": "Body"},
+            format="json",
+            **self._auth(author_access),
+        ).data
+        file_id = self._upload(author_access)
+
+        response = self.client.post(
+            reverse("knowledge-article-attachment-list", args=[article["id"]]),
+            {"file_id": file_id},
+            format="json",
+            **self._auth(author_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["file"]["id"], file_id)
+        attachment_id = response.data["id"]
+
+        response = self.client.get(
+            reverse("knowledge-article-attachment-list", args=[article["id"]]), **self._auth(author_access)
+        )
+        self.assertEqual(len(response.data), 1)
+
+        _, other_access = self._login_with_role("attachother@example.com", "Member")
+        response = self.client.delete(
+            reverse("knowledge-article-attachment-detail", args=[article["id"], attachment_id]),
+            **self._auth(other_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        response = self.client.delete(
+            reverse("knowledge-article-attachment-detail", args=[article["id"], attachment_id]),
+            **self._auth(author_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(ArticleAttachment.objects.exists())
+
+
+class QuestionAttachmentTests(KnowledgeTestCase):
+    def _upload(self, access_token, filename="log.txt"):
+        upload = self.client.post(
+            reverse("files-upload"),
+            {"file": SimpleUploadedFile(filename, b"some log content")},
+            format="multipart",
+            **self._auth(access_token),
+        )
+        self.assertEqual(upload.status_code, status.HTTP_201_CREATED)
+        return upload.data["id"]
+
+    def test_add_list_and_remove_question_attachment(self):
+        _, asker_access = self._login_with_role("qattachasker@example.com", "Member")
+        question = self.client.post(
+            reverse("knowledge-question-list-create"),
+            {"title": "Attach Question", "body": "Body"},
+            format="json",
+            **self._auth(asker_access),
+        ).data
+        file_id = self._upload(asker_access)
+
+        response = self.client.post(
+            reverse("knowledge-question-attachment-list", args=[question["id"]]),
+            {"file_id": file_id},
+            format="json",
+            **self._auth(asker_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        attachment_id = response.data["id"]
+
+        _, other_access = self._login_with_role("qattachother@example.com", "Member")
+        response = self.client.delete(
+            reverse("knowledge-question-attachment-detail", args=[question["id"], attachment_id]),
+            **self._auth(other_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        response = self.client.delete(
+            reverse("knowledge-question-attachment-detail", args=[question["id"], attachment_id]),
+            **self._auth(asker_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(QuestionAttachment.objects.exists())

@@ -1,3 +1,4 @@
+from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied
 from django.utils import timezone
 from django.utils.text import slugify
@@ -5,7 +6,18 @@ from rest_framework.exceptions import ValidationError
 
 from audit.services import log_action
 
-from .models import Answer, Article, ArticleRevision, Category, Question, Tag
+from .models import (
+    Answer,
+    Article,
+    ArticleAttachment,
+    ArticleRevision,
+    Category,
+    KnowledgeRelation,
+    Question,
+    QuestionAttachment,
+    Tag,
+    Visibility,
+)
 
 
 def _unique_slug(model, base: str) -> str:
@@ -82,7 +94,17 @@ def delete_tag(*, tag: Tag, actor, request=None) -> None:
     tag.delete()
 
 
-def create_article(*, actor, request=None, title, excerpt="", content="", category=None, tag_names=None) -> Article:
+def create_article(
+    *,
+    actor,
+    request=None,
+    title,
+    excerpt="",
+    content="",
+    category=None,
+    tag_names=None,
+    visibility=Visibility.PUBLIC,
+) -> Article:
     article = Article.objects.create(
         title=title,
         slug=_unique_slug(Article, title),
@@ -90,6 +112,7 @@ def create_article(*, actor, request=None, title, excerpt="", content="", catego
         content=content,
         category=category,
         author=actor,
+        visibility=visibility,
     )
     _sync_tags(article, tag_names)
     ArticleRevision.objects.create(article=article, title=article.title, content=article.content, edited_by=actor)
@@ -172,8 +195,8 @@ def delete_article(*, article: Article, actor, request=None) -> None:
     article.delete()
 
 
-def create_question(*, actor, request=None, title, body="", tag_names=None) -> Question:
-    question = Question.objects.create(title=title, body=body, author=actor)
+def create_question(*, actor, request=None, title, body="", tag_names=None, visibility=Visibility.PUBLIC) -> Question:
+    question = Question.objects.create(title=title, body=body, author=actor, visibility=visibility)
     _sync_tags(question, tag_names)
     log_action(actor=actor, action="question.create", target=question, request=request)
     return question
@@ -337,3 +360,154 @@ def promote_question_to_article(*, question: Question, actor, request=None) -> A
         request=request,
     )
     return article
+
+
+# Only Article/Question exist as real content types today - this allowlist
+# is what actually stops a relation being created to some other model
+# (ContentType itself has no way to express "only these two"). Lift it once
+# Component/Project/Failure are real models worth relating to.
+_RELATABLE_MODELS = {"article": Article, "question": Question}
+
+
+def _resolve_relatable(model_name: str, object_id):
+    model = _RELATABLE_MODELS.get(model_name)
+    if model is None:
+        raise ValidationError(f"'{model_name}' isn't a type that can be related yet.")
+    instance = model.objects.filter(pk=object_id).first()
+    if instance is None:
+        raise ValidationError(f"No {model_name} with id {object_id}.")
+    return model, instance
+
+
+def _can_edit_relatable(actor, model_name: str, instance) -> bool:
+    if instance is None:
+        return False
+    codename = "article.update" if model_name == "article" else "question.moderate"
+    return actor == getattr(instance, "author", None) or actor.has_permission(codename)
+
+
+def create_relation(
+    *, actor, request=None, source_type: str, source_id, target_type: str, target_id, relation_type="RELATED"
+) -> KnowledgeRelation:
+    source_model, source = _resolve_relatable(source_type, source_id)
+    target_model, target = _resolve_relatable(target_type, target_id)
+    if source_model is target_model and source.pk == target.pk:
+        raise ValidationError("An item can't be related to itself.")
+
+    if not _can_edit_relatable(actor, source_type, source):
+        raise PermissionDenied("You can only add related content to something you own (or have edit rights on).")
+
+    relation, created = KnowledgeRelation.objects.get_or_create(
+        source_content_type=ContentType.objects.get_for_model(source_model),
+        source_object_id=source.pk,
+        target_content_type=ContentType.objects.get_for_model(target_model),
+        target_object_id=target.pk,
+        relation_type=relation_type,
+        defaults={"created_by": actor},
+    )
+    if created:
+        log_action(
+            actor=actor,
+            action="relation.create",
+            target=relation,
+            metadata={
+                "source": f"{source_type}:{source.pk}",
+                "target": f"{target_type}:{target.pk}",
+                "relation_type": relation_type,
+            },
+            request=request,
+        )
+    return relation
+
+
+def delete_relation(*, relation: KnowledgeRelation, actor, request=None) -> None:
+    can_edit_source = _can_edit_relatable(actor, relation.source_content_type.model, relation.source)
+    can_edit_target = _can_edit_relatable(actor, relation.target_content_type.model, relation.target)
+    if not (can_edit_source or can_edit_target):
+        raise PermissionDenied("You can only remove related content from something you own (or have edit rights on).")
+    log_action(
+        actor=actor,
+        action="relation.delete",
+        metadata={"relation_id": str(relation.pk)},
+        request=request,
+    )
+    relation.delete()
+
+
+def add_article_attachment(*, article: Article, file, actor, request=None) -> ArticleAttachment:
+    _require_owner_or_permission(
+        actor=actor,
+        owner=article.author,
+        codename="article.update",
+        message="You can only attach files to your own article.",
+    )
+    attachment = ArticleAttachment.objects.create(article=article, file=file, uploaded_by=actor)
+    log_action(
+        actor=actor,
+        action="attachment.add",
+        target=article,
+        metadata={"file_id": str(file.pk), "filename": file.original_filename},
+        request=request,
+    )
+    return attachment
+
+
+def remove_article_attachment(*, attachment: ArticleAttachment, actor, request=None) -> None:
+    _require_owner_or_permission(
+        actor=actor,
+        owner=attachment.article.author,
+        codename="article.update",
+        message="You can only remove attachments from your own article.",
+    )
+    log_action(
+        actor=actor,
+        action="attachment.remove",
+        metadata={"attachment_id": str(attachment.pk), "article_id": str(attachment.article_id)},
+        request=request,
+    )
+    attachment.delete()
+
+
+def add_question_attachment(*, question: Question, file, actor, request=None) -> QuestionAttachment:
+    _require_owner_or_permission(
+        actor=actor,
+        owner=question.author,
+        codename="question.moderate",
+        message="You can only attach files to your own question.",
+    )
+    attachment = QuestionAttachment.objects.create(question=question, file=file, uploaded_by=actor)
+    log_action(
+        actor=actor,
+        action="attachment.add",
+        target=question,
+        metadata={"file_id": str(file.pk), "filename": file.original_filename},
+        request=request,
+    )
+    return attachment
+
+
+def remove_question_attachment(*, attachment: QuestionAttachment, actor, request=None) -> None:
+    _require_owner_or_permission(
+        actor=actor,
+        owner=attachment.question.author,
+        codename="question.moderate",
+        message="You can only remove attachments from your own question.",
+    )
+    log_action(
+        actor=actor,
+        action="attachment.remove",
+        metadata={"attachment_id": str(attachment.pk), "question_id": str(attachment.question_id)},
+        request=request,
+    )
+    attachment.delete()
+
+
+def get_relations_for(model_name: str, object_id):
+    """Relations where the given object is either side (source or target) -
+    see KnowledgeRelationSerializer for how "the other side" is resolved."""
+    _, instance = _resolve_relatable(model_name, object_id)
+    content_type = ContentType.objects.get_for_model(type(instance))
+    return (
+        KnowledgeRelation.objects.filter(source_content_type=content_type, source_object_id=object_id)
+        | KnowledgeRelation.objects.filter(target_content_type=content_type, target_object_id=object_id)
+    ).distinct()

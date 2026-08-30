@@ -1,6 +1,7 @@
 import { useId } from "react";
 import {
   AlertTriangle,
+  Archive,
   ArrowLeft,
   Bell,
   Bold,
@@ -16,6 +17,7 @@ import {
   Compass,
   Component,
   Copy,
+  Download,
   Eye,
   EyeOff,
   FileText,
@@ -34,6 +36,7 @@ import {
   MessageSquare,
   Monitor,
   Moon,
+  Pencil,
   Plus,
   Search,
   Send,
@@ -56,6 +59,7 @@ import {
 // change) to their lucide-react equivalents.
 const ICONS: Record<string, LucideIcon> = {
   add: Plus,
+  archive: Archive,
   architecture: Building2,
   arrow_back: ArrowLeft,
   auto_awesome: Sparkles,
@@ -71,6 +75,8 @@ const ICONS: Record<string, LucideIcon> = {
   dashboard: LayoutDashboard,
   delete: Trash2,
   description: FileText,
+  download: Download,
+  edit: Pencil,
   expand_more: ChevronDown,
   folder: Folder,
   format_bold: Bold,

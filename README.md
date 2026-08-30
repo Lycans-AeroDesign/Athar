@@ -2,7 +2,7 @@
 
 Open-source, self-hosted **Knowledge Management System** for student AeroDesign teams — built and self-hosted by [Lycans AeroDesign](https://github.com/Lycans-AeroDesign) as its reference deployment.
 
-> **Status: early development.** This repo currently has the bootstrapped Django + Next.js foundation, Docker/CI scaffolding, and no product features yet. See [Roadmap](#roadmap) below.
+> **Status: early development.** Authentication, RBAC, organization settings, and i18n are built. The Knowledge module (articles, Q&A, categories/tags, attachments, cross-linking, search, activity feed, dashboard) is a working first slice. Engineering areas (projects, components, failures, SOPs) haven't started. See [Roadmap](#roadmap) below.
 
 ## Why
 
@@ -18,14 +18,14 @@ The full product specification (vision, feature areas, roles/permissions, roadma
 
 | | Current | Planned (see [`docs/VISION.md` §32](docs/VISION.md#32-technology-stack)) |
 |---|---|---|
-| Backend | Django 6.1, `uv`, Python 3.14 | + Django REST Framework, `drf-spectacular` (OpenAPI) |
-| Frontend | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS v4 | + shadcn/ui |
-| Database | PostgreSQL 18 (via Docker) | PostgreSQL full-text search for V1 |
+| Backend | Django 6.1, Django REST Framework, `drf-spectacular` (OpenAPI), `uv`, Python 3.14 | — |
+| Frontend | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS v4, a small custom Radix/cmdk-based UI kit (`frontend/components/ui/`) | shadcn/ui (evaluating vs. the current custom kit) |
+| Database | PostgreSQL 18 (via Docker), no SQLite fallback | PostgreSQL full-text search for V1 (current search is a plain `icontains` query) |
 | Background work | — | Redis + Celery |
 | File storage | Local filesystem (dev) | S3-compatible / MinIO (prod) |
 | Deployment | Docker, Docker Compose | — |
 | CI/CD | GitHub Actions (backend + frontend CI, PR checks, manual release/publish) | — |
-| Testing | — | pytest, Vitest/RTL, Playwright |
+| Testing | Backend: DRF `APITestCase` suite (`backend/*/tests.py`), run via `manage.py test` | Frontend: Vitest/RTL, Playwright; backend: possibly migrate to pytest |
 
 ## Quickstart (Docker)
 
@@ -89,7 +89,7 @@ The frontend is fully translation-driven (`next-intl`) — no UI text is hardcod
 | Code | Language | Direction | Status |
 |---|---|---|---|
 | `en` | English | LTR | ✅ Fully supported (source language) |
-| `ar` | العربية (Arabic) | RTL | ⚠️ File exists, needs translation — `frontend/i18n/messages/ar.json` is currently an untranslated English copy |
+| `ar` | العربية (Arabic) | RTL | ✅ Fully supported — `frontend/i18n/messages/ar.json` is kept in parallel with every key in `en.json`, genuinely translated (not a copy) |
 
 A language only reaches "file exists" status once it's registered in `frontend/i18n/request.ts` (see below) *and* has a `messages/<code>.json` file — at that point it's selectable in Settings > General even before translation is complete, since next-intl has no per-key fallback. Update this table whenever a language's status changes.
 
@@ -105,11 +105,11 @@ The language picker in Settings > General is generated from `locales`/`localeNam
 
 Condensed from [`docs/VISION.md` §41](docs/VISION.md#41-development-roadmap):
 
-- **V0.1 — Foundation**: Django, PostgreSQL, Next.js, Docker, auth, RBAC, org configuration *(in progress)*
-- **V0.2 — Knowledge**: wiki, articles, categories, tags, attachments, revisions, relationships
-- **V0.3 — Engineering**: projects, components, failures, SOPs, flight logs, design decisions, lessons learned
-- **V0.4 — Collaboration**: Q&A, comments, notifications, reviews, activity
-- **V0.5 — Search**: full-text search, filters, related knowledge, mention detection
+- **V0.1 — Foundation**: Django, PostgreSQL, Next.js, Docker, auth, RBAC, org configuration *(done)*
+- **V0.2 — Knowledge**: wiki, articles, categories, tags, attachments, revisions, relationships *(in progress — articles, Q&A, categories/tags, attachments, revisions, and cross-linking all built; search is a plain query, not full-text)*
+- **V0.3 — Engineering**: projects, components, failures, SOPs, flight logs, design decisions, lessons learned *(not started)*
+- **V0.4 — Collaboration**: Q&A ✅, comments, notifications, reviews ✅, activity ✅
+- **V0.5 — Search**: full-text search, filters ✅, related knowledge ✅, mention detection
 - **V1.0 — Open source release**: production hardening, backups, self-hosting guide, versioned Docker images
 - **V2+ — AI**: embeddings, vector search, permission-aware RAG assistant over the knowledge graph
 

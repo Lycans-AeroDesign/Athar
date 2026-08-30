@@ -1,5 +1,5 @@
 import { apiJson } from "./client";
-import type { OrganizationSettings, StoredFileRef } from "./types";
+import type { OrganizationSettings } from "./types";
 
 export function getOrganizationSettings(): Promise<OrganizationSettings> {
   return apiJson<OrganizationSettings>("/api/v1/organization/settings/");
@@ -29,15 +29,4 @@ export function updateBrandingSettings(payload: {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
-}
-
-export function uploadFile(file: File, requiredPermission = "file.read"): Promise<StoredFileRef> {
-  const formData = new FormData();
-  formData.append("file", file);
-  formData.append("required_permission", requiredPermission);
-  // No Content-Type header - the browser sets the multipart boundary itself.
-  // apiJson's error handling already covers DRF's {"file": ["message"]}
-  // shape (see files/serializers.py's validate_file, e.g. the size-limit
-  // check), so no need to duplicate that extraction here.
-  return apiJson<StoredFileRef>("/api/v1/files/upload/", { method: "POST", body: formData });
 }

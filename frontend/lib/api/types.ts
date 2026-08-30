@@ -1,3 +1,11 @@
+/** Standard DRF pagination envelope (see backend/config/pagination.py) - every list endpoint returns this shape now. */
+export interface Paginated<T> {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: T[];
+}
+
 export interface User {
   id: string;
   email: string;
@@ -45,6 +53,7 @@ export interface StoredFile {
   size: number;
   uploaded_by: string | null;
   required_permission: string;
+  download_url: string;
   created_at: string;
 }
 
@@ -98,12 +107,16 @@ export interface Tag {
 
 export type ArticleStatus = "DRAFT" | "IN_REVIEW" | "PUBLISHED" | "REJECTED" | "ARCHIVED";
 
+/** PUBLIC/ORGANIZATION currently enforce identically (see backend/knowledge/models.py's Visibility) - RESTRICTED is the one that changes access today. */
+export type Visibility = "PUBLIC" | "ORGANIZATION" | "RESTRICTED";
+
 export interface ArticleSummary {
   id: string;
   title: string;
   slug: string;
   excerpt: string;
   status: ArticleStatus;
+  visibility: Visibility;
   category: Category | null;
   tags: Tag[];
   author: KnowledgeAuthor | null;
@@ -140,6 +153,7 @@ export interface QuestionSummary {
   id: string;
   title: string;
   status: QuestionStatus;
+  visibility: Visibility;
   tags: Tag[];
   author: KnowledgeAuthor | null;
   answer_count: number;
@@ -157,3 +171,20 @@ export interface QuestionDetail extends QuestionSummary {
 export type SearchResult =
   | { type: "article"; id: string; title: string; excerpt: string }
   | { type: "question"; id: string; title: string; excerpt: string };
+
+export interface KnowledgeRelation {
+  id: string;
+  relation_type: string;
+  other_type: "article" | "question";
+  other_id: string;
+  other_title: string | null;
+  created_at: string;
+}
+
+/** Shape of both ArticleAttachmentSerializer and QuestionAttachmentSerializer - identical fields. */
+export interface KnowledgeAttachment {
+  id: string;
+  file: StoredFile;
+  uploaded_by: KnowledgeAuthor | null;
+  created_at: string;
+}

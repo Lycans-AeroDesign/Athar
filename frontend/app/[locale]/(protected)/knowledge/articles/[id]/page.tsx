@@ -4,11 +4,14 @@ import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
+import { Attachments } from "@/components/knowledge/Attachments";
+import { RelatedContent } from "@/components/knowledge/RelatedContent";
 import { StatusPill } from "@/components/knowledge/StatusPill";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Icon } from "@/components/ui/Icon";
+import { IconButton } from "@/components/ui/IconButton";
 import { Markdown } from "@/components/ui/Markdown";
 import { Modal } from "@/components/ui/Modal";
 import { ShareButton } from "@/components/ui/ShareButton";
@@ -165,11 +168,41 @@ export default function ArticleDetailPage() {
               </span>
               <span className="font-mono-sm text-mono-sm text-on-surface-variant">{docId}</span>
             </div>
-            <ShareButton title={article.title} />
+            <div className="flex items-center gap-2">
+              <ShareButton title={article.title} />
+              {canEdit && (
+                <Link href={`/knowledge/articles/${article.id}/edit`}>
+                  <IconButton icon="edit" variant="secondary" aria-label={t("editButton")} />
+                </Link>
+              )}
+              {canArchiveNow && (
+                <IconButton
+                  icon="archive"
+                  variant="secondary"
+                  aria-label={t("archiveButton")}
+                  disabled={isWorking}
+                  onClick={() => setArchiveOpen(true)}
+                />
+              )}
+              {canDelete && (
+                <IconButton
+                  icon="delete"
+                  variant="danger"
+                  aria-label={t("deleteButton")}
+                  onClick={() => setDeleteOpen(true)}
+                />
+              )}
+            </div>
           </div>
           <h1 className="font-display text-display text-on-surface">{article.title}</h1>
           <div className="flex flex-wrap items-center gap-3 font-mono-sm text-mono-sm text-on-surface-variant">
             <StatusPill status={article.status} />
+            {article.visibility === "RESTRICTED" && (
+              <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-error-container text-on-error-container font-label-caps text-label-caps uppercase">
+                <Icon name="lock" size={12} />
+                {t("visibilityRESTRICTED")}
+              </span>
+            )}
             {authorName && <span>{t("byAuthor", { name: authorName })}</span>}
             <span>{formatDateTime(article.updated_at)}</span>
           </div>
@@ -190,38 +223,25 @@ export default function ArticleDetailPage() {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 pb-4 border-b border-outline-variant">
-          {canEdit && (
-            <Link href={`/knowledge/articles/${article.id}/edit`}>
-              <Button variant="secondary">{t("editButton")}</Button>
-            </Link>
-          )}
-          {canSubmit && (
-            <Button onClick={handleSubmit} disabled={isWorking}>
-              {t("submitForReview")}
-            </Button>
-          )}
-          {canPublishNow && (
-            <Button onClick={handlePublish} disabled={isWorking}>
-              {t("publish")}
-            </Button>
-          )}
-          {canRejectNow && (
-            <Button variant="secondary" onClick={() => setRejectOpen(true)} disabled={isWorking}>
-              {t("rejectButton")}
-            </Button>
-          )}
-          {canArchiveNow && (
-            <Button variant="secondary" onClick={() => setArchiveOpen(true)} disabled={isWorking}>
-              {t("archiveButton")}
-            </Button>
-          )}
-          {canDelete && (
-            <Button variant="danger" onClick={() => setDeleteOpen(true)}>
-              {t("deleteButton")}
-            </Button>
-          )}
-        </div>
+        {(canSubmit || canPublishNow || canRejectNow) && (
+          <div className="flex flex-wrap items-center gap-3 pb-4 border-b border-outline-variant">
+            {canSubmit && (
+              <Button onClick={handleSubmit} disabled={isWorking}>
+                {t("submitForReview")}
+              </Button>
+            )}
+            {canPublishNow && (
+              <Button onClick={handlePublish} disabled={isWorking}>
+                {t("publish")}
+              </Button>
+            )}
+            {canRejectNow && (
+              <Button variant="secondary" onClick={() => setRejectOpen(true)} disabled={isWorking}>
+                {t("rejectButton")}
+              </Button>
+            )}
+          </div>
+        )}
 
         {actionError && (
           <p className="font-body-md text-body-md text-error" role="alert">
@@ -230,6 +250,10 @@ export default function ArticleDetailPage() {
         )}
 
         <Markdown content={article.content} />
+
+        <RelatedContent type="article" id={article.id} canEdit={canEdit} />
+
+        <Attachments type="article" id={article.id} canEdit={canEdit} />
 
         {revisions && revisions.length > 0 && (
           <div className="pt-6 border-t border-outline-variant space-y-4">

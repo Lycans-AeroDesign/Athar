@@ -6,6 +6,8 @@ import { useEffect, useState } from "react";
 
 import { Can } from "@/components/auth/Can";
 import { QuestionStatusPill } from "@/components/knowledge/QuestionStatusPill";
+import { Attachments } from "@/components/knowledge/Attachments";
+import { RelatedContent } from "@/components/knowledge/RelatedContent";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
@@ -127,6 +129,12 @@ export default function QuestionDetailPage() {
         <div className="flex items-center gap-3">
           <h1 className="font-headline-lg text-headline-lg text-on-surface">{question.title}</h1>
           <QuestionStatusPill status={question.status} />
+          {question.visibility === "RESTRICTED" && (
+            <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-error-container text-on-error-container font-label-caps text-label-caps uppercase">
+              <Icon name="lock" size={12} />
+              {t("visibilityRESTRICTED")}
+            </span>
+          )}
         </div>
         <div className="flex flex-wrap gap-2">
           {question.tags.map((tag) => (
@@ -233,6 +241,10 @@ export default function QuestionDetailPage() {
           </div>
         )}
       </div>
+
+      <RelatedContent type="question" id={question.id} canEdit={canManage} />
+
+      <Attachments type="question" id={question.id} canEdit={canManage} />
 
       {question.status === "CLOSED" ? (
         <p className="font-body-md text-body-md text-on-surface-variant">{t("closedNotice")}</p>

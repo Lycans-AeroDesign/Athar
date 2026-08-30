@@ -16,7 +16,7 @@ import {
   submitArticle,
   updateArticle,
 } from "@/lib/api/knowledge";
-import type { ArticleDetail, Category } from "@/lib/api/types";
+import type { ArticleDetail, Category, Visibility } from "@/lib/api/types";
 import { useHasPermission } from "@/lib/auth/permissions";
 
 interface ArticleEditorProps {
@@ -43,6 +43,7 @@ export function ArticleEditor({ article, onDirtyChange }: ArticleEditorProps) {
   const [content, setContent] = useState(article?.content ?? "");
   const [categoryId, setCategoryId] = useState<string | null>(article?.category?.id ?? null);
   const [tags, setTags] = useState<string[]>(article?.tags.map((tag) => tag.name) ?? []);
+  const [visibility, setVisibility] = useState<Visibility>(article?.visibility ?? "PUBLIC");
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -55,7 +56,8 @@ export function ArticleEditor({ article, onDirtyChange }: ArticleEditorProps) {
     excerpt !== (article?.excerpt ?? "") ||
     content !== (article?.content ?? "") ||
     categoryId !== (article?.category?.id ?? null) ||
-    tags.join(",") !== (article?.tags.map((tag) => tag.name).join(",") ?? "");
+    tags.join(",") !== (article?.tags.map((tag) => tag.name).join(",") ?? "") ||
+    visibility !== (article?.visibility ?? "PUBLIC");
 
   useEffect(() => {
     onDirtyChange?.(isDirty);
@@ -68,6 +70,7 @@ export function ArticleEditor({ article, onDirtyChange }: ArticleEditorProps) {
       content,
       category_id: categoryId,
       tag_names: tags,
+      visibility,
     };
   }
 
@@ -77,6 +80,7 @@ export function ArticleEditor({ article, onDirtyChange }: ArticleEditorProps) {
     setContent(article?.content ?? "");
     setCategoryId(article?.category?.id ?? null);
     setTags(article?.tags.map((tag) => tag.name) ?? []);
+    setVisibility(article?.visibility ?? "PUBLIC");
     setError(null);
   }
 
@@ -117,6 +121,17 @@ export function ArticleEditor({ article, onDirtyChange }: ArticleEditorProps) {
             />
           </div>
           <TagInput value={tags} onChange={setTags} placeholder={t("tagsPlaceholder")} className="flex-1 min-w-[200px]" />
+          <div className="w-48">
+            <Combobox
+              placeholder={t("visibilityLabel")}
+              options={(["PUBLIC", "ORGANIZATION", "RESTRICTED"] as Visibility[]).map((value) => ({
+                value,
+                label: t(`visibility${value}`),
+              }))}
+              value={visibility}
+              onChange={(value) => setVisibility(value as Visibility)}
+            />
+          </div>
         </div>
         <input
           className="w-full bg-transparent border-none font-body-md text-body-md text-on-surface-variant placeholder:text-on-surface-variant/50 focus:ring-0 p-0 outline-none"

@@ -1,8 +1,19 @@
 from rest_framework import serializers
 
 from accounts.models import User
+from files.serializers import StoredFileSerializer
 
-from .models import Answer, Article, ArticleRevision, Category, Question, Tag
+from .models import (
+    Answer,
+    Article,
+    ArticleAttachment,
+    ArticleRevision,
+    Category,
+    KnowledgeRelation,
+    Question,
+    QuestionAttachment,
+    Tag,
+)
 
 
 class AuthorSerializer(serializers.ModelSerializer):
@@ -66,6 +77,7 @@ class ArticleListSerializer(serializers.ModelSerializer):
             "slug",
             "excerpt",
             "status",
+            "visibility",
             "category",
             "tags",
             "author",
@@ -90,7 +102,7 @@ class ArticleWriteSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Article
-        fields = ["title", "excerpt", "content", "category_id", "tag_names"]
+        fields = ["title", "excerpt", "content", "category_id", "tag_names", "visibility"]
 
 
 class AnswerSerializer(serializers.ModelSerializer):
@@ -124,6 +136,7 @@ class QuestionListSerializer(serializers.ModelSerializer):
             "id",
             "title",
             "status",
+            "visibility",
             "tags",
             "author",
             "answer_count",
@@ -165,8 +178,74 @@ class QuestionWriteSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Question
-        fields = ["title", "body", "tag_names"]
+        fields = ["title", "body", "tag_names", "visibility"]
 
 
 class AcceptAnswerSerializer(serializers.Serializer):
     answer_id = serializers.UUIDField(allow_null=True)
+
+
+class KnowledgeRelationSerializer(serializers.ModelSerializer):
+    """Relations have no real directionality in the UI ("related to" reads
+    the same both ways) - this always renders the *other* side relative to
+    context["viewer"] = (viewer_content_type, viewer_object_id), which the
+    view passes in, rather than exposing source/target directly."""
+
+    other_type = serializers.SerializerMethodField()
+    other_id = serializers.SerializerMethodField()
+    other_title = serializers.SerializerMethodField()
+
+    class Meta:
+        model = KnowledgeRelation
+        fields = ["id", "relation_type", "other_type", "other_id", "other_title", "created_at"]
+
+    def _other(self, obj: KnowledgeRelation):
+        viewer_content_type, viewer_object_id = self.context["viewer"]
+        if obj.source_content_type_id == viewer_content_type.id and obj.source_object_id == viewer_object_id:
+            return obj.target_content_type, obj.target
+        return obj.source_content_type, obj.source
+
+    def get_other_type(self, obj: KnowledgeRelation) -> str:
+        content_type, _ = self._other(obj)
+        return content_type.model
+
+    def get_other_id(self, obj: KnowledgeRelation) -> str | None:
+        _, other = self._other(obj)
+        return str(other.pk) if other else None
+
+    def get_other_title(self, obj: KnowledgeRelation) -> str | None:
+        _, other = self._other(obj)
+        return getattr(other, "title", None) if other else None
+
+
+class ArticleAttachmentSerializer(serializers.ModelSerializer):
+    file = StoredFileSerializer(read_only=True)
+    uploaded_by = AuthorSerializer(read_only=True)
+
+    class Meta:
+        model = ArticleAttachment
+        fields = ["id", "file", "uploaded_by", "created_at"]
+
+
+class QuestionAttachmentSerializer(serializers.ModelSerializer):
+    file = StoredFileSerializer(read_only=True)
+    uploaded_by = AuthorSerializer(read_only=True)
+
+    class Meta:
+        model = QuestionAttachment
+        fields = ["id", "file", "uploaded_by", "created_at"]
+
+
+class AddAttachmentSerializer(serializers.Serializer):
+    file_id = serializers.UUIDField()
+
+
+class CreateRelationSerializer(serializers.Serializer):
+    """Input for POST /knowledge/relations/ - source/target identified by
+    model name (article/question) rather than a raw ContentType id, so
+    clients never need to know ContentType pks."""
+
+    source_type = serializers.ChoiceField(choices=["article", "question"])
+    source_id = serializers.UUIDField()
+    target_type = serializers.ChoiceField(choices=["article", "question"])
+    target_id = serializers.UUIDField()

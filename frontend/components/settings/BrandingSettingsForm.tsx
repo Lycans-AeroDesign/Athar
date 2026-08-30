@@ -6,7 +6,8 @@ import { useRef, useState } from "react";
 import { AuthenticatedImage } from "@/components/ui/AuthenticatedImage";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
-import { updateBrandingSettings, uploadFile } from "@/lib/api/organization";
+import { uploadFile } from "@/lib/api/files";
+import { updateBrandingSettings } from "@/lib/api/organization";
 import type { OrganizationSettings, StoredFileRef } from "@/lib/api/types";
 import { hasLowContrast } from "@/lib/theme/brandColors";
 
