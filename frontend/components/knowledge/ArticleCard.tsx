@@ -3,13 +3,12 @@ import { useTranslations } from "next-intl";
 import { Icon } from "@/components/ui/Icon";
 import { Link } from "@/i18n/navigation";
 import { formatRelativeTime } from "@/lib/datetime";
+import { formatPersonName } from "@/lib/format";
 import type { ArticleSummary } from "@/lib/api/types";
 
 export function ArticleCard({ article }: { article: ArticleSummary }) {
   const t = useTranslations("knowledge");
-  const authorName = article.author
-    ? [article.author.first_name, article.author.last_name].filter(Boolean).join(" ") || article.author.email
-    : null;
+  const authorName = formatPersonName(article.author);
 
   return (
     <Link

@@ -97,9 +97,18 @@ class ArticleRevision(models.Model):
 
 
 class Question(models.Model):
+    class Status(models.TextChoices):
+        OPEN = "OPEN", "Open"
+        ANSWERED = "ANSWERED", "Answered"
+        SOLVED = "SOLVED", "Solved"
+        CLOSED = "CLOSED", "Closed"
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     title = models.CharField(max_length=200)
     body = models.TextField(blank=True)  # markdown source
+    # Derived from accepted_answer/answers by services.py (_recomputed_open_status)
+    # rather than set directly by callers, except for the explicit CLOSED transition.
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.OPEN)
     tags = models.ManyToManyField(Tag, blank=True, related_name="questions")
     author = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -113,6 +122,12 @@ class Question(models.Model):
     # schema state where two answers on the same question are both accepted.
     accepted_answer = models.ForeignKey(
         "Answer", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    # Set once knowledge.services.promote_question_to_article turns this
+    # question into an Article - a direct FK rather than a generic relation
+    # table, since nothing else in the app has relationships to model yet.
+    promoted_to_article = models.ForeignKey(
+        Article, null=True, blank=True, on_delete=models.SET_NULL, related_name="promoted_from_questions"
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

@@ -15,6 +15,7 @@ class UserSerializer(serializers.ModelSerializer):
             "email",
             "first_name",
             "last_name",
+            "title",
             "roles",
             "permissions",
             "date_joined",
@@ -22,6 +23,16 @@ class UserSerializer(serializers.ModelSerializer):
 
     def get_permissions(self, obj: User) -> list[str]:
         return obj.permission_codenames()
+
+
+class MeUpdateSerializer(serializers.ModelSerializer):
+    """Self-service profile edit - deliberately excludes email/password
+    (those need their own verification/confirmation flows) and roles
+    (permission-gated elsewhere, not something a user grants themselves)."""
+
+    class Meta:
+        model = User
+        fields = ["first_name", "last_name", "title"]
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):

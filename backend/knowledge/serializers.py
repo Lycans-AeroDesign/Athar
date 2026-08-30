@@ -2,7 +2,7 @@ from rest_framework import serializers
 
 from accounts.models import User
 
-from .models import Answer, Article, Category, Question, Tag
+from .models import Answer, Article, ArticleRevision, Category, Question, Tag
 
 
 class AuthorSerializer(serializers.ModelSerializer):
@@ -13,7 +13,7 @@ class AuthorSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ["id", "first_name", "last_name", "email"]
+        fields = ["id", "first_name", "last_name", "email", "title"]
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -27,10 +27,30 @@ class CategorySerializer(serializers.ModelSerializer):
         return obj.articles.filter(status=Article.Status.PUBLISHED).count()
 
 
+class CategoryWriteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Category
+        fields = ["name", "description"]
+
+
 class TagSerializer(serializers.ModelSerializer):
     class Meta:
         model = Tag
         fields = ["id", "name"]
+
+
+class TagWriteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Tag
+        fields = ["name"]
+
+
+class ArticleRevisionSerializer(serializers.ModelSerializer):
+    edited_by = AuthorSerializer(read_only=True)
+
+    class Meta:
+        model = ArticleRevision
+        fields = ["id", "title", "content", "edited_by", "created_at"]
 
 
 class ArticleListSerializer(serializers.ModelSerializer):
@@ -96,16 +116,19 @@ class QuestionListSerializer(serializers.ModelSerializer):
     author = AuthorSerializer(read_only=True)
     answer_count = serializers.SerializerMethodField()
     has_accepted_answer = serializers.SerializerMethodField()
+    promoted_to_article = serializers.SerializerMethodField()
 
     class Meta:
         model = Question
         fields = [
             "id",
             "title",
+            "status",
             "tags",
             "author",
             "answer_count",
             "has_accepted_answer",
+            "promoted_to_article",
             "created_at",
             "updated_at",
         ]
@@ -115,6 +138,12 @@ class QuestionListSerializer(serializers.ModelSerializer):
 
     def get_has_accepted_answer(self, obj: Question) -> bool:
         return obj.accepted_answer_id is not None
+
+    # SerializerMethodField (not PrimaryKeyRelatedField) so this stringifies
+    # the UUID like every other id field - PrimaryKeyRelatedField.to_representation
+    # returns the raw pk (a uuid.UUID object) unless a pk_field is set.
+    def get_promoted_to_article(self, obj: Question) -> str | None:
+        return str(obj.promoted_to_article_id) if obj.promoted_to_article_id else None
 
 
 class QuestionDetailSerializer(QuestionListSerializer):

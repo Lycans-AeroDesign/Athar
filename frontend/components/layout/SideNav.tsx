@@ -23,77 +23,107 @@ const NAV_ITEMS: ReadonlyArray<{ href: string; labelKey: string; icon: string; p
   { href: "/failures", labelKey: "failures", icon: "report_problem" },
 ];
 
-export function SideNav() {
+interface SideNavProps {
+  /** Whether the off-canvas drawer is open below the `lg` breakpoint - ignored at `lg` and up, where the nav is always visible. */
+  open: boolean;
+  onClose: () => void;
+}
+
+export function SideNav({ open, onClose }: SideNavProps) {
   const pathname = usePathname();
   const t = useTranslations("nav");
+  const modalT = useTranslations("modal");
   const { settings } = useOrganization();
 
   return (
-    <nav className="bg-surface-container-low text-primary font-body-md text-body-md h-screen w-64 border-e border-outline-variant flex flex-col fixed start-0 top-0 z-20">
-      <div className="p-6 border-b border-outline-variant">
-        <div className="flex items-center gap-2">
-          {settings?.logo_url ? (
-            // eslint-disable-next-line @next/next/no-img-element -- external backend URL, not a local asset next/image can optimize.
-            <img
-              src={apiUrl(settings.logo_url)}
-              alt={settings.name}
-              className="h-8 w-8 rounded-lg object-contain"
-            />
-          ) : (
-            <BrandMark className="h-8 w-8" />
-          )}
-          <div className="flex flex-col">
-            <span className="font-headline-md text-headline-md font-bold text-primary">
-              {settings?.name ?? "AeroKMS"}
-            </span>
-            <span className="font-label-caps text-label-caps text-on-surface-variant">
-              {t("tagline")}
-            </span>
+    <>
+      {/* Backdrop - mobile/tablet only, and only while the drawer is open. */}
+      {open && (
+        <div
+          className="fixed inset-0 bg-inverse-surface/40 z-30 lg:hidden"
+          onClick={onClose}
+          aria-hidden="true"
+        />
+      )}
+
+      <nav
+        className={`bg-surface-container-low text-primary font-body-md text-body-md h-screen w-64 border-e border-outline-variant flex flex-col fixed start-0 top-0 z-40 transition-transform duration-200 lg:translate-x-0 ${
+          open ? "translate-x-0" : "-translate-x-full rtl:translate-x-full"
+        }`}
+      >
+        <div className="p-6 border-b border-outline-variant">
+          <div className="flex items-center gap-2">
+            {settings?.logo_url ? (
+              // eslint-disable-next-line @next/next/no-img-element -- external backend URL, not a local asset next/image can optimize.
+              <img
+                src={apiUrl(settings.logo_url)}
+                alt={settings.name}
+                className="h-8 w-8 rounded-lg object-contain"
+              />
+            ) : (
+              <BrandMark className="h-8 w-8" />
+            )}
+            <div className="flex flex-col flex-1">
+              <span className="font-headline-md text-headline-md font-bold text-primary">
+                {settings?.name ?? "AeroKMS"}
+              </span>
+              <span className="font-label-caps text-label-caps text-on-surface-variant">
+                {t("tagline")}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label={modalT("close")}
+              className="lg:hidden text-on-surface-variant hover:text-on-surface transition-colors"
+            >
+              <Icon name="close" size={20} />
+            </button>
           </div>
         </div>
-      </div>
 
-      <div className="flex-1 overflow-y-auto py-4 px-2 space-y-1">
-        {NAV_ITEMS.map((item) => {
-          const isActive = pathname === item.href;
-          return (
-            <Can key={item.href} permission={item.permission}>
-              <Link
-                className={
-                  isActive
-                    ? "flex items-center gap-4 px-4 py-2 bg-primary-container text-on-primary-container font-bold rounded-xl transition-colors"
-                    : "flex items-center gap-4 px-4 py-2 text-on-surface-variant hover:bg-surface-variant transition-colors duration-150 rounded-xl"
-                }
-                href={item.href}
-              >
-                <Icon name={item.icon} filled={isActive} />
-                {t(item.labelKey)}
-              </Link>
-            </Can>
-          );
-        })}
-      </div>
+        <div className="flex-1 overflow-y-auto py-4 px-2 space-y-1">
+          {NAV_ITEMS.map((item) => {
+            const isActive = pathname === item.href;
+            return (
+              <Can key={item.href} permission={item.permission}>
+                <Link
+                  className={
+                    isActive
+                      ? "flex items-center gap-4 px-4 py-2 bg-primary-container text-on-primary-container font-bold rounded-xl transition-colors"
+                      : "flex items-center gap-4 px-4 py-2 text-on-surface-variant hover:bg-surface-variant transition-colors duration-150 rounded-xl"
+                  }
+                  href={item.href}
+                >
+                  <Icon name={item.icon} filled={isActive} />
+                  {t(item.labelKey)}
+                </Link>
+              </Can>
+            );
+          })}
+        </div>
 
-      <div className="mt-auto p-2 border-t border-outline-variant space-y-1">
-        <Link
-          className={
-            pathname === "/settings"
-              ? "flex items-center gap-4 px-4 py-2 bg-primary-container text-on-primary-container font-bold rounded-xl transition-colors"
-              : "flex items-center gap-4 px-4 py-2 text-on-surface-variant hover:bg-surface-variant transition-colors duration-150 rounded-xl"
-          }
-          href="/settings"
-        >
-          <Icon name="settings" filled={pathname === "/settings"} />
-          {t("settings")}
-        </Link>
-        <Link
-          className="flex items-center gap-4 px-4 py-2 text-on-surface-variant hover:bg-surface-variant transition-colors duration-150 rounded-xl"
-          href="/about"
-        >
-          <Icon name="info" />
-          {t("about")}
-        </Link>
-      </div>
-    </nav>
+        <div className="mt-auto p-2 border-t border-outline-variant space-y-1">
+          <Link
+            className={
+              pathname === "/settings"
+                ? "flex items-center gap-4 px-4 py-2 bg-primary-container text-on-primary-container font-bold rounded-xl transition-colors"
+                : "flex items-center gap-4 px-4 py-2 text-on-surface-variant hover:bg-surface-variant transition-colors duration-150 rounded-xl"
+            }
+            href="/settings"
+          >
+            <Icon name="settings" filled={pathname === "/settings"} />
+            {t("settings")}
+          </Link>
+          <Link
+            className="flex items-center gap-4 px-4 py-2 text-on-surface-variant hover:bg-surface-variant transition-colors duration-150 rounded-xl"
+            href="/about"
+          >
+            <Icon name="info" />
+            {t("about")}
+          </Link>
+        </div>
+      </nav>
+    </>
   );
 }

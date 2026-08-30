@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
+import sys
 from datetime import timedelta
 from pathlib import Path
 
@@ -196,7 +197,32 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.IsAuthenticated",
     ],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    # Anon/User apply everywhere by default; the "auth" scope is opted into
+    # explicitly (see accounts/views.py's LoginView/RegisterView/RefreshView)
+    # for a much stricter rate, since those are the endpoints brute-forcing
+    # actually pays off on.
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": env("THROTTLE_ANON_RATE", default="60/min"),
+        "user": env("THROTTLE_USER_RATE", default="300/min"),
+        "auth": env("THROTTLE_AUTH_RATE", default="10/min"),
+    },
 }
+
+# Throttle counters are cache-backed and persist for the life of the test
+# process (not per-test) - without this, the many rapid logins each test's
+# _login_with_role()/_register_and_login() helper performs would trip the
+# "auth" scope well before most test modules even got to run. Login/Register/
+# Refresh set their own throttle_classes=[ScopedRateThrottle] (see
+# accounts/views.py), which ignores DEFAULT_THROTTLE_CLASSES entirely - a rate
+# of None is DRF's documented way to turn a scope off, so clearing the classes
+# list alone isn't enough; the "auth" rate itself has to go too.
+if "test" in sys.argv:
+    REST_FRAMEWORK["DEFAULT_THROTTLE_CLASSES"] = []
+    REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"]["auth"] = None
 
 SPECTACULAR_SETTINGS = {
     "TITLE": "AeroKMS API",

@@ -1,4 +1,4 @@
-import { apiFetch, apiJson } from "./client";
+import { apiJson, apiVoid } from "./client";
 import type { Permission, Role, User } from "./types";
 
 export function getRoles(): Promise<Role[]> {
@@ -13,8 +13,8 @@ export function createRole(payload: { name: string; description?: string }): Pro
   });
 }
 
-export async function deleteRole(roleId: string): Promise<void> {
-  await apiFetch(`/api/v1/rbac/roles/${roleId}/`, { method: "DELETE" });
+export function deleteRole(roleId: string): Promise<void> {
+  return apiVoid(`/api/v1/rbac/roles/${roleId}/`, { method: "DELETE" });
 }
 
 export function getPermissions(): Promise<Permission[]> {
@@ -29,22 +29,22 @@ export function grantPermission(roleId: string, permissionId: string): Promise<P
   });
 }
 
-export async function revokePermission(roleId: string, permissionId: string): Promise<void> {
-  await apiFetch(`/api/v1/rbac/roles/${roleId}/permissions/${permissionId}/`, { method: "DELETE" });
+export function revokePermission(roleId: string, permissionId: string): Promise<void> {
+  return apiVoid(`/api/v1/rbac/roles/${roleId}/permissions/${permissionId}/`, { method: "DELETE" });
 }
 
 export function getUsers(): Promise<User[]> {
   return apiJson<User[]>("/api/v1/rbac/users/");
 }
 
-export async function assignRole(userId: string, roleId: string): Promise<void> {
-  await apiFetch(`/api/v1/rbac/users/${userId}/roles/`, {
+export function assignRole(userId: string, roleId: string): Promise<void> {
+  return apiVoid(`/api/v1/rbac/users/${userId}/roles/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ role_id: roleId }),
   });
 }
 
-export async function unassignRole(userId: string, roleId: string): Promise<void> {
-  await apiFetch(`/api/v1/rbac/users/${userId}/roles/${roleId}/`, { method: "DELETE" });
+export function unassignRole(userId: string, roleId: string): Promise<void> {
+  return apiVoid(`/api/v1/rbac/users/${userId}/roles/${roleId}/`, { method: "DELETE" });
 }

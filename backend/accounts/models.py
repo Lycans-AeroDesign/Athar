@@ -34,6 +34,10 @@ class User(AbstractBaseUser):
     email = models.EmailField(unique=True)
     first_name = models.CharField(max_length=150, blank=True)
     last_name = models.CharField(max_length=150, blank=True)
+    # Free text, e.g. "Lead Systems Integration" or "Avionics Team Lead" -
+    # display-only context shown alongside the user's name (answer cards,
+    # the account page), distinct from rbac.Role which drives permissions.
+    title = models.CharField(max_length=150, blank=True)
     is_active = models.BooleanField(default=True)
     # Django admin break-glass access only - never the authorization path for the app itself.
     is_staff = models.BooleanField(default=False)

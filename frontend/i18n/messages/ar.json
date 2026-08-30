@@ -11,7 +11,11 @@
     "select": "اختر...",
     "selectDate": "اختر تاريخًا",
     "typeToSearch": "اكتب للبحث...",
-    "noResultsFound": "لا توجد نتائج."
+    "noResultsFound": "لا توجد نتائج.",
+    "copyCode": "نسخ الكود",
+    "copied": "تم النسخ!",
+    "share": "مشاركة",
+    "copiedLink": "تم نسخ الرابط!"
   },
   "auth": {
     "emailLabel": "البريد الإلكتروني",
@@ -38,10 +42,17 @@
     "about": "عن Lycans"
   },
   "topbar": {
+    "openMenu": "فتح القائمة",
     "searchPlaceholder": "ما المعرفة التي تحتاجها اليوم؟",
+    "searchScopeAll": "الكل",
+    "searchScopeArticles": "المقالات",
+    "searchScopeQuestions": "الأسئلة",
+    "searching": "جارٍ البحث...",
+    "noSearchResults": "لا توجد نتائج.",
     "notifications": "الإشعارات",
     "settings": "الإعدادات",
     "accountMenu": "قائمة الحساب",
+    "myAccount": "حسابي",
     "theme": "المظهر",
     "themeLight": "فاتح",
     "themeDark": "داكن",
@@ -63,6 +74,7 @@
     "tabs": {
       "general": "عام",
       "branding": "الهوية البصرية",
+      "categories": "الفئات",
       "permissions": "الأدوار والصلاحيات"
     },
     "general": {
@@ -90,6 +102,20 @@
       "secondaryColor": "اللون الثانوي",
       "lowContrastWarning": "تباين منخفض - قد يصعب قراءة النص على هذا اللون."
     },
+    "categories": {
+      "title": "الفئات",
+      "description": "إدارة الفئات التي يمكن تصنيف المقالات ضمنها.",
+      "newCategory": "فئة جديدة",
+      "renameCategory": "إعادة تسمية الفئة",
+      "createCategory": "إنشاء الفئة",
+      "deleteCategory": "حذف",
+      "nameLabel": "اسم الفئة",
+      "descriptionLabel": "الوصف",
+      "emptyState": "لا توجد فئات بعد.",
+      "articleCount": "{count, plural, =0 {لا مقالات} one {مقالة واحدة} two {مقالتان} few {# مقالات} many {# مقالة} other {# مقالة}}",
+      "deleteConfirmTitle": "حذف \"{name}\"؟",
+      "deleteConfirmBody": "ستصبح المقالات ضمن هذه الفئة بلا تصنيف. لا يمكن التراجع عن هذا الإجراء."
+    },
     "permissions": {
       "title": "الأدوار",
       "description": "إدارة الأدوار والصلاحيات التي يمنحها كل دور.",
@@ -116,10 +142,19 @@
       "createRole": "إنشاء الدور"
     }
   },
+  "account": {
+    "title": "حسابي",
+    "description": "إدارة معلومات ملفك الشخصي.",
+    "emailLabel": "البريد الإلكتروني",
+    "firstNameLabel": "الاسم الأول",
+    "lastNameLabel": "اسم العائلة",
+    "titleLabel": "الدور في الفريق",
+    "titlePlaceholder": "مثال: قيادة تكامل الأنظمة",
+    "rolesLabel": "الأدوار"
+  },
   "knowledge": {
     "landing": {
       "heroTitle": "مرحبًا بك في قاعدة المعرفة",
-      "heroSearchPlaceholder": "ابحث في قاعدة المعرفة...",
       "categoriesTitle": "تصفح الفئات",
       "tagsTitle": "الوسوم الشائعة",
       "featuredArticleLabel": "مقالة مميزة",
@@ -136,12 +171,20 @@
       "rejected": "مرفوض",
       "archived": "مؤرشف"
     },
+    "questionStatus": {
+      "open": "مفتوح",
+      "answered": "تمت الإجابة",
+      "solved": "محلول",
+      "closed": "مغلق"
+    },
     "article": {
+      "backToKnowledge": "العودة إلى قاعدة المعرفة",
+      "backToArticle": "العودة إلى المقالة",
       "badgeLabel": "مقالة",
       "byAuthor": "بواسطة {name}",
       "titlePlaceholder": "عنوان المقالة",
       "categoryPlaceholder": "اختر الفئة",
-      "tagsPlaceholder": "أضف وسومًا (مفصولة بفواصل)",
+      "tagsPlaceholder": "اكتب وسمًا واضغط Enter (افصل بفواصل لعدة وسوم)",
       "excerptPlaceholder": "ملخص قصير (اختياري)",
       "contentPlaceholder": "ابدأ بكتابة التوثيق التقني هنا... استخدم Markdown أو شريط الأدوات.",
       "saveDraft": "حفظ كمسودة",
@@ -155,7 +198,17 @@
       "notFound": "هذه المقالة غير موجودة أو لا تملك صلاحية الوصول إليها.",
       "loading": "جارٍ تحميل المقالة...",
       "createPermissionRequired": "لا تملك صلاحية إنشاء المقالات.",
-      "editPermissionRequired": "لا تملك صلاحية تعديل هذه المقالة."
+      "editPermissionRequired": "لا تملك صلاحية تعديل هذه المقالة.",
+      "rejectButton": "رفض",
+      "rejectModalTitle": "رفض هذه المقالة",
+      "rejectReasonLabel": "السبب (اختياري)",
+      "rejectReasonPlaceholder": "أخبر الكاتب بما يجب تغييره...",
+      "archiveButton": "أرشفة",
+      "archiveConfirmTitle": "أرشفة هذه المقالة؟",
+      "archiveConfirmBody": "لن تظهر بعد الآن في قاعدة المعرفة المنشورة.",
+      "historyModalTitle": "سجل المراجعات",
+      "systemAuthor": "النظام",
+      "tableOfContents": "المحتويات"
     },
     "question": {
       "badgeLabel": "سؤال",
@@ -175,7 +228,13 @@
       "unacceptButton": "إلغاء القبول",
       "addAnswerHeading": "إجابتك",
       "answerComposerPlaceholder": "اكتب إجابتك...",
-      "submitAnswer": "إرسال الإجابة"
+      "submitAnswer": "إرسال الإجابة",
+      "closeButton": "إغلاق السؤال",
+      "reopenButton": "إعادة فتح السؤال",
+      "closedNotice": "هذا السؤال مغلق أمام الإجابات الجديدة.",
+      "promoteButton": "ترقية إلى مقالة",
+      "promoteBannerText": "يحتوي هذا السؤال وإجابته المقبولة على معرفة تقنية عالية القيمة.",
+      "viewPromotedArticle": "عرض المقالة"
     },
     "editor": {
       "boldTooltip": "غامق",

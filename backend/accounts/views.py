@@ -4,6 +4,7 @@ from rest_framework import status
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
@@ -14,8 +15,8 @@ from audit.services import log_action
 from config.openapi import BAD_REQUEST, UNAUTHORIZED
 
 from .models import User
-from .serializers import CustomTokenObtainPairSerializer, RegisterSerializer, UserSerializer
-from .services import register_user
+from .serializers import CustomTokenObtainPairSerializer, MeUpdateSerializer, RegisterSerializer, UserSerializer
+from .services import register_user, update_own_profile
 
 
 def _set_refresh_cookie(response: Response, refresh_token: str) -> None:
@@ -42,6 +43,8 @@ def _clear_refresh_cookie(response: Response) -> None:
 class LoginView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
     permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "auth"
 
     @extend_schema(
         tags=["Auth"],
@@ -67,6 +70,8 @@ class LoginView(TokenObtainPairView):
 
 class RefreshView(APIView):
     permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "auth"
 
     @extend_schema(
         tags=["Auth"],
@@ -132,9 +137,23 @@ class MeView(APIView):
     def get(self, request, *args, **kwargs):
         return Response(UserSerializer(request.user).data)
 
+    @extend_schema(
+        tags=["Auth"],
+        summary="Update the current user's own profile (name, title) - not email/password/roles",
+        request=MeUpdateSerializer,
+        responses={200: UserSerializer, 400: BAD_REQUEST, 401: UNAUTHORIZED},
+    )
+    def patch(self, request, *args, **kwargs):
+        serializer = MeUpdateSerializer(request.user, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        user = update_own_profile(actor=request.user, request=request, **serializer.validated_data)
+        return Response(UserSerializer(user).data)
+
 
 class RegisterView(APIView):
     permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "auth"
 
     @extend_schema(
         tags=["Auth"],

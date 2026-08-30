@@ -13,6 +13,9 @@ PERMISSION_CATALOGUE = [
     ("article.review", "Review submitted articles"),
     ("article.publish", "Publish articles"),
     ("article.delete", "Delete articles"),
+    ("article.archive", "Archive published articles"),
+    ("category.manage", "Add and delete knowledge categories"),
+    ("tag.manage", "Delete knowledge tags"),
     ("failure.read", "View failure reports"),
     ("failure.create", "Report failures"),
     ("failure.update", "Update failure reports"),
@@ -53,6 +56,7 @@ SENIOR_MEMBER_PERMISSIONS = MEMBER_PERMISSIONS + [
 ]
 TEAM_HEAD_PERMISSIONS = SENIOR_MEMBER_PERMISSIONS + [
     "article.publish",
+    "article.archive",
     "project.create",
     "project.update",
 ]

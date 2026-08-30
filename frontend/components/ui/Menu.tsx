@@ -27,7 +27,11 @@ export interface MenuSubmenuConfig {
   options: MenuSubmenuOption[];
 }
 
-export type MenuEntry = MenuItemConfig | MenuSubmenuConfig;
+export interface MenuSeparatorConfig {
+  type: "separator";
+}
+
+export type MenuEntry = MenuItemConfig | MenuSubmenuConfig | MenuSeparatorConfig;
 
 interface MenuProps {
   trigger: ReactNode;
@@ -63,7 +67,11 @@ export function Menu({ trigger, items, header, align = "end" }: MenuProps) {
           )}
           {header && <DropdownMenu.Separator className="h-px bg-outline-variant my-1" />}
 
-          {items.map((entry) => {
+          {items.map((entry, index) => {
+            if (entry.type === "separator") {
+              return <DropdownMenu.Separator key={`separator-${index}`} className="h-px bg-outline-variant my-1" />;
+            }
+
             if (entry.type === "submenu") {
               return (
                 <DropdownMenu.Sub key={entry.label}>

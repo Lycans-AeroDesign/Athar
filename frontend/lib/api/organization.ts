@@ -1,4 +1,4 @@
-import { apiFetch, apiJson } from "./client";
+import { apiJson } from "./client";
 import type { OrganizationSettings, StoredFileRef } from "./types";
 
 export function getOrganizationSettings(): Promise<OrganizationSettings> {
@@ -31,17 +31,13 @@ export function updateBrandingSettings(payload: {
   });
 }
 
-export async function uploadFile(file: File, requiredPermission = "file.read"): Promise<StoredFileRef> {
+export function uploadFile(file: File, requiredPermission = "file.read"): Promise<StoredFileRef> {
   const formData = new FormData();
   formData.append("file", file);
   formData.append("required_permission", requiredPermission);
-  const res = await apiFetch("/api/v1/files/upload/", { method: "POST", body: formData });
-  if (!res.ok) {
-    // DRF validation errors come back as {"file": ["message"]} (see
-    // files/serializers.py's validate_file, e.g. the size-limit check) -
-    // surface that message instead of just the status code.
-    const body: { file?: string[]; detail?: string } | null = await res.json().catch(() => null);
-    throw new Error(body?.file?.[0] ?? body?.detail ?? `Upload failed with ${res.status}`);
-  }
-  return res.json();
+  // No Content-Type header - the browser sets the multipart boundary itself.
+  // apiJson's error handling already covers DRF's {"file": ["message"]}
+  // shape (see files/serializers.py's validate_file, e.g. the size-limit
+  // check), so no need to duplicate that extraction here.
+  return apiJson<StoredFileRef>("/api/v1/files/upload/", { method: "POST", body: formData });
 }

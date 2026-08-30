@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Combobox } from "@/components/ui/Combobox";
 import { MarkdownEditor } from "@/components/ui/MarkdownEditor";
+import { TagInput } from "@/components/ui/TagInput";
 import { useRouter } from "@/i18n/navigation";
 import {
   type ArticleWritePayload,
@@ -21,6 +22,8 @@ import { useHasPermission } from "@/lib/auth/permissions";
 interface ArticleEditorProps {
   /** Omit to create a new article; pass an existing one to edit it in place. */
   article?: ArticleDetail;
+  /** Reports whether the draft differs from `article` (or, for a new article, from empty) - lets a parent page's own "Back" link confirm before discarding. */
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
 // Structured like BrandingSettingsForm.tsx - local-state draft seeded from
@@ -28,8 +31,9 @@ interface ArticleEditorProps {
 // Unlike that form, there's no single "Save"/"Discard" pair: which action
 // buttons show depends on the article's current status and whether the
 // viewer holds article.publish (see buildActions below).
-export function ArticleEditor({ article }: ArticleEditorProps) {
+export function ArticleEditor({ article, onDirtyChange }: ArticleEditorProps) {
   const t = useTranslations("knowledge.article");
+  const commonT = useTranslations("common");
   const router = useRouter();
   const canPublish = useHasPermission("article.publish");
 
@@ -38,7 +42,7 @@ export function ArticleEditor({ article }: ArticleEditorProps) {
   const [excerpt, setExcerpt] = useState(article?.excerpt ?? "");
   const [content, setContent] = useState(article?.content ?? "");
   const [categoryId, setCategoryId] = useState<string | null>(article?.category?.id ?? null);
-  const [tagNames, setTagNames] = useState(article?.tags.map((tag) => tag.name).join(", ") ?? "");
+  const [tags, setTags] = useState<string[]>(article?.tags.map((tag) => tag.name) ?? []);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -46,17 +50,34 @@ export function ArticleEditor({ article }: ArticleEditorProps) {
     getCategories().then(setCategories);
   }, []);
 
+  const isDirty =
+    title !== (article?.title ?? "") ||
+    excerpt !== (article?.excerpt ?? "") ||
+    content !== (article?.content ?? "") ||
+    categoryId !== (article?.category?.id ?? null) ||
+    tags.join(",") !== (article?.tags.map((tag) => tag.name).join(",") ?? "");
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty, onDirtyChange]);
+
   function buildPayload(): ArticleWritePayload {
     return {
       title,
       excerpt,
       content,
       category_id: categoryId,
-      tag_names: tagNames
-        .split(",")
-        .map((name) => name.trim())
-        .filter(Boolean),
+      tag_names: tags,
     };
+  }
+
+  function handleDiscard() {
+    setTitle(article?.title ?? "");
+    setExcerpt(article?.excerpt ?? "");
+    setContent(article?.content ?? "");
+    setCategoryId(article?.category?.id ?? null);
+    setTags(article?.tags.map((tag) => tag.name) ?? []);
+    setError(null);
   }
 
   async function saveAndThen(after?: (id: string) => Promise<unknown>) {
@@ -73,7 +94,7 @@ export function ArticleEditor({ article }: ArticleEditorProps) {
   }
 
   const status = article?.status ?? "DRAFT";
-  const canSubmitForReview = !canPublish && (status === "DRAFT" || !article);
+  const canSubmitForReview = !canPublish && (status === "DRAFT" || status === "REJECTED" || !article);
   const canPublishNow = canPublish && (status === "DRAFT" || status === "IN_REVIEW" || !article);
   const saveLabel = !article || status === "DRAFT" ? t("saveDraft") : t("save");
 
@@ -95,12 +116,7 @@ export function ArticleEditor({ article }: ArticleEditorProps) {
               onChange={setCategoryId}
             />
           </div>
-          <input
-            className="flex-1 min-w-[200px] bg-surface-container-low px-4 py-2 rounded-xl border border-outline-variant font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant/50 outline-none"
-            placeholder={t("tagsPlaceholder")}
-            value={tagNames}
-            onChange={(e) => setTagNames(e.target.value)}
-          />
+          <TagInput value={tags} onChange={setTags} placeholder={t("tagsPlaceholder")} className="flex-1 min-w-[200px]" />
         </div>
         <input
           className="w-full bg-transparent border-none font-body-md text-body-md text-on-surface-variant placeholder:text-on-surface-variant/50 focus:ring-0 p-0 outline-none"
@@ -122,6 +138,11 @@ export function ArticleEditor({ article }: ArticleEditorProps) {
         <Button variant="secondary" onClick={() => saveAndThen()} disabled={isSaving || !title.trim()}>
           {saveLabel}
         </Button>
+        {article && (
+          <Button variant="ghost" onClick={handleDiscard} disabled={isSaving || !isDirty}>
+            {commonT("discard")}
+          </Button>
+        )}
         {canSubmitForReview && (
           <Button onClick={() => saveAndThen(submitArticle)} disabled={isSaving || !title.trim()}>
             {t("submitForReview")}

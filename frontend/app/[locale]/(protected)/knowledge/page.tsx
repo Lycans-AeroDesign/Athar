@@ -23,7 +23,6 @@ export default function KnowledgePage() {
   const [tags, setTags] = useState<Tag[]>([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [selectedTagId, setSelectedTagId] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
   const [askQuestionOpen, setAskQuestionOpen] = useState(false);
 
   useEffect(() => {
@@ -40,20 +39,18 @@ export default function KnowledgePage() {
     return articles.filter((article) => {
       if (selectedCategoryId && article.category?.id !== selectedCategoryId) return false;
       if (selectedTagName && !article.tags.some((tag) => tag.name === selectedTagName)) return false;
-      if (search && !article.title.toLowerCase().includes(search.toLowerCase())) return false;
       return true;
     });
-  }, [articles, selectedCategoryId, selectedTagName, search]);
+  }, [articles, selectedCategoryId, selectedTagName]);
 
   const filteredQuestions = useMemo(() => {
     if (!questions) return [];
     return questions.filter((question) => {
       if (selectedCategoryId) return false; // Questions have no category - a category filter excludes them.
       if (selectedTagName && !question.tags.some((tag) => tag.name === selectedTagName)) return false;
-      if (search && !question.title.toLowerCase().includes(search.toLowerCase())) return false;
       return true;
     });
-  }, [questions, selectedCategoryId, selectedTagName, search]);
+  }, [questions, selectedCategoryId, selectedTagName]);
 
   const featuredArticle = articles?.find((article) => article.status === "PUBLISHED") ?? null;
   const recentItems = useMemo(() => {
@@ -70,15 +67,6 @@ export default function KnowledgePage() {
     <div className="space-y-8">
       <div className="text-center border-b border-outline-variant pb-8 space-y-4">
         <h1 className="font-display text-display text-on-surface">{t("heroTitle")}</h1>
-        <div className="relative max-w-xl mx-auto">
-          <Icon name="search" className="absolute start-4 top-1/2 -translate-y-1/2 text-outline" />
-          <input
-            className="w-full bg-surface-container-low border border-outline-variant rounded-full py-2.5 ps-12 pe-4 font-body-md text-body-md text-on-surface placeholder:text-outline focus:outline-none focus:ring-2 focus:ring-primary transition-all"
-            placeholder={t("heroSearchPlaceholder")}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
         <div className="flex items-center justify-center gap-3">
           <Can permission="question.create">
             <Button variant="secondary" onClick={() => setAskQuestionOpen(true)}>
@@ -104,7 +92,7 @@ export default function KnowledgePage() {
         </div>
 
         <div className="lg:col-span-8 space-y-6">
-          {featuredArticle && !selectedCategoryId && !selectedTagId && !search && (
+          {featuredArticle && !selectedCategoryId && !selectedTagId && (
             <Link
               href={`/knowledge/articles/${featuredArticle.id}`}
               className="block bg-primary text-on-primary rounded-xl p-6 space-y-2"

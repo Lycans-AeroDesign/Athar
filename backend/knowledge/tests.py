@@ -7,7 +7,7 @@ from accounts.models import User
 from audit.models import AuditLog
 from rbac.models import Role
 
-from .models import Answer, Article, ArticleRevision, Question
+from .models import Answer, Article, ArticleRevision, Category, Question, Tag
 
 
 class KnowledgeTestCase(APITestCase):
@@ -321,3 +321,363 @@ class CategoryAndTagTests(KnowledgeTestCase):
 
         response = self.client.get(reverse("knowledge-tag-list"), **self._auth(guest_access))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_create_and_delete_require_category_manage_permission(self):
+        _, member_access = self._login_with_role("categmember@example.com", "Member")
+        response = self.client.post(
+            reverse("knowledge-category-list"),
+            {"name": "Ground Support"},
+            format="json",
+            **self._auth(member_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        _, admin_access = self._login_with_role("categadmin@example.com", "Organization Admin")
+        response = self.client.post(
+            reverse("knowledge-category-list"),
+            {"name": "Ground Support"},
+            format="json",
+            **self._auth(admin_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["slug"], "ground-support")
+        category_id = response.data["id"]
+
+        response = self.client.delete(
+            reverse("knowledge-category-detail", args=[category_id]), **self._auth(member_access)
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        response = self.client.delete(
+            reverse("knowledge-category-detail", args=[category_id]), **self._auth(admin_access)
+        )
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Category.objects.filter(pk=category_id).exists())
+
+    def test_deleting_a_category_uncategorizes_its_articles_instead_of_deleting_them(self):
+        _, admin_access = self._login_with_role("categadmin2@example.com", "Organization Admin")
+        category = self.client.post(
+            reverse("knowledge-category-list"),
+            {"name": "Payloads"},
+            format="json",
+            **self._auth(admin_access),
+        ).data
+        article = self.client.post(
+            reverse("knowledge-article-list-create"),
+            {"title": "Motor Sizing", "content": "Body", "category_id": category["id"]},
+            format="json",
+            **self._auth(admin_access),
+        ).data
+
+        self.client.delete(reverse("knowledge-category-detail", args=[category["id"]]), **self._auth(admin_access))
+
+        response = self.client.get(
+            reverse("knowledge-article-detail", args=[article["id"]]), **self._auth(admin_access)
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIsNone(response.data["category"])
+
+    def test_rename_requires_category_manage_permission(self):
+        _, admin_access = self._login_with_role("categadmin3@example.com", "Organization Admin")
+        category = self.client.post(
+            reverse("knowledge-category-list"),
+            {"name": "Firmware"},
+            format="json",
+            **self._auth(admin_access),
+        ).data
+
+        _, member_access = self._login_with_role("categmember2@example.com", "Member")
+        response = self.client.patch(
+            reverse("knowledge-category-detail", args=[category["id"]]),
+            {"description": "Nope"},
+            format="json",
+            **self._auth(member_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        response = self.client.patch(
+            reverse("knowledge-category-detail", args=[category["id"]]),
+            {"description": "Ground/autopilot code."},
+            format="json",
+            **self._auth(admin_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["description"], "Ground/autopilot code.")
+        # Slug is stable across a rename - same precedent as Article's slug.
+        self.assertEqual(response.data["slug"], "firmware")
+
+    def test_tag_create_is_idempotent_and_delete_requires_tag_manage(self):
+        _, member_access = self._login_with_role("tagmember@example.com", "Member")
+        response = self.client.post(
+            reverse("knowledge-tag-list"), {"name": " Servo "}, format="json", **self._auth(member_access)
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["name"], "servo")
+        tag_id = response.data["id"]
+
+        # Posting the same (differently-cased/spaced) name again reuses the row.
+        response = self.client.post(
+            reverse("knowledge-tag-list"), {"name": "SERVO"}, format="json", **self._auth(member_access)
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["id"], tag_id)
+        self.assertEqual(Tag.objects.filter(name="servo").count(), 1)
+
+        response = self.client.delete(reverse("knowledge-tag-detail", args=[tag_id]), **self._auth(member_access))
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        _, admin_access = self._login_with_role("tagadmin@example.com", "Organization Admin")
+        response = self.client.delete(reverse("knowledge-tag-detail", args=[tag_id]), **self._auth(admin_access))
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Tag.objects.filter(pk=tag_id).exists())
+
+
+class ArticleWorkflowExtraTests(KnowledgeTestCase):
+    def test_reject_sends_in_review_back_to_rejected_and_author_can_resubmit(self):
+        author, author_access = self._login_with_role("rejauthor@example.com", "Member")
+        article = self.client.post(
+            reverse("knowledge-article-list-create"),
+            {"title": "Needs Work", "content": "V1"},
+            format="json",
+            **self._auth(author_access),
+        ).data
+        self.client.post(reverse("knowledge-article-submit", args=[article["id"]]), **self._auth(author_access))
+
+        _, senior_access = self._login_with_role("rejsenior@example.com", "Senior Member")
+        response = self.client.post(
+            reverse("knowledge-article-reject", args=[article["id"]]),
+            {"reason": "Needs more detail"},
+            format="json",
+            **self._auth(senior_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["status"], Article.Status.REJECTED)
+
+        # Rejecting again (already REJECTED, not IN_REVIEW) is invalid.
+        response = self.client.post(
+            reverse("knowledge-article-reject", args=[article["id"]]), **self._auth(senior_access)
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        # Author can edit a rejected draft and resubmit it.
+        response = self.client.patch(
+            reverse("knowledge-article-detail", args=[article["id"]]),
+            {"content": "V2"},
+            format="json",
+            **self._auth(author_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        response = self.client.post(
+            reverse("knowledge-article-submit", args=[article["id"]]), **self._auth(author_access)
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["status"], Article.Status.IN_REVIEW)
+
+    def test_archive_requires_article_archive_and_only_from_published(self):
+        author, author_access = self._login_with_role("archauthor@example.com", "Member")
+        article = self.client.post(
+            reverse("knowledge-article-list-create"),
+            {"title": "Old Guide", "content": "V1"},
+            format="json",
+            **self._auth(author_access),
+        ).data
+
+        _, head_access = self._login_with_role("archhead@example.com", "Team/Subteam Head")
+        response = self.client.post(
+            reverse("knowledge-article-archive", args=[article["id"]]), **self._auth(head_access)
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        self.client.post(reverse("knowledge-article-submit", args=[article["id"]]), **self._auth(author_access))
+        self.client.post(reverse("knowledge-article-publish", args=[article["id"]]), **self._auth(head_access))
+
+        _, senior_access = self._login_with_role("archsenior@example.com", "Senior Member")
+        response = self.client.post(
+            reverse("knowledge-article-archive", args=[article["id"]]), **self._auth(senior_access)
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        response = self.client.post(
+            reverse("knowledge-article-archive", args=[article["id"]]), **self._auth(head_access)
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["status"], Article.Status.ARCHIVED)
+
+    def test_revisions_endpoint_matches_article_visibility(self):
+        author, author_access = self._login_with_role("revauthor@example.com", "Member")
+        article = self.client.post(
+            reverse("knowledge-article-list-create"),
+            {"title": "Revisioned", "content": "V1"},
+            format="json",
+            **self._auth(author_access),
+        ).data
+        self.client.patch(
+            reverse("knowledge-article-detail", args=[article["id"]]),
+            {"content": "V2"},
+            format="json",
+            **self._auth(author_access),
+        )
+
+        _, other_access = self._login_with_role("revother@example.com", "Member")
+        response = self.client.get(
+            reverse("knowledge-article-revisions", args=[article["id"]]), **self._auth(other_access)
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        response = self.client.get(
+            reverse("knowledge-article-revisions", args=[article["id"]]), **self._auth(author_access)
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 2)
+        self.assertEqual(response.data[0]["content"], "V2")
+
+
+class QuestionStatusAndPromotionTests(KnowledgeTestCase):
+    def test_status_follows_answer_and_accept_lifecycle(self):
+        asker, asker_access = self._login_with_role("statusasker@example.com", "Member")
+        question = self.client.post(
+            reverse("knowledge-question-list-create"),
+            {"title": "Q", "body": "..."},
+            format="json",
+            **self._auth(asker_access),
+        ).data
+        self.assertEqual(question["status"], Question.Status.OPEN)
+
+        _, answerer_access = self._login_with_role("statusanswerer@example.com", "Member")
+        answer = self.client.post(
+            reverse("knowledge-answer-list-create", args=[question["id"]]),
+            {"body": "A"},
+            format="json",
+            **self._auth(answerer_access),
+        ).data
+        response = self.client.get(reverse("knowledge-question-detail", args=[question["id"]]), **self._auth(asker_access))
+        self.assertEqual(response.data["status"], Question.Status.ANSWERED)
+
+        self.client.post(
+            reverse("knowledge-question-accept", args=[question["id"]]),
+            {"answer_id": answer["id"]},
+            format="json",
+            **self._auth(asker_access),
+        )
+        response = self.client.get(reverse("knowledge-question-detail", args=[question["id"]]), **self._auth(asker_access))
+        self.assertEqual(response.data["status"], Question.Status.SOLVED)
+
+        self.client.post(
+            reverse("knowledge-question-accept", args=[question["id"]]),
+            {"answer_id": None},
+            format="json",
+            **self._auth(asker_access),
+        )
+        response = self.client.get(reverse("knowledge-question-detail", args=[question["id"]]), **self._auth(asker_access))
+        self.assertEqual(response.data["status"], Question.Status.ANSWERED)
+
+    def test_close_blocks_new_answers_and_reopen_recomputes_status(self):
+        asker, asker_access = self._login_with_role("closeasker@example.com", "Member")
+        question = self.client.post(
+            reverse("knowledge-question-list-create"),
+            {"title": "Closing Q", "body": "..."},
+            format="json",
+            **self._auth(asker_access),
+        ).data
+
+        _, other_access = self._login_with_role("closeother@example.com", "Member")
+        response = self.client.post(reverse("knowledge-question-close", args=[question["id"]]), **self._auth(other_access))
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        response = self.client.post(reverse("knowledge-question-close", args=[question["id"]]), **self._auth(asker_access))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["status"], Question.Status.CLOSED)
+
+        response = self.client.post(
+            reverse("knowledge-answer-list-create", args=[question["id"]]),
+            {"body": "Too late"},
+            format="json",
+            **self._auth(other_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        response = self.client.post(reverse("knowledge-question-reopen", args=[question["id"]]), **self._auth(asker_access))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["status"], Question.Status.OPEN)
+
+    def test_promote_requires_accepted_answer_and_article_create_and_is_one_shot(self):
+        asker, asker_access = self._login_with_role("promoteasker@example.com", "Member")
+        question = self.client.post(
+            reverse("knowledge-question-list-create"),
+            {"title": "Why does it beep", "body": "Details"},
+            format="json",
+            **self._auth(asker_access),
+        ).data
+
+        response = self.client.post(reverse("knowledge-question-promote", args=[question["id"]]), **self._auth(asker_access))
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        answer = self.client.post(
+            reverse("knowledge-answer-list-create", args=[question["id"]]),
+            {"body": "Check the power supply"},
+            format="json",
+            **self._auth(asker_access),
+        ).data
+        self.client.post(
+            reverse("knowledge-question-accept", args=[question["id"]]),
+            {"answer_id": answer["id"]},
+            format="json",
+            **self._auth(asker_access),
+        )
+
+        _, guest_access = self._login_with_role("promoteguest@example.com", "Guest")
+        response = self.client.post(reverse("knowledge-question-promote", args=[question["id"]]), **self._auth(guest_access))
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        response = self.client.post(reverse("knowledge-question-promote", args=[question["id"]]), **self._auth(asker_access))
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertIn("Check the power supply", response.data["content"])
+        article_id = response.data["id"]
+
+        response = self.client.get(reverse("knowledge-question-detail", args=[question["id"]]), **self._auth(asker_access))
+        self.assertEqual(response.data["promoted_to_article"], article_id)
+
+        # Already promoted - a second attempt is rejected rather than creating a duplicate article.
+        response = self.client.post(reverse("knowledge-question-promote", args=[question["id"]]), **self._auth(asker_access))
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+class SearchTests(KnowledgeTestCase):
+    def test_search_scopes_by_type_and_only_returns_published_articles(self):
+        author, author_access = self._login_with_role("searchauthor@example.com", "Member")
+        draft = self.client.post(
+            reverse("knowledge-article-list-create"),
+            {"title": "Pixhawk Draft Notes", "content": "unpublished"},
+            format="json",
+            **self._auth(author_access),
+        ).data
+
+        _, head_access = self._login_with_role("searchhead@example.com", "Team/Subteam Head")
+        published = self.client.post(
+            reverse("knowledge-article-list-create"),
+            {"title": "Pixhawk 6X Configuration", "content": "wiring guide"},
+            format="json",
+            **self._auth(head_access),
+        ).data
+        self.client.post(reverse("knowledge-article-submit", args=[published["id"]]), **self._auth(head_access))
+        self.client.post(reverse("knowledge-article-publish", args=[published["id"]]), **self._auth(head_access))
+
+        self.client.post(
+            reverse("knowledge-question-list-create"),
+            {"title": "Pixhawk keeps rebooting", "body": "..."},
+            format="json",
+            **self._auth(author_access),
+        )
+
+        response = self.client.get(reverse("knowledge-search") + "?q=pixhawk", **self._auth(author_access))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        result_ids = {r["id"] for r in response.data["results"]}
+        self.assertIn(published["id"], result_ids)
+        self.assertNotIn(draft["id"], result_ids)
+
+        response = self.client.get(reverse("knowledge-search") + "?q=pixhawk&type=article", **self._auth(author_access))
+        self.assertTrue(all(r["type"] == "article" for r in response.data["results"]))
+
+        response = self.client.get(reverse("knowledge-search") + "?q=pixhawk&type=question", **self._auth(author_access))
+        self.assertTrue(all(r["type"] == "question" for r in response.data["results"]))
+        self.assertTrue(any("rebooting" in r["title"] for r in response.data["results"]))

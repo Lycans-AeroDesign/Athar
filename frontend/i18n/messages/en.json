@@ -11,7 +11,11 @@
     "select": "Select...",
     "selectDate": "Select a date",
     "typeToSearch": "Type to search...",
-    "noResultsFound": "No results found."
+    "noResultsFound": "No results found.",
+    "copyCode": "Copy code",
+    "copied": "Copied!",
+    "share": "Share",
+    "copiedLink": "Link copied!"
   },
   "auth": {
     "emailLabel": "Email Address",
@@ -38,10 +42,17 @@
     "about": "About Lycans"
   },
   "topbar": {
+    "openMenu": "Open menu",
     "searchPlaceholder": "What knowledge do you need today?",
+    "searchScopeAll": "All",
+    "searchScopeArticles": "Articles",
+    "searchScopeQuestions": "Questions",
+    "searching": "Searching...",
+    "noSearchResults": "No results found.",
     "notifications": "Notifications",
     "settings": "Settings",
     "accountMenu": "Account menu",
+    "myAccount": "My Account",
     "theme": "Theme",
     "themeLight": "Light",
     "themeDark": "Dark",
@@ -63,6 +74,7 @@
     "tabs": {
       "general": "General",
       "branding": "Branding",
+      "categories": "Categories",
       "permissions": "Roles & Permissions"
     },
     "general": {
@@ -90,6 +102,20 @@
       "secondaryColor": "Secondary Color",
       "lowContrastWarning": "Low contrast - text on this color may be hard to read."
     },
+    "categories": {
+      "title": "Categories",
+      "description": "Manage the categories articles can be organized under.",
+      "newCategory": "New Category",
+      "renameCategory": "Rename Category",
+      "createCategory": "Create Category",
+      "deleteCategory": "Delete",
+      "nameLabel": "Category Name",
+      "descriptionLabel": "Description",
+      "emptyState": "No categories yet.",
+      "articleCount": "{count, plural, =0 {No articles} one {# article} other {# articles}}",
+      "deleteConfirmTitle": "Delete \"{name}\"?",
+      "deleteConfirmBody": "Articles in this category will become uncategorized. This can't be undone."
+    },
     "permissions": {
       "title": "Roles",
       "description": "Manage roles and the permissions each one grants.",
@@ -116,10 +142,19 @@
       "createRole": "Create Role"
     }
   },
+  "account": {
+    "title": "My Account",
+    "description": "Manage your own profile information.",
+    "emailLabel": "Email",
+    "firstNameLabel": "First Name",
+    "lastNameLabel": "Last Name",
+    "titleLabel": "Role in Team",
+    "titlePlaceholder": "e.g. Lead Systems Integration",
+    "rolesLabel": "Roles"
+  },
   "knowledge": {
     "landing": {
       "heroTitle": "Welcome to the Knowledge Base",
-      "heroSearchPlaceholder": "Search Knowledge Base...",
       "categoriesTitle": "Browse Categories",
       "tagsTitle": "Popular Tags",
       "featuredArticleLabel": "Featured Article",
@@ -136,12 +171,20 @@
       "rejected": "Rejected",
       "archived": "Archived"
     },
+    "questionStatus": {
+      "open": "Open",
+      "answered": "Answered",
+      "solved": "Solved",
+      "closed": "Closed"
+    },
     "article": {
+      "backToKnowledge": "Back to Knowledge Base",
+      "backToArticle": "Back to Article",
       "badgeLabel": "Article",
       "byAuthor": "By {name}",
       "titlePlaceholder": "Article Title",
       "categoryPlaceholder": "Select Category",
-      "tagsPlaceholder": "Add tags (comma separated)",
+      "tagsPlaceholder": "Type a tag, press Enter (comma-separate for several)",
       "excerptPlaceholder": "Short summary (optional)",
       "contentPlaceholder": "Start writing technical documentation here... Use markdown or the toolbar.",
       "saveDraft": "Save Draft",
@@ -155,7 +198,17 @@
       "notFound": "This article doesn't exist or you don't have access to it.",
       "loading": "Loading article...",
       "createPermissionRequired": "You don't have permission to create articles.",
-      "editPermissionRequired": "You don't have permission to edit this article."
+      "editPermissionRequired": "You don't have permission to edit this article.",
+      "rejectButton": "Reject",
+      "rejectModalTitle": "Reject this article",
+      "rejectReasonLabel": "Reason (optional)",
+      "rejectReasonPlaceholder": "Let the author know what to change...",
+      "archiveButton": "Archive",
+      "archiveConfirmTitle": "Archive this article?",
+      "archiveConfirmBody": "It will no longer appear in the published knowledge base.",
+      "historyModalTitle": "Revision History",
+      "systemAuthor": "System",
+      "tableOfContents": "Contents"
     },
     "question": {
       "badgeLabel": "Question",
@@ -175,7 +228,13 @@
       "unacceptButton": "Unaccept",
       "addAnswerHeading": "Your Answer",
       "answerComposerPlaceholder": "Write your answer...",
-      "submitAnswer": "Submit Answer"
+      "submitAnswer": "Submit Answer",
+      "closeButton": "Close Question",
+      "reopenButton": "Reopen Question",
+      "closedNotice": "This question is closed to new answers.",
+      "promoteButton": "Promote to Article",
+      "promoteBannerText": "This question and its accepted answer contain high-value technical knowledge.",
+      "viewPromotedArticle": "View Article"
     },
     "editor": {
       "boldTooltip": "Bold",

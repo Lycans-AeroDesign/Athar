@@ -3,6 +3,8 @@ export interface User {
   email: string;
   first_name: string;
   last_name: string;
+  /** Free-text role in the team (e.g. "Lead Systems Integration") - distinct from `roles`, which drives permissions. */
+  title: string;
   roles: string[];
   permissions: string[];
   date_joined: string;
@@ -78,6 +80,7 @@ export interface KnowledgeAuthor {
   first_name: string;
   last_name: string;
   email: string;
+  title: string;
 }
 
 export interface Category {
@@ -113,6 +116,14 @@ export interface ArticleDetail extends ArticleSummary {
   content: string;
 }
 
+export interface ArticleRevision {
+  id: string;
+  title: string;
+  content: string;
+  edited_by: KnowledgeAuthor | null;
+  created_at: string;
+}
+
 export interface Answer {
   id: string;
   question_id: string;
@@ -123,13 +134,17 @@ export interface Answer {
   updated_at: string;
 }
 
+export type QuestionStatus = "OPEN" | "ANSWERED" | "SOLVED" | "CLOSED";
+
 export interface QuestionSummary {
   id: string;
   title: string;
+  status: QuestionStatus;
   tags: Tag[];
   author: KnowledgeAuthor | null;
   answer_count: number;
   has_accepted_answer: boolean;
+  promoted_to_article: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -138,3 +153,7 @@ export interface QuestionDetail extends QuestionSummary {
   body: string;
   answers: Answer[];
 }
+
+export type SearchResult =
+  | { type: "article"; id: string; title: string; excerpt: string }
+  | { type: "question"; id: string; title: string; excerpt: string };
