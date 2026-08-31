@@ -225,8 +225,8 @@ if "test" in sys.argv:
     REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"]["auth"] = None
 
 SPECTACULAR_SETTINGS = {
-    "TITLE": "AeroKMS API",
-    "DESCRIPTION": "AeroKMS backend API - see docs/VISION.md for the product spec.",
+    "TITLE": "Athar API",
+    "DESCRIPTION": "Athar backend API - see docs/VISION.md for the product spec.",
     "VERSION": "0.1.0",
     "SERVE_INCLUDE_SCHEMA": False,
 }

@@ -20,7 +20,7 @@ class OrganizationSettings(models.Model):
     # stored here - it's a per-viewer preference persisted client-side as the
     # NEXT_LOCALE cookie (see frontend/components/layout/TopBar.tsx), not an
     # org-wide default.
-    name = models.CharField(max_length=200, default="AeroKMS")
+    name = models.CharField(max_length=200, default="Athar")
     primary_domain = models.CharField(max_length=255, blank=True)
 
     # Branding

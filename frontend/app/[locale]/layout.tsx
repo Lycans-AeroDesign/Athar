@@ -32,7 +32,7 @@ export function generateStaticParams() {
 // would require a server-side fetch to the backend using a container-internal
 // URL that differs from NEXT_PUBLIC_API_URL (which is meant for the browser).
 export const metadata: Metadata = {
-  title: "AeroKMS",
+  title: "Athar",
   description: "Engineering Knowledge System",
 };
 

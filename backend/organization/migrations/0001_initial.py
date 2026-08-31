@@ -26,7 +26,7 @@ class Migration(migrations.Migration):
                         serialize=False,
                     ),
                 ),
-                ("name", models.CharField(default="AeroKMS", max_length=200)),
+                ("name", models.CharField(default="Athar", max_length=200)),
                 ("primary_domain", models.CharField(blank=True, max_length=255)),
                 ("default_language", models.CharField(default="en-US", max_length=20)),
                 ("timezone", models.CharField(default="UTC", max_length=50)),

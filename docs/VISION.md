@@ -1,10 +1,10 @@
-# AeroKMS — Agreed System Specification
+# Athar (أثر) — Agreed System Specification
 
 > This is the baseline product specification agreed on before writing the full SRS. It defines the product vision, design principles, and roadmap. Feature IDs, page-by-page functionality, and detailed acceptance criteria will follow in the SRS.
 
 ## 1. Product Vision
 
-**AeroKMS** is an open-source, self-hosted Knowledge Management System designed initially for student AeroDesign teams.
+**Athar** is an open-source, self-hosted Knowledge Management System designed initially for student AeroDesign teams.
 
 Its purpose is to preserve and connect the team's accumulated:
 
@@ -28,12 +28,12 @@ A new member should be able to search the system and understand not only **what 
 
 ## 2. Open-Source Philosophy
 
-AeroKMS will **not be a hosted SaaS platform by default**.
+Athar will **not be a hosted SaaS platform by default**.
 
 Instead:
 
 ```text
-AeroKMS Open Source
+Athar Open Source
         │
         ├── Lycans
         │     └── Self-hosted instance
@@ -1077,7 +1077,7 @@ A major goal should be:
 
 ```bash
 git clone ...
-cd aerokms
+cd athar
 docker compose up
 ```
 
@@ -1286,7 +1286,7 @@ This is where the connected knowledge model becomes extremely valuable.
 The system we're converging on is essentially:
 
 ```text
-                         AEROKMS
+                         ATHAR
                             │
           ┌─────────────────┼──────────────────┐
           │                 │                  │

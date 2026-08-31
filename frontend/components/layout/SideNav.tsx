@@ -65,7 +65,7 @@ export function SideNav({ open, onClose }: SideNavProps) {
             )}
             <div className="flex flex-col flex-1">
               <span className="font-headline-md text-headline-md font-bold text-primary">
-                {settings?.name ?? "AeroKMS"}
+                {settings?.name ?? "Athar"}
               </span>
               <span className="font-label-caps text-label-caps text-on-surface-variant">
                 {t("tagline")}

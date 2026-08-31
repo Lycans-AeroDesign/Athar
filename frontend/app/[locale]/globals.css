@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* AeroKMS design system - see ref/aerokms_technical_system/DESIGN.md.
+/* Athar design system - see ref/athar_technical_system/DESIGN.md.
    Light palette is the source of truth from the Stitch design; the dark
    palette is derived from it (Material Design 3 tonal-swap convention:
    dark primary = light's primary-fixed-dim, etc.) since no dark mockup
@@ -223,7 +223,7 @@
   --color-on-background: var(--color-on-background);
   --color-surface-variant: var(--color-surface-variant);
 
-  /* Shape - matches ref/aerokms_technical_system code.html borderRadius scale */
+  /* Shape - matches ref/athar_technical_system code.html borderRadius scale */
   --radius-DEFAULT: 0.25rem;
   --radius-lg: 0.5rem;
   --radius-xl: 0.75rem;

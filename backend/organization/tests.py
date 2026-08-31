@@ -37,13 +37,13 @@ class OrganizationSettingsTests(APITestCase):
         access = self._login_with_role("member@example.com", "Member")
         response = self.client.get(reverse("organization-settings"), **self._auth(access))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data["name"], "AeroKMS")
+        self.assertEqual(response.data["name"], "Athar")
 
     def test_settings_read_is_public_no_auth_required(self):
         # Needed pre-login too - the login screen shows the org name/branding.
         response = self.client.get(reverse("organization-settings"))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data["name"], "AeroKMS")
+        self.assertEqual(response.data["name"], "Athar")
 
     def test_settings_response_has_no_timezone_field(self):
         response = self.client.get(reverse("organization-settings"))

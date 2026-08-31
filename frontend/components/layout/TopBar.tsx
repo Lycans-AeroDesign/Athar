@@ -129,7 +129,7 @@ export function TopBar({ onOpenMenu }: TopBarProps) {
         open={confirmLogoutOpen}
         onOpenChange={setConfirmLogoutOpen}
         title={t("logoutConfirmTitle")}
-        description={t("logoutConfirmDescription", { orgName: settings?.name ?? "AeroKMS" })}
+        description={t("logoutConfirmDescription", { orgName: settings?.name ?? "Athar" })}
         confirmLabel={t("logoutConfirmAction")}
         danger
         onConfirm={handleLogout}

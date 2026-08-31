@@ -12,7 +12,7 @@ import { useHasPermission } from "@/lib/auth/permissions";
 import { useOrganization } from "@/lib/organization/OrganizationProvider";
 
 // Only General, Branding, Categories, Roles & Permissions, and Audit Log are
-// implemented - the Stitch reference (ref/aerokms_general_settings) also
+// implemented - the Stitch reference (ref/athar_general_settings) also
 // shows Authentication/Teams/Visibility/Notifications/Storage tabs, but
 // those aren't wired to a real backend yet, so they're left out rather than
 // shown as non-functional placeholders.

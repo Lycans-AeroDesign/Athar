@@ -1,5 +1,5 @@
 ---
-name: AeroKMS Technical System
+name: Athar Technical System
 colors:
   surface: '#faf8ff'
   surface-dim: '#dad9e3'

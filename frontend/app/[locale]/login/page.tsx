@@ -61,7 +61,7 @@ function LoginForm() {
               <BrandMark className="h-16 w-16 mb-4" />
             )}
             <h1 className="font-headline-lg text-headline-lg text-on-surface">
-              {settings?.name ?? "AeroKMS"}
+              {settings?.name ?? "Athar"}
             </h1>
             <p className="font-body-md text-body-md text-on-surface-variant mt-2">
               {t("login.tagline")}

@@ -1,4 +1,4 @@
-# Contributing to AeroKMS
+# Contributing to Athar
 
 This document describes the rules and conventions to follow when developing in this project (`backend/` Django + `frontend/` Next.js). Please read and adhere to these guidelines before submitting changes.
 
