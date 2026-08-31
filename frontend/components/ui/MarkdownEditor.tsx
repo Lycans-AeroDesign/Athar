@@ -1,10 +1,11 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Icon } from "./Icon";
 import { Markdown } from "./Markdown";
+import { uploadFile } from "@/lib/api/files";
 
 interface MarkdownEditorProps {
   value: string;
@@ -22,6 +23,16 @@ export function MarkdownEditor({ value, onChange, placeholder }: MarkdownEditorP
   const t = useTranslations("knowledge.editor");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [tab, setTab] = useState<"edit" | "preview">("edit");
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  // Mirrors `value` synchronously (the prop only catches up once the parent
+  // re-renders) so a chain of uploads - each awaiting the network before
+  // editing the text again - always finds/replaces against the latest
+  // content instead of a stale snapshot from when the upload started.
+  const valueRef = useRef(value);
+  useEffect(() => {
+    valueRef.current = value;
+  }, [value]);
 
   function focusSelection(start: number, end: number) {
     const textarea = textareaRef.current;
@@ -30,6 +41,84 @@ export function MarkdownEditor({ value, onChange, placeholder }: MarkdownEditorP
       textarea.focus();
       textarea.setSelectionRange(start, end);
     });
+  }
+
+  // Inserts an "Uploading…" placeholder at insertPos immediately, then
+  // swaps it for the real markdown reference once uploadFile() resolves (or
+  // removes it and surfaces uploadError on failure) - the placeholder text
+  // itself is the only thing identifying which upload owns which spot in
+  // the content, so its "uploading:<id>" fake URL just needs to be unique
+  // per call, not meaningful.
+  async function uploadAndInsert(file: File, insertPos: number, isImage: boolean): Promise<number> {
+    const label = t(isImage ? "uploadingImage" : "uploadingFile", { filename: file.name });
+    const uploadId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const placeholderText = `${isImage ? "!" : ""}[${label}](uploading:${uploadId})`;
+
+    const withPlaceholder =
+      valueRef.current.slice(0, insertPos) + placeholderText + valueRef.current.slice(insertPos);
+    valueRef.current = withPlaceholder;
+    onChange(withPlaceholder);
+    const cursor = insertPos + placeholderText.length;
+    focusSelection(cursor, cursor);
+
+    try {
+      const uploaded = await uploadFile(file);
+      const finalText = `${isImage ? "!" : ""}[${file.name}](${uploaded.download_url})`;
+      const current = valueRef.current;
+      const next = current.includes(placeholderText)
+        ? current.replace(placeholderText, finalText)
+        : `${current}\n${finalText}`;
+      valueRef.current = next;
+      onChange(next);
+      return insertPos + finalText.length;
+    } catch (err) {
+      const current = valueRef.current;
+      const next = current.includes(placeholderText) ? current.replace(placeholderText, "") : current;
+      valueRef.current = next;
+      onChange(next);
+      setUploadError(
+        t("uploadError", { filename: file.name, message: err instanceof Error ? err.message : String(err) }),
+      );
+      return insertPos;
+    }
+  }
+
+  // One file at a time (a multi-file paste/drop still resolves in order),
+  // each separated by a blank line once more than one is involved.
+  async function uploadFilesAtCursor(files: File[], startPos: number, imagesOnly: boolean) {
+    setUploadError(null);
+    let pos = startPos;
+    let isFirst = true;
+    for (const file of files) {
+      const isImage = file.type.startsWith("image/");
+      if (imagesOnly && !isImage) continue;
+      if (!isFirst) {
+        const withSeparator = valueRef.current.slice(0, pos) + "\n\n" + valueRef.current.slice(pos);
+        valueRef.current = withSeparator;
+        onChange(withSeparator);
+        pos += 2;
+      }
+      isFirst = false;
+      pos = await uploadAndInsert(file, pos, isImage);
+    }
+  }
+
+  function handlePaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
+    const files = Array.from(e.clipboardData.files).filter((f) => f.type.startsWith("image/"));
+    if (files.length === 0) return; // plain text paste - let the browser handle it normally.
+    e.preventDefault();
+    void uploadFilesAtCursor(files, e.currentTarget.selectionStart, true);
+  }
+
+  function handleDragOver(e: React.DragEvent<HTMLTextAreaElement>) {
+    if (e.dataTransfer.types.includes("Files")) e.preventDefault();
+  }
+
+  function handleDrop(e: React.DragEvent<HTMLTextAreaElement>) {
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length === 0) return; // e.g. dragging selected text within the page - let the browser handle it.
+    e.preventDefault();
+    void uploadFilesAtCursor(files, e.currentTarget.selectionStart, false);
   }
 
   function wrapSelection(before: string, after: string, placeholderText: string) {
@@ -203,11 +292,19 @@ export function MarkdownEditor({ value, onChange, placeholder }: MarkdownEditorP
           </button>
         </div>
       </div>
+      {uploadError && (
+        <p className="px-4 py-2 font-body-md text-body-md text-error border-b border-outline-variant" role="alert">
+          {uploadError}
+        </p>
+      )}
       {tab === "edit" ? (
         <textarea
           ref={textareaRef}
           value={value}
           onChange={(e) => onChange(e.target.value)}
+          onPaste={handlePaste}
+          onDragOver={handleDragOver}
+          onDrop={handleDrop}
           placeholder={placeholder}
           className="w-full min-h-[400px] p-4 bg-transparent font-mono-sm text-mono-sm text-on-surface resize-y outline-none"
         />

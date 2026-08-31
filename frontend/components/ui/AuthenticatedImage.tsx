@@ -37,7 +37,11 @@ export function AuthenticatedImage({ src, alt, className }: AuthenticatedImagePr
   }, [src]);
 
   if (!objectUrl) {
-    return <div className={`animate-pulse bg-surface-variant ${className ?? ""}`} />;
+    // A <span>, not a <div>: this can render inside a markdown <p> (see
+    // Markdown.tsx's img component), and a <div> there is invalid HTML -
+    // React only warns about it during hydration, but Chrome's parser
+    // silently closes the <p> early, breaking the DOM structure regardless.
+    return <span className={`inline-block animate-pulse bg-surface-variant ${className ?? ""}`} />;
   }
 
   // eslint-disable-next-line @next/next/no-img-element -- blob: URLs aren't supported by next/image's optimizer.

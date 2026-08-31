@@ -26,6 +26,7 @@ import {
   publishArticle,
   rejectArticle,
   submitArticle,
+  unarchiveArticle,
 } from "@/lib/api/knowledge";
 import type { ArticleDetail, ArticleRevision } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth/AuthProvider";
@@ -78,11 +79,18 @@ export default function ArticleDetailPage() {
 
   const isAuthor = user?.id === article.author?.id;
   const canEdit = isAuthor || canUpdateAny;
+  // Archived is frozen even for someone who otherwise holds a blanket
+  // article.update override - see update_article()'s own matching check in
+  // backend/knowledge/services.py. Only gates the edit-content action; the
+  // Attachments/RelatedContent sections below keep using canEdit as-is,
+  // since the backend doesn't restrict those by status (yet).
+  const canEditContent = canEdit && article.status !== "ARCHIVED";
   const canDelete = (isAuthor && article.status === "DRAFT") || canDeleteAny;
   const canSubmit = isAuthor && (article.status === "DRAFT" || article.status === "REJECTED");
   const canPublishNow = canPublish && (article.status === "DRAFT" || article.status === "IN_REVIEW");
   const canRejectNow = canReview && article.status === "IN_REVIEW";
   const canArchiveNow = canArchive && article.status === "PUBLISHED";
+  const canUnarchiveNow = canArchive && article.status === "ARCHIVED";
   const authorName = formatPersonName(article.author);
   const docId = `ART-${article.id.slice(0, 8).toUpperCase()}`;
 
@@ -129,6 +137,18 @@ export default function ArticleDetailPage() {
     }
   }
 
+  async function handleUnarchive() {
+    setIsWorking(true);
+    setActionError(null);
+    try {
+      setArticle(await unarchiveArticle(article!.id));
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setIsWorking(false);
+    }
+  }
+
   async function handleDelete() {
     setActionError(null);
     try {
@@ -170,7 +190,7 @@ export default function ArticleDetailPage() {
             </div>
             <div className="flex items-center gap-2">
               <ShareButton title={article.title} />
-              {canEdit && (
+              {canEditContent && (
                 <Link href={`/knowledge/articles/${article.id}/edit`}>
                   <IconButton icon="edit" variant="secondary" aria-label={t("editButton")} />
                 </Link>
@@ -223,7 +243,7 @@ export default function ArticleDetailPage() {
           </div>
         </div>
 
-        {(canSubmit || canPublishNow || canRejectNow) && (
+        {(canSubmit || canPublishNow || canRejectNow || canUnarchiveNow) && (
           <div className="flex flex-wrap items-center gap-3 pb-4 border-b border-outline-variant">
             {canSubmit && (
               <Button onClick={handleSubmit} disabled={isWorking}>
@@ -238,6 +258,12 @@ export default function ArticleDetailPage() {
             {canRejectNow && (
               <Button variant="secondary" onClick={() => setRejectOpen(true)} disabled={isWorking}>
                 {t("rejectButton")}
+              </Button>
+            )}
+            {canUnarchiveNow && (
+              <Button onClick={handleUnarchive} disabled={isWorking}>
+                <Icon name="unarchive" size={18} />
+                {t("unarchiveButton")}
               </Button>
             )}
           </div>

@@ -244,14 +244,30 @@ class ArticleListCreateView(APIView):
 
     @extend_schema(
         tags=["Knowledge"],
-        summary="List articles (published by default; ?status= for other states, own-authored or reviewer/publisher only)",
+        summary=(
+            "List articles (published by default; ?status=<state> for other states, "
+            "own-authored or reviewer/publisher only; ?status=ALL for every state at once)"
+        ),
         responses={200: ArticleListSerializer(many=True), **COMMON_ERRORS},
     )
     def get(self, request):
         status_param = request.query_params.get("status", Article.Status.PUBLISHED)
         queryset = Article.objects.select_related("category", "author").prefetch_related("tags")
         can_review = request.user.has_permission("article.review") or request.user.has_permission("article.publish")
-        if status_param == Article.Status.PUBLISHED:
+        if status_param == "ALL":
+            # A reviewer/publisher sees every article regardless of status -
+            # no further filtering needed. Everyone else sees every
+            # published article they'd normally see (still excluding
+            # RESTRICTED ones that aren't theirs) plus their own articles in
+            # any other status, since those aren't discoverable by anyone else.
+            if not can_review:
+                queryset = queryset.filter(Q(status=Article.Status.PUBLISHED) | Q(author=request.user))
+                queryset = queryset.exclude(
+                    Q(status=Article.Status.PUBLISHED)
+                    & Q(visibility=Visibility.RESTRICTED)
+                    & ~Q(author=request.user)
+                )
+        elif status_param == Article.Status.PUBLISHED:
             queryset = queryset.filter(status=Article.Status.PUBLISHED)
             if not can_review:
                 queryset = queryset.exclude(Q(visibility=Visibility.RESTRICTED) & ~Q(author=request.user))
@@ -372,6 +388,20 @@ class ArticleArchiveView(APIView):
     def post(self, request, pk):
         article = get_object_or_404(Article, pk=pk)
         article = services.archive_article(article=article, actor=request.user, request=request)
+        return Response(ArticleDetailSerializer(article).data)
+
+
+class ArticleUnarchiveView(APIView):
+    permission_classes = [require_permission("article.archive")]
+
+    @extend_schema(
+        tags=["Knowledge"],
+        summary="Restore an archived article to published",
+        responses={200: ArticleDetailSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
+    )
+    def post(self, request, pk):
+        article = get_object_or_404(Article, pk=pk)
+        article = services.unarchive_article(article=article, actor=request.user, request=request)
         return Response(ArticleDetailSerializer(article).data)
 
 

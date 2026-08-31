@@ -5,7 +5,9 @@ import { isValidElement, useState, type ReactNode } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 
+import { AuthenticatedImage } from "./AuthenticatedImage";
 import { Icon } from "./Icon";
+import { MermaidDiagram } from "./MermaidDiagram";
 import { slugify } from "@/lib/slug";
 
 // react-markdown gives each fenced ```code block``` to `pre` as a single
@@ -37,6 +39,10 @@ function CodeBlock({ children }: { children?: ReactNode }) {
     : undefined;
   const language = codeClassName?.match(/language-(\w+)/)?.[1];
 
+  if (language === "mermaid") {
+    return <MermaidDiagram code={extractText(children)} />;
+  }
+
   async function handleCopy() {
     await navigator.clipboard.writeText(extractText(children));
     setCopied(true);
@@ -65,6 +71,37 @@ function CodeBlock({ children }: { children?: ReactNode }) {
   );
 }
 
+// Files uploaded through the editor (see MarkdownEditor.tsx's paste/drop
+// handling) embed as ![alt](/api/v1/files/<id>/download/) - that endpoint
+// is auth-gated (Bearer header only, see backend/files/views.py), which a
+// plain <img src> can never send, so it's routed through AuthenticatedImage
+// instead. Anything else (an external URL someone pasted or typed by hand)
+// renders as a normal <img>. Named (not inline in COMPONENTS) so the `p`
+// component below can recognize "a paragraph containing only an image" by
+// element type and unwrap it - see that comment for why.
+function ImageRenderer({ src, alt }: { src?: string | Blob; alt?: string }) {
+  return typeof src === "string" && src.startsWith("/api/v1/files/") ? (
+    <AuthenticatedImage src={src} alt={alt ?? ""} className="rounded-lg max-w-full mb-4" />
+  ) : (
+    // eslint-disable-next-line @next/next/no-img-element -- markdown content, not a local/optimizable asset.
+    <img src={src} alt={alt ?? ""} className="rounded-lg max-w-full mb-4" />
+  );
+}
+
+// A markdown line that's just `![alt](url)` parses as a <p> containing only
+// an <img> - CommonMark has no "block image" syntax of its own. Rendering
+// that literally would put ImageRenderer's <img>/<AuthenticatedImage>
+// (which has a <span> loading placeholder) inside a <p>, which is fine for
+// a bare <img> but invalid HTML the moment there's any wrapper element
+// involved. Unwrapping the <p> whenever an image is its only real content
+// sidesteps that entirely rather than trying to keep every possible
+// image-adjacent element inline-safe.
+function isStandaloneImageParagraph(children: ReactNode): boolean {
+  const nodes = Array.isArray(children) ? children : [children];
+  const meaningful = nodes.filter((node) => !(typeof node === "string" && node.trim() === ""));
+  return meaningful.length === 1 && isValidElement(meaningful[0]) && meaningful[0].type === ImageRenderer;
+}
+
 // Maps markdown elements onto the app's own semantic Tailwind tokens rather
 // than the Tailwind Typography `prose` plugin - that plugin isn't installed,
 // and its hardcoded color palette would fight this app's CSS-variable-driven
@@ -91,7 +128,12 @@ const COMPONENTS: Components = {
       {children}
     </h3>
   ),
-  p: ({ children }) => <p className="font-body-lg text-body-lg text-on-surface mb-4">{children}</p>,
+  p: ({ children }) =>
+    isStandaloneImageParagraph(children) ? (
+      <>{children}</>
+    ) : (
+      <p className="font-body-lg text-body-lg text-on-surface mb-4">{children}</p>
+    ),
   a: ({ href, children }) => (
     <a href={href} className="text-primary underline hover:no-underline" target="_blank" rel="noreferrer">
       {children}
@@ -135,6 +177,7 @@ const COMPONENTS: Components = {
     </th>
   ),
   td: ({ children }) => <td className="border border-outline-variant px-3 py-2 text-on-surface">{children}</td>,
+  img: ImageRenderer,
 };
 
 interface MarkdownProps {

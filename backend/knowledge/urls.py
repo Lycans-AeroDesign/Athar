@@ -13,6 +13,7 @@ from .views import (
     ArticleRelationsView,
     ArticleRevisionListView,
     ArticleSubmitView,
+    ArticleUnarchiveView,
     CategoryDetailView,
     CategoryListView,
     QuestionAcceptAnswerView,
@@ -43,6 +44,7 @@ urlpatterns = [
     path("articles/<uuid:pk>/publish/", ArticlePublishView.as_view(), name="knowledge-article-publish"),
     path("articles/<uuid:pk>/reject/", ArticleRejectView.as_view(), name="knowledge-article-reject"),
     path("articles/<uuid:pk>/archive/", ArticleArchiveView.as_view(), name="knowledge-article-archive"),
+    path("articles/<uuid:pk>/unarchive/", ArticleUnarchiveView.as_view(), name="knowledge-article-unarchive"),
     path("articles/<uuid:pk>/revisions/", ArticleRevisionListView.as_view(), name="knowledge-article-revisions"),
     path("articles/<uuid:pk>/relations/", ArticleRelationsView.as_view(), name="knowledge-article-relations"),
     path(

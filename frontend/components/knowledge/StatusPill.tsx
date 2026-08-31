@@ -10,15 +10,20 @@ const STATUS_CLASSES: Record<ArticleStatus, string> = {
   ARCHIVED: "bg-surface-variant text-on-surface-variant",
 };
 
+// Exported so anywhere else needing an ArticleStatus's display name (e.g.
+// the Knowledge page's status filter) uses the exact same mapping instead
+// of re-deriving it.
+export const ARTICLE_STATUS_LABEL_KEYS: Record<ArticleStatus, "draft" | "inReview" | "published" | "rejected" | "archived"> = {
+  DRAFT: "draft",
+  IN_REVIEW: "inReview",
+  PUBLISHED: "published",
+  REJECTED: "rejected",
+  ARCHIVED: "archived",
+};
+
 export function StatusPill({ status }: { status: ArticleStatus }) {
   const t = useTranslations("knowledge.status");
-  const labelKey = {
-    DRAFT: "draft",
-    IN_REVIEW: "inReview",
-    PUBLISHED: "published",
-    REJECTED: "rejected",
-    ARCHIVED: "archived",
-  }[status] as "draft" | "inReview" | "published" | "rejected" | "archived";
+  const labelKey = ARTICLE_STATUS_LABEL_KEYS[status];
 
   return (
     <span

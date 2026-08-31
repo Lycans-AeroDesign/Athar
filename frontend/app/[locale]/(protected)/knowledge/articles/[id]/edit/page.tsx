@@ -42,6 +42,12 @@ export default function EditArticlePage() {
   if (!canEdit) {
     return <p className="font-body-md text-body-md text-on-surface-variant">{t("editPermissionRequired")}</p>;
   }
+  // Matches update_article()'s own check in backend/knowledge/services.py -
+  // archived is frozen for everyone, so getting here directly (a bookmarked
+  // link, browser back, ...) shouldn't offer a form that would just 400 on save.
+  if (article.status === "ARCHIVED") {
+    return <p className="font-body-md text-body-md text-on-surface-variant">{t("editArchivedBlocked")}</p>;
+  }
 
   const backHref = `/knowledge/articles/${article.id}`;
 

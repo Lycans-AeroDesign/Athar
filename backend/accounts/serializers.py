@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
-from .models import User
+from .models import InvitationCode, User
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -50,10 +50,41 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
 
 class RegisterSerializer(serializers.ModelSerializer):
-    """Validation only - accounts.services.register_user() does the actual creation."""
+    """Validation only - accounts.services.register_user() does the actual creation
+    (including checking invitation_code, since that needs a row lock - see
+    services.consume_invitation_code)."""
 
     password = serializers.CharField(write_only=True, min_length=8)
+    invitation_code = serializers.CharField(write_only=True)
 
     class Meta:
         model = User
-        fields = ["email", "password", "first_name", "last_name"]
+        fields = ["email", "password", "first_name", "last_name", "invitation_code"]
+
+
+class InvitationCodeSerializer(serializers.ModelSerializer):
+    created_by = serializers.SlugRelatedField(slug_field="email", read_only=True)
+    is_valid = serializers.SerializerMethodField()
+
+    class Meta:
+        model = InvitationCode
+        fields = [
+            "id",
+            "code",
+            "created_by",
+            "max_uses",
+            "uses_count",
+            "expires_at",
+            "revoked_at",
+            "created_at",
+            "is_valid",
+        ]
+        read_only_fields = fields
+
+    def get_is_valid(self, obj: InvitationCode) -> bool:
+        return obj.is_valid()
+
+
+class InvitationCodeCreateSerializer(serializers.Serializer):
+    max_uses = serializers.IntegerField(default=1, min_value=1)
+    expires_at = serializers.DateTimeField(required=False, allow_null=True, default=None)

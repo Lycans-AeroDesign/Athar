@@ -25,12 +25,29 @@
     "passwordLabel": "كلمة المرور",
     "showPassword": "إظهار كلمة المرور",
     "hidePassword": "إخفاء كلمة المرور",
+    "fieldRequired": "هذا الحقل مطلوب.",
+    "invalidEmail": "أدخل بريدًا إلكترونيًا صالحًا.",
+    "passwordTooShort": "يجب ألا تقل كلمة المرور عن {min} أحرف.",
     "login": {
       "tagline": "نظام المعرفة الهندسية",
       "submit": "تسجيل الدخول",
       "submitting": "جارٍ تسجيل الدخول...",
       "error": "البريد الإلكتروني أو كلمة المرور غير صحيحة.",
-      "credit": "طوّره فريق Lycans AeroDesign"
+      "rateLimited": "محاولات تسجيل دخول كثيرة جدًا. الرجاء الانتظار قليلاً ثم المحاولة مرة أخرى.",
+      "credit": "طوّره فريق Lycans AeroDesign",
+      "needAccount": "ليس لديك حساب؟",
+      "registerLink": "إنشاء حساب"
+    },
+    "register": {
+      "tagline": "أنشئ حسابك",
+      "firstNameLabel": "الاسم الأول",
+      "lastNameLabel": "اسم العائلة",
+      "invitationCodeLabel": "رمز الدعوة",
+      "submit": "إنشاء الحساب",
+      "submitting": "جارٍ إنشاء الحساب...",
+      "error": "تعذّر إنشاء حسابك. تحقق من البيانات وحاول مرة أخرى.",
+      "hasAccount": "لديك حساب بالفعل؟",
+      "loginLink": "تسجيل الدخول"
     }
   },
   "nav": {
@@ -101,6 +118,7 @@
       "branding": "الهوية البصرية",
       "categories": "الفئات",
       "permissions": "الأدوار والصلاحيات",
+      "invitations": "الدعوات",
       "audit": "سجل التدقيق"
     },
     "general": {
@@ -167,6 +185,22 @@
       "roleDescriptionLabel": "الوصف",
       "createRole": "إنشاء الدور"
     },
+    "invitations": {
+      "title": "رموز الدعوة",
+      "description": "التسجيل يتطلب رمزًا صالحًا - أنشئ واحدًا لدعوة عضو جديد.",
+      "generateCode": "إنشاء رمز",
+      "emptyState": "لا توجد رموز دعوة بعد.",
+      "maxUsesLabel": "الحد الأقصى للاستخدام",
+      "expiresAtLabel": "تاريخ الانتهاء (اختياري)",
+      "usesLabel": "استُخدم {used}/{max}",
+      "expiresLabel": "ينتهي {date}",
+      "statusRevoked": "أُلغي",
+      "statusExhaustedOrExpired": "لم يعد صالحًا",
+      "copyLink": "نسخ رابط الدعوة",
+      "revoke": "إلغاء",
+      "revokeConfirmTitle": "إلغاء رمز الدعوة هذا؟",
+      "revokeConfirmBody": "لن يعود بالإمكان استخدامه للتسجيل، حتى لو تبقّت له استخدامات."
+    },
     "audit": {
       "title": "سجل التدقيق",
       "description": "سجل بالإجراءات الحساسة عبر المؤسسة.",
@@ -195,6 +229,7 @@
       "tagsTitle": "الوسوم الشائعة",
       "featuredArticleLabel": "مقالة مميزة",
       "recentlyUpdatedTitle": "آخر التحديثات",
+      "statusFilterLabel": "الحالة",
       "askQuestionButton": "اطرح سؤالاً",
       "newArticleButton": "مقالة جديدة",
       "emptyState": "لا يوجد شيء هنا بعد.",
@@ -214,6 +249,7 @@
       "badgeQuestion": "سؤال"
     },
     "status": {
+      "all": "الكل",
       "draft": "مسودة",
       "inReview": "قيد المراجعة",
       "published": "منشور",
@@ -248,6 +284,7 @@
       "loading": "جارٍ تحميل المقالة...",
       "createPermissionRequired": "لا تملك صلاحية إنشاء المقالات.",
       "editPermissionRequired": "لا تملك صلاحية تعديل هذه المقالة.",
+      "editArchivedBlocked": "هذه المقالة مؤرشفة ولا يمكن تعديلها. ألغِ الأرشفة أولاً.",
       "rejectButton": "رفض",
       "rejectModalTitle": "رفض هذه المقالة",
       "rejectReasonLabel": "السبب (اختياري)",
@@ -255,6 +292,7 @@
       "archiveButton": "أرشفة",
       "archiveConfirmTitle": "أرشفة هذه المقالة؟",
       "archiveConfirmBody": "لن تظهر بعد الآن في قاعدة المعرفة المنشورة.",
+      "unarchiveButton": "إلغاء الأرشفة",
       "historyModalTitle": "سجل المراجعات",
       "systemAuthor": "النظام",
       "tableOfContents": "المحتويات",
@@ -290,6 +328,9 @@
       "promoteButton": "ترقية إلى مقالة",
       "promoteBannerText": "يحتوي هذا السؤال وإجابته المقبولة على معرفة تقنية عالية القيمة.",
       "viewPromotedArticle": "عرض المقالة",
+      "visibilityLabel": "مستوى الظهور",
+      "visibilityPUBLIC": "عام",
+      "visibilityORGANIZATION": "المؤسسة",
       "visibilityRESTRICTED": "مقيّد"
     },
     "relations": {
@@ -324,7 +365,10 @@
       "boldPlaceholder": "نص غامق",
       "italicPlaceholder": "نص مائل",
       "linkTextPlaceholder": "نص الرابط",
-      "imageAltPlaceholder": "نص بديل"
+      "imageAltPlaceholder": "نص بديل",
+      "uploadingImage": "جارٍ رفع {filename}…",
+      "uploadingFile": "جارٍ رفع {filename}…",
+      "uploadError": "تعذّر رفع {filename}: {message}"
     }
   },
   "modal": {

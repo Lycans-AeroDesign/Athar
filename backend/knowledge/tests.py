@@ -514,6 +514,122 @@ class ArticleWorkflowExtraTests(KnowledgeTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["status"], Article.Status.ARCHIVED)
 
+    def test_unarchive_requires_article_archive_and_only_from_archived(self):
+        author, author_access = self._login_with_role("unarchauthor@example.com", "Member")
+        article = self.client.post(
+            reverse("knowledge-article-list-create"),
+            {"title": "Old Guide", "content": "V1"},
+            format="json",
+            **self._auth(author_access),
+        ).data
+
+        _, head_access = self._login_with_role("unarchhead@example.com", "Team/Subteam Head")
+        # Still a draft - nothing to unarchive yet.
+        response = self.client.post(
+            reverse("knowledge-article-unarchive", args=[article["id"]]), **self._auth(head_access)
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        self.client.post(reverse("knowledge-article-submit", args=[article["id"]]), **self._auth(author_access))
+        self.client.post(reverse("knowledge-article-publish", args=[article["id"]]), **self._auth(head_access))
+        published_at = self.client.get(
+            reverse("knowledge-article-detail", args=[article["id"]]), **self._auth(head_access)
+        ).data["published_at"]
+        self.client.post(reverse("knowledge-article-archive", args=[article["id"]]), **self._auth(head_access))
+
+        _, senior_access = self._login_with_role("unarchsenior@example.com", "Senior Member")
+        response = self.client.post(
+            reverse("knowledge-article-unarchive", args=[article["id"]]), **self._auth(senior_access)
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        response = self.client.post(
+            reverse("knowledge-article-unarchive", args=[article["id"]]), **self._auth(head_access)
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["status"], Article.Status.PUBLISHED)
+        # Restoring isn't republishing - the original publish date is preserved.
+        self.assertEqual(response.data["published_at"], published_at)
+
+    def test_archived_article_cannot_be_edited_even_with_article_update(self):
+        author, author_access = self._login_with_role("frozenauthor@example.com", "Member")
+        article = self.client.post(
+            reverse("knowledge-article-list-create"),
+            {"title": "Old Guide", "content": "V1"},
+            format="json",
+            **self._auth(author_access),
+        ).data
+
+        _, head_access = self._login_with_role("frozenhead@example.com", "Team/Subteam Head")
+        self.client.post(reverse("knowledge-article-submit", args=[article["id"]]), **self._auth(author_access))
+        self.client.post(reverse("knowledge-article-publish", args=[article["id"]]), **self._auth(head_access))
+        self.client.post(reverse("knowledge-article-archive", args=[article["id"]]), **self._auth(head_access))
+
+        # Team/Subteam Head holds article.update (a blanket override) - even
+        # so, archived is frozen until explicitly unarchived.
+        response = self.client.patch(
+            reverse("knowledge-article-detail", args=[article["id"]]),
+            {"title": "Sneaky edit"},
+            format="json",
+            **self._auth(head_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        response = self.client.patch(
+            reverse("knowledge-article-detail", args=[article["id"]]),
+            {"title": "Sneaky edit"},
+            format="json",
+            **self._auth(author_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_list_status_all_shows_published_plus_own_for_non_reviewer_and_everything_for_reviewer(self):
+        author, author_access = self._login_with_role("allauthor@example.com", "Member")
+        draft = self.client.post(
+            reverse("knowledge-article-list-create"),
+            {"title": "My Draft", "content": "V1"},
+            format="json",
+            **self._auth(author_access),
+        ).data
+
+        _, head_access = self._login_with_role("allhead@example.com", "Team/Subteam Head")
+        other_published = self.client.post(
+            reverse("knowledge-article-list-create"),
+            {"title": "Someone Else's Published", "content": "V1"},
+            format="json",
+            **self._auth(head_access),
+        ).data
+        self.client.post(
+            reverse("knowledge-article-submit", args=[other_published["id"]]), **self._auth(head_access)
+        )
+        self.client.post(
+            reverse("knowledge-article-publish", args=[other_published["id"]]), **self._auth(head_access)
+        )
+
+        _, other_access = self._login_with_role("allother@example.com", "Member")
+        other_draft = self.client.post(
+            reverse("knowledge-article-list-create"),
+            {"title": "Someone Else's Draft", "content": "V1"},
+            format="json",
+            **self._auth(other_access),
+        ).data
+
+        # Plain member: their own draft + the published one, not the other member's draft.
+        response = self.client.get(
+            reverse("knowledge-article-list-create"), {"status": "ALL"}, **self._auth(author_access)
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        ids = {a["id"] for a in response.data["results"]}
+        self.assertEqual(ids, {draft["id"], other_published["id"]})
+
+        # Reviewer/publisher: everything, regardless of author or status.
+        response = self.client.get(
+            reverse("knowledge-article-list-create"), {"status": "ALL"}, **self._auth(head_access)
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        ids = {a["id"] for a in response.data["results"]}
+        self.assertEqual(ids, {draft["id"], other_published["id"], other_draft["id"]})
+
     def test_revisions_endpoint_matches_article_visibility(self):
         author, author_access = self._login_with_role("revauthor@example.com", "Member")
         article = self.client.post(

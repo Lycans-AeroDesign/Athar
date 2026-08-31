@@ -58,6 +58,20 @@ export async function apiFetch(
   return res;
 }
 
+/** Thrown by apiJson/apiVoid (and loginRequest) instead of a plain Error so
+ * callers can branch on the HTTP status - e.g. the login page telling a 429
+ * (rate-limited) apart from a 401 (wrong credentials) instead of showing the
+ * same "invalid email or password" copy for both. */
+export class ApiError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
 // DRF error bodies are either {"detail": "message"} (PermissionDenied, a
 // plain-string ValidationError, throttling, ...) or a field-error dict like
 // {"title": ["This field is required."], "non_field_errors": [...]} from
@@ -66,7 +80,7 @@ export async function apiFetch(
 // apiJson used to throw, which meant every backend validation/permission
 // message (e.g. "Only a draft or in-review article can be published.") never
 // reached the user.
-async function extractErrorMessage(res: Response, path: string): Promise<string> {
+export async function extractErrorMessage(res: Response, path: string): Promise<string> {
   try {
     const body: unknown = await res.json();
     if (body && typeof body === "object") {
@@ -86,7 +100,7 @@ async function extractErrorMessage(res: Response, path: string): Promise<string>
 export async function apiJson<T>(path: string, options: RequestInit = {}): Promise<T> {
   const res = await apiFetch(path, options);
   if (!res.ok) {
-    throw new Error(await extractErrorMessage(res, path));
+    throw new ApiError(await extractErrorMessage(res, path), res.status);
   }
   return res.json() as Promise<T>;
 }
@@ -97,6 +111,6 @@ export async function apiJson<T>(path: string, options: RequestInit = {}): Promi
 export async function apiVoid(path: string, options: RequestInit = {}): Promise<void> {
   const res = await apiFetch(path, options);
   if (!res.ok) {
-    throw new Error(await extractErrorMessage(res, path));
+    throw new ApiError(await extractErrorMessage(res, path), res.status);
   }
 }

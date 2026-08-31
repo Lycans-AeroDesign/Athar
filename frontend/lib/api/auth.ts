@@ -1,15 +1,43 @@
-import type { LoginResponse } from "./types";
+import { ApiError, extractErrorMessage } from "./client";
+import type { LoginResponse, User } from "./types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
+const LOGIN_PATH = "/api/v1/auth/login/";
+const REGISTER_PATH = "/api/v1/auth/register/";
 
+// Bare fetch rather than apiJson (no access token to attach yet, and a 401
+// here must not trigger apiFetch's refresh-and-retry loop) - but still uses
+// ApiError/extractErrorMessage so the login page can tell a 429 (rate
+// limited) apart from a 401 (wrong credentials) instead of always showing
+// the same "invalid email or password" copy regardless of the real cause.
 export async function loginRequest(email: string, password: string): Promise<LoginResponse> {
-  const res = await fetch(`${API_URL}/api/v1/auth/login/`, {
+  const res = await fetch(`${API_URL}${LOGIN_PATH}`, {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
   });
-  if (!res.ok) throw new Error("Invalid email or password");
+  if (!res.ok) throw new ApiError(await extractErrorMessage(res, LOGIN_PATH), res.status);
+  return res.json();
+}
+
+// Creates the account only - it doesn't log the caller in (see backend/accounts/views.py's
+// RegisterView, which returns UserSerializer data, not tokens), so callers
+// follow up with loginRequest/AuthProvider.login using the same credentials.
+export async function registerRequest(payload: {
+  email: string;
+  password: string;
+  invitation_code: string;
+  first_name?: string;
+  last_name?: string;
+}): Promise<User> {
+  const res = await fetch(`${API_URL}${REGISTER_PATH}`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new ApiError(await extractErrorMessage(res, REGISTER_PATH), res.status);
   return res.json();
 }
 

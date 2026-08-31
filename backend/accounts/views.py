@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import status
 from rest_framework.exceptions import AuthenticationFailed
@@ -12,11 +13,20 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 
 from audit.services import log_action
-from config.openapi import BAD_REQUEST, UNAUTHORIZED
+from config.openapi import BAD_REQUEST, COMMON_ERRORS, NOT_FOUND, UNAUTHORIZED
+from config.pagination import paginated_response
+from rbac.permissions import require_permission
 
-from .models import User
-from .serializers import CustomTokenObtainPairSerializer, MeUpdateSerializer, RegisterSerializer, UserSerializer
-from .services import register_user, update_own_profile
+from .models import InvitationCode, User
+from .serializers import (
+    CustomTokenObtainPairSerializer,
+    InvitationCodeCreateSerializer,
+    InvitationCodeSerializer,
+    MeUpdateSerializer,
+    RegisterSerializer,
+    UserSerializer,
+)
+from .services import create_invitation_code, register_user, revoke_invitation_code, update_own_profile
 
 
 def _set_refresh_cookie(response: Response, refresh_token: str) -> None:
@@ -157,11 +167,13 @@ class RegisterView(APIView):
 
     @extend_schema(
         tags=["Auth"],
-        summary="Self-register a new account (assigned the Guest role)",
+        summary="Self-register a new account with an invitation code (assigned the Guest role)",
         request=RegisterSerializer,
         responses={
             201: UserSerializer,
-            400: BAD_REQUEST,
+            400: OpenApiResponse(
+                description="Validation failed, or invitation_code is missing/invalid/expired/exhausted."
+            ),
             404: OpenApiResponse(description="Registration is disabled (ENABLE_REGISTRATION=False)."),
         },
     )
@@ -173,3 +185,42 @@ class RegisterView(APIView):
         serializer.is_valid(raise_exception=True)
         user = register_user(request=request, **serializer.validated_data)
         return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
+
+
+class InvitationCodeListCreateView(APIView):
+    permission_classes = [require_permission("user.manage")]
+
+    @extend_schema(
+        tags=["Auth"],
+        summary="List invitation codes",
+        responses={200: InvitationCodeSerializer(many=True), **COMMON_ERRORS},
+    )
+    def get(self, request):
+        return paginated_response(request, InvitationCode.objects.all(), InvitationCodeSerializer)
+
+    @extend_schema(
+        tags=["Auth"],
+        summary="Generate an invitation code",
+        request=InvitationCodeCreateSerializer,
+        responses={201: InvitationCodeSerializer, 400: BAD_REQUEST, **COMMON_ERRORS},
+    )
+    def post(self, request):
+        serializer = InvitationCodeCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        invitation = create_invitation_code(created_by=request.user, request=request, **serializer.validated_data)
+        return Response(InvitationCodeSerializer(invitation).data, status=status.HTTP_201_CREATED)
+
+
+class InvitationCodeRevokeView(APIView):
+    permission_classes = [require_permission("user.manage")]
+
+    @extend_schema(
+        tags=["Auth"],
+        summary="Revoke an invitation code",
+        request=None,
+        responses={200: InvitationCodeSerializer, 404: NOT_FOUND, **COMMON_ERRORS},
+    )
+    def post(self, request, pk):
+        invitation = get_object_or_404(InvitationCode, pk=pk)
+        invitation = revoke_invitation_code(invitation=invitation, actor=request.user, request=request)
+        return Response(InvitationCodeSerializer(invitation).data)

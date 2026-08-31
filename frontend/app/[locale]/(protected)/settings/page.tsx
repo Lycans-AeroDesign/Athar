@@ -7,16 +7,17 @@ import { AuditLogSettingsForm } from "@/components/settings/AuditLogSettingsForm
 import { BrandingSettingsForm } from "@/components/settings/BrandingSettingsForm";
 import { CategorySettingsForm } from "@/components/settings/CategorySettingsForm";
 import { GeneralSettingsForm } from "@/components/settings/GeneralSettingsForm";
+import { InvitationsSettingsForm } from "@/components/settings/InvitationsSettingsForm";
 import { RolesSettingsForm } from "@/components/settings/RolesSettingsForm";
 import { useHasPermission } from "@/lib/auth/permissions";
 import { useOrganization } from "@/lib/organization/OrganizationProvider";
 
-// Only General, Branding, Categories, Roles & Permissions, and Audit Log are
-// implemented - the Stitch reference (ref/athar_general_settings) also
-// shows Authentication/Teams/Visibility/Notifications/Storage tabs, but
+// Only General, Branding, Categories, Roles & Permissions, Invitations, and
+// Audit Log are implemented - the Stitch reference (ref/athar_general_settings)
+// also shows Authentication/Teams/Visibility/Notifications/Storage tabs, but
 // those aren't wired to a real backend yet, so they're left out rather than
 // shown as non-functional placeholders.
-const ALL_TAB_IDS = ["general", "branding", "categories", "permissions", "audit"] as const;
+const ALL_TAB_IDS = ["general", "branding", "categories", "permissions", "invitations", "audit"] as const;
 type TabId = (typeof ALL_TAB_IDS)[number];
 
 export default function SettingsPage() {
@@ -34,6 +35,8 @@ export default function SettingsPage() {
   // GET /rbac/roles/ itself requires role.manage, so without it there is
   // nothing this tab could show - see RolesSettingsForm's own top comment.
   const canManageRoles = useHasPermission("role.manage");
+  // GET /auth/invitations/ itself requires user.manage - same reasoning as roles above.
+  const canManageInvitations = useHasPermission("user.manage");
   // GET /audit/logs/ itself requires audit.read - same reasoning as roles above.
   const canReadAudit = useHasPermission("audit.read");
 
@@ -41,6 +44,7 @@ export default function SettingsPage() {
     (tabId) =>
       (tabId !== "permissions" || canManageRoles) &&
       (tabId !== "categories" || canManageCategories) &&
+      (tabId !== "invitations" || canManageInvitations) &&
       (tabId !== "audit" || canReadAudit),
   );
 
@@ -70,6 +74,8 @@ export default function SettingsPage() {
         <RolesSettingsForm />
       ) : activeTab === "categories" ? (
         <CategorySettingsForm />
+      ) : activeTab === "invitations" ? (
+        <InvitationsSettingsForm />
       ) : activeTab === "audit" ? (
         <AuditLogSettingsForm />
       ) : !settings ? (

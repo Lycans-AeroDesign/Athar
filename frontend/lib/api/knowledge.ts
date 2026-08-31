@@ -2,7 +2,7 @@ import { apiJson, apiVoid } from "./client";
 import type {
   ArticleDetail,
   ArticleRevision,
-  ArticleStatus,
+  ArticleStatusFilter,
   ArticleSummary,
   Answer,
   Category,
@@ -75,7 +75,7 @@ export function searchKnowledge(query: string, type?: "article" | "question", pa
   ).then((data) => ({ results: data.results, hasMore: data.has_more }));
 }
 
-export function getArticles(status?: ArticleStatus): Promise<ArticleSummary[]> {
+export function getArticles(status?: ArticleStatusFilter): Promise<ArticleSummary[]> {
   const query = status ? `?status=${status}` : "";
   return apiJson<Paginated<ArticleSummary>>(`/api/v1/knowledge/articles/${query}`).then((data) => data.results);
 }
@@ -133,6 +133,10 @@ export function rejectArticle(id: string, reason?: string): Promise<ArticleDetai
 
 export function archiveArticle(id: string): Promise<ArticleDetail> {
   return apiJson<ArticleDetail>(`/api/v1/knowledge/articles/${id}/archive/`, { method: "POST" });
+}
+
+export function unarchiveArticle(id: string): Promise<ArticleDetail> {
+  return apiJson<ArticleDetail>(`/api/v1/knowledge/articles/${id}/unarchive/`, { method: "POST" });
 }
 
 export function getArticleRevisions(id: string): Promise<ArticleRevision[]> {

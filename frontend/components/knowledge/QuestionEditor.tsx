@@ -4,10 +4,12 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
+import { Combobox } from "@/components/ui/Combobox";
 import { MarkdownEditor } from "@/components/ui/MarkdownEditor";
 import { TagInput } from "@/components/ui/TagInput";
 import { useRouter } from "@/i18n/navigation";
 import { createQuestion } from "@/lib/api/knowledge";
+import type { Visibility } from "@/lib/api/types";
 
 interface QuestionEditorProps {
   /** Reports whether the draft has any content - lets the parent page's "Back" link confirm before discarding. */
@@ -24,10 +26,11 @@ export function QuestionEditor({ onDirtyChange }: QuestionEditorProps) {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [tags, setTags] = useState<string[]>([]);
+  const [visibility, setVisibility] = useState<Visibility>("PUBLIC");
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const isDirty = title.length > 0 || body.length > 0 || tags.length > 0;
+  const isDirty = title.length > 0 || body.length > 0 || tags.length > 0 || visibility !== "PUBLIC";
 
   useEffect(() => {
     onDirtyChange?.(isDirty);
@@ -37,7 +40,7 @@ export function QuestionEditor({ onDirtyChange }: QuestionEditorProps) {
     setIsSaving(true);
     setError(null);
     try {
-      const question = await createQuestion({ title, body, tag_names: tags });
+      const question = await createQuestion({ title, body, tag_names: tags, visibility });
       router.push(`/knowledge/questions/${question.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -54,7 +57,20 @@ export function QuestionEditor({ onDirtyChange }: QuestionEditorProps) {
           value={title}
           onChange={(e) => setTitle(e.target.value)}
         />
-        <TagInput value={tags} onChange={setTags} placeholder={t("tagsPlaceholder")} />
+        <div className="flex flex-wrap gap-3 items-center">
+          <TagInput value={tags} onChange={setTags} placeholder={t("tagsPlaceholder")} className="flex-1 min-w-[200px]" />
+          <div className="w-48">
+            <Combobox
+              placeholder={t("visibilityLabel")}
+              options={(["PUBLIC", "ORGANIZATION", "RESTRICTED"] as Visibility[]).map((value) => ({
+                value,
+                label: t(`visibility${value}`),
+              }))}
+              value={visibility}
+              onChange={(value) => setVisibility(value as Visibility)}
+            />
+          </div>
+        </div>
       </div>
 
       <MarkdownEditor value={body} onChange={setBody} placeholder={t("bodyPlaceholder")} />

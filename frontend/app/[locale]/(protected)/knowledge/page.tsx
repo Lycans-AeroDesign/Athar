@@ -6,25 +6,53 @@ import { useEffect, useMemo, useState } from "react";
 import { ArticleCard } from "@/components/knowledge/ArticleCard";
 import { CategoryPanel } from "@/components/knowledge/CategoryPanel";
 import { QuestionCard } from "@/components/knowledge/QuestionCard";
+import { ARTICLE_STATUS_LABEL_KEYS } from "@/components/knowledge/StatusPill";
 import { TagPanel } from "@/components/knowledge/TagPanel";
 import { Can } from "@/components/auth/Can";
 import { Button } from "@/components/ui/Button";
+import { Combobox } from "@/components/ui/Combobox";
 import { Icon } from "@/components/ui/Icon";
 import { Link } from "@/i18n/navigation";
 import { getArticles, getCategories, getQuestions, getTags } from "@/lib/api/knowledge";
-import type { ArticleSummary, Category, QuestionSummary, Tag } from "@/lib/api/types";
+import type { ArticleStatusFilter, ArticleSummary, Category, QuestionSummary, Tag } from "@/lib/api/types";
+
+// "ALL" plus every status Article.Status defines backend-side (see
+// backend/knowledge/models.py) - the list endpoint defaults to PUBLISHED
+// (see ArticleListCreateView.get), and for anything else (including ALL)
+// returns the viewer's own articles unless they hold article.review/
+// article.publish, in which case they see everyone's - so this filter is
+// also how an author reaches their own drafts/rejected articles, not just
+// how an admin/reviewer reaches archived ones.
+const ARTICLE_STATUSES: ArticleStatusFilter[] = ["ALL", "PUBLISHED", "DRAFT", "IN_REVIEW", "REJECTED", "ARCHIVED"];
 
 export default function KnowledgePage() {
   const t = useTranslations("knowledge.landing");
-  const [articles, setArticles] = useState<ArticleSummary[] | null>(null);
+  const statusT = useTranslations("knowledge.status");
   const [questions, setQuestions] = useState<QuestionSummary[] | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [selectedTagId, setSelectedTagId] = useState<string | null>(null);
+  // Defaults to PUBLISHED (not ALL) - the general Knowledge browsing
+  // experience shouldn't change for anyone who never touches this filter.
+  const [articleStatus, setArticleStatus] = useState<ArticleStatusFilter>("PUBLISHED");
+
+  // Keyed by the status it was fetched for, rather than reset with a plain
+  // setArticles(null) at the top of the effect below - that runs setState
+  // synchronously in the effect body, which React's own lint rule flags as
+  // a cascading-render footgun. Comparing here at render time instead means
+  // the only setState call is the one already inside the fetch's .then().
+  const [articlesResult, setArticlesResult] = useState<{
+    status: ArticleStatusFilter;
+    articles: ArticleSummary[];
+  } | null>(null);
+  const articles = articlesResult?.status === articleStatus ? articlesResult.articles : null;
 
   useEffect(() => {
-    getArticles().then(setArticles);
+    getArticles(articleStatus).then((fetched) => setArticlesResult({ status: articleStatus, articles: fetched }));
+  }, [articleStatus]);
+
+  useEffect(() => {
     getQuestions().then(setQuestions);
     getCategories().then(setCategories);
     getTags().then(setTags);
@@ -42,15 +70,25 @@ export default function KnowledgePage() {
   }, [articles, selectedCategoryId, selectedTagName]);
 
   const filteredQuestions = useMemo(() => {
-    if (!questions) return [];
+    // getQuestions() already returns every question regardless of status
+    // (see QuestionListCreateView.get - it only filters when ?status= is
+    // explicitly passed, which nothing here does), so "ALL" naturally means
+    // every question too. A single specific article status (Draft, Archived,
+    // ...) stays articles-only, though - questions have no equivalent of
+    // those, so mixing them in would just be confusing.
+    if (!questions || (articleStatus !== "PUBLISHED" && articleStatus !== "ALL")) return [];
     return questions.filter((question) => {
       if (selectedCategoryId) return false; // Questions have no category - a category filter excludes them.
       if (selectedTagName && !question.tags.some((tag) => tag.name === selectedTagName)) return false;
       return true;
     });
-  }, [questions, selectedCategoryId, selectedTagName]);
+  }, [questions, selectedCategoryId, selectedTagName, articleStatus]);
 
-  const featuredArticle = articles?.find((article) => article.status === "PUBLISHED") ?? null;
+  // Suppressed outside the default PUBLISHED view for the same reason as
+  // filteredQuestions above - a status/audit view shouldn't spotlight one
+  // random published article out of a mixed-status list.
+  const featuredArticle =
+    articleStatus === "PUBLISHED" ? (articles?.find((article) => article.status === "PUBLISHED") ?? null) : null;
   const recentItems = useMemo(() => {
     const items: Array<{ type: "article"; data: ArticleSummary } | { type: "question"; data: QuestionSummary }> = [
       ...filteredArticles
@@ -105,8 +143,19 @@ export default function KnowledgePage() {
             </Link>
           )}
 
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-4">
             <h2 className="font-headline-md text-headline-md text-on-surface">{t("recentlyUpdatedTitle")}</h2>
+            <div className="w-48 shrink-0">
+              <Combobox
+                label={t("statusFilterLabel")}
+                options={ARTICLE_STATUSES.map((value) => ({
+                  value,
+                  label: value === "ALL" ? statusT("all") : statusT(ARTICLE_STATUS_LABEL_KEYS[value]),
+                }))}
+                value={articleStatus}
+                onChange={(value) => setArticleStatus(value as ArticleStatusFilter)}
+              />
+            </div>
           </div>
 
           {articles === null || questions === null ? (

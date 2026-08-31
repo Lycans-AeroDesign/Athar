@@ -55,10 +55,19 @@ class FileDownloadView(APIView):
         stored_file = get_object_or_404(StoredFile, pk=pk)
         if not request.user.has_permission(stored_file.required_permission):
             raise PermissionDenied("You do not have permission to access this file.")
+        # as_attachment=True (Content-Disposition: attachment) rather than
+        # inline: the frontend never navigates the browser to this URL
+        # directly (see AuthenticatedImage.tsx / lib/api/files.ts's
+        # downloadFile() - both fetch the bytes via apiFetch and hand the
+        # browser a blob: URL, which ignores this header entirely), so this
+        # has no effect on any real feature. It does stop an uploaded
+        # .svg/.html file from executing inline if this URL is ever hit by
+        # a direct browser navigation instead - defense in depth against a
+        # theoretical XSS-via-upload path.
         return FileResponse(
             stored_file.file.open("rb"),
             filename=stored_file.original_filename,
-            as_attachment=False,
+            as_attachment=True,
         )
 
 

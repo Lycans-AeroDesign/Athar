@@ -6,6 +6,8 @@ import { formatRelativeTime } from "@/lib/datetime";
 import { formatPersonName } from "@/lib/format";
 import type { ArticleSummary } from "@/lib/api/types";
 
+import { StatusPill } from "./StatusPill";
+
 export function ArticleCard({ article }: { article: ArticleSummary }) {
   const t = useTranslations("knowledge");
   const authorName = formatPersonName(article.author);
@@ -20,9 +22,16 @@ export function ArticleCard({ article }: { article: ArticleSummary }) {
           <Icon name="menu_book" size={14} />
           {t("article.badgeLabel")}
         </span>
-        <span className="font-mono-sm text-mono-sm text-on-surface-variant">
-          {formatRelativeTime(article.updated_at)}
-        </span>
+        <div className="flex items-center gap-2">
+          {/* Cards only ever showed published articles before the Knowledge
+              page's status filter (see [locale]/(protected)/knowledge/page.tsx)
+              - now that a draft/rejected/archived one can appear here too, it
+              needs its own status called out. */}
+          {article.status !== "PUBLISHED" && <StatusPill status={article.status} />}
+          <span className="font-mono-sm text-mono-sm text-on-surface-variant">
+            {formatRelativeTime(article.updated_at)}
+          </span>
+        </div>
       </div>
       <h4 className="font-headline-md text-headline-md text-primary mb-1">{article.title}</h4>
       {article.excerpt && (

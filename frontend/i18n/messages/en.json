@@ -25,12 +25,29 @@
     "passwordLabel": "Password",
     "showPassword": "Show password",
     "hidePassword": "Hide password",
+    "fieldRequired": "This field is required.",
+    "invalidEmail": "Enter a valid email address.",
+    "passwordTooShort": "Password must be at least {min} characters.",
     "login": {
       "tagline": "Engineering Knowledge System",
       "submit": "Login",
       "submitting": "Logging in...",
       "error": "Invalid email or password.",
-      "credit": "Developed by Lycans AeroDesign Team"
+      "rateLimited": "Too many login attempts. Please wait a moment and try again.",
+      "credit": "Developed by Lycans AeroDesign Team",
+      "needAccount": "Don't have an account?",
+      "registerLink": "Register"
+    },
+    "register": {
+      "tagline": "Create your account",
+      "firstNameLabel": "First Name",
+      "lastNameLabel": "Last Name",
+      "invitationCodeLabel": "Invitation Code",
+      "submit": "Create Account",
+      "submitting": "Creating account...",
+      "error": "Couldn't create your account. Check your details and try again.",
+      "hasAccount": "Already have an account?",
+      "loginLink": "Login"
     }
   },
   "nav": {
@@ -101,6 +118,7 @@
       "branding": "Branding",
       "categories": "Categories",
       "permissions": "Roles & Permissions",
+      "invitations": "Invitations",
       "audit": "Audit Log"
     },
     "general": {
@@ -167,6 +185,22 @@
       "roleDescriptionLabel": "Description",
       "createRole": "Create Role"
     },
+    "invitations": {
+      "title": "Invitation Codes",
+      "description": "Registration requires a valid code - generate one to invite a new member.",
+      "generateCode": "Generate Code",
+      "emptyState": "No invitation codes yet.",
+      "maxUsesLabel": "Max Uses",
+      "expiresAtLabel": "Expires At (optional)",
+      "usesLabel": "{used}/{max} used",
+      "expiresLabel": "expires {date}",
+      "statusRevoked": "Revoked",
+      "statusExhaustedOrExpired": "No longer valid",
+      "copyLink": "Copy invite link",
+      "revoke": "Revoke",
+      "revokeConfirmTitle": "Revoke this invitation code?",
+      "revokeConfirmBody": "It can no longer be used to register, even if it still has uses left."
+    },
     "audit": {
       "title": "Audit Log",
       "description": "A record of sensitive actions across the organization.",
@@ -195,6 +229,7 @@
       "tagsTitle": "Popular Tags",
       "featuredArticleLabel": "Featured Article",
       "recentlyUpdatedTitle": "Recently Updated",
+      "statusFilterLabel": "Status",
       "askQuestionButton": "Ask a Question",
       "newArticleButton": "New Article",
       "emptyState": "Nothing here yet.",
@@ -214,6 +249,7 @@
       "badgeQuestion": "Question"
     },
     "status": {
+      "all": "All",
       "draft": "Draft",
       "inReview": "In Review",
       "published": "Published",
@@ -248,6 +284,7 @@
       "loading": "Loading article...",
       "createPermissionRequired": "You don't have permission to create articles.",
       "editPermissionRequired": "You don't have permission to edit this article.",
+      "editArchivedBlocked": "This article is archived and can't be edited. Unarchive it first.",
       "rejectButton": "Reject",
       "rejectModalTitle": "Reject this article",
       "rejectReasonLabel": "Reason (optional)",
@@ -255,6 +292,7 @@
       "archiveButton": "Archive",
       "archiveConfirmTitle": "Archive this article?",
       "archiveConfirmBody": "It will no longer appear in the published knowledge base.",
+      "unarchiveButton": "Unarchive",
       "historyModalTitle": "Revision History",
       "systemAuthor": "System",
       "tableOfContents": "Contents",
@@ -290,6 +328,9 @@
       "promoteButton": "Promote to Article",
       "promoteBannerText": "This question and its accepted answer contain high-value technical knowledge.",
       "viewPromotedArticle": "View Article",
+      "visibilityLabel": "Visibility",
+      "visibilityPUBLIC": "Public",
+      "visibilityORGANIZATION": "Organization",
       "visibilityRESTRICTED": "Restricted"
     },
     "relations": {
@@ -324,7 +365,10 @@
       "boldPlaceholder": "bold text",
       "italicPlaceholder": "italic text",
       "linkTextPlaceholder": "link text",
-      "imageAltPlaceholder": "alt text"
+      "imageAltPlaceholder": "alt text",
+      "uploadingImage": "Uploading {filename}…",
+      "uploadingFile": "Uploading {filename}…",
+      "uploadError": "Couldn't upload {filename}: {message}"
     }
   },
   "modal": {

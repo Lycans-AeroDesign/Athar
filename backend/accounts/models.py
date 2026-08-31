@@ -2,8 +2,14 @@ import uuid
 
 from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 from django.db import models
+from django.utils import timezone
+from django.utils.crypto import get_random_string
 
 from rbac.models import Permission
+
+# Excludes visually-ambiguous characters (0/O, 1/I) since these are meant to
+# be read off a screen and typed in by hand.
+INVITATION_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 
 
 class UserManager(BaseUserManager):
@@ -78,3 +84,40 @@ class User(AbstractBaseUser):
 
     def has_module_perms(self, app_label):
         return self.is_superuser
+
+
+def generate_invitation_code() -> str:
+    return get_random_string(10, allowed_chars=INVITATION_CODE_ALPHABET)
+
+
+class InvitationCode(models.Model):
+    """Gates self-registration (see RegisterView) - every self-registered
+    account still lands as Guest regardless of the code; a code only
+    controls whether registration is allowed at all, not what role the
+    registrant gets."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    code = models.CharField(max_length=16, unique=True, default=generate_invitation_code)
+    created_by = models.ForeignKey(
+        User, null=True, blank=True, on_delete=models.SET_NULL, related_name="invitation_codes"
+    )
+    max_uses = models.PositiveIntegerField(default=1)
+    uses_count = models.PositiveIntegerField(default=0)
+    expires_at = models.DateTimeField(null=True, blank=True)
+    revoked_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return self.code
+
+    def is_valid(self) -> bool:
+        if self.revoked_at is not None:
+            return False
+        if self.uses_count >= self.max_uses:
+            return False
+        if self.expires_at is not None and self.expires_at <= timezone.now():
+            return False
+        return True

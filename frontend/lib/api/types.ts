@@ -35,6 +35,18 @@ export interface Permission {
   created_at: string;
 }
 
+export interface InvitationCode {
+  id: string;
+  code: string;
+  created_by: string | null;
+  max_uses: number;
+  uses_count: number;
+  expires_at: string | null;
+  revoked_at: string | null;
+  created_at: string;
+  is_valid: boolean;
+}
+
 export interface AuditLogEntry {
   id: string;
   actor: string | null;
@@ -106,6 +118,11 @@ export interface Tag {
 }
 
 export type ArticleStatus = "DRAFT" | "IN_REVIEW" | "PUBLISHED" | "REJECTED" | "ARCHIVED";
+
+/** getArticles()'s ?status= param accepts this in addition to a real ArticleStatus -
+ * "ALL" isn't a status an article can actually have (see ArticleStatus above), it just
+ * tells the list endpoint to skip the status filter (see ArticleListCreateView.get). */
+export type ArticleStatusFilter = ArticleStatus | "ALL";
 
 /** PUBLIC/ORGANIZATION currently enforce identically (see backend/knowledge/models.py's Visibility) - RESTRICTED is the one that changes access today. */
 export type Visibility = "PUBLIC" | "ORGANIZATION" | "RESTRICTED";

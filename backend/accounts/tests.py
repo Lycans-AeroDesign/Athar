@@ -3,11 +3,14 @@ from unittest.mock import patch
 from django.core.cache import cache
 from django.core.management import call_command
 from django.urls import reverse
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 from rest_framework.throttling import ScopedRateThrottle
 
-from .models import User
+from rbac.models import Role
+
+from .models import InvitationCode, User
 
 
 class AuthFlowTests(APITestCase):
@@ -15,23 +18,105 @@ class AuthFlowTests(APITestCase):
     def setUpTestData(cls):
         call_command("seed_rbac")
 
+    def _invitation_code(self, **kwargs) -> InvitationCode:
+        return InvitationCode.objects.create(**kwargs)
+
     def _register_and_login(self, email="guest@example.com", password="guestpass123"):
         self.client.post(
-            reverse("auth-register"), {"email": email, "password": password}, format="json"
+            reverse("auth-register"),
+            {"email": email, "password": password, "invitation_code": self._invitation_code().code},
+            format="json",
         )
         return self.client.post(
             reverse("auth-login"), {"email": email, "password": password}, format="json"
         )
 
     def test_register_assigns_guest_role(self):
+        code = self._invitation_code()
         response = self.client.post(
             reverse("auth-register"),
-            {"email": "new@example.com", "password": "somepassword123"},
+            {"email": "new@example.com", "password": "somepassword123", "invitation_code": code.code},
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data["roles"], ["Guest"])
         self.assertIn("article.read", response.data["permissions"])
+
+        code.refresh_from_db()
+        self.assertEqual(code.uses_count, 1)
+
+    def test_register_requires_invitation_code(self):
+        response = self.client.post(
+            reverse("auth-register"),
+            {"email": "new@example.com", "password": "somepassword123"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(User.objects.filter(email="new@example.com").exists())
+
+    def test_register_rejects_unknown_code(self):
+        response = self.client.post(
+            reverse("auth-register"),
+            {"email": "new@example.com", "password": "somepassword123", "invitation_code": "NOPE"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(User.objects.filter(email="new@example.com").exists())
+
+    def test_register_rejects_revoked_code(self):
+        code = self._invitation_code(revoked_at=timezone.now())
+        response = self.client.post(
+            reverse("auth-register"),
+            {"email": "new@example.com", "password": "somepassword123", "invitation_code": code.code},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_register_rejects_expired_code(self):
+        code = self._invitation_code(expires_at=timezone.now() - timezone.timedelta(minutes=1))
+        response = self.client.post(
+            reverse("auth-register"),
+            {"email": "new@example.com", "password": "somepassword123", "invitation_code": code.code},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_register_rejects_code_used_up_to_max_uses(self):
+        # Single-use by default - the first registration consumes it, so a
+        # second attempt with the exact same code must be rejected even
+        # though nothing about the code itself changed (revoked/expired).
+        code = self._invitation_code()
+        first = self.client.post(
+            reverse("auth-register"),
+            {"email": "first@example.com", "password": "somepassword123", "invitation_code": code.code},
+            format="json",
+        )
+        self.assertEqual(first.status_code, status.HTTP_201_CREATED)
+
+        second = self.client.post(
+            reverse("auth-register"),
+            {"email": "second@example.com", "password": "somepassword123", "invitation_code": code.code},
+            format="json",
+        )
+        self.assertEqual(second.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(User.objects.filter(email="second@example.com").exists())
+
+    def test_register_honors_higher_max_uses(self):
+        code = self._invitation_code(max_uses=2)
+        for email in ["a@example.com", "b@example.com"]:
+            response = self.client.post(
+                reverse("auth-register"),
+                {"email": email, "password": "somepassword123", "invitation_code": code.code},
+                format="json",
+            )
+            self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        third = self.client.post(
+            reverse("auth-register"),
+            {"email": "c@example.com", "password": "somepassword123", "invitation_code": code.code},
+            format="json",
+        )
+        self.assertEqual(third.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_login_sets_httponly_refresh_cookie_and_omits_it_from_body(self):
         response = self._register_and_login()
@@ -143,3 +228,64 @@ class AuthFlowTests(APITestCase):
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+
+
+class InvitationCodeAdminTests(APITestCase):
+    @classmethod
+    def setUpTestData(cls):
+        call_command("seed_rbac")
+
+    def _login_with_role(self, email, role_name):
+        user = User.objects.create_user(email=email, password="password123")
+        Role.objects.get(name=role_name).user_roles.create(user=user)
+        response = self.client.post(reverse("auth-login"), {"email": email, "password": "password123"}, format="json")
+        return user, response.data["access"]
+
+    def _auth(self, access_token):
+        return {"HTTP_AUTHORIZATION": f"Bearer {access_token}"}
+
+    def test_list_and_create_require_user_manage_permission(self):
+        _, guest_access = self._login_with_role("guest@example.com", "Guest")
+        response = self.client.get(reverse("auth-invitation-list-create"), **self._auth(guest_access))
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        response = self.client.post(
+            reverse("auth-invitation-list-create"), {}, format="json", **self._auth(guest_access)
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_admin_can_create_list_and_revoke(self):
+        admin, admin_access = self._login_with_role("admin@example.com", "Organization Admin")
+
+        create_response = self.client.post(
+            reverse("auth-invitation-list-create"), {"max_uses": 5}, format="json", **self._auth(admin_access)
+        )
+        self.assertEqual(create_response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(create_response.data["max_uses"], 5)
+        self.assertEqual(create_response.data["uses_count"], 0)
+        self.assertTrue(create_response.data["is_valid"])
+        self.assertEqual(create_response.data["created_by"], "admin@example.com")
+
+        list_response = self.client.get(reverse("auth-invitation-list-create"), **self._auth(admin_access))
+        self.assertEqual(list_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(list_response.data["count"], 1)
+
+        code_id = create_response.data["id"]
+        revoke_response = self.client.post(
+            reverse("auth-invitation-revoke", args=[code_id]), **self._auth(admin_access)
+        )
+        self.assertEqual(revoke_response.status_code, status.HTTP_200_OK)
+        self.assertIsNotNone(revoke_response.data["revoked_at"])
+        self.assertFalse(revoke_response.data["is_valid"])
+
+        # A revoked code can no longer be used to register.
+        register_response = self.client.post(
+            reverse("auth-register"),
+            {
+                "email": "toolate@example.com",
+                "password": "somepassword123",
+                "invitation_code": InvitationCode.objects.get(pk=code_id).code,
+            },
+            format="json",
+        )
+        self.assertEqual(register_response.status_code, status.HTTP_400_BAD_REQUEST)

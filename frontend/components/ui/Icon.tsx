@@ -2,6 +2,7 @@ import { useId } from "react";
 import {
   AlertTriangle,
   Archive,
+  ArchiveRestore,
   ArrowLeft,
   Bell,
   Bold,
@@ -60,6 +61,7 @@ import {
 const ICONS: Record<string, LucideIcon> = {
   add: Plus,
   archive: Archive,
+  unarchive: ArchiveRestore,
   architecture: Building2,
   arrow_back: ArrowLeft,
   auto_awesome: Sparkles,

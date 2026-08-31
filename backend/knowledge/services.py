@@ -125,6 +125,10 @@ def update_article(*, article: Article, actor, request=None, **fields) -> Articl
     can_override = actor.has_permission("article.update")
     if not (is_owner or can_override):
         raise PermissionDenied("You can only edit your own article.")
+    # Archived is a frozen state for everyone, even actor.has_permission("article.update") -
+    # unarchive_article() (PUBLISHED, not editable-in-place) is the only way back to an editable state.
+    if article.status == Article.Status.ARCHIVED:
+        raise ValidationError("An archived article must be unarchived before it can be edited.")
     editable_by_owner = (Article.Status.DRAFT, Article.Status.IN_REVIEW, Article.Status.REJECTED)
     if is_owner and not can_override and article.status not in editable_by_owner:
         raise PermissionDenied("A published article can only be edited by someone with article.update.")
@@ -179,6 +183,18 @@ def archive_article(*, article: Article, actor, request=None) -> Article:
     article.status = Article.Status.ARCHIVED
     article.save(update_fields=["status", "updated_at"])
     log_action(actor=actor, action="article.archive", target=article, request=request)
+    return article
+
+
+def unarchive_article(*, article: Article, actor, request=None) -> Article:
+    """Restores an archived article to PUBLISHED - deliberately doesn't touch
+    published_at, so it keeps reflecting when the article was first published
+    rather than resetting to now."""
+    if article.status != Article.Status.ARCHIVED:
+        raise ValidationError("Only an archived article can be unarchived.")
+    article.status = Article.Status.PUBLISHED
+    article.save(update_fields=["status", "updated_at"])
+    log_action(actor=actor, action="article.unarchive", target=article, request=request)
     return article
 
 

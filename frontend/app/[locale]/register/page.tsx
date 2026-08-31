@@ -8,33 +8,40 @@ import { BrandMark } from "@/components/ui/BrandMark";
 import { FloatingLabelInput } from "@/components/ui/FloatingLabelInput";
 import { Link, useRouter } from "@/i18n/navigation";
 import { ApiError, apiUrl } from "@/lib/api/client";
+import { registerRequest } from "@/lib/api/auth";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { useOrganization } from "@/lib/organization/OrganizationProvider";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// Matches accounts/serializers.py's RegisterSerializer.password min_length=8.
+const MIN_PASSWORD_LENGTH = 8;
 
 interface FieldErrors {
   email?: string;
   password?: string;
+  invitationCode?: string;
 }
 
-export default function LoginPage() {
+export default function RegisterPage() {
   return (
     <Suspense>
-      <LoginForm />
+      <RegisterForm />
     </Suspense>
   );
 }
 
-function LoginForm() {
+function RegisterForm() {
   const { login } = useAuth();
   const { settings } = useOrganization();
   const router = useRouter();
   const searchParams = useSearchParams();
   const t = useTranslations("auth");
 
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [invitationCode, setInvitationCode] = useState(searchParams.get("code") ?? "");
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -44,6 +51,10 @@ function LoginForm() {
     if (!email.trim()) errors.email = t("fieldRequired");
     else if (!EMAIL_PATTERN.test(email)) errors.email = t("invalidEmail");
     if (!password) errors.password = t("fieldRequired");
+    else if (password.length < MIN_PASSWORD_LENGTH) {
+      errors.password = t("passwordTooShort", { min: MIN_PASSWORD_LENGTH });
+    }
+    if (!invitationCode.trim()) errors.invitationCode = t("fieldRequired");
     return errors;
   }
 
@@ -56,13 +67,19 @@ function LoginForm() {
 
     setIsSubmitting(true);
     try {
+      await registerRequest({
+        email,
+        password,
+        invitation_code: invitationCode,
+        first_name: firstName,
+        last_name: lastName,
+      });
+      // register/ only creates the account (see lib/api/auth.ts) - log in
+      // with the same credentials to actually start the session.
       await login(email, password);
-      router.push(searchParams.get("next") || "/");
+      router.push("/");
     } catch (err) {
-      // A 429 (rate limited) isn't a credentials problem - telling them
-      // apart avoids "Invalid email or password" showing for a burst of
-      // attempts that were never actually checked against the database.
-      setError(err instanceof ApiError && err.status === 429 ? t("login.rateLimited") : t("login.error"));
+      setError(err instanceof ApiError ? err.message : t("register.error"));
     } finally {
       setIsSubmitting(false);
     }
@@ -87,12 +104,31 @@ function LoginForm() {
               {settings?.name ?? "Athar"}
             </h1>
             <p className="font-body-md text-body-md text-on-surface-variant mt-2">
-              {t("login.tagline")}
+              {t("register.tagline")}
             </p>
           </div>
 
           <form className="space-y-6" noValidate onSubmit={handleSubmit}>
             <div className="space-y-1">
+              <div className="grid grid-cols-2 gap-4">
+                <FloatingLabelInput
+                  autoComplete="given-name"
+                  id="firstName"
+                  label={t("register.firstNameLabel")}
+                  name="firstName"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                />
+                <FloatingLabelInput
+                  autoComplete="family-name"
+                  id="lastName"
+                  label={t("register.lastNameLabel")}
+                  name="lastName"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                />
+              </div>
+
               <FloatingLabelInput
                 autoComplete="email"
                 error={fieldErrors.email}
@@ -109,7 +145,7 @@ function LoginForm() {
               />
 
               <FloatingLabelInput
-                autoComplete="current-password"
+                autoComplete="new-password"
                 error={fieldErrors.password}
                 icon="lock"
                 id="password"
@@ -120,6 +156,20 @@ function LoginForm() {
                 onChange={(e) => {
                   setPassword(e.target.value);
                   setFieldErrors((prev) => ({ ...prev, password: undefined }));
+                }}
+              />
+
+              <FloatingLabelInput
+                autoComplete="off"
+                error={fieldErrors.invitationCode}
+                icon="label"
+                id="invitationCode"
+                label={t("register.invitationCodeLabel")}
+                name="invitationCode"
+                value={invitationCode}
+                onChange={(e) => {
+                  setInvitationCode(e.target.value);
+                  setFieldErrors((prev) => ({ ...prev, invitationCode: undefined }));
                 }}
               />
             </div>
@@ -136,28 +186,17 @@ function LoginForm() {
                 disabled={isSubmitting}
                 type="submit"
               >
-                {isSubmitting ? t("login.submitting") : t("login.submit")}
+                {isSubmitting ? t("register.submitting") : t("register.submit")}
               </button>
             </div>
           </form>
 
           <p className="text-center font-body-md text-body-md text-on-surface-variant mt-6">
-            {t("login.needAccount")}{" "}
-            <Link href="/register" className="text-primary hover:underline">
-              {t("login.registerLink")}
+            {t("register.hasAccount")}{" "}
+            <Link href="/login" className="text-primary hover:underline">
+              {t("register.loginLink")}
             </Link>
           </p>
-        </div>
-
-        <div className="mt-8 text-center">
-          <a
-            className="font-label-caps text-label-caps text-on-surface-variant uppercase hover:text-primary hover:underline transition-colors"
-            href="https://lycansteam.com"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            {t("login.credit")}
-          </a>
         </div>
       </div>
     </main>
