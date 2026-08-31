@@ -17,10 +17,10 @@ import { useOrganization } from "@/lib/organization/OrganizationProvider";
 const NAV_ITEMS: ReadonlyArray<{ href: string; labelKey: string; icon: string; permission?: string }> = [
   { href: "/", labelKey: "dashboard", icon: "dashboard" },
   { href: "/knowledge", labelKey: "knowledge", icon: "menu_book" },
-  { href: "/projects", labelKey: "projects", icon: "architecture" },
-  { href: "/components", labelKey: "components", icon: "settings_input_component" },
-  { href: "/sops", labelKey: "sops", icon: "description" },
-  { href: "/failures", labelKey: "failures", icon: "report_problem" },
+  { href: "/projects", labelKey: "projects", icon: "architecture", permission: "project.read" },
+  { href: "/components", labelKey: "components", icon: "settings_input_component", permission: "component.read" },
+  { href: "/sops", labelKey: "sops", icon: "description", permission: "sop.read" },
+  { href: "/failures", labelKey: "failures", icon: "report_problem", permission: "failure.read" },
 ];
 
 interface SideNavProps {
@@ -95,7 +95,7 @@ export function SideNav({ open, onClose }: SideNavProps) {
                   }
                   href={item.href}
                 >
-                  <Icon name={item.icon} filled={isActive} />
+                  <Icon name={item.icon} />
                   {t(item.labelKey)}
                 </Link>
               </Can>
@@ -112,7 +112,7 @@ export function SideNav({ open, onClose }: SideNavProps) {
             }
             href="/settings"
           >
-            <Icon name="settings" filled={pathname === "/settings"} />
+            <Icon name="settings" />
             {t("settings")}
           </Link>
           <Link

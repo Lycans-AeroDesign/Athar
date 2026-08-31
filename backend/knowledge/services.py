@@ -12,9 +12,17 @@ from .models import (
     ArticleAttachment,
     ArticleRevision,
     Category,
+    Component,
+    ComponentAttachment,
+    Failure,
+    FailureAttachment,
     KnowledgeRelation,
+    Project,
+    ProjectAttachment,
     Question,
     QuestionAttachment,
+    Sop,
+    SopAttachment,
     Tag,
     Visibility,
 )
@@ -378,11 +386,255 @@ def promote_question_to_article(*, question: Question, actor, request=None) -> A
     return article
 
 
-# Only Article/Question exist as real content types today - this allowlist
-# is what actually stops a relation being created to some other model
-# (ContentType itself has no way to express "only these two"). Lift it once
-# Component/Project/Failure are real models worth relating to.
-_RELATABLE_MODELS = {"article": Article, "question": Question}
+# --- Engineering domain (Project/Component/Failure/Sop) -------------------
+#
+# No draft/review workflow and no `visibility` field on any of these (see
+# models.py's module docstring) - so unlike Article/Question, there's no
+# "owner can edit their own draft" case to account for. Editing/deleting is
+# gated purely on the x.update/x.delete permission, full stop - matches
+# docs/VISION.md #26's "Member: report failures" vs "Senior Member: update
+# failures" split (create and update are deliberately separate tiers, not
+# "ownership unlocks editing").
+
+
+def create_project(*, actor, request=None, name, description="", status=Project.Status.ACTIVE, tag_names=None) -> Project:
+    project = Project.objects.create(name=name, description=description, status=status, created_by=actor)
+    _sync_tags(project, tag_names)
+    log_action(actor=actor, action="project.create", target=project, request=request)
+    return project
+
+
+def update_project(*, project: Project, actor, request=None, **fields) -> Project:
+    if not actor.has_permission("project.update"):
+        raise PermissionDenied("You need project.update to edit this project.")
+    tag_names = fields.pop("tag_names", None)
+    for field, value in fields.items():
+        setattr(project, field, value)
+    project.save(update_fields=[*fields.keys(), "updated_at"])
+    _sync_tags(project, tag_names)
+    log_action(actor=actor, action="project.update", target=project, request=request)
+    return project
+
+
+def delete_project(*, project: Project, actor, request=None) -> None:
+    if not actor.has_permission("project.delete"):
+        raise PermissionDenied("You need project.delete to remove this project.")
+    log_action(actor=actor, action="project.delete", metadata={"project_id": str(project.pk), "name": project.name}, request=request)
+    project.delete()
+
+
+def create_component(
+    *, actor, request=None, name, category=None, manufacturer="", part_number="", status=Component.Status.TESTING,
+    summary="", specifications=None, tag_names=None,
+) -> Component:
+    component = Component.objects.create(
+        name=name,
+        category=category,
+        manufacturer=manufacturer,
+        part_number=part_number,
+        status=status,
+        summary=summary,
+        specifications=specifications or [],
+        created_by=actor,
+    )
+    _sync_tags(component, tag_names)
+    log_action(actor=actor, action="component.create", target=component, request=request)
+    return component
+
+
+def update_component(*, component: Component, actor, request=None, **fields) -> Component:
+    if not actor.has_permission("component.update"):
+        raise PermissionDenied("You need component.update to edit this component.")
+    tag_names = fields.pop("tag_names", None)
+    for field, value in fields.items():
+        setattr(component, field, value)
+    component.save(update_fields=[*fields.keys(), "updated_at"])
+    _sync_tags(component, tag_names)
+    log_action(actor=actor, action="component.update", target=component, request=request)
+    return component
+
+
+def delete_component(*, component: Component, actor, request=None) -> None:
+    if not actor.has_permission("component.delete"):
+        raise PermissionDenied("You need component.delete to remove this component.")
+    log_action(
+        actor=actor, action="component.delete", metadata={"component_id": str(component.pk), "name": component.name}, request=request
+    )
+    component.delete()
+
+
+def create_failure(
+    *, actor, request=None, title, component=None, project=None, aircraft="", date=None,
+    severity=Failure.Severity.MEDIUM, status=Failure.Status.UNDER_INVESTIGATION,
+    summary="", root_cause="", corrective_action="", preventive_action="",
+) -> Failure:
+    failure = Failure.objects.create(
+        title=title,
+        component=component,
+        project=project,
+        aircraft=aircraft,
+        date=date,
+        severity=severity,
+        status=status,
+        summary=summary,
+        root_cause=root_cause,
+        corrective_action=corrective_action,
+        preventive_action=preventive_action,
+        created_by=actor,
+    )
+    log_action(actor=actor, action="failure.create", target=failure, request=request)
+    return failure
+
+
+def update_failure(*, failure: Failure, actor, request=None, **fields) -> Failure:
+    if not actor.has_permission("failure.update"):
+        raise PermissionDenied("You need failure.update to edit this failure report.")
+    for field, value in fields.items():
+        setattr(failure, field, value)
+    failure.save(update_fields=[*fields.keys(), "updated_at"])
+    log_action(actor=actor, action="failure.update", target=failure, request=request)
+    return failure
+
+
+def delete_failure(*, failure: Failure, actor, request=None) -> None:
+    if not actor.has_permission("failure.delete"):
+        raise PermissionDenied("You need failure.delete to remove this failure report.")
+    log_action(actor=actor, action="failure.delete", metadata={"failure_id": str(failure.pk), "title": failure.title}, request=request)
+    failure.delete()
+
+
+def create_sop(
+    *, actor, request=None, title, category=None, mandatory=False, safety_notes="", content="", tag_names=None
+) -> Sop:
+    sop = Sop.objects.create(
+        title=title, category=category, mandatory=mandatory, safety_notes=safety_notes, content=content, created_by=actor
+    )
+    _sync_tags(sop, tag_names)
+    log_action(actor=actor, action="sop.create", target=sop, request=request)
+    return sop
+
+
+def update_sop(*, sop: Sop, actor, request=None, **fields) -> Sop:
+    if not actor.has_permission("sop.update"):
+        raise PermissionDenied("You need sop.update to edit this SOP.")
+    tag_names = fields.pop("tag_names", None)
+    for field, value in fields.items():
+        setattr(sop, field, value)
+    sop.save(update_fields=[*fields.keys(), "updated_at"])
+    _sync_tags(sop, tag_names)
+    log_action(actor=actor, action="sop.update", target=sop, request=request)
+    return sop
+
+
+def delete_sop(*, sop: Sop, actor, request=None) -> None:
+    if not actor.has_permission("sop.delete"):
+        raise PermissionDenied("You need sop.delete to remove this SOP.")
+    log_action(actor=actor, action="sop.delete", metadata={"sop_id": str(sop.pk), "title": sop.title}, request=request)
+    sop.delete()
+
+
+def _add_engineering_attachment(*, owner, attachment_model, owner_field: str, file, actor, request, action: str):
+    attachment = attachment_model.objects.create(**{owner_field: owner}, file=file, uploaded_by=actor)
+    log_action(
+        actor=actor, action=action, target=owner, metadata={"file_id": str(file.pk), "filename": file.original_filename}, request=request
+    )
+    return attachment
+
+
+def _remove_engineering_attachment(*, attachment, actor, request, action: str, id_field: str):
+    log_action(
+        actor=actor,
+        action=action,
+        metadata={"attachment_id": str(attachment.pk), id_field: str(getattr(attachment, id_field))},
+        request=request,
+    )
+    attachment.delete()
+
+
+def add_project_attachment(*, project: Project, file, actor, request=None) -> ProjectAttachment:
+    if not actor.has_permission("project.update"):
+        raise PermissionDenied("You need project.update to attach files to this project.")
+    return _add_engineering_attachment(
+        owner=project, attachment_model=ProjectAttachment, owner_field="project", file=file, actor=actor,
+        request=request, action="attachment.add",
+    )
+
+
+def remove_project_attachment(*, attachment: ProjectAttachment, actor, request=None) -> None:
+    if not actor.has_permission("project.update"):
+        raise PermissionDenied("You need project.update to remove attachments from this project.")
+    _remove_engineering_attachment(attachment=attachment, actor=actor, request=request, action="attachment.remove", id_field="project_id")
+
+
+def add_component_attachment(*, component: Component, file, actor, request=None) -> ComponentAttachment:
+    if not actor.has_permission("component.update"):
+        raise PermissionDenied("You need component.update to attach files to this component.")
+    return _add_engineering_attachment(
+        owner=component, attachment_model=ComponentAttachment, owner_field="component", file=file, actor=actor,
+        request=request, action="attachment.add",
+    )
+
+
+def remove_component_attachment(*, attachment: ComponentAttachment, actor, request=None) -> None:
+    if not actor.has_permission("component.update"):
+        raise PermissionDenied("You need component.update to remove attachments from this component.")
+    _remove_engineering_attachment(
+        attachment=attachment, actor=actor, request=request, action="attachment.remove", id_field="component_id"
+    )
+
+
+def add_failure_attachment(*, failure: Failure, file, actor, request=None) -> FailureAttachment:
+    if not actor.has_permission("failure.update"):
+        raise PermissionDenied("You need failure.update to attach files to this failure report.")
+    return _add_engineering_attachment(
+        owner=failure, attachment_model=FailureAttachment, owner_field="failure", file=file, actor=actor,
+        request=request, action="attachment.add",
+    )
+
+
+def remove_failure_attachment(*, attachment: FailureAttachment, actor, request=None) -> None:
+    if not actor.has_permission("failure.update"):
+        raise PermissionDenied("You need failure.update to remove attachments from this failure report.")
+    _remove_engineering_attachment(attachment=attachment, actor=actor, request=request, action="attachment.remove", id_field="failure_id")
+
+
+def add_sop_attachment(*, sop: Sop, file, actor, request=None) -> SopAttachment:
+    if not actor.has_permission("sop.update"):
+        raise PermissionDenied("You need sop.update to attach files to this SOP.")
+    return _add_engineering_attachment(
+        owner=sop, attachment_model=SopAttachment, owner_field="sop", file=file, actor=actor,
+        request=request, action="attachment.add",
+    )
+
+
+def remove_sop_attachment(*, attachment: SopAttachment, actor, request=None) -> None:
+    if not actor.has_permission("sop.update"):
+        raise PermissionDenied("You need sop.update to remove attachments from this SOP.")
+    _remove_engineering_attachment(attachment=attachment, actor=actor, request=request, action="attachment.remove", id_field="sop_id")
+
+
+# Only Article/Question/Project/Component/Failure/Sop exist as real content
+# types - this allowlist is what actually stops a relation being created to
+# some other model (ContentType itself has no way to express "only these").
+_RELATABLE_MODELS = {
+    "article": Article,
+    "question": Question,
+    "project": Project,
+    "component": Component,
+    "failure": Failure,
+    "sop": Sop,
+}
+
+# model_name -> the permission that grants edit rights on that type, for
+# types with no per-item ownership concept (see the engineering-domain note
+# above) - _can_edit_relatable falls back to this when the instance has no
+# `author` attribute of its own to compare against.
+_RELATABLE_UPDATE_PERMISSION = {
+    "project": "project.update",
+    "component": "component.update",
+    "failure": "failure.update",
+    "sop": "sop.update",
+}
 
 
 def _resolve_relatable(model_name: str, object_id):
@@ -398,6 +650,8 @@ def _resolve_relatable(model_name: str, object_id):
 def _can_edit_relatable(actor, model_name: str, instance) -> bool:
     if instance is None:
         return False
+    if model_name in _RELATABLE_UPDATE_PERMISSION:
+        return actor.has_permission(_RELATABLE_UPDATE_PERMISSION[model_name])
     codename = "article.update" if model_name == "article" else "question.moderate"
     return actor == getattr(instance, "author", None) or actor.has_permission(codename)
 

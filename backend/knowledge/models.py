@@ -265,3 +265,207 @@ class QuestionAttachment(models.Model):
 
     def __str__(self):
         return f"{self.question_id} <- {self.file_id}"
+
+
+# --- Engineering domain (Projects/Components/Failures/SOPs) ---------------
+#
+# Deliberately no `visibility` field (unlike Article/Question) and no
+# draft/review/publish workflow - anyone holding the entity's `.read`
+# permission sees everything; create/update/delete are the only gates. See
+# docs/VISION.md #13-16 for the field lists these are drawn from, and
+# KnowledgeRelation's docstring above for how these plug into the existing
+# generic relation graph (services._RELATABLE_MODELS is the only place that
+# needs to know these models exist).
+
+
+class Project(models.Model):
+    class Status(models.TextChoices):
+        ACTIVE = "ACTIVE", "Active"
+        ON_HOLD = "ON_HOLD", "On Hold"
+        COMPLETED = "COMPLETED", "Completed"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=200)
+    description = models.TextField(blank=True)  # markdown source
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.ACTIVE)
+    tags = models.ManyToManyField(Tag, blank=True, related_name="projects")
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="created_projects"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-updated_at"]
+
+    def __str__(self):
+        return self.name
+
+
+class Component(models.Model):
+    class Status(models.TextChoices):
+        CERTIFIED = "CERTIFIED", "Certified"
+        TESTING = "TESTING", "Testing"
+        DEPRECATED = "DEPRECATED", "Deprecated"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=200)
+    category = models.ForeignKey(
+        Category, null=True, blank=True, on_delete=models.SET_NULL, related_name="components"
+    )
+    manufacturer = models.CharField(max_length=150, blank=True)
+    part_number = models.CharField(max_length=100, blank=True)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.TESTING)
+    summary = models.TextField(blank=True)  # markdown source
+    # Ordered [{"label": "Processor", "value": "STM32H753..."}, ...] - a
+    # component's meaningful spec keys vary entirely by category (a flight
+    # controller's "Processor"/"Weight" vs a motor's "KV Rating"/"Max
+    # Thrust"), so a flexible list beats a fixed set of columns.
+    specifications = models.JSONField(default=list, blank=True)
+    tags = models.ManyToManyField(Tag, blank=True, related_name="components")
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="created_components"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-updated_at"]
+
+    def __str__(self):
+        return self.name
+
+
+class Failure(models.Model):
+    class Severity(models.TextChoices):
+        LOW = "LOW", "Low"
+        MEDIUM = "MEDIUM", "Medium"
+        HIGH = "HIGH", "High"
+
+    class Status(models.TextChoices):
+        UNDER_INVESTIGATION = "UNDER_INVESTIGATION", "Under Investigation"
+        RESOLVED = "RESOLVED", "Resolved"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    title = models.CharField(max_length=200)
+    component = models.ForeignKey(
+        Component, null=True, blank=True, on_delete=models.SET_NULL, related_name="failures"
+    )
+    project = models.ForeignKey(Project, null=True, blank=True, on_delete=models.SET_NULL, related_name="failures")
+    aircraft = models.CharField(max_length=150, blank=True)
+    date = models.DateField(null=True, blank=True)
+    severity = models.CharField(max_length=20, choices=Severity.choices, default=Severity.MEDIUM)
+    status = models.CharField(max_length=30, choices=Status.choices, default=Status.UNDER_INVESTIGATION)
+    # All markdown source. Symptoms/Evidence/Investigation from
+    # docs/VISION.md #16 are folded into `summary` - matches how the
+    # athar_failure_detail mockup actually presents them, as one narrative
+    # section, not three separate fields.
+    summary = models.TextField(blank=True)
+    root_cause = models.TextField(blank=True)
+    corrective_action = models.TextField(blank=True)
+    preventive_action = models.TextField(blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="created_failures"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-date", "-created_at"]
+
+    def __str__(self):
+        return self.title
+
+
+class Sop(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    title = models.CharField(max_length=200)
+    category = models.ForeignKey(Category, null=True, blank=True, on_delete=models.SET_NULL, related_name="sops")
+    mandatory = models.BooleanField(default=False)
+    # Rendered as a distinct warning callout, not part of the flowing body -
+    # the one thing docs/VISION.md #15 and the athar_sop_detail mockup both
+    # treat as structurally special rather than just another section.
+    safety_notes = models.TextField(blank=True)
+    # Purpose/Prerequisites/Required Equipment/Procedure/Verification/Common
+    # Mistakes/Troubleshooting/References (docs/VISION.md #15) collapse into
+    # one markdown body here, same shape as Article.content - reuses
+    # MarkdownEditor/Markdown as-is instead of nine separate structured fields.
+    content = models.TextField(blank=True)  # markdown source
+    tags = models.ManyToManyField(Tag, blank=True, related_name="sops")
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="created_sops"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-updated_at"]
+        verbose_name = "SOP"
+        verbose_name_plural = "SOPs"
+
+    def __str__(self):
+        return self.title
+
+
+class ProjectAttachment(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="attachments")
+    file = models.ForeignKey(StoredFile, on_delete=models.CASCADE, related_name="+")
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.project_id} <- {self.file_id}"
+
+
+class ComponentAttachment(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    component = models.ForeignKey(Component, on_delete=models.CASCADE, related_name="attachments")
+    file = models.ForeignKey(StoredFile, on_delete=models.CASCADE, related_name="+")
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.component_id} <- {self.file_id}"
+
+
+class FailureAttachment(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    failure = models.ForeignKey(Failure, on_delete=models.CASCADE, related_name="attachments")
+    file = models.ForeignKey(StoredFile, on_delete=models.CASCADE, related_name="+")
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.failure_id} <- {self.file_id}"
+
+
+class SopAttachment(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    sop = models.ForeignKey(Sop, on_delete=models.CASCADE, related_name="attachments")
+    file = models.ForeignKey(StoredFile, on_delete=models.CASCADE, related_name="+")
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.sop_id} <- {self.file_id}"

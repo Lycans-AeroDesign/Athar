@@ -114,6 +114,14 @@ export default function QuestionDetailPage() {
 
   return (
     <div className="max-w-[800px] mx-auto space-y-6">
+      <Link
+        href="/knowledge"
+        className="inline-flex items-center gap-1 font-label-caps text-label-caps uppercase text-on-surface-variant hover:text-on-surface transition-colors"
+      >
+        <Icon name="arrow_back" size={16} />
+        {t("backToKnowledge")}
+      </Link>
+
       <div className="pb-4 border-b border-outline-variant space-y-3">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-2 font-mono-sm text-mono-sm text-on-surface-variant">

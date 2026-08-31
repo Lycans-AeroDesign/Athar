@@ -5,6 +5,20 @@ import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
+import {
+  addComponentAttachment,
+  addFailureAttachment,
+  addProjectAttachment,
+  addSopAttachment,
+  getComponentAttachments,
+  getFailureAttachments,
+  getProjectAttachments,
+  getSopAttachments,
+  removeComponentAttachment,
+  removeFailureAttachment,
+  removeProjectAttachment,
+  removeSopAttachment,
+} from "@/lib/api/engineering";
 import { downloadFile, uploadFile } from "@/lib/api/files";
 import {
   addArticleAttachment,
@@ -14,15 +28,34 @@ import {
   removeArticleAttachment,
   removeQuestionAttachment,
 } from "@/lib/api/knowledge";
-import type { KnowledgeAttachment } from "@/lib/api/types";
+import type { KnowledgeAttachment, RelatableType } from "@/lib/api/types";
 
 interface AttachmentsProps {
-  type: "article" | "question";
+  type: RelatableType;
   id: string;
-  /** Same edit rights as the article/question itself - see attachment.add/remove's
+  /** Same edit rights as the owning item itself - see attachment.add/remove's
    * permission check in backend/knowledge/services.py. */
   canEdit: boolean;
 }
+
+// One {get, add, remove} triple per relatable type - a lookup table scales
+// better than an ever-growing if/else chain now that this covers six types,
+// not just article/question.
+const ATTACHMENT_API: Record<
+  RelatableType,
+  {
+    get: (id: string) => Promise<KnowledgeAttachment[]>;
+    add: (id: string, fileId: string) => Promise<KnowledgeAttachment>;
+    remove: (id: string, attachmentId: string) => Promise<void>;
+  }
+> = {
+  article: { get: getArticleAttachments, add: addArticleAttachment, remove: removeArticleAttachment },
+  question: { get: getQuestionAttachments, add: addQuestionAttachment, remove: removeQuestionAttachment },
+  project: { get: getProjectAttachments, add: addProjectAttachment, remove: removeProjectAttachment },
+  component: { get: getComponentAttachments, add: addComponentAttachment, remove: removeComponentAttachment },
+  failure: { get: getFailureAttachments, add: addFailureAttachment, remove: removeFailureAttachment },
+  sop: { get: getSopAttachments, add: addSopAttachment, remove: removeSopAttachment },
+};
 
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -31,8 +64,8 @@ function formatFileSize(bytes: number): string {
 }
 
 // The file itself is uploaded standalone first (uploadFile), then associated
-// via its own endpoint (addArticleAttachment/addQuestionAttachment) - same
-// two-phase pattern as BrandingSettingsForm.tsx's logo/favicon upload.
+// via its own endpoint (ATTACHMENT_API[type].add) - same two-phase pattern
+// as BrandingSettingsForm.tsx's logo/favicon upload.
 export function Attachments({ type, id, canEdit }: AttachmentsProps) {
   const t = useTranslations("knowledge.attachments");
   const [attachments, setAttachments] = useState<KnowledgeAttachment[] | null>(null);
@@ -41,8 +74,10 @@ export function Attachments({ type, id, canEdit }: AttachmentsProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const request = type === "article" ? getArticleAttachments(id) : getQuestionAttachments(id);
-    request.then(setAttachments).catch((err) => setError(err instanceof Error ? err.message : String(err)));
+    ATTACHMENT_API[type]
+      .get(id)
+      .then(setAttachments)
+      .catch((err) => setError(err instanceof Error ? err.message : String(err)));
   }, [type, id]);
 
   async function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
@@ -53,10 +88,7 @@ export function Attachments({ type, id, canEdit }: AttachmentsProps) {
     setIsUploading(true);
     try {
       const uploaded = await uploadFile(file);
-      const attachment =
-        type === "article"
-          ? await addArticleAttachment(id, uploaded.id)
-          : await addQuestionAttachment(id, uploaded.id);
+      const attachment = await ATTACHMENT_API[type].add(id, uploaded.id);
       setAttachments((prev) => [...(prev ?? []), attachment]);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -68,8 +100,7 @@ export function Attachments({ type, id, canEdit }: AttachmentsProps) {
   async function handleRemove(attachmentId: string) {
     setError(null);
     try {
-      if (type === "article") await removeArticleAttachment(id, attachmentId);
-      else await removeQuestionAttachment(id, attachmentId);
+      await ATTACHMENT_API[type].remove(id, attachmentId);
       setAttachments((prev) => (prev ?? []).filter((attachment) => attachment.id !== attachmentId));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));

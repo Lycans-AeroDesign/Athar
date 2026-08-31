@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>SOP-MNT-12: Vibration Damping Assembly - AeroKMS</title>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Config -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary-fixed-dim": "#b7c4ff",
+                        "surface": "#faf8ff",
+                        "surface-tint": "#2f54cb",
+                        "on-surface-variant": "#444654",
+                        "on-background": "#1a1b22",
+                        "error": "#ba1a1a",
+                        "on-tertiary": "#ffffff",
+                        "outline-variant": "#c4c5d6",
+                        "tertiary-container": "#841e02",
+                        "on-secondary": "#ffffff",
+                        "primary-fixed": "#dce1ff",
+                        "on-error": "#ffffff",
+                        "primary-container": "#1d4ed8",
+                        "surface-dim": "#dad9e3",
+                        "inverse-surface": "#2f3038",
+                        "primary": "#00247d",
+                        "on-tertiary-container": "#ff967b",
+                        "on-secondary-fixed-variant": "#39485e",
+                        "inverse-on-surface": "#f1f0fa",
+                        "on-surface": "#1a1b22",
+                        "on-tertiary-fixed-variant": "#872004",
+                        "surface-variant": "#e2e1ec",
+                        "inverse-primary": "#b7c4ff",
+                        "surface-container": "#eeedf7",
+                        "tertiary": "#3d445a",
+                        "on-tertiary-fixed": "#3c0800",
+                        "surface-container-low": "#f4f2fd",
+                        "background": "#faf8ff",
+                        "outline": "#747686",
+                        "on-error-container": "#93000a",
+                        "secondary": "#505f76",
+                        "surface-container-high": "#e8e7f2",
+                        "error-container": "#ffdad6",
+                        "tertiary-fixed-dim": "#ffb4a2",
+                        "surface-bright": "#faf8ff",
+                        "on-primary": "#ffffff",
+                        "on-secondary-container": "#56657c",
+                        "surface-container-highest": "#e2e1ec",
+                        "on-primary-fixed": "#001551",
+                        "on-primary-fixed-variant": "#063ab2",
+                        "secondary-fixed-dim": "#b8c7e2",
+                        "secondary-fixed": "#d4e3ff",
+                        "tertiary-fixed": "#ffdbd2",
+                        "on-primary-container": "#cad3ff",
+                        "on-secondary-fixed": "#0c1c30",
+                        "secondary-container": "#d4e3ff",
+                        "surface-container-lowest": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "xs": "4px",
+                        "md": "16px",
+                        "layout-margin": "40px",
+                        "xl": "32px",
+                        "lg": "24px",
+                        "layout-gutter": "20px",
+                        "sm": "8px",
+                        "unit": "4px"
+                    },
+                    "fontFamily": {
+                        "display": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "mono-sm": ["JetBrains Mono"],
+                        "body-lg": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "label-caps": ["Inter"]
+                    },
+                    "fontSize": {
+                        "display": ["36px", { "lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "mono-sm": ["13px", { "lineHeight": "18px", "fontWeight": "400" }],
+                        "body-lg": ["16px", { "lineHeight": "26px", "fontWeight": "400" }],
+                        "headline-lg": ["28px", { "lineHeight": "36px", "fontWeight": "600" }],
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-surface text-on-surface h-screen flex overflow-hidden">
+<!-- SideNavBar -->
+<nav class="hidden md:flex flex-col h-screen fixed left-0 top-0 bg-surface-container-low border-r border-outline-variant w-64 z-20">
+<div class="p-lg flex flex-col gap-xs">
+<div class="flex items-center gap-sm">
+<div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-on-primary font-bold">AK</div>
+<div>
+<h1 class="font-headline-md text-headline-md font-bold text-primary">AeroKMS</h1>
+<p class="font-label-caps text-label-caps text-on-surface-variant">Engineering Knowledge System</p>
+</div>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto px-md py-sm flex flex-col gap-xs">
+<a class="flex items-center gap-md px-md py-sm rounded-lg text-on-surface-variant hover:bg-surface-variant transition-colors duration-150 group" href="#">
+<span class="material-symbols-outlined text-on-surface-variant group-hover:scale-95 transition-transform" data-icon="dashboard">dashboard</span>
+<span class="font-body-md text-body-md">Dashboard</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm rounded-lg text-on-surface-variant hover:bg-surface-variant transition-colors duration-150 group" href="#">
+<span class="material-symbols-outlined text-on-surface-variant group-hover:scale-95 transition-transform" data-icon="menu_book">menu_book</span>
+<span class="font-body-md text-body-md">Knowledge</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm rounded-lg text-on-surface-variant hover:bg-surface-variant transition-colors duration-150 group" href="#">
+<span class="material-symbols-outlined text-on-surface-variant group-hover:scale-95 transition-transform" data-icon="architecture">architecture</span>
+<span class="font-body-md text-body-md">Projects</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm rounded-lg text-on-surface-variant hover:bg-surface-variant transition-colors duration-150 group" href="#">
+<span class="material-symbols-outlined text-on-surface-variant group-hover:scale-95 transition-transform" data-icon="settings_input_component">settings_input_component</span>
+<span class="font-body-md text-body-md">Components</span>
+</a>
+<!-- Active State -->
+<a class="flex items-center gap-md px-md py-sm bg-secondary-container text-on-secondary-container font-bold rounded-lg group" href="#">
+<span class="material-symbols-outlined group-hover:scale-95 transition-transform" data-icon="description">description</span>
+<span class="font-body-md text-body-md">SOPs</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm rounded-lg text-on-surface-variant hover:bg-surface-variant transition-colors duration-150 group" href="#">
+<span class="material-symbols-outlined text-on-surface-variant group-hover:scale-95 transition-transform" data-icon="report_problem">report_problem</span>
+<span class="font-body-md text-body-md">Failures</span>
+</a>
+</div>
+<div class="p-md mt-auto">
+<a class="flex items-center gap-md px-md py-sm rounded-lg text-on-surface-variant hover:bg-surface-variant transition-colors duration-150 group" href="#">
+<span class="material-symbols-outlined text-on-surface-variant group-hover:scale-95 transition-transform" data-icon="info">info</span>
+<span class="font-body-md text-body-md">About Lycans</span>
+</a>
+</div>
+</nav>
+<!-- Main Content Area -->
+<div class="flex-1 flex flex-col md:ml-64 relative min-w-0 bg-background">
+<!-- TopNavBar -->
+<header class="flex items-center justify-between px-lg h-16 bg-surface border-b border-outline-variant sticky top-0 z-10 w-full shrink-0">
+<div class="flex items-center gap-md">
+<button class="md:hidden text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<div class="relative w-64 hidden sm:block">
+<span class="material-symbols-outlined absolute left-sm top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">search</span>
+<input class="w-full bg-surface-container-low border border-outline-variant rounded-lg pl-xl pr-sm py-xs font-body-md text-body-md text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all" placeholder="Search SOPs..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-lg">
+<button class="text-on-surface-variant hover:text-primary opacity-80 hover:opacity-100 transition-all group relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-0 right-0 w-2 h-2 bg-error rounded-full"></span>
+</button>
+<button class="text-on-surface-variant hover:text-primary opacity-80 hover:opacity-100 transition-all">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<div class="flex items-center gap-sm bg-surface-container-low border border-outline-variant rounded-full py-xs px-sm cursor-pointer hover:bg-surface-variant transition-colors">
+<div class="w-8 h-8 rounded-full bg-secondary-container overflow-hidden border border-outline-variant">
+<img class="w-full h-full object-cover" data-alt="A small, professional headshot portrait of a male engineer wearing glasses and a clean white shirt against a neutral grey background. High-key lighting, corporate modern aesthetic, sharp focus." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDqgjG0V1NOd33MllngyudThPOlwNs8g6xXgARPw1e1HiscrqXW8QPn5P0TC2aEaxeJY8Di9vCX2FYEGWdpN4geRq44YNvMNb_MaQ7G8n6AV_9RJxVSzIEU57rDQ-xSt0QIK3zE84oAGCzZD7k0fjaxmVA3o9w1TS8yfYJt6PpuvxHNaI_0V3lnq4XT1FaRxTYaVPU2ZszuP4W44h4cDPsv9_rvUCShlnNfyrgG0CbglduSJIKpZfsK"/>
+</div>
+<div class="hidden lg:flex flex-col pr-sm">
+<span class="font-body-md text-body-md font-medium text-on-surface leading-tight">Dr. Aris Thorne</span>
+<span class="font-label-caps text-label-caps text-on-surface-variant text-[10px]">System Admin</span>
+</div>
+</div>
+</div>
+</header>
+<!-- Page Content -->
+<main class="flex-1 overflow-y-auto p-layout-margin flex justify-center w-full">
+<div class="max-w-[1200px] w-full grid grid-cols-1 xl:grid-cols-12 gap-layout-gutter">
+<!-- Left Sidebar (TOC) -->
+<aside class="hidden xl:block col-span-3">
+<div class="sticky top-layout-margin bg-surface-container-lowest rounded-xl border border-outline-variant p-lg">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-md">Contents</h3>
+<nav class="flex flex-col gap-sm relative border-l-2 border-surface-variant ml-xs pl-md">
+<!-- Active indicator line -->
+<div class="absolute left-[-2px] top-0 h-8 w-[2px] bg-primary transition-all duration-300"></div>
+<a class="font-body-md text-body-md text-primary font-medium hover:text-primary py-xs" href="#intro">Introduction</a>
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-primary py-xs transition-colors" href="#tools">Required Tools</a>
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-primary py-xs transition-colors" href="#safety">Safety Precautions</a>
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-primary py-xs transition-colors" href="#procedure">Procedure Steps</a>
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-primary py-xs transition-colors" href="#verification">Verification</a>
+</nav>
+</div>
+</aside>
+<!-- Center Content -->
+<article class="col-span-1 xl:col-span-6 flex flex-col gap-xl">
+<!-- Header/Metadata -->
+<header class="flex flex-col gap-md">
+<div class="flex items-center gap-sm">
+<span class="bg-primary-container text-on-primary-container font-label-caps text-label-caps px-sm py-[2px] rounded-full">SOP</span>
+<span class="bg-surface-container-high text-on-surface-variant font-label-caps text-label-caps px-sm py-[2px] rounded-full">Mandatory</span>
+</div>
+<h1 class="font-display text-display text-on-surface">SOP-MNT-12: Vibration Damping Assembly</h1>
+<div class="flex flex-wrap items-center gap-lg border-y border-outline-variant py-sm">
+<div class="flex flex-col gap-xs">
+<span class="font-label-caps text-label-caps text-on-surface-variant">Last Updated</span>
+<span class="font-mono-sm text-mono-sm text-on-surface">Oct 24, 2023</span>
+</div>
+<div class="w-px h-8 bg-outline-variant hidden sm:block"></div>
+<div class="flex flex-col gap-xs">
+<span class="font-label-caps text-label-caps text-on-surface-variant">Author</span>
+<span class="font-body-md text-body-md text-on-surface font-medium flex items-center gap-xs">
+<span class="material-symbols-outlined text-sm">person</span> M. Lee
+                                </span>
+</div>
+<div class="w-px h-8 bg-outline-variant hidden sm:block"></div>
+<div class="flex flex-col gap-xs">
+<span class="font-label-caps text-label-caps text-on-surface-variant">Version</span>
+<span class="font-mono-sm text-mono-sm text-on-surface bg-surface-container py-[2px] px-sm rounded-md">v2.1</span>
+</div>
+</div>
+</header>
+<!-- Safety Warning -->
+<section class="bg-[#fff8f6] border border-[#ffb4a2] rounded-xl p-lg flex gap-md relative overflow-hidden shadow-sm" id="safety">
+<div class="absolute top-0 left-0 w-2 h-full bg-[#841e02]"></div>
+<div class="mt-xs">
+<span class="material-symbols-outlined text-[#841e02]" style="font-variation-settings: 'FILL' 1;">warning</span>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-[#3c0800] mb-xs">Critical Safety Warning</h3>
+<p class="font-body-md text-body-md text-[#872004]">
+                                Ensure all power sources are disconnected before proceeding with vibration damping assembly. Exposure to active servo mechanisms during installation can result in severe pinching hazards. Wear appropriate anti-static gloves (ESD-Safe) throughout the procedure.
+                            </p>
+</div>
+</section>
+<!-- Introduction -->
+<section class="prose max-w-none text-on-surface font-body-lg text-body-lg" id="intro">
+<p class="leading-relaxed">
+                            This Standard Operating Procedure details the mandatory steps for installing the isolation mounting system on primary avionics modules. Proper execution is critical to isolate sensitive IMU (Inertial Measurement Unit) sensors from high-frequency frame vibrations during operational phases.
+                        </p>
+</section>
+<!-- Required Tools Grid -->
+<section class="flex flex-col gap-md" id="tools">
+<h2 class="font-headline-lg text-headline-lg text-on-surface border-b border-outline-variant pb-xs">Required Tools & Materials</h2>
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-md">
+<!-- Tool Card 1 -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-md flex items-center gap-sm hover:border-primary transition-colors cursor-pointer group">
+<div class="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center text-on-surface-variant group-hover:bg-primary-container group-hover:text-primary transition-colors">
+<span class="material-symbols-outlined">build</span>
+</div>
+<div class="flex flex-col">
+<span class="font-body-md text-body-md font-medium text-on-surface">Torque Wrench</span>
+<span class="font-mono-sm text-mono-sm text-on-surface-variant">0.5 - 2.0 Nm</span>
+</div>
+</div>
+<!-- Tool Card 2 -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-md flex items-center gap-sm hover:border-primary transition-colors cursor-pointer group">
+<div class="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center text-on-surface-variant group-hover:bg-primary-container group-hover:text-primary transition-colors">
+<span class="material-symbols-outlined">science</span>
+</div>
+<div class="flex flex-col">
+<span class="font-body-md text-body-md font-medium text-on-surface">ISO-GEL-01</span>
+<span class="font-mono-sm text-mono-sm text-on-surface-variant">Damping Gel</span>
+</div>
+</div>
+<!-- Tool Card 3 -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-md flex items-center gap-sm hover:border-primary transition-colors cursor-pointer group">
+<div class="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center text-on-surface-variant group-hover:bg-primary-container group-hover:text-primary transition-colors">
+<span class="material-symbols-outlined">hardware</span>
+</div>
+<div class="flex flex-col">
+<span class="font-body-md text-body-md font-medium text-on-surface">M3 Hex Screws</span>
+<span class="font-mono-sm text-mono-sm text-on-surface-variant">Titanium x4</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Procedure Steps -->
+<section class="flex flex-col gap-lg" id="procedure">
+<h2 class="font-headline-lg text-headline-lg text-on-surface border-b border-outline-variant pb-xs">Procedure Steps</h2>
+<div class="flex flex-col gap-xl relative">
+<!-- Vertical line connector for steps -->
+<div class="absolute left-5 top-8 bottom-8 w-px bg-outline-variant hidden sm:block"></div>
+<!-- Step 1 -->
+<div class="flex gap-md relative z-0">
+<div class="hidden sm:flex w-10 h-10 rounded-full bg-surface border-2 border-primary items-center justify-center font-headline-md text-headline-md text-primary font-bold shrink-0 shadow-[0_0_0_4px_#faf8ff]">1</div>
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-lg flex-1 shadow-sm">
+<div class="sm:hidden font-headline-md text-headline-md text-primary font-bold mb-sm">Step 1</div>
+<h3 class="font-headline-md text-headline-md text-on-surface mb-sm">Surface Preparation</h3>
+<p class="font-body-lg text-body-lg text-on-surface-variant mb-md">
+                                        Clean the carbon fiber mounting plate using 99% isopropyl alcohol. Ensure completely dry before proceeding. Do not use industrial solvents as they may degrade the composite matrix.
+                                    </p>
+<div class="bg-surface-container-low rounded-lg p-sm border border-outline-variant flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary text-sm">info</span>
+<span class="font-body-md text-body-md text-on-surface">Allow exactly 120 seconds for full evaporation.</span>
+</div>
+</div>
+</div>
+<!-- Step 2 -->
+<div class="flex gap-md relative z-0">
+<div class="hidden sm:flex w-10 h-10 rounded-full bg-surface border-2 border-outline-variant items-center justify-center font-headline-md text-headline-md text-on-surface-variant font-bold shrink-0 shadow-[0_0_0_4px_#faf8ff]">2</div>
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-lg flex-1 shadow-sm">
+<div class="sm:hidden font-headline-md text-headline-md text-on-surface-variant font-bold mb-sm">Step 2</div>
+<h3 class="font-headline-md text-headline-md text-on-surface mb-sm">Gel Pad Application</h3>
+<p class="font-body-lg text-body-lg text-on-surface-variant mb-md">
+                                        Apply one ISO-GEL-01 pad to each of the four corner standoffs. Press firmly using the standardized applicator tool to eliminate air bubbles between the pad and mounting surface.
+                                    </p>
+<div class="h-48 rounded-lg overflow-hidden border border-outline-variant relative">
+<img class="w-full h-full object-cover" data-alt="A close up, macro shot of an engineer's gloved hands applying a small, clear silicone square (ISO-GEL pad) onto a black carbon-fiber mounting plate with precision tweezers. High-tech, cleanroom lighting, sharp focus on the silicone pad." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBsY2u4JlaW-dWwwzXzwu8VE8bT_hL2sdcvDn_7DR7n-giQ6M6rnZs0qBNpS4DC3I_LXSqFYPa9jfkHpP5V3-aEC7RztwHEImgE-SoLDChLcUkxUpg5cs0F0rIbp8MdtEZm2lkIYTQjuUbbVo7vazbCmja7GCfIh0TVAlkOJWvuANG35aqYi1sF4mibVYnjuONLr1CG4_aZEKMK4FeDJVyba9sjQVjn2RqNNzFByIHjDI38l7FX7t7q"/>
+<div class="absolute bottom-sm right-sm bg-surface/90 backdrop-blur px-sm py-xs rounded text-xs font-mono-sm border border-outline-variant">Fig 2.1: Gel Placement</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+</article>
+<!-- Right Sidebar (Context/Knowledge) -->
+<aside class="hidden xl:block col-span-3 flex flex-col gap-lg">
+<!-- Related Entities -->
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant overflow-hidden">
+<div class="bg-surface-container-low border-b border-outline-variant p-md flex items-center gap-sm">
+<span class="material-symbols-outlined text-on-surface-variant text-sm">hub</span>
+<h3 class="font-headline-md text-headline-md text-on-surface">Linked Entities</h3>
+</div>
+<div class="p-md flex flex-col gap-sm">
+<!-- Component Link -->
+<a class="flex items-start gap-sm p-sm rounded-lg hover:bg-surface-variant transition-colors border border-transparent hover:border-outline-variant group" href="#">
+<div class="mt-xs">
+<span class="material-symbols-outlined text-secondary text-sm">settings_input_component</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps text-secondary mb-[2px]">Component</span>
+<span class="font-body-md text-body-md text-on-surface font-medium group-hover:text-primary transition-colors">Pixhawk 6X</span>
+</div>
+</a>
+<!-- Project Link -->
+<a class="flex items-start gap-sm p-sm rounded-lg hover:bg-surface-variant transition-colors border border-transparent hover:border-outline-variant group" href="#">
+<div class="mt-xs">
+<span class="material-symbols-outlined text-primary text-sm">architecture</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps text-primary mb-[2px]">Project</span>
+<span class="font-body-md text-body-md text-on-surface font-medium group-hover:text-primary transition-colors">Project Orion</span>
+</div>
+</a>
+</div>
+</div>
+<!-- Quick Actions -->
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant p-md flex flex-col gap-sm mt-lg">
+<button class="w-full py-sm px-md bg-primary text-on-primary font-body-md text-body-md font-medium rounded-lg hover:bg-primary-fixed-variant hover:text-on-primary-fixed-variant transition-colors flex items-center justify-center gap-sm">
+<span class="material-symbols-outlined text-sm">print</span> Print SOP
+                        </button>
+<button class="w-full py-sm px-md bg-transparent border border-outline text-on-surface font-body-md text-body-md font-medium rounded-lg hover:bg-surface-variant transition-colors flex items-center justify-center gap-sm">
+<span class="material-symbols-outlined text-sm">history</span> Revision History
+                        </button>
+</div>
+</aside>
+</div>
+</main>
+</div>
+</body></html>

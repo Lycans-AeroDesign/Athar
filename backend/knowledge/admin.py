@@ -1,6 +1,17 @@
 from django.contrib import admin
 
-from .models import Answer, Article, ArticleRevision, Category, Question, Tag
+from .models import (
+    Answer,
+    Article,
+    ArticleRevision,
+    Category,
+    Component,
+    Failure,
+    Project,
+    Question,
+    Sop,
+    Tag,
+)
 
 
 @admin.register(Category)
@@ -34,3 +45,27 @@ class QuestionAdmin(admin.ModelAdmin):
 @admin.register(Answer)
 class AnswerAdmin(admin.ModelAdmin):
     list_display = ["question", "author", "created_at"]
+
+
+@admin.register(Project)
+class ProjectAdmin(admin.ModelAdmin):
+    list_display = ["name", "status", "created_by", "updated_at"]
+    list_filter = ["status"]
+
+
+@admin.register(Component)
+class ComponentAdmin(admin.ModelAdmin):
+    list_display = ["name", "category", "status", "manufacturer", "updated_at"]
+    list_filter = ["status", "category"]
+
+
+@admin.register(Failure)
+class FailureAdmin(admin.ModelAdmin):
+    list_display = ["title", "severity", "status", "component", "project", "date"]
+    list_filter = ["severity", "status"]
+
+
+@admin.register(Sop)
+class SopAdmin(admin.ModelAdmin):
+    list_display = ["title", "category", "mandatory", "updated_at"]
+    list_filter = ["mandatory", "category"]

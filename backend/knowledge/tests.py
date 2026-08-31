@@ -14,9 +14,13 @@ from .models import (
     ArticleAttachment,
     ArticleRevision,
     Category,
+    Component,
+    Failure,
     KnowledgeRelation,
+    Project,
     Question,
     QuestionAttachment,
+    Sop,
     Tag,
 )
 
@@ -801,13 +805,52 @@ class SearchTests(KnowledgeTestCase):
         result_ids = {r["id"] for r in response.data["results"]}
         self.assertIn(published["id"], result_ids)
         self.assertNotIn(draft["id"], result_ids)
+        # The unpublished draft doesn't count either - counts reflect what
+        # search can actually surface, not raw title matches. Only
+        # article/question have any matches here - the engineering-domain
+        # types (see EngineeringDomainTests) are just 0.
+        expected_counts = {"article": 1, "question": 1, "project": 0, "component": 0, "failure": 0, "sop": 0}
+        self.assertEqual(response.data["counts"], expected_counts)
 
         response = self.client.get(reverse("knowledge-search") + "?q=pixhawk&type=article", **self._auth(author_access))
         self.assertTrue(all(r["type"] == "article" for r in response.data["results"]))
+        # Counts stay unscoped even when ?type= narrows the results themselves,
+        # so a filter list can show every option's total from one request.
+        self.assertEqual(response.data["counts"], expected_counts)
 
         response = self.client.get(reverse("knowledge-search") + "?q=pixhawk&type=question", **self._auth(author_access))
         self.assertTrue(all(r["type"] == "question" for r in response.data["results"]))
         self.assertTrue(any("rebooting" in r["title"] for r in response.data["results"]))
+
+    def test_search_sort_orders_by_updated_at(self):
+        _, head_access = self._login_with_role("searchsort@example.com", "Team/Subteam Head")
+        older = self.client.post(
+            reverse("knowledge-article-list-create"),
+            {"title": "Sortex Older", "content": "body"},
+            format="json",
+            **self._auth(head_access),
+        ).data
+        self.client.post(reverse("knowledge-article-submit", args=[older["id"]]), **self._auth(head_access))
+        self.client.post(reverse("knowledge-article-publish", args=[older["id"]]), **self._auth(head_access))
+
+        newer = self.client.post(
+            reverse("knowledge-article-list-create"),
+            {"title": "Sortex Newer", "content": "body"},
+            format="json",
+            **self._auth(head_access),
+        ).data
+        self.client.post(reverse("knowledge-article-submit", args=[newer["id"]]), **self._auth(head_access))
+        self.client.post(reverse("knowledge-article-publish", args=[newer["id"]]), **self._auth(head_access))
+
+        # Default (no ?sort=) matches ?sort=newest.
+        response = self.client.get(reverse("knowledge-search") + "?q=sortex", **self._auth(head_access))
+        self.assertEqual([r["id"] for r in response.data["results"]], [newer["id"], older["id"]])
+
+        response = self.client.get(reverse("knowledge-search") + "?q=sortex&sort=oldest", **self._auth(head_access))
+        self.assertEqual([r["id"] for r in response.data["results"]], [older["id"], newer["id"]])
+
+        response = self.client.get(reverse("knowledge-search") + "?q=sortex&sort=bogus", **self._auth(head_access))
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
 
 class VisibilityTests(KnowledgeTestCase):
@@ -1052,3 +1095,239 @@ class QuestionAttachmentTests(KnowledgeTestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(QuestionAttachment.objects.exists())
+
+
+class EngineeringDomainTests(KnowledgeTestCase):
+    """Project/Component/Failure/Sop: no draft/review workflow (see
+    models.py) - so unlike Article/Question these tests only need to prove
+    CRUD + the x.read/x.create/x.update/x.delete permission gate, not a
+    status state machine."""
+
+    def test_project_crud_and_permission_gating(self):
+        _, member_access = self._login_with_role("projmember@example.com", "Member")
+        response = self.client.post(
+            reverse("knowledge-project-list-create"), {"name": "DBF 2027"}, format="json", **self._auth(member_access)
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)  # no project.create
+
+        response = self.client.get(reverse("knowledge-project-list-create"), **self._auth(member_access))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)  # project.read is granted
+
+        _, head_access = self._login_with_role("projhead@example.com", "Team/Subteam Head")
+        response = self.client.post(
+            reverse("knowledge-project-list-create"),
+            {"name": "DBF 2027", "description": "Season aircraft", "tag_names": ["dbf"]},
+            format="json",
+            **self._auth(head_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        project = response.data
+        self.assertEqual(project["status"], "ACTIVE")
+        self.assertEqual([t["name"] for t in project["tags"]], ["dbf"])
+
+        response = self.client.patch(
+            reverse("knowledge-project-detail", args=[project["id"]]),
+            {"status": "ON_HOLD"},
+            format="json",
+            **self._auth(member_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)  # no project.update
+
+        response = self.client.patch(
+            reverse("knowledge-project-detail", args=[project["id"]]),
+            {"status": "ON_HOLD"},
+            format="json",
+            **self._auth(head_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["status"], "ON_HOLD")
+
+        response = self.client.delete(reverse("knowledge-project-detail", args=[project["id"]]), **self._auth(member_access))
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)  # no project.delete
+
+        response = self.client.delete(reverse("knowledge-project-detail", args=[project["id"]]), **self._auth(head_access))
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Project.objects.exists())
+
+    def test_component_crud_and_permission_gating(self):
+        _, member_access = self._login_with_role("compmember@example.com", "Member")
+        response = self.client.post(
+            reverse("knowledge-component-list-create"),
+            {
+                "name": "Pixhawk 6X",
+                "manufacturer": "Holybro",
+                "part_number": "HB-PX6X-001",
+                "specifications": [{"label": "Processor", "value": "STM32H753"}],
+            },
+            format="json",
+            **self._auth(member_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)  # Member has component.create
+        component = response.data
+        self.assertEqual(component["status"], "TESTING")
+        self.assertEqual(component["specifications"], [{"label": "Processor", "value": "STM32H753"}])
+
+        response = self.client.patch(
+            reverse("knowledge-component-detail", args=[component["id"]]),
+            {"status": "CERTIFIED"},
+            format="json",
+            **self._auth(member_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)  # no component.update
+
+        _, senior_access = self._login_with_role("compsenior@example.com", "Senior Member")
+        response = self.client.patch(
+            reverse("knowledge-component-detail", args=[component["id"]]),
+            {"status": "CERTIFIED"},
+            format="json",
+            **self._auth(senior_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        response = self.client.delete(
+            reverse("knowledge-component-detail", args=[component["id"]]), **self._auth(senior_access)
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)  # no component.delete
+
+        _, head_access = self._login_with_role("comphead@example.com", "Team/Subteam Head")
+        response = self.client.delete(
+            reverse("knowledge-component-detail", args=[component["id"]]), **self._auth(head_access)
+        )
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Component.objects.exists())
+
+    def test_component_rejects_malformed_specifications(self):
+        _, member_access = self._login_with_role("compbad@example.com", "Member")
+        response = self.client.post(
+            reverse("knowledge-component-list-create"),
+            {"name": "Bad Spec Component", "specifications": [{"label": "Only a label"}]},
+            format="json",
+            **self._auth(member_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_failure_crud_and_permission_gating(self):
+        _, member_access = self._login_with_role("failmember@example.com", "Member")
+        response = self.client.post(
+            reverse("knowledge-failure-list-create"),
+            {"title": "IMU Desync", "severity": "HIGH", "summary": "Desync during flight test."},
+            format="json",
+            **self._auth(member_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)  # Member has failure.create (pre-existing)
+        failure = response.data
+        self.assertEqual(failure["status"], "UNDER_INVESTIGATION")
+
+        response = self.client.patch(
+            reverse("knowledge-failure-detail", args=[failure["id"]]),
+            {"status": "RESOLVED"},
+            format="json",
+            **self._auth(member_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)  # no failure.update
+
+        _, senior_access = self._login_with_role("failsenior@example.com", "Senior Member")
+        response = self.client.patch(
+            reverse("knowledge-failure-detail", args=[failure["id"]]),
+            {"status": "RESOLVED", "root_cause": "Vibration-induced timestamp corruption."},
+            format="json",
+            **self._auth(senior_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["status"], "RESOLVED")
+
+        # failure.delete isn't granted below Organization Admin (pre-existing
+        # catalogue - see seed_rbac.py) - Team Head still can't delete one.
+        _, head_access = self._login_with_role("failhead@example.com", "Team/Subteam Head")
+        response = self.client.delete(reverse("knowledge-failure-detail", args=[failure["id"]]), **self._auth(head_access))
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        _, admin_access = self._login_with_role("failadmin@example.com", "Organization Admin")
+        response = self.client.delete(reverse("knowledge-failure-detail", args=[failure["id"]]), **self._auth(admin_access))
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Failure.objects.exists())
+
+    def test_sop_create_requires_senior_member_not_just_member(self):
+        _, member_access = self._login_with_role("sopmember@example.com", "Member")
+        response = self.client.get(reverse("knowledge-sop-list-create"), **self._auth(member_access))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)  # Member has sop.read
+
+        response = self.client.post(
+            reverse("knowledge-sop-list-create"),
+            {"title": "IMU Calibration SOP", "mandatory": True, "content": "1. ..."},
+            format="json",
+            **self._auth(member_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)  # no sop.create at Member tier
+
+        _, senior_access = self._login_with_role("sopsenior@example.com", "Senior Member")
+        response = self.client.post(
+            reverse("knowledge-sop-list-create"),
+            {"title": "IMU Calibration SOP", "mandatory": True, "safety_notes": "Disconnect power first.", "content": "1. ..."},
+            format="json",
+            **self._auth(senior_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(response.data["mandatory"])
+
+    def test_relations_link_failure_to_component_and_sop_bidirectionally(self):
+        _, head_access = self._login_with_role("relhead@example.com", "Team/Subteam Head")
+        component = self.client.post(
+            reverse("knowledge-component-list-create"), {"name": "Pixhawk 6X"}, format="json", **self._auth(head_access)
+        ).data
+        sop = self.client.post(
+            reverse("knowledge-sop-list-create"), {"title": "IMU Calibration SOP"}, format="json", **self._auth(head_access)
+        ).data
+        failure = self.client.post(
+            reverse("knowledge-failure-list-create"), {"title": "IMU Desync"}, format="json", **self._auth(head_access)
+        ).data
+
+        for target_type, target_id in [("component", component["id"]), ("sop", sop["id"])]:
+            response = self.client.post(
+                reverse("knowledge-relation-create"),
+                {"source_type": "failure", "source_id": failure["id"], "target_type": target_type, "target_id": target_id},
+                format="json",
+                **self._auth(head_access),
+            )
+            self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        failure_relations = self.client.get(
+            reverse("knowledge-failure-relations", args=[failure["id"]]), **self._auth(head_access)
+        ).data
+        self.assertEqual({(r["other_type"], r["other_id"]) for r in failure_relations}, {("component", component["id"]), ("sop", sop["id"])})
+
+        # Bidirectional - the component's own relation list shows the failure too.
+        component_relations = self.client.get(
+            reverse("knowledge-component-relations", args=[component["id"]]), **self._auth(head_access)
+        ).data
+        self.assertEqual([(r["other_type"], r["other_id"]) for r in component_relations], [("failure", failure["id"])])
+
+    def test_search_surfaces_all_four_engineering_types(self):
+        _, head_access = self._login_with_role("searcheng@example.com", "Team/Subteam Head")
+        self.client.post(
+            reverse("knowledge-project-list-create"), {"name": "Zephyrix Project"}, format="json", **self._auth(head_access)
+        )
+        self.client.post(
+            reverse("knowledge-component-list-create"),
+            {"name": "Zephyrix Sensor"},
+            format="json",
+            **self._auth(head_access),
+        )
+        self.client.post(
+            reverse("knowledge-failure-list-create"),
+            {"title": "Zephyrix Overheat", "summary": "..."},
+            format="json",
+            **self._auth(head_access),
+        )
+        self.client.post(
+            reverse("knowledge-sop-list-create"), {"title": "Zephyrix Startup SOP"}, format="json", **self._auth(head_access)
+        )
+
+        response = self.client.get(reverse("knowledge-search") + "?q=zephyrix", **self._auth(head_access))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        result_types = {r["type"] for r in response.data["results"]}
+        self.assertEqual(result_types, {"project", "component", "failure", "sop"})
+        self.assertEqual(
+            {k: v for k, v in response.data["counts"].items() if k in ("project", "component", "failure", "sop")},
+            {"project": 1, "component": 1, "failure": 1, "sop": 1},
+        )

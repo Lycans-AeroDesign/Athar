@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Component Library - AeroKMS</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=JetBrains+Mono:wght@400&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-secondary": "#ffffff",
+                      "tertiary-fixed": "#ffdbd2",
+                      "primary-container": "#0037b0",
+                      "on-background": "#1a1b22",
+                      "secondary-container": "#d4e3ff",
+                      "background": "#faf8ff",
+                      "error": "#ba1a1a",
+                      "primary": "#00247d",
+                      "surface-container-low": "#f4f2fd",
+                      "primary-fixed": "#dce1ff",
+                      "secondary-fixed-dim": "#b8c7e2",
+                      "inverse-primary": "#b7c4ff",
+                      "primary-fixed-dim": "#b7c4ff",
+                      "surface": "#faf8ff",
+                      "on-tertiary-fixed-variant": "#872004",
+                      "on-surface": "#1a1b22",
+                      "tertiary-fixed-dim": "#ffb4a2",
+                      "on-error": "#ffffff",
+                      "secondary": "#505f76",
+                      "on-error-container": "#93000a",
+                      "on-primary": "#ffffff",
+                      "surface-container": "#eeedf7",
+                      "on-tertiary-fixed": "#3c0800",
+                      "tertiary-container": "#841e02",
+                      "surface-container-lowest": "#ffffff",
+                      "outline": "#747686",
+                      "on-secondary-fixed-variant": "#39485e",
+                      "surface-tint": "#2f54cb",
+                      "inverse-on-surface": "#f1f0fa",
+                      "on-primary-fixed": "#001551",
+                      "on-primary-container": "#9baeff",
+                      "secondary-fixed": "#d4e3ff",
+                      "error-container": "#ffdad6",
+                      "tertiary": "#3d445a",
+                      "inverse-surface": "#2f3038",
+                      "on-surface-variant": "#444654",
+                      "on-tertiary-container": "#ff967b",
+                      "surface-container-highest": "#e2e1ec",
+                      "on-secondary-container": "#56657c",
+                      "on-tertiary": "#ffffff",
+                      "on-secondary-fixed": "#0c1c30",
+                      "on-primary-fixed-variant": "#063ab2",
+                      "surface-dim": "#dad9e3",
+                      "surface-variant": "#e2e1ec",
+                      "outline-variant": "#c4c5d6",
+                      "surface-container-high": "#e8e7f2",
+                      "surface-bright": "#faf8ff"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px",
+                      "ROUND_EIGHT": "8px",
+                      "ROUND_SIXTEEN": "16px"
+              },
+              "spacing": {
+                      "lg": "24px",
+                      "xs": "4px",
+                      "xl": "32px",
+                      "md": "16px",
+                      "layout-margin": "40px",
+                      "unit": "4px",
+                      "layout-gutter": "20px",
+                      "sm": "8px"
+              },
+              "fontFamily": {
+                      "headline-md": [
+                              "Inter"
+                      ],
+                      "mono-sm": [
+                              "JetBrains Mono"
+                      ],
+                      "body-lg": [
+                              "Inter"
+                      ],
+                      "display": [
+                              "Inter"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "label-caps": [
+                              "Inter"
+                      ],
+                      "headline-lg": [
+                              "Inter"
+                      ]
+              },
+              "fontSize": {
+                      "headline-md": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "mono-sm": [
+                              "13px",
+                              {
+                                      "lineHeight": "18px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-lg": [
+                              "16px",
+                              {
+                                      "lineHeight": "26px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "display": [
+                              "36px",
+                              {
+                                      "lineHeight": "44px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "body-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-caps": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-lg": [
+                              "28px",
+                              {
+                                      "lineHeight": "36px",
+                                      "fontWeight": "600"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        [data-weight="fill"] {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body-md text-body-md antialiased flex min-h-screen">
+<!-- SideNavBar -->
+<nav class="bg-surface-container-low border-r border-outline-variant fixed left-0 top-0 h-full w-64 z-50 flex flex-col py-md px-sm gap-sm hidden md:flex">
+<div class="px-md pb-lg">
+<div class="font-headline-lg text-headline-lg text-primary">AeroKMS</div>
+<div class="font-label-caps text-label-caps text-on-surface-variant">Engineering Intelligence</div>
+</div>
+<div class="flex-1 overflow-y-auto">
+<ul class="flex flex-col gap-unit">
+<li>
+<a class="flex items-center gap-md px-md py-sm rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-label-caps text-label-caps">Dashboard</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-md px-md py-sm rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" data-icon="auto_stories">auto_stories</span>
+<span class="font-label-caps text-label-caps">Knowledge</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-md px-md py-sm rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" data-icon="account_tree">account_tree</span>
+<span class="font-label-caps text-label-caps">Projects</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-md px-md py-sm rounded-lg bg-secondary-container text-on-secondary-container hover:bg-surface-container-high transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" data-icon="settings_input_component" data-weight="fill">settings_input_component</span>
+<span class="font-label-caps text-label-caps">Components</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-md px-md py-sm rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" data-icon="rule">rule</span>
+<span class="font-label-caps text-label-caps">SOPs</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-md px-md py-sm rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" data-icon="report_problem">report_problem</span>
+<span class="font-label-caps text-label-caps">Failures</span>
+</a>
+</li>
+</ul>
+</div>
+<div class="mt-auto pt-md">
+<button class="w-full bg-primary text-on-primary rounded-[8px] py-sm px-md flex items-center justify-center gap-sm font-label-caps text-label-caps hover:bg-primary-container transition-colors">
+<span class="material-symbols-outlined" data-icon="add">add</span>
+                New Document
+            </button>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col md:ml-64 w-full">
+<!-- TopNavBar -->
+<header class="bg-surface fixed top-0 w-full z-40 border-b border-outline-variant flex justify-between items-center px-layout-margin h-16 md:w-[calc(100%-256px)]">
+<div class="flex items-center gap-md flex-1">
+<!-- Mobile Menu Button -->
+<button class="md:hidden text-on-surface-variant p-sm hover:bg-surface-container rounded-full transition-colors">
+<span class="material-symbols-outlined" data-icon="menu">menu</span>
+</button>
+<div class="font-headline-md text-headline-md font-bold text-primary md:hidden">AeroKMS</div>
+<!-- Search -->
+<div class="hidden md:flex relative w-96 max-w-full">
+<span class="material-symbols-outlined absolute left-sm top-1/2 transform -translate-y-1/2 text-on-surface-variant">search</span>
+<input class="w-full bg-surface-container border border-outline-variant rounded-[8px] py-sm pl-xl pr-md text-body-md text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow" placeholder="Search components..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-sm">
+<button class="p-sm text-on-surface-variant hover:bg-surface-container rounded-full transition-colors cursor-pointer active:opacity-80">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="p-sm text-on-surface-variant hover:bg-surface-container rounded-full transition-colors cursor-pointer active:opacity-80">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+<button class="ml-sm w-8 h-8 rounded-full overflow-hidden border border-outline-variant hover:border-primary transition-colors cursor-pointer active:opacity-80">
+<img alt="Engineer Profile" class="w-full h-full object-cover" data-alt="A clean, professional headshot of an aerospace engineer with glasses, short dark hair, wearing a dark blue polo shirt, against a very subtle light gray background. The lighting is soft and corporate." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCn3OOzMw7Yw3w2WRHKt4AsO2pzY-4C5l_4oK9U76gC4bcRMKM9f9RQUKBVB_uibAUeII8N3__84b2q6xXTJ6rkcklRH3iMpKo1r9Q6YcGnQ-vGuBySGIxwlF8XuiTl_ZmITyhsDVpWIYSzqKemp5DnrTpjtvY5TP-OZW5diXWSRjIw-Lculbpw1Q9JKeHLlbrErrvoMXlw9sdeXn1zcoVJbbJtUHxXtTMkjTRKjqPqOJXgxNXWKn-w"/>
+</button>
+</div>
+</header>
+<!-- Canvas -->
+<div class="flex-1 overflow-y-auto mt-16 p-layout-margin">
+<!-- Page Header & Filters -->
+<div class="mb-lg flex flex-col gap-md lg:flex-row lg:items-end lg:justify-between">
+<div>
+<h1 class="font-display text-display text-on-background mb-xs">Component Library</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant">Browse, manage, and source engineering components.</p>
+</div>
+<div class="flex flex-wrap items-center gap-sm">
+<!-- Filters -->
+<div class="flex gap-sm">
+<select class="bg-surface border border-outline-variant rounded-[8px] py-unit px-md text-body-md text-on-surface focus:outline-none focus:border-primary">
+<option>Category: All</option>
+<option>Avionics</option>
+<option>Propulsion</option>
+<option>Airframe</option>
+</select>
+<select class="bg-surface border border-outline-variant rounded-[8px] py-unit px-md text-body-md text-on-surface focus:outline-none focus:border-primary">
+<option>Status: All</option>
+<option>Certified</option>
+<option>Testing</option>
+<option>Deprecated</option>
+</select>
+</div>
+<!-- CTA -->
+<button class="bg-primary text-on-primary rounded-[8px] py-sm px-md flex items-center justify-center gap-xs font-label-caps text-label-caps hover:bg-primary-container transition-colors shadow-sm">
+<span class="material-symbols-outlined" data-icon="add">add</span>
+                        New Component
+                    </button>
+</div>
+</div>
+<!-- Bento Grid / Component List -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-layout-gutter">
+<!-- Card 1 -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-[16px] overflow-hidden hover:shadow-md transition-shadow flex flex-col">
+<div class="h-40 bg-surface-container relative">
+<img alt="Pixhawk 6X" class="w-full h-full object-cover" data-alt="A highly detailed, macro photograph of a complex avionics circuit board (like a Pixhawk 6X). The board is matte black with intricate gold traces and small, precise electronic components. Studio lighting highlights the technical details on a clean white background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAvj6sMFKGYgkBIg2lcNPIk8lOA6bfyizLn5fDO7DYA6NSrtyQzdzxVlTPMtvwAEz9rRtyyTztmefA6b7HZgrllSiq78mC3URmCngtUvDRpDD1hpHSTbz_gLHe_ac7X3l2r8KN7wJXrEHSQlUwBE2BhVxy_J6KxtLRQklYdkxZDLLYDjR9_5y9AuTtiiWMLUaw_olwbEqwW2RaWIfUVKQemnsGRZHrv32u8X0cHylHEHRLeFXgU1fVF"/>
+<div class="absolute top-sm right-sm bg-surface-container-lowest/90 backdrop-blur-sm border border-outline-variant rounded-full px-sm py-unit flex items-center gap-xs">
+<div class="w-2 h-2 rounded-full bg-primary"></div>
+<span class="font-label-caps text-[10px] text-on-surface">Certified</span>
+</div>
+</div>
+<div class="p-md flex flex-col flex-1">
+<div class="font-label-caps text-label-caps text-primary mb-xs">Avionics</div>
+<h3 class="font-headline-md text-headline-md text-on-surface mb-unit">Pixhawk 6X</h3>
+<p class="font-mono-sm text-mono-sm text-on-surface-variant mb-md">PN: PX6X-PRO-01</p>
+<div class="mt-auto grid grid-cols-2 gap-sm border-t border-outline-variant pt-sm">
+<div>
+<div class="font-label-caps text-[10px] text-on-surface-variant">Processor</div>
+<div class="font-body-md text-body-md text-on-surface truncate">STM32H753</div>
+</div>
+<div>
+<div class="font-label-caps text-[10px] text-on-surface-variant">Weight</div>
+<div class="font-body-md text-body-md text-on-surface">42g</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-[16px] overflow-hidden hover:shadow-md transition-shadow flex flex-col">
+<div class="h-40 bg-surface-container relative">
+<img alt="Brushless Motor" class="w-full h-full object-cover" data-alt="A sleek, modern brushless DC motor designed for a drone, featuring a black and silver machined aluminum housing with visible copper coil windings. Photographed against a minimalist light gray background with sharp, precise lighting emphasizing its industrial design." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCDcpNs8GnYjsFwxay2zDdrSEoBdLsSqK6TxouV19fsXgzenyelJDdmsHjpHUQOgz6egNuVumZtFlfu_XBTgUipu1Z8gR5h_Wwc5Jx_016OkVENF25-vd4a5R0f-vt9CnnsCvtQq3UuVw9OVMhXAQMd4yJLmP5KaoWck5WC8561MZhiITgKJGXYzxIv6ipr-AErY0lFC3ovZ3G-5NWeH8Z3VnzzSaRMsI8uxamPR_q3N516va5xOL3m"/>
+<div class="absolute top-sm right-sm bg-surface-container-lowest/90 backdrop-blur-sm border border-outline-variant rounded-full px-sm py-unit flex items-center gap-xs">
+<div class="w-2 h-2 rounded-full bg-[#eab308]"></div>
+<span class="font-label-caps text-[10px] text-on-surface">Testing</span>
+</div>
+</div>
+<div class="p-md flex flex-col flex-1">
+<div class="font-label-caps text-label-caps text-primary mb-xs">Propulsion</div>
+<h3 class="font-headline-md text-headline-md text-on-surface mb-unit">T-Motor U8 II</h3>
+<p class="font-mono-sm text-mono-sm text-on-surface-variant mb-md">PN: TM-U82-100</p>
+<div class="mt-auto grid grid-cols-2 gap-sm border-t border-outline-variant pt-sm">
+<div>
+<div class="font-label-caps text-[10px] text-on-surface-variant">KV Rating</div>
+<div class="font-body-md text-body-md text-on-surface">100KV</div>
+</div>
+<div>
+<div class="font-label-caps text-[10px] text-on-surface-variant">Max Thrust</div>
+<div class="font-body-md text-body-md text-on-surface">7.3kg</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-[16px] overflow-hidden hover:shadow-md transition-shadow flex flex-col">
+<div class="h-40 bg-surface-container relative">
+<img alt="GPS Module" class="w-full h-full object-cover" data-alt="A compact, ruggedized GPS receiver module for UAVs. The device has a circular, white ceramic patch antenna on top of a shielded metallic base, resting on a clean, bright technical surface. Shot with shallow depth of field to isolate the component." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDhRFJYtnHmJlYfC0LfZErPTMiX-ElvWNbaDvz3qP4ZAxY4SExFGWdoDB_AtPgHEP9jKpBWX1-A50zOu2nwIdqSEhOwsKcYpVCpDzZYQddpIvND2L13I2dUg3TrmjtBZhH8FHyYgf1mY69LlXDjytPOjGZkHam6_bsIb7kt1Yk2gDynu3O-XAveqWMS4qotIXSoS8Fkllm7pNGlVVbM2JpCuIwFpfS7B6mKNWo0YCOz5m_6hc_VZH2o"/>
+<div class="absolute top-sm right-sm bg-surface-container-lowest/90 backdrop-blur-sm border border-outline-variant rounded-full px-sm py-unit flex items-center gap-xs">
+<div class="w-2 h-2 rounded-full bg-primary"></div>
+<span class="font-label-caps text-[10px] text-on-surface">Certified</span>
+</div>
+</div>
+<div class="p-md flex flex-col flex-1">
+<div class="font-label-caps text-label-caps text-primary mb-xs">Avionics</div>
+<h3 class="font-headline-md text-headline-md text-on-surface mb-unit">Here3+ GPS</h3>
+<p class="font-mono-sm text-mono-sm text-on-surface-variant mb-md">PN: H3P-GNSS-V2</p>
+<div class="mt-auto grid grid-cols-2 gap-sm border-t border-outline-variant pt-sm">
+<div>
+<div class="font-label-caps text-[10px] text-on-surface-variant">Constellations</div>
+<div class="font-body-md text-body-md text-on-surface">M8P Multi</div>
+</div>
+<div>
+<div class="font-label-caps text-[10px] text-on-surface-variant">Protocol</div>
+<div class="font-body-md text-body-md text-on-surface">CAN</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Card 4 -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-[16px] overflow-hidden hover:shadow-md transition-shadow flex flex-col opacity-75">
+<div class="h-40 bg-surface-container relative">
+<img alt="Carbon Propeller" class="w-full h-full object-cover grayscale" data-alt="A carbon fiber folding propeller blade set for a large multirotor, showing signs of slight wear. It sits flat on a pristine white surface, illuminated by even, diffuse lighting typical of a technical documentation photo." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAYiLV56h3b6juIbc7dyBwTLWKHa7CVA2Ztc2tnv3bnC6FBApFsA9g4Ud8zajtVYuufSqd7pqVFwgKZgTcj6mcnv__cqoCl79yyVvoxU6p3Tpe6X6FO6JZgmlH9FK7egUpJYaGWzNodhzAo4vof6ERrGkstBMDSkMp6-iVjkw1h_GHcmPOEpgfKlwtU3HdGR5K9yiiEiPNGPvyNpp6bARQzTjQOk5vEV57IE-SyGmTYT96EG0waO4wi"/>
+<div class="absolute top-sm right-sm bg-surface-container-lowest/90 backdrop-blur-sm border border-outline-variant rounded-full px-sm py-unit flex items-center gap-xs">
+<div class="w-2 h-2 rounded-full bg-error"></div>
+<span class="font-label-caps text-[10px] text-on-surface">Deprecated</span>
+</div>
+</div>
+<div class="p-md flex flex-col flex-1">
+<div class="font-label-caps text-label-caps text-primary mb-xs">Airframe</div>
+<h3 class="font-headline-md text-headline-md text-on-surface mb-unit">CF Prop 28x8.1</h3>
+<p class="font-mono-sm text-mono-sm text-on-surface-variant mb-md">PN: PR-CF28-FL</p>
+<div class="mt-auto grid grid-cols-2 gap-sm border-t border-outline-variant pt-sm">
+<div>
+<div class="font-label-caps text-[10px] text-on-surface-variant">Material</div>
+<div class="font-body-md text-body-md text-on-surface">Carbon Fiber</div>
+</div>
+<div>
+<div class="font-label-caps text-[10px] text-on-surface-variant">Pitch</div>
+<div class="font-body-md text-body-md text-on-surface">8.1"</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

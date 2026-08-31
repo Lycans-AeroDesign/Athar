@@ -11,6 +11,7 @@ import type {
   Paginated,
   QuestionDetail,
   QuestionSummary,
+  RelatableType,
   SearchResult,
   Tag,
   Visibility,
@@ -62,17 +63,28 @@ export function deleteTag(id: string): Promise<void> {
   return apiVoid(`/api/v1/knowledge/tags/${id}/`, { method: "DELETE" });
 }
 
+export type SearchSort = "newest" | "oldest";
+
+export type SearchCounts = Record<RelatableType, number>;
+
 export interface SearchPage {
   results: SearchResult[];
   hasMore: boolean;
+  /** Per-type totals for the query, unaffected by `type` - lets a filter list show every option's count from one request. */
+  counts: SearchCounts;
 }
 
-export function searchKnowledge(query: string, type?: "article" | "question", page = 1): Promise<SearchPage> {
-  const params = new URLSearchParams({ q: query, page: String(page) });
+export function searchKnowledge(
+  query: string,
+  type?: RelatableType,
+  page = 1,
+  sort: SearchSort = "newest",
+): Promise<SearchPage> {
+  const params = new URLSearchParams({ q: query, page: String(page), sort });
   if (type) params.set("type", type);
-  return apiJson<{ results: SearchResult[]; has_more: boolean }>(
+  return apiJson<{ results: SearchResult[]; has_more: boolean; counts: SearchCounts }>(
     `/api/v1/knowledge/search/?${params.toString()}`,
-  ).then((data) => ({ results: data.results, hasMore: data.has_more }));
+  ).then((data) => ({ results: data.results, hasMore: data.has_more, counts: data.counts }));
 }
 
 export function getArticles(status?: ArticleStatusFilter): Promise<ArticleSummary[]> {
@@ -228,14 +240,14 @@ export function promoteQuestion(id: string): Promise<ArticleDetail> {
   return apiJson<ArticleDetail>(`/api/v1/knowledge/questions/${id}/promote/`, { method: "POST" });
 }
 
-export function getRelations(type: "article" | "question", id: string): Promise<KnowledgeRelation[]> {
+export function getRelations(type: RelatableType, id: string): Promise<KnowledgeRelation[]> {
   return apiJson<KnowledgeRelation[]>(`/api/v1/knowledge/${type}s/${id}/relations/`);
 }
 
 export function createRelation(payload: {
-  source_type: "article" | "question";
+  source_type: RelatableType;
   source_id: string;
-  target_type: "article" | "question";
+  target_type: RelatableType;
   target_id: string;
 }): Promise<KnowledgeRelation> {
   return apiJson<KnowledgeRelation>("/api/v1/knowledge/relations/", {

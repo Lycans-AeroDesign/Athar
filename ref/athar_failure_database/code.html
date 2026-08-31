@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AeroKMS - Failure Database</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=JetBrains+Mono:wght@400&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary": "#ffffff",
+                        "tertiary-fixed": "#ffdbd2",
+                        "primary-container": "#0037b0",
+                        "on-background": "#1a1b22",
+                        "secondary-container": "#d4e3ff",
+                        "background": "#faf8ff",
+                        "error": "#ba1a1a",
+                        "primary": "#00247d",
+                        "surface-container-low": "#f4f2fd",
+                        "primary-fixed": "#dce1ff",
+                        "secondary-fixed-dim": "#b8c7e2",
+                        "inverse-primary": "#b7c4ff",
+                        "primary-fixed-dim": "#b7c4ff",
+                        "surface": "#faf8ff",
+                        "on-tertiary-fixed-variant": "#872004",
+                        "on-surface": "#1a1b22",
+                        "tertiary-fixed-dim": "#ffb4a2",
+                        "on-error": "#ffffff",
+                        "secondary": "#505f76",
+                        "on-error-container": "#93000a",
+                        "on-primary": "#ffffff",
+                        "surface-container": "#eeedf7",
+                        "on-tertiary-fixed": "#3c0800",
+                        "tertiary-container": "#841e02",
+                        "surface-container-lowest": "#ffffff",
+                        "outline": "#747686",
+                        "on-secondary-fixed-variant": "#39485e",
+                        "surface-tint": "#2f54cb",
+                        "inverse-on-surface": "#f1f0fa",
+                        "on-primary-fixed": "#001551",
+                        "on-primary-container": "#9baeff",
+                        "secondary-fixed": "#d4e3ff",
+                        "error-container": "#ffdad6",
+                        "tertiary": "#3d445a",
+                        "inverse-surface": "#2f3038",
+                        "on-surface-variant": "#444654",
+                        "on-tertiary-container": "#ff967b",
+                        "surface-container-highest": "#e2e1ec",
+                        "on-secondary-container": "#56657c",
+                        "on-tertiary": "#ffffff",
+                        "on-secondary-fixed": "#0c1c30",
+                        "on-primary-fixed-variant": "#063ab2",
+                        "surface-dim": "#dad9e3",
+                        "surface-variant": "#e2e1ec",
+                        "outline-variant": "#c4c5d6",
+                        "surface-container-high": "#e8e7f2",
+                        "surface-bright": "#faf8ff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "lg": "24px",
+                        "xs": "4px",
+                        "xl": "32px",
+                        "md": "16px",
+                        "layout-margin": "40px",
+                        "unit": "4px",
+                        "layout-gutter": "20px",
+                        "sm": "8px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Inter"],
+                        "mono-sm": ["JetBrains Mono"],
+                        "body-lg": ["Inter"],
+                        "display": ["Inter"],
+                        "body-md": ["Inter"],
+                        "label-caps": ["Inter"],
+                        "headline-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "mono-sm": ["13px", { "lineHeight": "18px", "fontWeight": "400" }],
+                        "body-lg": ["16px", { "lineHeight": "26px", "fontWeight": "400" }],
+                        "display": ["36px", { "lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "headline-lg": ["28px", { "lineHeight": "36px", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { background-color: theme('colors.background'); color: theme('colors.on-background'); }
+        /* Component specific rounded utilities based on Style Guidance */
+        .rounded-eight { border-radius: 8px; }
+        .rounded-sixteen { border-radius: 16px; }
+    </style>
+</head>
+<body class="font-body-md text-body-md antialiased overflow-x-hidden">
+<!-- TopNavBar -->
+<nav class="bg-surface dark:bg-inverse-surface font-body-md text-body-md fixed top-0 w-full z-40 border-b border-outline-variant dark:border-outline cursor-pointer flex justify-between items-center px-layout-margin h-16 w-full hidden md:flex">
+<div class="flex items-center gap-md">
+<span class="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed">AeroKMS</span>
+</div>
+<div class="flex items-center flex-1 max-w-md mx-layout-gutter">
+<div class="relative w-full">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant dark:text-surface-variant">search</span>
+<input class="w-full bg-surface-container-high dark:bg-surface-container-highest border border-outline-variant dark:border-outline rounded-eight py-2 pl-10 pr-4 text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors text-body-md" placeholder="Search Failure Database..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-sm">
+<button class="p-2 rounded-full hover:bg-surface-container dark:hover:bg-surface-container-highest transition-colors text-on-surface-variant dark:text-surface-variant flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="p-2 rounded-full hover:bg-surface-container dark:hover:bg-surface-container-highest transition-colors text-on-surface-variant dark:text-surface-variant flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+<div class="w-8 h-8 rounded-full bg-surface-container-highest border border-outline-variant overflow-hidden flex-shrink-0 cursor-pointer ml-sm">
+<img alt="Engineer Profile" class="w-full h-full object-cover" data-alt="A professional headshot of a female aerospace engineer in her late 30s, wearing smart casual attire. The background is a slightly blurred modern, well-lit office setting. The lighting is clean, bright, and flat, suitable for a corporate profile picture within a technical knowledge management system." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC7-4ntskGEBHIke8yPGjWiLfVaVRfKeRLrXyGc-VsAwzsKfSlci_KlaEaM9eaupB-4hYaOecIoP6dHepFKhD-JRAOfhbyNi9l0QYLD4GLgvOil2DxZBkNziyhM7bdOtEMsvfLXFJcwMeGxUwH5f40SmulYk4tbw-hw-CZxTAAGL4yFTluGW0lFiLU1yJxKjP0uU_mn50-CLjGWiH4ND_wedCtKMtncGyyM7peqXqhYOPpwzjhyXSS5"/>
+</div>
+</div>
+</nav>
+<!-- Main Layout Container -->
+<div class="flex h-screen pt-16">
+<!-- SideNavBar -->
+<aside class="bg-surface-container-low dark:bg-surface-container-lowest font-label-caps text-label-caps fixed left-0 top-0 h-full w-64 z-50 border-r border-outline-variant dark:border-outline transition-all duration-200 ease-in-out flex flex-col py-md px-sm gap-sm hidden md:flex pt-20">
+<div class="px-sm mb-md flex flex-col items-start gap-xs">
+<span class="font-headline-lg text-headline-lg text-primary">AeroKMS</span>
+<span class="text-on-surface-variant">Engineering Intelligence</span>
+</div>
+<button class="w-full bg-primary text-on-primary rounded-eight py-2 px-4 mb-md hover:bg-primary-container hover:text-on-primary-container transition-colors font-body-md font-semibold flex items-center justify-center gap-2">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">add</span>
+                New Document
+            </button>
+<nav class="flex-1 overflow-y-auto space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-high dark:hover:bg-surface-container-highest rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span>Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-high dark:hover:bg-surface-container-highest rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="auto_stories">auto_stories</span>
+<span>Knowledge</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-high dark:hover:bg-surface-container-highest rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="account_tree">account_tree</span>
+<span>Projects</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-high dark:hover:bg-surface-container-highest rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="settings_input_component">settings_input_component</span>
+<span>Components</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-high dark:hover:bg-surface-container-highest rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="rule">rule</span>
+<span>SOPs</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 bg-secondary-container dark:bg-secondary text-on-secondary-container dark:text-on-secondary rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="report_problem">report_problem</span>
+<span>Failures</span>
+</a>
+</nav>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 ml-0 md:ml-64 p-layout-margin overflow-y-auto">
+<!-- Page Header -->
+<div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-xl gap-md">
+<div>
+<h1 class="font-display text-display text-on-surface mb-2">Failure Database</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant">FMEA &amp; Post-Mortem Records for Aerospace Systems</p>
+</div>
+<button class="bg-primary text-on-primary rounded-eight py-2 px-6 hover:bg-primary-fixed hover:text-on-primary-fixed-variant transition-colors font-body-md font-semibold flex items-center justify-center gap-2 shrink-0">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">add_circle</span>
+                    Report Failure
+                </button>
+</div>
+<!-- Content Canvas -->
+<div class="bg-surface-container-lowest rounded-sixteen border border-outline-variant p-lg shadow-sm">
+<!-- Filters/Search Bar (Internal) -->
+<div class="flex flex-col md:flex-row gap-md mb-lg">
+<div class="relative flex-1">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+<input class="w-full bg-surface border border-outline-variant rounded-eight py-2 pl-10 pr-4 text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-body-md text-body-md" placeholder="Search by ID, Component, or keywords..." type="text"/>
+</div>
+<div class="flex gap-sm shrink-0">
+<select class="bg-surface border border-outline-variant rounded-eight py-2 px-4 text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-body-md text-body-md">
+<option>Severity: All</option>
+<option>Severity: High</option>
+<option>Severity: Medium</option>
+<option>Severity: Low</option>
+</select>
+<select class="bg-surface border border-outline-variant rounded-eight py-2 px-4 text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-body-md text-body-md">
+<option>Status: All</option>
+<option>Under Investigation</option>
+<option>Resolved</option>
+</select>
+<button class="bg-surface-container border border-outline-variant rounded-eight py-2 px-4 hover:bg-surface-container-high transition-colors text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined">filter_list</span>
+                             More Filters
+                        </button>
+</div>
+</div>
+<!-- Data Table -->
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="border-b border-outline-variant">
+<th class="py-3 px-4 font-label-caps text-label-caps text-on-surface-variant w-24">ID</th>
+<th class="py-3 px-4 font-label-caps text-label-caps text-on-surface-variant">Component</th>
+<th class="py-3 px-4 font-label-caps text-label-caps text-on-surface-variant">Failure Mode</th>
+<th class="py-3 px-4 font-label-caps text-label-caps text-on-surface-variant w-32">Severity</th>
+<th class="py-3 px-4 font-label-caps text-label-caps text-on-surface-variant w-32">Date</th>
+<th class="py-3 px-4 font-label-caps text-label-caps text-on-surface-variant w-40">Status</th>
+<th class="py-3 px-4 font-label-caps text-label-caps text-on-surface-variant w-16 text-center">Actions</th>
+</tr>
+</thead>
+<tbody class="font-mono-sm text-mono-sm text-on-surface divide-y divide-outline-variant">
+<!-- Row 1 -->
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="py-3 px-4 text-primary font-semibold cursor-pointer hover:underline">F-2023-089</td>
+<td class="py-3 px-4">Turbine Blade Assembly T-44</td>
+<td class="py-3 px-4">Micro-fracture detected in root attachment during ultrasonic inspection.</td>
+<td class="py-3 px-4">
+<span class="inline-flex items-center px-2 py-1 rounded-full bg-error-container text-on-error-container font-label-caps text-label-caps gap-1">
+<span class="material-symbols-outlined text-[14px]">warning</span>
+                                        HIGH
+                                    </span>
+</td>
+<td class="py-3 px-4 text-on-surface-variant">2023-10-24</td>
+<td class="py-3 px-4">
+<span class="inline-flex items-center px-2 py-1 rounded-full border border-outline-variant text-on-surface-variant font-label-caps text-label-caps gap-1">
+<span class="material-symbols-outlined text-[14px]">search</span>
+                                        Under Invest.
+                                    </span>
+</td>
+<td class="py-3 px-4 text-center">
+<button class="text-on-surface-variant hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="py-3 px-4 text-primary font-semibold cursor-pointer hover:underline">F-2023-088</td>
+<td class="py-3 px-4">Hydraulic Actuator H-12 (Port)</td>
+<td class="py-3 px-4">Seal degradation leading to slow fluid leak under extreme cold cycling.</td>
+<td class="py-3 px-4">
+<span class="inline-flex items-center px-2 py-1 rounded-full bg-tertiary-fixed text-on-tertiary-fixed-variant font-label-caps text-label-caps gap-1">
+<span class="material-symbols-outlined text-[14px]">error_outline</span>
+                                        MEDIUM
+                                    </span>
+</td>
+<td class="py-3 px-4 text-on-surface-variant">2023-10-18</td>
+<td class="py-3 px-4">
+<span class="inline-flex items-center px-2 py-1 rounded-full bg-secondary-container text-on-secondary-container font-label-caps text-label-caps gap-1">
+<span class="material-symbols-outlined text-[14px]">check_circle</span>
+                                        Resolved
+                                    </span>
+</td>
+<td class="py-3 px-4 text-center">
+<button class="text-on-surface-variant hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="py-3 px-4 text-primary font-semibold cursor-pointer hover:underline">F-2023-087</td>
+<td class="py-3 px-4">Avionics Sensor Array Alpha</td>
+<td class="py-3 px-4">Intermittent signal loss on databus channel B due to connector fretting.</td>
+<td class="py-3 px-4">
+<span class="inline-flex items-center px-2 py-1 rounded-full bg-tertiary-fixed text-on-tertiary-fixed-variant font-label-caps text-label-caps gap-1">
+<span class="material-symbols-outlined text-[14px]">error_outline</span>
+                                        MEDIUM
+                                    </span>
+</td>
+<td class="py-3 px-4 text-on-surface-variant">2023-10-12</td>
+<td class="py-3 px-4">
+<span class="inline-flex items-center px-2 py-1 rounded-full border border-outline-variant text-on-surface-variant font-label-caps text-label-caps gap-1">
+<span class="material-symbols-outlined text-[14px]">search</span>
+                                        Under Invest.
+                                    </span>
+</td>
+<td class="py-3 px-4 text-center">
+<button class="text-on-surface-variant hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</td>
+</tr>
+<!-- Row 4 -->
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="py-3 px-4 text-primary font-semibold cursor-pointer hover:underline">F-2023-085</td>
+<td class="py-3 px-4">Cabin Environmental Control Unit</td>
+<td class="py-3 px-4">Filter clog sensor calibrated incorrectly, triggering premature maintenance alerts.</td>
+<td class="py-3 px-4">
+<span class="inline-flex items-center px-2 py-1 rounded-full bg-surface-variant text-on-surface-variant font-label-caps text-label-caps gap-1 border border-outline-variant">
+<span class="material-symbols-outlined text-[14px]">info</span>
+                                        LOW
+                                    </span>
+</td>
+<td class="py-3 px-4 text-on-surface-variant">2023-10-05</td>
+<td class="py-3 px-4">
+<span class="inline-flex items-center px-2 py-1 rounded-full bg-secondary-container text-on-secondary-container font-label-caps text-label-caps gap-1">
+<span class="material-symbols-outlined text-[14px]">check_circle</span>
+                                        Resolved
+                                    </span>
+</td>
+<td class="py-3 px-4 text-center">
+<button class="text-on-surface-variant hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Pagination -->
+<div class="flex items-center justify-between border-t border-outline-variant pt-4 mt-4">
+<span class="font-body-md text-on-surface-variant">Showing 1 to 10 of 42 entries</span>
+<div class="flex gap-2">
+<button class="p-1 rounded bg-surface-container border border-outline-variant text-on-surface-variant disabled:opacity-50" disabled="">
+<span class="material-symbols-outlined">chevron_left</span>
+</button>
+<button class="p-1 rounded bg-surface-container border border-outline-variant hover:bg-surface-container-high text-on-surface">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

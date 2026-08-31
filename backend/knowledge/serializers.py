@@ -9,9 +9,17 @@ from .models import (
     ArticleAttachment,
     ArticleRevision,
     Category,
+    Component,
+    ComponentAttachment,
+    Failure,
+    FailureAttachment,
     KnowledgeRelation,
+    Project,
+    ProjectAttachment,
     Question,
     QuestionAttachment,
+    Sop,
+    SopAttachment,
     Tag,
 )
 
@@ -215,7 +223,12 @@ class KnowledgeRelationSerializer(serializers.ModelSerializer):
 
     def get_other_title(self, obj: KnowledgeRelation) -> str | None:
         _, other = self._other(obj)
-        return getattr(other, "title", None) if other else None
+        if other is None:
+            return None
+        # Article/Question/Failure/Sop use `title`; Project/Component use
+        # `name` - falling back rather than renaming one set keeps each
+        # model's field named what it actually is.
+        return getattr(other, "title", None) or getattr(other, "name", None)
 
 
 class ArticleAttachmentSerializer(serializers.ModelSerializer):
@@ -245,7 +258,202 @@ class CreateRelationSerializer(serializers.Serializer):
     model name (article/question) rather than a raw ContentType id, so
     clients never need to know ContentType pks."""
 
-    source_type = serializers.ChoiceField(choices=["article", "question"])
+    _RELATABLE_TYPES = ["article", "question", "project", "component", "failure", "sop"]
+
+    source_type = serializers.ChoiceField(choices=_RELATABLE_TYPES)
     source_id = serializers.UUIDField()
-    target_type = serializers.ChoiceField(choices=["article", "question"])
+    target_type = serializers.ChoiceField(choices=_RELATABLE_TYPES)
     target_id = serializers.UUIDField()
+
+
+# --- Engineering domain ----------------------------------------------------
+
+
+class ProjectListSerializer(serializers.ModelSerializer):
+    tags = TagSerializer(many=True, read_only=True)
+    created_by = AuthorSerializer(read_only=True)
+
+    class Meta:
+        model = Project
+        fields = ["id", "name", "status", "tags", "created_by", "created_at", "updated_at"]
+
+
+class ProjectDetailSerializer(ProjectListSerializer):
+    class Meta(ProjectListSerializer.Meta):
+        fields = [*ProjectListSerializer.Meta.fields, "description"]
+
+
+class ProjectWriteSerializer(serializers.ModelSerializer):
+    tag_names = serializers.ListField(child=serializers.CharField(), required=False)
+
+    class Meta:
+        model = Project
+        fields = ["name", "description", "status", "tag_names"]
+
+
+class ComponentListSerializer(serializers.ModelSerializer):
+    category = CategorySerializer(read_only=True)
+    tags = TagSerializer(many=True, read_only=True)
+    created_by = AuthorSerializer(read_only=True)
+
+    class Meta:
+        model = Component
+        fields = [
+            "id",
+            "name",
+            "category",
+            "manufacturer",
+            "part_number",
+            "status",
+            "specifications",
+            "tags",
+            "created_by",
+            "created_at",
+            "updated_at",
+        ]
+
+
+class ComponentDetailSerializer(ComponentListSerializer):
+    class Meta(ComponentListSerializer.Meta):
+        fields = [*ComponentListSerializer.Meta.fields, "summary"]
+
+
+class ComponentWriteSerializer(serializers.ModelSerializer):
+    category_id = serializers.PrimaryKeyRelatedField(
+        source="category", queryset=Category.objects.all(), allow_null=True, required=False
+    )
+    tag_names = serializers.ListField(child=serializers.CharField(), required=False)
+
+    class Meta:
+        model = Component
+        fields = [
+            "name",
+            "category_id",
+            "manufacturer",
+            "part_number",
+            "status",
+            "summary",
+            "specifications",
+            "tag_names",
+        ]
+
+    def validate_specifications(self, value):
+        if not isinstance(value, list) or not all(
+            isinstance(row, dict) and {"label", "value"} <= row.keys() for row in value
+        ):
+            raise serializers.ValidationError("specifications must be a list of {label, value} objects.")
+        return value
+
+
+class FailureListSerializer(serializers.ModelSerializer):
+    component = ComponentListSerializer(read_only=True)
+    project = ProjectListSerializer(read_only=True)
+    created_by = AuthorSerializer(read_only=True)
+
+    class Meta:
+        model = Failure
+        fields = [
+            "id",
+            "title",
+            "component",
+            "project",
+            "aircraft",
+            "date",
+            "severity",
+            "status",
+            "created_by",
+            "created_at",
+            "updated_at",
+        ]
+
+
+class FailureDetailSerializer(FailureListSerializer):
+    class Meta(FailureListSerializer.Meta):
+        fields = [*FailureListSerializer.Meta.fields, "summary", "root_cause", "corrective_action", "preventive_action"]
+
+
+class FailureWriteSerializer(serializers.ModelSerializer):
+    component_id = serializers.PrimaryKeyRelatedField(
+        source="component", queryset=Component.objects.all(), allow_null=True, required=False
+    )
+    project_id = serializers.PrimaryKeyRelatedField(
+        source="project", queryset=Project.objects.all(), allow_null=True, required=False
+    )
+
+    class Meta:
+        model = Failure
+        fields = [
+            "title",
+            "component_id",
+            "project_id",
+            "aircraft",
+            "date",
+            "severity",
+            "status",
+            "summary",
+            "root_cause",
+            "corrective_action",
+            "preventive_action",
+        ]
+
+
+class SopListSerializer(serializers.ModelSerializer):
+    category = CategorySerializer(read_only=True)
+    tags = TagSerializer(many=True, read_only=True)
+    created_by = AuthorSerializer(read_only=True)
+
+    class Meta:
+        model = Sop
+        fields = ["id", "title", "category", "mandatory", "tags", "created_by", "created_at", "updated_at"]
+
+
+class SopDetailSerializer(SopListSerializer):
+    class Meta(SopListSerializer.Meta):
+        fields = [*SopListSerializer.Meta.fields, "safety_notes", "content"]
+
+
+class SopWriteSerializer(serializers.ModelSerializer):
+    category_id = serializers.PrimaryKeyRelatedField(
+        source="category", queryset=Category.objects.all(), allow_null=True, required=False
+    )
+    tag_names = serializers.ListField(child=serializers.CharField(), required=False)
+
+    class Meta:
+        model = Sop
+        fields = ["title", "category_id", "mandatory", "safety_notes", "content", "tag_names"]
+
+
+class ProjectAttachmentSerializer(serializers.ModelSerializer):
+    file = StoredFileSerializer(read_only=True)
+    uploaded_by = AuthorSerializer(read_only=True)
+
+    class Meta:
+        model = ProjectAttachment
+        fields = ["id", "file", "uploaded_by", "created_at"]
+
+
+class ComponentAttachmentSerializer(serializers.ModelSerializer):
+    file = StoredFileSerializer(read_only=True)
+    uploaded_by = AuthorSerializer(read_only=True)
+
+    class Meta:
+        model = ComponentAttachment
+        fields = ["id", "file", "uploaded_by", "created_at"]
+
+
+class FailureAttachmentSerializer(serializers.ModelSerializer):
+    file = StoredFileSerializer(read_only=True)
+    uploaded_by = AuthorSerializer(read_only=True)
+
+    class Meta:
+        model = FailureAttachment
+        fields = ["id", "file", "uploaded_by", "created_at"]
+
+
+class SopAttachmentSerializer(serializers.ModelSerializer):
+    file = StoredFileSerializer(read_only=True)
+    uploaded_by = AuthorSerializer(read_only=True)
+
+    class Meta:
+        model = SopAttachment
+        fields = ["id", "file", "uploaded_by", "created_at"]

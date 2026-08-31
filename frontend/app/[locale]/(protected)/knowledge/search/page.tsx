@@ -7,7 +7,7 @@ import { Suspense, useEffect, useState, type ReactNode } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { Pagination } from "@/components/ui/Pagination";
 import { Link, useRouter } from "@/i18n/navigation";
-import { searchKnowledge } from "@/lib/api/knowledge";
+import { searchKnowledge, type SearchSort } from "@/lib/api/knowledge";
 import type { SearchResult } from "@/lib/api/types";
 
 type Scope = "all" | "article" | "question";
@@ -16,6 +16,11 @@ const SCOPE_OPTIONS: { value: Scope; labelKey: string }[] = [
   { value: "all", labelKey: "filterAll" },
   { value: "article", labelKey: "filterArticles" },
   { value: "question", labelKey: "filterQuestions" },
+];
+
+const SORT_OPTIONS: { value: SearchSort; labelKey: string }[] = [
+  { value: "newest", labelKey: "sortNewest" },
+  { value: "oldest", labelKey: "sortOldest" },
 ];
 
 // Wraps <mark> around every case-insensitive occurrence of `query` inside
@@ -52,32 +57,40 @@ function SearchResults() {
 
   const query = searchParams.get("q") ?? "";
   const scope = (searchParams.get("type") as Scope | null) ?? "all";
+  const sort = (searchParams.get("sort") as SearchSort | null) ?? "newest";
   const page = Number(searchParams.get("page") ?? "1");
 
   const [results, setResults] = useState<SearchResult[] | null>(null);
   const [hasMore, setHasMore] = useState(false);
+  const [counts, setCounts] = useState({ article: 0, question: 0 });
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!query.trim()) return;
-    searchKnowledge(query, scope === "all" ? undefined : scope, page)
+    searchKnowledge(query, scope === "all" ? undefined : scope, page, sort)
       .then((data) => {
         setResults(data.results);
         setHasMore(data.hasMore);
+        setCounts(data.counts);
         setError(null);
       })
       .catch((err) => setError(err instanceof Error ? err.message : String(err)));
-  }, [query, scope, page]);
+  }, [query, scope, page, sort]);
 
-  function updateParams(next: { type?: Scope; page?: number }) {
+  function updateParams(next: { type?: Scope; sort?: SearchSort; page?: number }) {
     const params = new URLSearchParams();
     params.set("q", query);
     const nextType = next.type ?? scope;
     if (nextType !== "all") params.set("type", nextType);
+    const nextSort = next.sort ?? sort;
+    if (nextSort !== "newest") params.set("sort", nextSort);
     const nextPage = next.page ?? 1;
     if (nextPage > 1) params.set("page", String(nextPage));
     router.push(`/knowledge/search?${params.toString()}`);
   }
+
+  const totalCount = counts.article + counts.question;
+  const scopedCount = scope === "all" ? totalCount : counts[scope];
 
   return (
     <div className="space-y-6">
@@ -86,34 +99,65 @@ function SearchResults() {
       </h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        <div className="lg:col-span-3 space-y-2">
+        <aside className="lg:col-span-3 space-y-4">
           <h2 className="font-label-caps text-label-caps uppercase text-on-surface-variant px-3">
             {t("filtersTitle")}
           </h2>
-          <ul className="space-y-1">
-            {SCOPE_OPTIONS.map((option) => (
-              <li key={option.value}>
-                <button
-                  type="button"
-                  onClick={() => updateParams({ type: option.value, page: 1 })}
-                  className={`w-full text-start px-3 py-2 rounded-lg font-body-md text-body-md transition-colors ${
-                    scope === option.value
-                      ? "bg-primary/10 text-primary"
-                      : "text-on-surface-variant hover:bg-surface-variant"
-                  }`}
-                >
-                  {t(option.labelKey)}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
+          <div className="space-y-2">
+            <h3 className="font-body-md text-body-md font-bold text-on-surface px-3">{t("contentTypeTitle")}</h3>
+            <ul className="space-y-1">
+              {SCOPE_OPTIONS.map((option) => {
+                const count = option.value === "all" ? totalCount : counts[option.value];
+                const isSelected = scope === option.value;
+                return (
+                  <li key={option.value}>
+                    <label
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-colors ${
+                        isSelected ? "bg-primary/10 text-primary" : "text-on-surface-variant hover:bg-surface-variant"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => updateParams({ type: option.value, page: 1 })}
+                        className="rounded border-outline-variant text-primary focus:ring-primary w-4 h-4 shrink-0"
+                      />
+                      <span className="font-body-md text-body-md flex-1">{t(option.labelKey)}</span>
+                      <span className="font-mono-sm text-mono-sm text-on-surface-variant bg-surface-container px-2 py-0.5 rounded-full">
+                        {count}
+                      </span>
+                    </label>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        </aside>
 
         <div className="lg:col-span-9 space-y-4">
           {error && (
             <p className="font-body-md text-body-md text-error" role="alert">
               {error}
             </p>
+          )}
+
+          {query.trim() && results !== null && results.length > 0 && (
+            <div className="flex items-center justify-end gap-2">
+              <span className="font-label-caps text-label-caps text-on-surface-variant uppercase">
+                {t("sortByLabel")}
+              </span>
+              <select
+                value={sort}
+                onChange={(e) => updateParams({ sort: e.target.value as SearchSort, page: 1 })}
+                className="bg-transparent border-none font-body-md text-body-md text-primary font-bold focus:ring-0 cursor-pointer py-0 ps-0 pe-6"
+              >
+                {SORT_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {t(option.labelKey)}
+                  </option>
+                ))}
+              </select>
+            </div>
           )}
 
           {!query.trim() ? (
@@ -158,6 +202,7 @@ function SearchResults() {
               hasNext={hasMore}
               hasPrevious={page > 1}
               onPageChange={(nextPage) => updateParams({ page: nextPage })}
+              totalCount={scopedCount}
             />
           )}
         </div>

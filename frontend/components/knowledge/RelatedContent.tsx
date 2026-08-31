@@ -8,20 +8,20 @@ import { Icon } from "@/components/ui/Icon";
 import { Modal } from "@/components/ui/Modal";
 import { Link } from "@/i18n/navigation";
 import { createRelation, deleteRelation, getRelations, searchKnowledge } from "@/lib/api/knowledge";
-import type { KnowledgeRelation, SearchResult } from "@/lib/api/types";
+import type { KnowledgeRelation, RelatableType, SearchResult } from "@/lib/api/types";
+import { RELATABLE_ICON as ICON_BY_TYPE, RELATABLE_ROUTE_PREFIX as ROUTE_PREFIX } from "@/lib/knowledgeTypes";
 
 interface RelatedContentProps {
-  type: "article" | "question";
+  type: RelatableType;
   id: string;
-  /** Whether the viewer may add/remove relations here (same edit rights as the article/question itself). */
+  /** Whether the viewer may add/remove relations here (same edit rights as the owning item itself). */
   canEdit: boolean;
 }
 
-// "This article is related to that question" and vice versa - a light,
-// self-contained cross-link between Knowledge content, not the fuller
-// Component/Project/Failure relationship graph the Stitch design's sidebar
-// shows (those don't exist as real models yet - see KnowledgeRelation's
-// model docstring). The picker reuses searchKnowledge() as-is.
+// "This article is related to that question" (and now also Project/
+// Component/Failure/Sop) - a light, self-contained cross-link between
+// Knowledge content. The picker reuses searchKnowledge() as-is, which
+// already searches every relatable type.
 export function RelatedContent({ type, id, canEdit }: RelatedContentProps) {
   const t = useTranslations("knowledge.relations");
   const [relations, setRelations] = useState<KnowledgeRelation[] | null>(null);
@@ -102,10 +102,10 @@ export function RelatedContent({ type, id, canEdit }: RelatedContentProps) {
               className="inline-flex items-center gap-1.5 bg-surface-container-low border border-outline-variant rounded-full ps-1 pe-2.5 py-1"
             >
               <Link
-                href={`/knowledge/${relation.other_type}s/${relation.other_id}`}
+                href={`${ROUTE_PREFIX[relation.other_type]}/${relation.other_id}`}
                 className="flex items-center gap-1.5 font-body-md text-body-md text-on-surface hover:text-primary transition-colors"
               >
-                <Icon name={relation.other_type === "article" ? "menu_book" : "forum"} size={14} />
+                <Icon name={ICON_BY_TYPE[relation.other_type]} size={14} />
                 {relation.other_title}
               </Link>
               {canEdit && (
@@ -149,11 +149,7 @@ export function RelatedContent({ type, id, canEdit }: RelatedContentProps) {
                     onClick={() => handleAdd(result)}
                     className="flex w-full items-center gap-2 px-3 py-2 rounded-lg text-start hover:bg-surface-variant transition-colors"
                   >
-                    <Icon
-                      name={result.type === "article" ? "menu_book" : "forum"}
-                      size={16}
-                      className="text-on-surface-variant shrink-0"
-                    />
+                    <Icon name={ICON_BY_TYPE[result.type]} size={16} className="text-on-surface-variant shrink-0" />
                     <span className="font-body-md text-body-md text-on-surface truncate">{result.title}</span>
                   </button>
                 </li>

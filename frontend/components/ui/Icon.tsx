@@ -1,4 +1,3 @@
-import { useId } from "react";
 import {
   AlertTriangle,
   Archive,
@@ -113,55 +112,20 @@ const ICONS: Record<string, LucideIcon> = {
   visibility_off: EyeOff,
 };
 
-// Settings' lucide glyph is one solid gear-teeth path plus a separate
-// decorative <circle> drawn on top for the center hole - in the outline
-// (unfilled) version neither shape is filled, so the circle's stroke alone
-// reads as a hole. Filling the path solid (for the "selected" state) fills
-// that entire silhouette, hole included; setting just the circle's own fill
-// to "none" only stops it from double-painting that area - the solid path
-// underneath is still there. Actually punching a hole needs an SVG mask.
-function FilledSettingsIcon({ size, className }: { size: number; className?: string }) {
-  const maskId = useId();
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2.5}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-      aria-hidden="true"
-    >
-      <mask id={maskId}>
-        <rect width="24" height="24" fill="white" />
-        <circle cx="12" cy="12" r="3" fill="black" />
-      </mask>
-      <path
-        d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"
-        fill="currentColor"
-        mask={`url(#${maskId})`}
-      />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-  );
-}
-
 interface IconProps {
   name: string;
   className?: string;
+  /** Solid fill instead of outline - only reaches for this on simple glyphs
+   * (e.g. BrandMark's "hub" logomark) where filling the shape solid still
+   * reads cleanly. Detail-heavy icons (a book's page-fold, a gear's teeth)
+   * lose that detail when filled, so nav "selected" state doesn't use this -
+   * it gets its emphasis from the pill background + bold label instead (see
+   * SideNav.tsx). */
   filled?: boolean;
   size?: number;
 }
 
 export function Icon({ name, className, filled, size }: IconProps) {
-  if (name === "settings" && filled) {
-    return <FilledSettingsIcon size={size ?? 24} className={className} />;
-  }
-
   const LucideIconComponent = ICONS[name];
   if (!LucideIconComponent) {
     if (process.env.NODE_ENV !== "production") {
@@ -174,7 +138,7 @@ export function Icon({ name, className, filled, size }: IconProps) {
     <LucideIconComponent
       className={className}
       size={size ?? 24}
-      strokeWidth={filled ? 2.5 : 2}
+      strokeWidth={2}
       fill={filled ? "currentColor" : "none"}
       aria-hidden="true"
     />

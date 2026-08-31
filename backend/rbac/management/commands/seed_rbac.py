@@ -23,9 +23,18 @@ PERMISSION_CATALOGUE = [
     ("question.create", "Ask questions"),
     ("question.answer", "Answer questions"),
     ("question.moderate", "Moderate questions"),
+    ("project.read", "View projects"),
     ("project.create", "Create projects"),
     ("project.update", "Update projects"),
     ("project.delete", "Delete projects"),
+    ("component.read", "View components"),
+    ("component.create", "Create components"),
+    ("component.update", "Update components"),
+    ("component.delete", "Delete components"),
+    ("sop.read", "View SOPs"),
+    ("sop.create", "Create SOPs"),
+    ("sop.update", "Update SOPs"),
+    ("sop.delete", "Delete SOPs"),
     ("user.manage", "Manage users"),
     ("role.manage", "Manage roles"),
     ("permission.manage", "Manage role-permission assignments"),
@@ -47,18 +56,31 @@ MEMBER_PERMISSIONS = [
     "failure.read",
     "file.upload",
     "file.read",
+    "project.read",
+    "component.read",
+    "component.create",
+    "sop.read",
 ]
 SENIOR_MEMBER_PERMISSIONS = MEMBER_PERMISSIONS + [
     "article.review",
     "article.update",
     "question.moderate",
     "failure.update",
+    "component.update",
+    # SOPs are safety-critical procedural docs and there's no review step
+    # (see knowledge/models.py's Sop docstring) - gating creation/editing at
+    # Senior Member+ rather than Member, unlike Component.
+    "sop.create",
+    "sop.update",
 ]
 TEAM_HEAD_PERMISSIONS = SENIOR_MEMBER_PERMISSIONS + [
     "article.publish",
     "article.archive",
     "project.create",
     "project.update",
+    "project.delete",
+    "component.delete",
+    "sop.delete",
 ]
 
 ROLE_CATALOGUE = {

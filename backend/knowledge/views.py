@@ -19,9 +19,17 @@ from .models import (
     Article,
     ArticleAttachment,
     Category,
+    Component,
+    ComponentAttachment,
+    Failure,
+    FailureAttachment,
     KnowledgeRelation,
+    Project,
+    ProjectAttachment,
     Question,
     QuestionAttachment,
+    Sop,
+    SopAttachment,
     Tag,
     Visibility,
 )
@@ -37,12 +45,28 @@ from .serializers import (
     ArticleWriteSerializer,
     CategorySerializer,
     CategoryWriteSerializer,
+    ComponentAttachmentSerializer,
+    ComponentDetailSerializer,
+    ComponentListSerializer,
+    ComponentWriteSerializer,
     CreateRelationSerializer,
+    FailureAttachmentSerializer,
+    FailureDetailSerializer,
+    FailureListSerializer,
+    FailureWriteSerializer,
     KnowledgeRelationSerializer,
+    ProjectAttachmentSerializer,
+    ProjectDetailSerializer,
+    ProjectListSerializer,
+    ProjectWriteSerializer,
     QuestionAttachmentSerializer,
     QuestionDetailSerializer,
     QuestionListSerializer,
     QuestionWriteSerializer,
+    SopAttachmentSerializer,
+    SopDetailSerializer,
+    SopListSerializer,
+    SopWriteSerializer,
     TagSerializer,
     TagWriteSerializer,
 )
@@ -157,55 +181,115 @@ class SearchView(APIView):
     @extend_schema(
         tags=["Knowledge"],
         summary=(
-            "Search articles and questions (?q=; optional ?type=article|question to scope to one "
-            "section; ?page= for 20-per-type pages within that scope)"
+            "Search across articles, questions, projects, components, failures, and SOPs "
+            "(?q=; optional ?type=<one of those> to scope to one section; ?sort=newest|oldest, "
+            "default newest; ?page= for 20-per-type pages within that scope)"
         ),
         responses={
-            200: OpenApiResponse(description="{'results': [{type, id, title, excerpt}, ...], 'has_more': bool}"),
+            200: OpenApiResponse(
+                description=(
+                    "{'results': [{type, id, title, excerpt}, ...], 'has_more': bool, "
+                    "'counts': {article, question, project, component, failure, sop: int}} - counts "
+                    "reflect the query across every type regardless of ?type=, so the UI can show "
+                    "per-type totals for a filter list."
+                )
+            ),
             **COMMON_ERRORS,
         },
     )
     def get(self, request):
         query = request.query_params.get("q", "").strip()
         scope = request.query_params.get("type") or None
-        if scope not in (None, "article", "question"):
-            raise ValidationError("type must be 'article' or 'question'.")
+        valid_types = ("article", "question", "project", "component", "failure", "sop")
+        if scope not in (None, *valid_types):
+            raise ValidationError(f"type must be one of {', '.join(valid_types)}.")
+        sort_param = request.query_params.get("sort", "newest")
+        if sort_param not in ("newest", "oldest"):
+            raise ValidationError("sort must be 'newest' or 'oldest'.")
+        order = "-updated_at" if sort_param == "newest" else "updated_at"
         try:
             page = max(1, int(request.query_params.get("page", 1)))
         except ValueError:
             raise ValidationError("page must be an integer.")
         offset = (page - 1) * 20
 
+        # Built regardless of `scope` - counts below need the unscoped totals
+        # even when the caller is only viewing one type's results. Engineering-
+        # domain types have no `status`/`visibility` gate (see models.py) - a
+        # matching row is a matching row.
+        article_matches = (
+            Article.objects.filter(status=Article.Status.PUBLISHED).filter(
+                Q(title__icontains=query) | Q(excerpt__icontains=query) | Q(content__icontains=query)
+            )
+            if query
+            else Article.objects.none()
+        )
+        question_matches = (
+            Question.objects.filter(Q(title__icontains=query) | Q(body__icontains=query))
+            if query
+            else Question.objects.none()
+        )
+        project_matches = (
+            Project.objects.filter(Q(name__icontains=query) | Q(description__icontains=query))
+            if query
+            else Project.objects.none()
+        )
+        component_matches = (
+            Component.objects.filter(
+                Q(name__icontains=query)
+                | Q(summary__icontains=query)
+                | Q(manufacturer__icontains=query)
+                | Q(part_number__icontains=query)
+            )
+            if query
+            else Component.objects.none()
+        )
+        failure_matches = (
+            Failure.objects.filter(Q(title__icontains=query) | Q(summary__icontains=query) | Q(root_cause__icontains=query))
+            if query
+            else Failure.objects.none()
+        )
+        sop_matches = (
+            Sop.objects.filter(Q(title__icontains=query) | Q(content__icontains=query)) if query else Sop.objects.none()
+        )
+        counts = {
+            "article": article_matches.count(),
+            "question": question_matches.count(),
+            "project": project_matches.count(),
+            "component": component_matches.count(),
+            "failure": failure_matches.count(),
+            "sop": sop_matches.count(),
+        }
+
         # Each type is paginated independently (offset/limit per type, not
         # across the combined list) - simplest thing that supports "page 2 of
         # articles" and "page 2 of questions" without a shared cursor across
-        # two different querysets. has_more is True only for whichever
-        # type(s) actually have more rows past this page.
+        # different querysets. has_more is True only for whichever type(s)
+        # actually have more rows past this page.
         results = []
         has_more = False
-        if query and scope in (None, "article"):
-            article_qs = (
-                Article.objects.filter(status=Article.Status.PUBLISHED)
-                .filter(Q(title__icontains=query) | Q(excerpt__icontains=query) | Q(content__icontains=query))
-                .order_by("-updated_at")
-            )
-            articles = article_qs[offset : offset + 20]
-            has_more = has_more or article_qs[offset + 20 : offset + 21].exists()
-            results += [
-                {"type": "article", "id": str(article.id), "title": article.title, "excerpt": article.excerpt}
-                for article in articles
-            ]
-        if query and scope in (None, "question"):
-            question_qs = Question.objects.filter(Q(title__icontains=query) | Q(body__icontains=query)).order_by(
-                "-updated_at"
-            )
-            questions = question_qs[offset : offset + 20]
-            has_more = has_more or question_qs[offset + 20 : offset + 21].exists()
-            results += [
-                {"type": "question", "id": str(question.id), "title": question.title, "excerpt": question.body[:200]}
-                for question in questions
-            ]
-        return Response({"results": results, "has_more": has_more})
+
+        def collect(type_name: str, matches, title_field: str, excerpt_source) -> None:
+            nonlocal has_more
+            if not (query and scope in (None, type_name)):
+                return
+            page_qs = matches.order_by(order)
+            rows = page_qs[offset : offset + 20]
+            has_more = has_more or page_qs[offset + 20 : offset + 21].exists()
+            for row in rows:
+                excerpt = excerpt_source(row) if callable(excerpt_source) else getattr(row, excerpt_source, "")
+                results.append(
+                    {"type": type_name, "id": str(row.id), "title": getattr(row, title_field), "excerpt": (excerpt or "")[:200]}
+                )
+
+        collect("article", article_matches, "title", "excerpt")
+        collect("question", question_matches, "title", lambda q: q.body[:200])
+        collect("project", project_matches, "name", "description")
+        collect("component", component_matches, "name", "summary")
+        collect("failure", failure_matches, "title", "summary")
+        collect("sop", sop_matches, "title", "content")
+
+        return Response({"results": results, "has_more": has_more, "counts": counts})
 
 
 def _visible_article_or_404(request, pk):
@@ -764,4 +848,518 @@ class QuestionAttachmentDetailView(APIView):
     def delete(self, request, pk, attachment_pk):
         attachment = get_object_or_404(QuestionAttachment, pk=attachment_pk, question_id=pk)
         services.remove_question_attachment(attachment=attachment, actor=request.user, request=request)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# --- Engineering domain (Project/Component/Failure/Sop) --------------------
+#
+# No visibility field and no draft/review workflow (see models.py) - so
+# unlike Article/Question there's no _visible_x_or_404 helper needed here;
+# get_object_or_404 plus the x.read/x.update/x.delete permission per method
+# is the whole access-control story.
+
+
+class ProjectListCreateView(APIView):
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [require_permission("project.create")()]
+        return [require_permission("project.read")()]
+
+    @extend_schema(
+        tags=["Engineering"],
+        summary="List projects (optional ?status=)",
+        responses={200: ProjectListSerializer(many=True), **COMMON_ERRORS},
+    )
+    def get(self, request):
+        queryset = Project.objects.prefetch_related("tags").select_related("created_by")
+        status_param = request.query_params.get("status")
+        if status_param:
+            queryset = queryset.filter(status=status_param)
+        return paginated_response(request, queryset, ProjectListSerializer)
+
+    @extend_schema(
+        tags=["Engineering"],
+        summary="Create a project",
+        request=ProjectWriteSerializer,
+        responses={201: ProjectDetailSerializer, 400: BAD_REQUEST, **COMMON_ERRORS},
+    )
+    def post(self, request):
+        serializer = ProjectWriteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        project = services.create_project(actor=request.user, request=request, **serializer.validated_data)
+        return Response(ProjectDetailSerializer(project).data, status=status.HTTP_201_CREATED)
+
+
+class ProjectDetailView(APIView):
+    def get_permissions(self):
+        if self.request.method == "PATCH":
+            return [require_permission("project.update")()]
+        if self.request.method == "DELETE":
+            return [require_permission("project.delete")()]
+        return [require_permission("project.read")()]
+
+    @extend_schema(
+        tags=["Engineering"], summary="Get a project", responses={200: ProjectDetailSerializer, 404: NOT_FOUND, **COMMON_ERRORS}
+    )
+    def get(self, request, pk):
+        project = get_object_or_404(Project, pk=pk)
+        return Response(ProjectDetailSerializer(project).data)
+
+    @extend_schema(
+        tags=["Engineering"],
+        summary="Update a project (requires project.update)",
+        request=ProjectWriteSerializer,
+        responses={200: ProjectDetailSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
+    )
+    def patch(self, request, pk):
+        project = get_object_or_404(Project, pk=pk)
+        serializer = ProjectWriteSerializer(project, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        project = services.update_project(project=project, actor=request.user, request=request, **serializer.validated_data)
+        return Response(ProjectDetailSerializer(project).data)
+
+    @extend_schema(
+        tags=["Engineering"],
+        summary="Delete a project (requires project.delete)",
+        responses={204: OpenApiResponse(description="Deleted."), 404: NOT_FOUND, **COMMON_ERRORS},
+    )
+    def delete(self, request, pk):
+        project = get_object_or_404(Project, pk=pk)
+        services.delete_project(project=project, actor=request.user, request=request)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ProjectRelationsView(APIView):
+    permission_classes = [require_permission("project.read")]
+
+    @extend_schema(
+        tags=["Engineering"],
+        summary="List a project's related content",
+        responses={200: KnowledgeRelationSerializer(many=True), 404: NOT_FOUND, **COMMON_ERRORS},
+    )
+    def get(self, request, pk):
+        project = get_object_or_404(Project, pk=pk)
+        content_type = ContentType.objects.get_for_model(Project)
+        relations = services.get_relations_for("project", project.id)
+        return Response(KnowledgeRelationSerializer(relations, many=True, context={"viewer": (content_type, project.id)}).data)
+
+
+class ProjectAttachmentListView(APIView):
+    permission_classes = [require_permission("project.read")]
+
+    @extend_schema(
+        tags=["Engineering"], summary="List a project's attachments",
+        responses={200: ProjectAttachmentSerializer(many=True), 404: NOT_FOUND, **COMMON_ERRORS},
+    )
+    def get(self, request, pk):
+        project = get_object_or_404(Project, pk=pk)
+        return Response(ProjectAttachmentSerializer(project.attachments.select_related("file", "uploaded_by"), many=True).data)
+
+    @extend_schema(
+        tags=["Engineering"], summary="Attach an already-uploaded file to a project (requires project.update)",
+        request=AddAttachmentSerializer,
+        responses={201: ProjectAttachmentSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
+    )
+    def post(self, request, pk):
+        project = get_object_or_404(Project, pk=pk)
+        serializer = AddAttachmentSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        file = get_object_or_404(StoredFile, pk=serializer.validated_data["file_id"])
+        attachment = services.add_project_attachment(project=project, file=file, actor=request.user, request=request)
+        return Response(ProjectAttachmentSerializer(attachment).data, status=status.HTTP_201_CREATED)
+
+
+class ProjectAttachmentDetailView(APIView):
+    permission_classes = [require_permission("project.update")]
+
+    @extend_schema(
+        tags=["Engineering"], summary="Remove a project attachment",
+        responses={204: OpenApiResponse(description="Deleted."), 404: NOT_FOUND, **COMMON_ERRORS},
+    )
+    def delete(self, request, pk, attachment_pk):
+        attachment = get_object_or_404(ProjectAttachment, pk=attachment_pk, project_id=pk)
+        services.remove_project_attachment(attachment=attachment, actor=request.user, request=request)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ComponentListCreateView(APIView):
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [require_permission("component.create")()]
+        return [require_permission("component.read")()]
+
+    @extend_schema(
+        tags=["Engineering"],
+        summary="List components (optional ?category=<id>, ?status=)",
+        responses={200: ComponentListSerializer(many=True), **COMMON_ERRORS},
+    )
+    def get(self, request):
+        queryset = Component.objects.select_related("category", "created_by").prefetch_related("tags")
+        category_id = request.query_params.get("category")
+        if category_id:
+            queryset = queryset.filter(category_id=category_id)
+        status_param = request.query_params.get("status")
+        if status_param:
+            queryset = queryset.filter(status=status_param)
+        return paginated_response(request, queryset, ComponentListSerializer)
+
+    @extend_schema(
+        tags=["Engineering"],
+        summary="Create a component",
+        request=ComponentWriteSerializer,
+        responses={201: ComponentDetailSerializer, 400: BAD_REQUEST, **COMMON_ERRORS},
+    )
+    def post(self, request):
+        serializer = ComponentWriteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        component = services.create_component(actor=request.user, request=request, **serializer.validated_data)
+        return Response(ComponentDetailSerializer(component).data, status=status.HTTP_201_CREATED)
+
+
+class ComponentDetailView(APIView):
+    def get_permissions(self):
+        if self.request.method == "PATCH":
+            return [require_permission("component.update")()]
+        if self.request.method == "DELETE":
+            return [require_permission("component.delete")()]
+        return [require_permission("component.read")()]
+
+    @extend_schema(
+        tags=["Engineering"], summary="Get a component", responses={200: ComponentDetailSerializer, 404: NOT_FOUND, **COMMON_ERRORS}
+    )
+    def get(self, request, pk):
+        component = get_object_or_404(Component, pk=pk)
+        return Response(ComponentDetailSerializer(component).data)
+
+    @extend_schema(
+        tags=["Engineering"],
+        summary="Update a component (requires component.update)",
+        request=ComponentWriteSerializer,
+        responses={200: ComponentDetailSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
+    )
+    def patch(self, request, pk):
+        component = get_object_or_404(Component, pk=pk)
+        serializer = ComponentWriteSerializer(component, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        component = services.update_component(
+            component=component, actor=request.user, request=request, **serializer.validated_data
+        )
+        return Response(ComponentDetailSerializer(component).data)
+
+    @extend_schema(
+        tags=["Engineering"],
+        summary="Delete a component (requires component.delete)",
+        responses={204: OpenApiResponse(description="Deleted."), 404: NOT_FOUND, **COMMON_ERRORS},
+    )
+    def delete(self, request, pk):
+        component = get_object_or_404(Component, pk=pk)
+        services.delete_component(component=component, actor=request.user, request=request)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ComponentRelationsView(APIView):
+    permission_classes = [require_permission("component.read")]
+
+    @extend_schema(
+        tags=["Engineering"],
+        summary="List a component's related content",
+        responses={200: KnowledgeRelationSerializer(many=True), 404: NOT_FOUND, **COMMON_ERRORS},
+    )
+    def get(self, request, pk):
+        component = get_object_or_404(Component, pk=pk)
+        content_type = ContentType.objects.get_for_model(Component)
+        relations = services.get_relations_for("component", component.id)
+        return Response(
+            KnowledgeRelationSerializer(relations, many=True, context={"viewer": (content_type, component.id)}).data
+        )
+
+
+class ComponentAttachmentListView(APIView):
+    permission_classes = [require_permission("component.read")]
+
+    @extend_schema(
+        tags=["Engineering"], summary="List a component's attachments",
+        responses={200: ComponentAttachmentSerializer(many=True), 404: NOT_FOUND, **COMMON_ERRORS},
+    )
+    def get(self, request, pk):
+        component = get_object_or_404(Component, pk=pk)
+        return Response(
+            ComponentAttachmentSerializer(component.attachments.select_related("file", "uploaded_by"), many=True).data
+        )
+
+    @extend_schema(
+        tags=["Engineering"], summary="Attach an already-uploaded file to a component (requires component.update)",
+        request=AddAttachmentSerializer,
+        responses={201: ComponentAttachmentSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
+    )
+    def post(self, request, pk):
+        component = get_object_or_404(Component, pk=pk)
+        serializer = AddAttachmentSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        file = get_object_or_404(StoredFile, pk=serializer.validated_data["file_id"])
+        attachment = services.add_component_attachment(component=component, file=file, actor=request.user, request=request)
+        return Response(ComponentAttachmentSerializer(attachment).data, status=status.HTTP_201_CREATED)
+
+
+class ComponentAttachmentDetailView(APIView):
+    permission_classes = [require_permission("component.update")]
+
+    @extend_schema(
+        tags=["Engineering"], summary="Remove a component attachment",
+        responses={204: OpenApiResponse(description="Deleted."), 404: NOT_FOUND, **COMMON_ERRORS},
+    )
+    def delete(self, request, pk, attachment_pk):
+        attachment = get_object_or_404(ComponentAttachment, pk=attachment_pk, component_id=pk)
+        services.remove_component_attachment(attachment=attachment, actor=request.user, request=request)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class FailureListCreateView(APIView):
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [require_permission("failure.create")()]
+        return [require_permission("failure.read")()]
+
+    @extend_schema(
+        tags=["Engineering"],
+        summary="List failure reports (optional ?severity=, ?status=)",
+        responses={200: FailureListSerializer(many=True), **COMMON_ERRORS},
+    )
+    def get(self, request):
+        queryset = Failure.objects.select_related("component", "project", "created_by")
+        severity = request.query_params.get("severity")
+        if severity:
+            queryset = queryset.filter(severity=severity)
+        status_param = request.query_params.get("status")
+        if status_param:
+            queryset = queryset.filter(status=status_param)
+        return paginated_response(request, queryset, FailureListSerializer)
+
+    @extend_schema(
+        tags=["Engineering"],
+        summary="Report a failure",
+        request=FailureWriteSerializer,
+        responses={201: FailureDetailSerializer, 400: BAD_REQUEST, **COMMON_ERRORS},
+    )
+    def post(self, request):
+        serializer = FailureWriteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        failure = services.create_failure(actor=request.user, request=request, **serializer.validated_data)
+        return Response(FailureDetailSerializer(failure).data, status=status.HTTP_201_CREATED)
+
+
+class FailureDetailView(APIView):
+    def get_permissions(self):
+        if self.request.method == "PATCH":
+            return [require_permission("failure.update")()]
+        if self.request.method == "DELETE":
+            return [require_permission("failure.delete")()]
+        return [require_permission("failure.read")()]
+
+    @extend_schema(
+        tags=["Engineering"], summary="Get a failure report", responses={200: FailureDetailSerializer, 404: NOT_FOUND, **COMMON_ERRORS}
+    )
+    def get(self, request, pk):
+        failure = get_object_or_404(Failure, pk=pk)
+        return Response(FailureDetailSerializer(failure).data)
+
+    @extend_schema(
+        tags=["Engineering"],
+        summary="Update a failure report (requires failure.update)",
+        request=FailureWriteSerializer,
+        responses={200: FailureDetailSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
+    )
+    def patch(self, request, pk):
+        failure = get_object_or_404(Failure, pk=pk)
+        serializer = FailureWriteSerializer(failure, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        failure = services.update_failure(failure=failure, actor=request.user, request=request, **serializer.validated_data)
+        return Response(FailureDetailSerializer(failure).data)
+
+    @extend_schema(
+        tags=["Engineering"],
+        summary="Delete a failure report (requires failure.delete)",
+        responses={204: OpenApiResponse(description="Deleted."), 404: NOT_FOUND, **COMMON_ERRORS},
+    )
+    def delete(self, request, pk):
+        failure = get_object_or_404(Failure, pk=pk)
+        services.delete_failure(failure=failure, actor=request.user, request=request)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class FailureRelationsView(APIView):
+    permission_classes = [require_permission("failure.read")]
+
+    @extend_schema(
+        tags=["Engineering"],
+        summary="List a failure report's related content",
+        responses={200: KnowledgeRelationSerializer(many=True), 404: NOT_FOUND, **COMMON_ERRORS},
+    )
+    def get(self, request, pk):
+        failure = get_object_or_404(Failure, pk=pk)
+        content_type = ContentType.objects.get_for_model(Failure)
+        relations = services.get_relations_for("failure", failure.id)
+        return Response(
+            KnowledgeRelationSerializer(relations, many=True, context={"viewer": (content_type, failure.id)}).data
+        )
+
+
+class FailureAttachmentListView(APIView):
+    permission_classes = [require_permission("failure.read")]
+
+    @extend_schema(
+        tags=["Engineering"], summary="List a failure report's attachments",
+        responses={200: FailureAttachmentSerializer(many=True), 404: NOT_FOUND, **COMMON_ERRORS},
+    )
+    def get(self, request, pk):
+        failure = get_object_or_404(Failure, pk=pk)
+        return Response(FailureAttachmentSerializer(failure.attachments.select_related("file", "uploaded_by"), many=True).data)
+
+    @extend_schema(
+        tags=["Engineering"], summary="Attach an already-uploaded file to a failure report (requires failure.update)",
+        request=AddAttachmentSerializer,
+        responses={201: FailureAttachmentSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
+    )
+    def post(self, request, pk):
+        failure = get_object_or_404(Failure, pk=pk)
+        serializer = AddAttachmentSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        file = get_object_or_404(StoredFile, pk=serializer.validated_data["file_id"])
+        attachment = services.add_failure_attachment(failure=failure, file=file, actor=request.user, request=request)
+        return Response(FailureAttachmentSerializer(attachment).data, status=status.HTTP_201_CREATED)
+
+
+class FailureAttachmentDetailView(APIView):
+    permission_classes = [require_permission("failure.update")]
+
+    @extend_schema(
+        tags=["Engineering"], summary="Remove a failure report attachment",
+        responses={204: OpenApiResponse(description="Deleted."), 404: NOT_FOUND, **COMMON_ERRORS},
+    )
+    def delete(self, request, pk, attachment_pk):
+        attachment = get_object_or_404(FailureAttachment, pk=attachment_pk, failure_id=pk)
+        services.remove_failure_attachment(attachment=attachment, actor=request.user, request=request)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class SopListCreateView(APIView):
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [require_permission("sop.create")()]
+        return [require_permission("sop.read")()]
+
+    @extend_schema(
+        tags=["Engineering"],
+        summary="List SOPs (optional ?category=<id>, ?mandatory=true)",
+        responses={200: SopListSerializer(many=True), **COMMON_ERRORS},
+    )
+    def get(self, request):
+        queryset = Sop.objects.select_related("category", "created_by").prefetch_related("tags")
+        category_id = request.query_params.get("category")
+        if category_id:
+            queryset = queryset.filter(category_id=category_id)
+        if request.query_params.get("mandatory") == "true":
+            queryset = queryset.filter(mandatory=True)
+        return paginated_response(request, queryset, SopListSerializer)
+
+    @extend_schema(
+        tags=["Engineering"],
+        summary="Create an SOP",
+        request=SopWriteSerializer,
+        responses={201: SopDetailSerializer, 400: BAD_REQUEST, **COMMON_ERRORS},
+    )
+    def post(self, request):
+        serializer = SopWriteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        sop = services.create_sop(actor=request.user, request=request, **serializer.validated_data)
+        return Response(SopDetailSerializer(sop).data, status=status.HTTP_201_CREATED)
+
+
+class SopDetailView(APIView):
+    def get_permissions(self):
+        if self.request.method == "PATCH":
+            return [require_permission("sop.update")()]
+        if self.request.method == "DELETE":
+            return [require_permission("sop.delete")()]
+        return [require_permission("sop.read")()]
+
+    @extend_schema(tags=["Engineering"], summary="Get an SOP", responses={200: SopDetailSerializer, 404: NOT_FOUND, **COMMON_ERRORS})
+    def get(self, request, pk):
+        sop = get_object_or_404(Sop, pk=pk)
+        return Response(SopDetailSerializer(sop).data)
+
+    @extend_schema(
+        tags=["Engineering"],
+        summary="Update an SOP (requires sop.update)",
+        request=SopWriteSerializer,
+        responses={200: SopDetailSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
+    )
+    def patch(self, request, pk):
+        sop = get_object_or_404(Sop, pk=pk)
+        serializer = SopWriteSerializer(sop, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        sop = services.update_sop(sop=sop, actor=request.user, request=request, **serializer.validated_data)
+        return Response(SopDetailSerializer(sop).data)
+
+    @extend_schema(
+        tags=["Engineering"],
+        summary="Delete an SOP (requires sop.delete)",
+        responses={204: OpenApiResponse(description="Deleted."), 404: NOT_FOUND, **COMMON_ERRORS},
+    )
+    def delete(self, request, pk):
+        sop = get_object_or_404(Sop, pk=pk)
+        services.delete_sop(sop=sop, actor=request.user, request=request)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class SopRelationsView(APIView):
+    permission_classes = [require_permission("sop.read")]
+
+    @extend_schema(
+        tags=["Engineering"],
+        summary="List an SOP's related content",
+        responses={200: KnowledgeRelationSerializer(many=True), 404: NOT_FOUND, **COMMON_ERRORS},
+    )
+    def get(self, request, pk):
+        sop = get_object_or_404(Sop, pk=pk)
+        content_type = ContentType.objects.get_for_model(Sop)
+        relations = services.get_relations_for("sop", sop.id)
+        return Response(KnowledgeRelationSerializer(relations, many=True, context={"viewer": (content_type, sop.id)}).data)
+
+
+class SopAttachmentListView(APIView):
+    permission_classes = [require_permission("sop.read")]
+
+    @extend_schema(
+        tags=["Engineering"], summary="List an SOP's attachments",
+        responses={200: SopAttachmentSerializer(many=True), 404: NOT_FOUND, **COMMON_ERRORS},
+    )
+    def get(self, request, pk):
+        sop = get_object_or_404(Sop, pk=pk)
+        return Response(SopAttachmentSerializer(sop.attachments.select_related("file", "uploaded_by"), many=True).data)
+
+    @extend_schema(
+        tags=["Engineering"], summary="Attach an already-uploaded file to an SOP (requires sop.update)",
+        request=AddAttachmentSerializer,
+        responses={201: SopAttachmentSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
+    )
+    def post(self, request, pk):
+        sop = get_object_or_404(Sop, pk=pk)
+        serializer = AddAttachmentSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        file = get_object_or_404(StoredFile, pk=serializer.validated_data["file_id"])
+        attachment = services.add_sop_attachment(sop=sop, file=file, actor=request.user, request=request)
+        return Response(SopAttachmentSerializer(attachment).data, status=status.HTTP_201_CREATED)
+
+
+class SopAttachmentDetailView(APIView):
+    permission_classes = [require_permission("sop.update")]
+
+    @extend_schema(
+        tags=["Engineering"], summary="Remove an SOP attachment",
+        responses={204: OpenApiResponse(description="Deleted."), 404: NOT_FOUND, **COMMON_ERRORS},
+    )
+    def delete(self, request, pk, attachment_pk):
+        attachment = get_object_or_404(SopAttachment, pk=attachment_pk, sop_id=pk)
+        services.remove_sop_attachment(attachment=attachment, actor=request.user, request=request)
         return Response(status=status.HTTP_204_NO_CONTENT)

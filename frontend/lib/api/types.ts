@@ -185,23 +185,109 @@ export interface QuestionDetail extends QuestionSummary {
   answers: Answer[];
 }
 
-export type SearchResult =
-  | { type: "article"; id: string; title: string; excerpt: string }
-  | { type: "question"; id: string; title: string; excerpt: string };
+export type RelatableType = "article" | "question" | "project" | "component" | "failure" | "sop";
+
+export type SearchResult = { type: RelatableType; id: string; title: string; excerpt: string };
 
 export interface KnowledgeRelation {
   id: string;
   relation_type: string;
-  other_type: "article" | "question";
+  other_type: RelatableType;
   other_id: string;
   other_title: string | null;
   created_at: string;
 }
 
-/** Shape of both ArticleAttachmentSerializer and QuestionAttachmentSerializer - identical fields. */
+/** Shape shared by every X AttachmentSerializer (Article/Question/Project/Component/Failure/Sop) - identical fields. */
 export interface KnowledgeAttachment {
   id: string;
   file: StoredFile;
   uploaded_by: KnowledgeAuthor | null;
   created_at: string;
+}
+
+// --- Engineering domain -----------------------------------------------------
+// No draft/review workflow and no `visibility` field on any of these (see
+// backend/knowledge/models.py's module docstring) - simpler shape than
+// Article/Question throughout.
+
+export type ProjectStatus = "ACTIVE" | "ON_HOLD" | "COMPLETED";
+
+export interface ProjectSummary {
+  id: string;
+  name: string;
+  status: ProjectStatus;
+  tags: Tag[];
+  created_by: KnowledgeAuthor | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProjectDetail extends ProjectSummary {
+  description: string;
+}
+
+export type ComponentStatus = "CERTIFIED" | "TESTING" | "DEPRECATED";
+
+export interface ComponentSpecRow {
+  label: string;
+  value: string;
+}
+
+export interface ComponentSummary {
+  id: string;
+  name: string;
+  category: Category | null;
+  manufacturer: string;
+  part_number: string;
+  status: ComponentStatus;
+  specifications: ComponentSpecRow[];
+  tags: Tag[];
+  created_by: KnowledgeAuthor | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ComponentDetail extends ComponentSummary {
+  summary: string;
+}
+
+export type FailureSeverity = "LOW" | "MEDIUM" | "HIGH";
+export type FailureStatus = "UNDER_INVESTIGATION" | "RESOLVED";
+
+export interface FailureSummary {
+  id: string;
+  title: string;
+  component: ComponentSummary | null;
+  project: ProjectSummary | null;
+  aircraft: string;
+  date: string | null;
+  severity: FailureSeverity;
+  status: FailureStatus;
+  created_by: KnowledgeAuthor | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FailureDetail extends FailureSummary {
+  summary: string;
+  root_cause: string;
+  corrective_action: string;
+  preventive_action: string;
+}
+
+export interface SopSummary {
+  id: string;
+  title: string;
+  category: Category | null;
+  mandatory: boolean;
+  tags: Tag[];
+  created_by: KnowledgeAuthor | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SopDetail extends SopSummary {
+  safety_notes: string;
+  content: string;
 }
