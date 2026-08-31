@@ -852,6 +852,53 @@ class SearchTests(KnowledgeTestCase):
         response = self.client.get(reverse("knowledge-search") + "?q=sortex&sort=bogus", **self._auth(head_access))
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
+    def test_search_excludes_restricted_question_from_non_moderators(self):
+        author, author_access = self._login_with_role("searchrestrictedq@example.com", "Member")
+        question = self.client.post(
+            reverse("knowledge-question-list-create"),
+            {"title": "Confidential Sponsor Deal", "body": "...", "visibility": "RESTRICTED"},
+            format="json",
+            **self._auth(author_access),
+        ).data
+
+        _, other_access = self._login_with_role("searchrestrictedqother@example.com", "Member")
+        response = self.client.get(
+            reverse("knowledge-search") + "?q=confidential", **self._auth(other_access)
+        )
+        self.assertNotIn(question["id"], {r["id"] for r in response.data["results"]})
+        self.assertEqual(response.data["counts"]["question"], 0)
+
+        # The author and a question.moderate holder still find it.
+        response = self.client.get(reverse("knowledge-search") + "?q=confidential", **self._auth(author_access))
+        self.assertIn(question["id"], {r["id"] for r in response.data["results"]})
+
+        _, moderator_access = self._login_with_role("searchrestrictedqmod@example.com", "Senior Member")
+        response = self.client.get(reverse("knowledge-search") + "?q=confidential", **self._auth(moderator_access))
+        self.assertIn(question["id"], {r["id"] for r in response.data["results"]})
+
+    def test_search_excludes_restricted_published_article_from_non_privileged(self):
+        author, author_access = self._login_with_role("searchrestricteda@example.com", "Member")
+        article = self.client.post(
+            reverse("knowledge-article-list-create"),
+            {"title": "Sponsor Budget Breakdown", "content": "...", "visibility": "RESTRICTED"},
+            format="json",
+            **self._auth(author_access),
+        ).data
+        _, head_access = self._login_with_role("searchrestrictedahead@example.com", "Team/Subteam Head")
+        self.client.post(reverse("knowledge-article-submit", args=[article["id"]]), **self._auth(author_access))
+        self.client.post(reverse("knowledge-article-publish", args=[article["id"]]), **self._auth(head_access))
+
+        _, other_access = self._login_with_role("searchrestrictedaother@example.com", "Member")
+        response = self.client.get(reverse("knowledge-search") + "?q=sponsor+budget", **self._auth(other_access))
+        self.assertNotIn(article["id"], {r["id"] for r in response.data["results"]})
+        self.assertEqual(response.data["counts"]["article"], 0)
+
+        # The author and a reviewer/publisher still find it.
+        response = self.client.get(reverse("knowledge-search") + "?q=sponsor+budget", **self._auth(author_access))
+        self.assertIn(article["id"], {r["id"] for r in response.data["results"]})
+        response = self.client.get(reverse("knowledge-search") + "?q=sponsor+budget", **self._auth(head_access))
+        self.assertIn(article["id"], {r["id"] for r in response.data["results"]})
+
 
 class VisibilityTests(KnowledgeTestCase):
     def test_restricted_article_hidden_from_non_privileged_even_when_published(self):
@@ -1331,3 +1378,59 @@ class EngineeringDomainTests(KnowledgeTestCase):
             {k: v for k, v in response.data["counts"].items() if k in ("project", "component", "failure", "sop")},
             {"project": 1, "component": 1, "failure": 1, "sop": 1},
         )
+
+    def test_engineering_list_endpoints_support_q_search(self):
+        """The per-page list filter (Projects/Components/Failures/SOPs pages'
+        own search box, distinct from the global /knowledge/search/) - each
+        list endpoint's own ?q= against its own icontains fields, not the
+        cross-type search."""
+        _, head_access = self._login_with_role("qsearcheng@example.com", "Team/Subteam Head")
+
+        self.client.post(
+            reverse("knowledge-project-list-create"),
+            {"name": "DBF 2027", "description": "..."},
+            format="json",
+            **self._auth(head_access),
+        )
+        self.client.post(
+            reverse("knowledge-project-list-create"), {"name": "Unrelated Rover"}, format="json", **self._auth(head_access)
+        )
+        response = self.client.get(reverse("knowledge-project-list-create") + "?q=dbf", **self._auth(head_access))
+        self.assertEqual([p["name"] for p in response.data["results"]], ["DBF 2027"])
+
+        self.client.post(
+            reverse("knowledge-component-list-create"),
+            {"name": "Sensor Board", "manufacturer": "Holybro"},
+            format="json",
+            **self._auth(head_access),
+        )
+        self.client.post(
+            reverse("knowledge-component-list-create"), {"name": "Unrelated Motor"}, format="json", **self._auth(head_access)
+        )
+        response = self.client.get(
+            reverse("knowledge-component-list-create") + "?q=holybro", **self._auth(head_access)
+        )
+        self.assertEqual([c["name"] for c in response.data["results"]], ["Sensor Board"])
+
+        self.client.post(
+            reverse("knowledge-failure-list-create"),
+            {"title": "IMU Desync", "root_cause": "Vibration coupling"},
+            format="json",
+            **self._auth(head_access),
+        )
+        self.client.post(
+            reverse("knowledge-failure-list-create"), {"title": "Unrelated Failure"}, format="json", **self._auth(head_access)
+        )
+        response = self.client.get(
+            reverse("knowledge-failure-list-create") + "?q=vibration", **self._auth(head_access)
+        )
+        self.assertEqual([f["title"] for f in response.data["results"]], ["IMU Desync"])
+
+        self.client.post(
+            reverse("knowledge-sop-list-create"), {"title": "Thermal Calibration"}, format="json", **self._auth(head_access)
+        )
+        self.client.post(
+            reverse("knowledge-sop-list-create"), {"title": "Unrelated SOP"}, format="json", **self._auth(head_access)
+        )
+        response = self.client.get(reverse("knowledge-sop-list-create") + "?q=thermal", **self._auth(head_access))
+        self.assertEqual([s["title"] for s in response.data["results"]], ["Thermal Calibration"])

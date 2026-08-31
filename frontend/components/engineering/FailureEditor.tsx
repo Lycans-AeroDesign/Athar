@@ -161,19 +161,39 @@ export function FailureEditor({ failure, onDirtyChange }: FailureEditorProps) {
 
       <div className="space-y-2">
         <h3 className="font-label-caps text-label-caps text-on-surface-variant uppercase">{t("summaryLabel")}</h3>
-        <MarkdownEditor value={summary} onChange={setSummary} placeholder={t("summaryPlaceholder")} />
+        <MarkdownEditor
+          value={summary}
+          onChange={setSummary}
+          placeholder={t("summaryPlaceholder")}
+          relateFrom={failure ? { type: "failure", id: failure.id } : undefined}
+        />
       </div>
       <div className="space-y-2">
         <h3 className="font-label-caps text-label-caps text-on-surface-variant uppercase">{t("rootCauseLabel")}</h3>
-        <MarkdownEditor value={rootCause} onChange={setRootCause} placeholder={t("rootCausePlaceholder")} />
+        <MarkdownEditor
+          value={rootCause}
+          onChange={setRootCause}
+          placeholder={t("rootCausePlaceholder")}
+          relateFrom={failure ? { type: "failure", id: failure.id } : undefined}
+        />
       </div>
       <div className="space-y-2">
         <h3 className="font-label-caps text-label-caps text-on-surface-variant uppercase">{t("correctiveActionLabel")}</h3>
-        <MarkdownEditor value={correctiveAction} onChange={setCorrectiveAction} placeholder={t("correctiveActionPlaceholder")} />
+        <MarkdownEditor
+          value={correctiveAction}
+          onChange={setCorrectiveAction}
+          placeholder={t("correctiveActionPlaceholder")}
+          relateFrom={failure ? { type: "failure", id: failure.id } : undefined}
+        />
       </div>
       <div className="space-y-2">
         <h3 className="font-label-caps text-label-caps text-on-surface-variant uppercase">{t("preventiveActionLabel")}</h3>
-        <MarkdownEditor value={preventiveAction} onChange={setPreventiveAction} placeholder={t("preventiveActionPlaceholder")} />
+        <MarkdownEditor
+          value={preventiveAction}
+          onChange={setPreventiveAction}
+          placeholder={t("preventiveActionPlaceholder")}
+          relateFrom={failure ? { type: "failure", id: failure.id } : undefined}
+        />
       </div>
 
       {error && (

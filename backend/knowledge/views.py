@@ -217,6 +217,9 @@ class SearchView(APIView):
         # even when the caller is only viewing one type's results. Engineering-
         # domain types have no `status`/`visibility` gate (see models.py) - a
         # matching row is a matching row.
+        can_review_articles = request.user.has_permission("article.review") or request.user.has_permission(
+            "article.publish"
+        )
         article_matches = (
             Article.objects.filter(status=Article.Status.PUBLISHED).filter(
                 Q(title__icontains=query) | Q(excerpt__icontains=query) | Q(content__icontains=query)
@@ -224,11 +227,21 @@ class SearchView(APIView):
             if query
             else Article.objects.none()
         )
+        if query and not can_review_articles:
+            # Same RESTRICTED-visibility gate as ArticleListCreateView.get -
+            # otherwise a RESTRICTED article's title/excerpt would leak into
+            # search results for viewers who couldn't open it (_visible_article_or_404).
+            article_matches = article_matches.exclude(Q(visibility=Visibility.RESTRICTED) & ~Q(author=request.user))
         question_matches = (
             Question.objects.filter(Q(title__icontains=query) | Q(body__icontains=query))
             if query
             else Question.objects.none()
         )
+        if query and not request.user.has_permission("question.moderate"):
+            # Same RESTRICTED-visibility gate as QuestionListCreateView.get -
+            # otherwise a RESTRICTED question's title/body excerpt would leak
+            # into search results for viewers who couldn't open it (_visible_question_or_404).
+            question_matches = question_matches.exclude(Q(visibility=Visibility.RESTRICTED) & ~Q(author=request.user))
         project_matches = (
             Project.objects.filter(Q(name__icontains=query) | Q(description__icontains=query))
             if query
@@ -867,7 +880,7 @@ class ProjectListCreateView(APIView):
 
     @extend_schema(
         tags=["Engineering"],
-        summary="List projects (optional ?status=)",
+        summary="List projects (optional ?status=, ?q=<search name/description>)",
         responses={200: ProjectListSerializer(many=True), **COMMON_ERRORS},
     )
     def get(self, request):
@@ -875,6 +888,9 @@ class ProjectListCreateView(APIView):
         status_param = request.query_params.get("status")
         if status_param:
             queryset = queryset.filter(status=status_param)
+        query = request.query_params.get("q", "").strip()
+        if query:
+            queryset = queryset.filter(Q(name__icontains=query) | Q(description__icontains=query))
         return paginated_response(request, queryset, ProjectListSerializer)
 
     @extend_schema(
@@ -990,7 +1006,7 @@ class ComponentListCreateView(APIView):
 
     @extend_schema(
         tags=["Engineering"],
-        summary="List components (optional ?category=<id>, ?status=)",
+        summary="List components (optional ?category=<id>, ?status=, ?q=<search name/summary/manufacturer/part number>)",
         responses={200: ComponentListSerializer(many=True), **COMMON_ERRORS},
     )
     def get(self, request):
@@ -1001,6 +1017,14 @@ class ComponentListCreateView(APIView):
         status_param = request.query_params.get("status")
         if status_param:
             queryset = queryset.filter(status=status_param)
+        query = request.query_params.get("q", "").strip()
+        if query:
+            queryset = queryset.filter(
+                Q(name__icontains=query)
+                | Q(summary__icontains=query)
+                | Q(manufacturer__icontains=query)
+                | Q(part_number__icontains=query)
+            )
         return paginated_response(request, queryset, ComponentListSerializer)
 
     @extend_schema(
@@ -1122,7 +1146,7 @@ class FailureListCreateView(APIView):
 
     @extend_schema(
         tags=["Engineering"],
-        summary="List failure reports (optional ?severity=, ?status=)",
+        summary="List failure reports (optional ?severity=, ?status=, ?q=<search title/summary/root cause>)",
         responses={200: FailureListSerializer(many=True), **COMMON_ERRORS},
     )
     def get(self, request):
@@ -1133,6 +1157,11 @@ class FailureListCreateView(APIView):
         status_param = request.query_params.get("status")
         if status_param:
             queryset = queryset.filter(status=status_param)
+        query = request.query_params.get("q", "").strip()
+        if query:
+            queryset = queryset.filter(
+                Q(title__icontains=query) | Q(summary__icontains=query) | Q(root_cause__icontains=query)
+            )
         return paginated_response(request, queryset, FailureListSerializer)
 
     @extend_schema(
@@ -1250,7 +1279,7 @@ class SopListCreateView(APIView):
 
     @extend_schema(
         tags=["Engineering"],
-        summary="List SOPs (optional ?category=<id>, ?mandatory=true)",
+        summary="List SOPs (optional ?category=<id>, ?mandatory=true, ?q=<search title/content>)",
         responses={200: SopListSerializer(many=True), **COMMON_ERRORS},
     )
     def get(self, request):
@@ -1260,6 +1289,9 @@ class SopListCreateView(APIView):
             queryset = queryset.filter(category_id=category_id)
         if request.query_params.get("mandatory") == "true":
             queryset = queryset.filter(mandatory=True)
+        query = request.query_params.get("q", "").strip()
+        if query:
+            queryset = queryset.filter(Q(title__icontains=query) | Q(content__icontains=query))
         return paginated_response(request, queryset, SopListSerializer)
 
     @extend_schema(

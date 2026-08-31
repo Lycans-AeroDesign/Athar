@@ -149,7 +149,7 @@ class MeView(APIView):
 
     @extend_schema(
         tags=["Auth"],
-        summary="Update the current user's own profile (name, title) - not email/password/roles",
+        summary="Update the current user's own profile (name, title, preferences) - not email/password/roles",
         request=MeUpdateSerializer,
         responses={200: UserSerializer, 400: BAD_REQUEST, 401: UNAUTHORIZED},
     )

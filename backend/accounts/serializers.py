@@ -18,6 +18,7 @@ class UserSerializer(serializers.ModelSerializer):
             "title",
             "roles",
             "permissions",
+            "preferences",
             "date_joined",
         ]
 
@@ -32,7 +33,7 @@ class MeUpdateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ["first_name", "last_name", "title"]
+        fields = ["first_name", "last_name", "title", "preferences"]
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):

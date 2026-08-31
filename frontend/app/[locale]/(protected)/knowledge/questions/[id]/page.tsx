@@ -264,6 +264,7 @@ export default function QuestionDetailPage() {
               value={newAnswerBody}
               onChange={setNewAnswerBody}
               placeholder={t("answerComposerPlaceholder")}
+              relateFrom={{ type: "question", id: question.id }}
             />
             <Button onClick={handleSubmitAnswer} disabled={isSubmittingAnswer || !newAnswerBody.trim()}>
               <Icon name="send" size={16} />

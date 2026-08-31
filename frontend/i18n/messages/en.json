@@ -18,7 +18,9 @@
     "copiedLink": "Link copied!",
     "previous": "Previous",
     "next": "Next",
-    "resultCount": "{count, plural, =0 {No results} one {# result} other {# results}}"
+    "resultCount": "{count, plural, =0 {No results} one {# result} other {# results}}",
+    "removeFilter": "Remove filter",
+    "searchThisList": "Search this list..."
   },
   "auth": {
     "emailLabel": "Email Address",
@@ -67,6 +69,10 @@
     "searchScopeAll": "All",
     "searchScopeArticles": "Articles",
     "searchScopeQuestions": "Questions",
+    "searchScopeProjects": "Projects",
+    "searchScopeComponents": "Components",
+    "searchScopeFailures": "Failures",
+    "searchScopeSops": "SOPs",
     "searching": "Searching...",
     "noSearchResults": "No results found.",
     "seeAllResults": "See all results for \"{query}\"",
@@ -128,7 +134,9 @@
       "domainPlaceholder": "athar.example.com",
       "preferencesTitle": "Preferences",
       "themeLabel": "Theme",
-      "languageLabel": "Language"
+      "languageLabel": "Language",
+      "engineeringListFiltersLabel": "Automatic search filters",
+      "engineeringListFiltersDescription": "Adds a search box to each of the Projects/Components/Failures/SOPs list pages, scoped to that page's own content, and auto-scopes the top search bar to whichever of those sections you're viewing. Either way, an active-filter chip shows what's applied and clears it. Turning this off leaves both search boxes unscoped by default - you can still pick a filter manually."
     },
     "branding": {
       "logoTitle": "Organization Logo",
@@ -243,6 +251,10 @@
       "filterAll": "All Results",
       "filterArticles": "Articles",
       "filterQuestions": "Questions",
+      "filterProjects": "Projects",
+      "filterComponents": "Components",
+      "filterFailures": "Failures",
+      "filterSops": "SOPs",
       "sortByLabel": "Sort by",
       "sortNewest": "Date (Newest)",
       "sortOldest": "Date (Oldest)",
@@ -250,7 +262,11 @@
       "loading": "Loading...",
       "noResults": "No results found for \"{query}\".",
       "badgeArticle": "Article",
-      "badgeQuestion": "Question"
+      "badgeQuestion": "Question",
+      "badgeProject": "Project",
+      "badgeComponent": "Component",
+      "badgeFailure": "Failure",
+      "badgeSop": "SOP"
     },
     "status": {
       "all": "All",
@@ -373,7 +389,8 @@
       "uploadingImage": "Uploading {filename}…",
       "uploadingFile": "Uploading {filename}…",
       "uploadError": "Couldn't upload {filename}: {message}",
-      "mentionSearching": "Searching..."
+      "mentionSearching": "Searching...",
+      "relationError": "Linked \"{title}\" in the text, but couldn't add it to Related Knowledge: {message}"
     }
   },
   "engineering": {

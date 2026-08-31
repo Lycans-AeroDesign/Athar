@@ -48,6 +48,11 @@ class User(AbstractBaseUser):
     # Django admin break-glass access only - never the authorization path for the app itself.
     is_staff = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)
+    # Free-form personal UI settings (e.g. {"engineering_list_filters": false}) -
+    # self-service via MeView.patch, unlike everything above. A flat dict
+    # rather than dedicated columns since these are display/UX toggles with
+    # no query or permission implications; add keys as features need them.
+    preferences = models.JSONField(default=dict, blank=True)
     date_joined = models.DateTimeField(auto_now_add=True)
 
     roles = models.ManyToManyField(

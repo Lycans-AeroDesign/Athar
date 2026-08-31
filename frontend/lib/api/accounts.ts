@@ -1,7 +1,12 @@
 import { apiJson } from "./client";
-import type { User } from "./types";
+import type { User, UserPreferences } from "./types";
 
-export function updateMe(payload: { first_name?: string; last_name?: string; title?: string }): Promise<User> {
+export function updateMe(payload: {
+  first_name?: string;
+  last_name?: string;
+  title?: string;
+  preferences?: UserPreferences;
+}): Promise<User> {
   return apiJson<User>("/api/v1/auth/me/", {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },

@@ -7,8 +7,10 @@ import { Button } from "@/components/ui/Button";
 import { Combobox } from "@/components/ui/Combobox";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { locales, localeNames, type Locale } from "@/i18n/request";
+import { updateMe } from "@/lib/api/accounts";
 import { updateGeneralSettings } from "@/lib/api/organization";
 import type { OrganizationSettings } from "@/lib/api/types";
+import { useAuth } from "@/lib/auth/AuthProvider";
 import { useTheme } from "@/lib/theme/ThemeProvider";
 import type { ThemePreference } from "@/lib/theme/theme";
 
@@ -29,6 +31,7 @@ export function GeneralSettingsForm({ settings, onUpdate, canEdit }: GeneralSett
   const locale = useLocale();
   const pathname = usePathname();
   const router = useRouter();
+  const { user, updateUser } = useAuth();
   const [name, setName] = useState(settings.name);
   const [primaryDomain, setPrimaryDomain] = useState(settings.primary_domain);
   const [isSaving, setIsSaving] = useState(false);
@@ -43,6 +46,12 @@ export function GeneralSettingsForm({ settings, onUpdate, canEdit }: GeneralSett
     } finally {
       setIsSaving(false);
     }
+  }
+
+  async function handleEngineeringListFiltersChange(checked: boolean) {
+    if (!user) return;
+    const updated = await updateMe({ preferences: { ...user.preferences, engineering_list_filters: checked } });
+    updateUser(updated);
   }
 
   const themeLabels: Record<ThemePreference, string> = {
@@ -95,9 +104,11 @@ export function GeneralSettingsForm({ settings, onUpdate, canEdit }: GeneralSett
         )}
       </div>
 
-      {/* Theme and language are per-viewer preferences (cookies), not part of
-          the organization's saved settings above - they apply immediately,
-          with no Save Changes step, same as the equivalent pickers in the
+      {/* Theme, language, and the list-filter toggle below are all per-viewer
+          preferences (theme/language via cookies, the toggle via
+          user.preferences on the backend), not part of the organization's
+          saved settings above - each applies immediately, with no Save
+          Changes step. Theme/language mirror the equivalent pickers in the
           account menu (see TopBar.tsx). */}
       <div className="bg-surface rounded-xl border border-outline-variant p-6 space-y-6">
         <h2 className="font-headline-md text-headline-md text-on-surface">{t("preferencesTitle")}</h2>
@@ -115,6 +126,25 @@ export function GeneralSettingsForm({ settings, onUpdate, canEdit }: GeneralSett
           value={locale}
           onChange={(value) => router.replace(pathname, { locale: value as Locale })}
         />
+
+        {user && (
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={user.preferences.engineering_list_filters ?? true}
+              onChange={(e) => handleEngineeringListFiltersChange(e.target.checked)}
+              className="mt-1 rounded border-outline-variant text-primary focus:ring-primary w-4 h-4 shrink-0"
+            />
+            <span>
+              <span className="block font-body-md text-body-md text-on-surface">
+                {t("engineeringListFiltersLabel")}
+              </span>
+              <span className="block font-body-md text-body-md text-on-surface-variant">
+                {t("engineeringListFiltersDescription")}
+              </span>
+            </span>
+          </label>
+        )}
       </div>
     </div>
   );

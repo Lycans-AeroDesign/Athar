@@ -113,7 +113,12 @@ export function SopEditor({ sop, onDirtyChange }: SopEditorProps) {
         />
       </div>
 
-      <MarkdownEditor value={content} onChange={setContent} placeholder={t("contentPlaceholder")} />
+      <MarkdownEditor
+        value={content}
+        onChange={setContent}
+        placeholder={t("contentPlaceholder")}
+        relateFrom={sop ? { type: "sop", id: sop.id } : undefined}
+      />
 
       {error && (
         <p className="font-body-md text-body-md text-error" role="alert">

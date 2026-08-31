@@ -83,7 +83,12 @@ export function ProjectEditor({ project, onDirtyChange }: ProjectEditorProps) {
         </div>
       </div>
 
-      <MarkdownEditor value={description} onChange={setDescription} placeholder={t("descriptionPlaceholder")} />
+      <MarkdownEditor
+        value={description}
+        onChange={setDescription}
+        placeholder={t("descriptionPlaceholder")}
+        relateFrom={project ? { type: "project", id: project.id } : undefined}
+      />
 
       {error && (
         <p className="font-body-md text-body-md text-error" role="alert">

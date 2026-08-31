@@ -4,19 +4,45 @@ import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState, type ReactNode } from "react";
 
+import { ActiveFilterChip } from "@/components/ui/ActiveFilterChip";
 import { Icon } from "@/components/ui/Icon";
 import { Pagination } from "@/components/ui/Pagination";
 import { Link, useRouter } from "@/i18n/navigation";
-import { searchKnowledge, type SearchSort } from "@/lib/api/knowledge";
-import type { SearchResult } from "@/lib/api/types";
+import { searchKnowledge, type SearchCounts, type SearchSort } from "@/lib/api/knowledge";
+import type { RelatableType, SearchResult } from "@/lib/api/types";
+import { RELATABLE_ICON, RELATABLE_ROUTE_PREFIX } from "@/lib/knowledgeTypes";
 
-type Scope = "all" | "article" | "question";
+type Scope = "all" | RelatableType;
+
+// Every relatable type SearchView actually searches (see backend/knowledge/views.py's
+// SearchView) - kept in this order (matches SideNav/RELATABLE_ICON) so the filter
+// list and result badges cover the same six types the API's `counts` returns.
+const CONTENT_TYPES: RelatableType[] = ["article", "question", "project", "component", "failure", "sop"];
+
+const FILTER_LABEL_KEYS: Record<RelatableType, string> = {
+  article: "filterArticles",
+  question: "filterQuestions",
+  project: "filterProjects",
+  component: "filterComponents",
+  failure: "filterFailures",
+  sop: "filterSops",
+};
+
+const BADGE_LABEL_KEYS: Record<RelatableType, string> = {
+  article: "badgeArticle",
+  question: "badgeQuestion",
+  project: "badgeProject",
+  component: "badgeComponent",
+  failure: "badgeFailure",
+  sop: "badgeSop",
+};
 
 const SCOPE_OPTIONS: { value: Scope; labelKey: string }[] = [
   { value: "all", labelKey: "filterAll" },
-  { value: "article", labelKey: "filterArticles" },
-  { value: "question", labelKey: "filterQuestions" },
+  ...CONTENT_TYPES.map((value) => ({ value, labelKey: FILTER_LABEL_KEYS[value] })),
 ];
+
+const EMPTY_COUNTS: SearchCounts = { article: 0, question: 0, project: 0, component: 0, failure: 0, sop: 0 };
 
 const SORT_OPTIONS: { value: SearchSort; labelKey: string }[] = [
   { value: "newest", labelKey: "sortNewest" },
@@ -62,7 +88,7 @@ function SearchResults() {
 
   const [results, setResults] = useState<SearchResult[] | null>(null);
   const [hasMore, setHasMore] = useState(false);
-  const [counts, setCounts] = useState({ article: 0, question: 0 });
+  const [counts, setCounts] = useState<SearchCounts>(EMPTY_COUNTS);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -89,7 +115,7 @@ function SearchResults() {
     router.push(`/knowledge/search?${params.toString()}`);
   }
 
-  const totalCount = counts.article + counts.question;
+  const totalCount = CONTENT_TYPES.reduce((sum, type) => sum + counts[type], 0);
   const scopedCount = scope === "all" ? totalCount : counts[scope];
 
   return (
@@ -97,6 +123,12 @@ function SearchResults() {
       <h1 className="font-display text-display text-on-surface">
         {query ? t("titleWithQuery", { query }) : t("title")}
       </h1>
+
+      {scope !== "all" && (
+        <div className="flex items-center gap-2">
+          <ActiveFilterChip label={t(FILTER_LABEL_KEYS[scope])} onClear={() => updateParams({ type: "all", page: 1 })} />
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         <aside className="lg:col-span-3 space-y-4">
@@ -171,16 +203,12 @@ function SearchResults() {
               {results.map((result) => (
                 <li key={`${result.type}-${result.id}`}>
                   <Link
-                    href={
-                      result.type === "article"
-                        ? `/knowledge/articles/${result.id}`
-                        : `/knowledge/questions/${result.id}`
-                    }
+                    href={`${RELATABLE_ROUTE_PREFIX[result.type]}/${result.id}`}
                     className="block bg-surface-container-low border border-outline-variant rounded-xl p-4 hover:shadow-[0_1px_3px_0_rgba(0,0,0,0.08)] transition-shadow"
                   >
                     <span className="flex items-center gap-1 font-label-caps text-label-caps uppercase text-on-surface-variant mb-1">
-                      <Icon name={result.type === "article" ? "menu_book" : "forum"} size={14} />
-                      {result.type === "article" ? t("badgeArticle") : t("badgeQuestion")}
+                      <Icon name={RELATABLE_ICON[result.type]} size={14} />
+                      {t(BADGE_LABEL_KEYS[result.type])}
                     </span>
                     <h3 className="font-headline-md text-headline-md text-primary mb-1">
                       {highlight(result.title, query)}

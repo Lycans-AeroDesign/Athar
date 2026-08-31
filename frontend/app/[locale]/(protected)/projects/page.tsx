@@ -4,12 +4,14 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 import { Can } from "@/components/auth/Can";
+import { ActiveFilterChip } from "@/components/ui/ActiveFilterChip";
 import { Button } from "@/components/ui/Button";
 import { Combobox } from "@/components/ui/Combobox";
 import { Icon } from "@/components/ui/Icon";
 import { Link } from "@/i18n/navigation";
 import { getProjects } from "@/lib/api/engineering";
 import type { ProjectStatus, ProjectSummary } from "@/lib/api/types";
+import { useEngineeringListFiltersEnabled } from "@/lib/auth/permissions";
 
 const STATUS_VALUES: ProjectStatus[] = ["ACTIVE", "ON_HOLD", "COMPLETED"];
 
@@ -23,19 +25,31 @@ export default function ProjectsPage() {
   const t = useTranslations("engineering.project");
   const statusT = useTranslations("engineering.projectStatus");
   const commonT = useTranslations("common");
+  const filtersEnabled = useEngineeringListFiltersEnabled();
 
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | null>(null);
+  // Raw input vs. debounced query, same split as RelatedContent.tsx's picker
+  // search - avoids firing a request on every keystroke.
+  const [searchInput, setSearchInput] = useState("");
+  const [query, setQuery] = useState("");
+  useEffect(() => {
+    const handle = setTimeout(() => setQuery(searchInput.trim()), 300);
+    return () => clearTimeout(handle);
+  }, [searchInput]);
 
-  // Keyed by the filter it was fetched for, rather than reset with a plain
-  // setProjects(null) at the top of the effect below - see
+  // Keyed by the filter pair it was fetched for, rather than reset with a
+  // plain setProjects(null) at the top of the effect below - see
   // knowledge/page.tsx's status-filter effect for why (that pattern runs
   // setState synchronously in the effect body, which React's lint rule flags).
-  const [result, setResult] = useState<{ filter: ProjectStatus | null; projects: ProjectSummary[] } | null>(null);
-  const projects = result?.filter === statusFilter ? result.projects : null;
+  const filterKey = `${statusFilter ?? ""}:${query}`;
+  const [result, setResult] = useState<{ key: string; projects: ProjectSummary[] } | null>(null);
+  const projects = result?.key === filterKey ? result.projects : null;
 
   useEffect(() => {
-    getProjects(statusFilter ?? undefined).then((fetched) => setResult({ filter: statusFilter, projects: fetched }));
-  }, [statusFilter]);
+    getProjects({ status: statusFilter ?? undefined, q: query || undefined }).then((fetched) =>
+      setResult({ key: filterKey, projects: fetched }),
+    );
+  }, [statusFilter, query, filterKey]);
 
   return (
     <div className="space-y-6">
@@ -45,6 +59,16 @@ export default function ProjectsPage() {
           <p className="font-body-lg text-body-lg text-on-surface-variant mt-2">{t("listDescription")}</p>
         </div>
         <div className="flex items-end gap-3">
+          {filtersEnabled && (
+            <div className="w-56">
+              <input
+                className="block w-full px-4 py-2 font-body-md text-body-md text-on-surface bg-surface-container border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
+                placeholder={commonT("searchThisList")}
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+              />
+            </div>
+          )}
           <div className="w-48">
             <Combobox
               placeholder={statusT("all")}
@@ -66,6 +90,18 @@ export default function ProjectsPage() {
           </Can>
         </div>
       </div>
+
+      {filtersEnabled && query && (
+        <div className="flex items-center gap-2">
+          <ActiveFilterChip
+            label={query}
+            onClear={() => {
+              setSearchInput("");
+              setQuery("");
+            }}
+          />
+        </div>
+      )}
 
       {projects === null ? (
         <p className="font-body-md text-body-md text-on-surface-variant">{commonT("loading")}</p>

@@ -26,8 +26,11 @@ import type {
 
 // --- Projects ---------------------------------------------------------------
 
-export function getProjects(statusFilter?: ProjectStatus): Promise<ProjectSummary[]> {
-  const query = statusFilter ? `?status=${statusFilter}` : "";
+export function getProjects(filters?: { status?: ProjectStatus; q?: string }): Promise<ProjectSummary[]> {
+  const params = new URLSearchParams();
+  if (filters?.status) params.set("status", filters.status);
+  if (filters?.q) params.set("q", filters.q);
+  const query = params.toString() ? `?${params.toString()}` : "";
   return apiJson<Paginated<ProjectSummary>>(`/api/v1/knowledge/projects/${query}`).then((data) => data.results);
 }
 
@@ -80,10 +83,15 @@ export function removeProjectAttachment(projectId: string, attachmentId: string)
 
 // --- Components ---------------------------------------------------------------
 
-export function getComponents(filters?: { category?: string; status?: ComponentStatus }): Promise<ComponentSummary[]> {
+export function getComponents(filters?: {
+  category?: string;
+  status?: ComponentStatus;
+  q?: string;
+}): Promise<ComponentSummary[]> {
   const params = new URLSearchParams();
   if (filters?.category) params.set("category", filters.category);
   if (filters?.status) params.set("status", filters.status);
+  if (filters?.q) params.set("q", filters.q);
   const query = params.toString() ? `?${params.toString()}` : "";
   return apiJson<Paginated<ComponentSummary>>(`/api/v1/knowledge/components/${query}`).then((data) => data.results);
 }
@@ -141,10 +149,15 @@ export function removeComponentAttachment(componentId: string, attachmentId: str
 
 // --- Failures ---------------------------------------------------------------
 
-export function getFailures(filters?: { severity?: FailureSeverity; status?: FailureStatus }): Promise<FailureSummary[]> {
+export function getFailures(filters?: {
+  severity?: FailureSeverity;
+  status?: FailureStatus;
+  q?: string;
+}): Promise<FailureSummary[]> {
   const params = new URLSearchParams();
   if (filters?.severity) params.set("severity", filters.severity);
   if (filters?.status) params.set("status", filters.status);
+  if (filters?.q) params.set("q", filters.q);
   const query = params.toString() ? `?${params.toString()}` : "";
   return apiJson<Paginated<FailureSummary>>(`/api/v1/knowledge/failures/${query}`).then((data) => data.results);
 }
@@ -205,10 +218,11 @@ export function removeFailureAttachment(failureId: string, attachmentId: string)
 
 // --- SOPs ---------------------------------------------------------------
 
-export function getSops(filters?: { category?: string; mandatory?: boolean }): Promise<SopSummary[]> {
+export function getSops(filters?: { category?: string; mandatory?: boolean; q?: string }): Promise<SopSummary[]> {
   const params = new URLSearchParams();
   if (filters?.category) params.set("category", filters.category);
   if (filters?.mandatory) params.set("mandatory", "true");
+  if (filters?.q) params.set("q", filters.q);
   const query = params.toString() ? `?${params.toString()}` : "";
   return apiJson<Paginated<SopSummary>>(`/api/v1/knowledge/sops/${query}`).then((data) => data.results);
 }

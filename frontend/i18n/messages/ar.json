@@ -18,7 +18,9 @@
     "copiedLink": "تم نسخ الرابط!",
     "previous": "السابق",
     "next": "التالي",
-    "resultCount": "{count, plural, =0 {لا توجد نتائج} one {نتيجة واحدة} two {نتيجتان} few {# نتائج} many {# نتيجة} other {# نتيجة}}"
+    "resultCount": "{count, plural, =0 {لا توجد نتائج} one {نتيجة واحدة} two {نتيجتان} few {# نتائج} many {# نتيجة} other {# نتيجة}}",
+    "removeFilter": "إزالة الفلتر",
+    "searchThisList": "ابحث في هذه القائمة..."
   },
   "auth": {
     "emailLabel": "البريد الإلكتروني",
@@ -67,6 +69,10 @@
     "searchScopeAll": "الكل",
     "searchScopeArticles": "المقالات",
     "searchScopeQuestions": "الأسئلة",
+    "searchScopeProjects": "المشاريع",
+    "searchScopeComponents": "المكونات",
+    "searchScopeFailures": "الأعطال",
+    "searchScopeSops": "إجراءات التشغيل",
     "searching": "جارٍ البحث...",
     "noSearchResults": "لا توجد نتائج.",
     "seeAllResults": "عرض كل النتائج لـ \"{query}\"",
@@ -128,7 +134,9 @@
       "domainPlaceholder": "athar.example.com",
       "preferencesTitle": "التفضيلات",
       "themeLabel": "المظهر",
-      "languageLabel": "اللغة"
+      "languageLabel": "اللغة",
+      "engineeringListFiltersLabel": "فلاتر البحث التلقائية",
+      "engineeringListFiltersDescription": "يضيف مربع بحث إلى كل صفحة من صفحات قوائم المشاريع/المكونات/الأعطال/إجراءات التشغيل، مقتصرًا على محتوى تلك الصفحة، ويضبط نطاق شريط البحث العلوي تلقائيًا حسب القسم الذي تتصفحه. في الحالتين، تظهر شارة توضح الفلتر المُفعّل وتتيح إزالته. تعطيل هذا الخيار يترك مربعي البحث بلا نطاق افتراضي - ويمكنك دائمًا اختيار فلتر يدويًا."
     },
     "branding": {
       "logoTitle": "شعار المؤسسة",
@@ -243,6 +251,10 @@
       "filterAll": "كل النتائج",
       "filterArticles": "المقالات",
       "filterQuestions": "الأسئلة",
+      "filterProjects": "المشاريع",
+      "filterComponents": "المكونات",
+      "filterFailures": "الأعطال",
+      "filterSops": "إجراءات التشغيل",
       "sortByLabel": "الترتيب حسب",
       "sortNewest": "التاريخ (الأحدث)",
       "sortOldest": "التاريخ (الأقدم)",
@@ -250,7 +262,11 @@
       "loading": "جارٍ التحميل...",
       "noResults": "لا توجد نتائج لـ \"{query}\".",
       "badgeArticle": "مقالة",
-      "badgeQuestion": "سؤال"
+      "badgeQuestion": "سؤال",
+      "badgeProject": "مشروع",
+      "badgeComponent": "مكوّن",
+      "badgeFailure": "عطل",
+      "badgeSop": "إجراء تشغيل"
     },
     "status": {
       "all": "الكل",
@@ -373,7 +389,8 @@
       "uploadingImage": "جارٍ رفع {filename}…",
       "uploadingFile": "جارٍ رفع {filename}…",
       "uploadError": "تعذّر رفع {filename}: {message}",
-      "mentionSearching": "جارٍ البحث..."
+      "mentionSearching": "جارٍ البحث...",
+      "relationError": "تم ربط \"{title}\" في النص، لكن تعذّرت إضافته إلى المعرفة ذات الصلة: {message}"
     }
   },
   "engineering": {

@@ -5,15 +5,19 @@ import { useEffect, useRef, useState } from "react";
 
 import { Icon } from "./Icon";
 import { Markdown } from "./Markdown";
-import { searchKnowledge } from "@/lib/api/knowledge";
+import { createRelation, searchKnowledge } from "@/lib/api/knowledge";
 import { uploadFile } from "@/lib/api/files";
-import type { SearchResult } from "@/lib/api/types";
+import type { RelatableType, SearchResult } from "@/lib/api/types";
 import { RELATABLE_ICON, RELATABLE_ROUTE_PREFIX } from "@/lib/knowledgeTypes";
 
 interface MarkdownEditorProps {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  /** The item this content belongs to, e.g. { type: "article", id: article.id } - when set,
+   * picking an "@"-mention also links the two as Related Knowledge (see selectMention), not
+   * just inserting link text. Omitted while creating a new (unsaved, id-less) item. */
+  relateFrom?: { type: RelatableType; id: string };
 }
 
 // An "@" preceded by start-of-text/whitespace, followed by a run of
@@ -89,19 +93,23 @@ function getCaretCoordinates(
 // button: CommonMark/GFM has no underline syntax, and rendering raw <u> HTML
 // would need rehype-raw (and then sanitizing untrusted user content against
 // XSS) - not worth it for one button.
-export function MarkdownEditor({ value, onChange, placeholder }: MarkdownEditorProps) {
+export function MarkdownEditor({ value, onChange, placeholder, relateFrom }: MarkdownEditorProps) {
   const t = useTranslations("knowledge.editor");
   const commonT = useTranslations("common");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [tab, setTab] = useState<"edit" | "preview">("edit");
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [relationError, setRelationError] = useState<string | null>(null);
 
   // "@"-mention picker: typing "@query" opens a dropdown searching across
   // every relatable type (searchKnowledge already covers all of them);
-  // picking a result replaces "@query" with a real markdown link, so the
-  // reference is just plain link syntax in the source, clickable in preview
-  // - it does NOT create a KnowledgeRelation (that stays a separate, explicit
-  // action via the "Related Knowledge" picker - see RelatedContent.tsx).
+  // picking a result replaces "@query" with a real markdown link AND, when
+  // `relateFrom` names this content's own item, links the two as Related
+  // Knowledge (createRelation is get_or_create-backed server-side, so
+  // mentioning the same thing twice is a harmless no-op, not a duplicate
+  // error) - the inline link and the sidebar relation are one action from
+  // here, though the "Related Knowledge" picker (RelatedContent.tsx) still
+  // exists as the way to link *without* writing an inline mention.
   const [mention, setMention] = useState<{ start: number; query: string } | null>(null);
   // Keyed by the query it was fetched for (rather than reset with a plain
   // setMentionResults([]) at the top of the search effect below) - see
@@ -173,6 +181,20 @@ export function MarkdownEditor({ value, onChange, placeholder }: MarkdownEditorP
     const cursor = mention.start + link.length;
     focusSelection(cursor, cursor);
     setMention(null);
+
+    if (relateFrom && !(relateFrom.type === result.type && relateFrom.id === result.id)) {
+      setRelationError(null);
+      createRelation({
+        source_type: relateFrom.type,
+        source_id: relateFrom.id,
+        target_type: result.type,
+        target_id: result.id,
+      }).catch((err) => {
+        setRelationError(
+          t("relationError", { title: result.title, message: err instanceof Error ? err.message : String(err) }),
+        );
+      });
+    }
   }
 
   function handleMentionKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -464,6 +486,11 @@ export function MarkdownEditor({ value, onChange, placeholder }: MarkdownEditorP
       {uploadError && (
         <p className="px-4 py-2 font-body-md text-body-md text-error border-b border-outline-variant" role="alert">
           {uploadError}
+        </p>
+      )}
+      {relationError && (
+        <p className="px-4 py-2 font-body-md text-body-md text-error border-b border-outline-variant" role="alert">
+          {relationError}
         </p>
       )}
       {tab === "edit" ? (

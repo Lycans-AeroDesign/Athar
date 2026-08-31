@@ -157,6 +157,25 @@ class AuthFlowTests(APITestCase):
         self.assertEqual(response.data["email"], "profile@example.com")
         self.assertEqual(response.data["roles"], ["Guest"])
 
+    def test_me_patch_updates_preferences_and_get_returns_them(self):
+        login_response = self._register_and_login("prefs@example.com", "prefspass123")
+        access = login_response.data["access"]
+
+        response = self.client.get(reverse("auth-me"), HTTP_AUTHORIZATION=f"Bearer {access}")
+        self.assertEqual(response.data["preferences"], {})
+
+        response = self.client.patch(
+            reverse("auth-me"),
+            {"preferences": {"engineering_list_filters": False}},
+            format="json",
+            HTTP_AUTHORIZATION=f"Bearer {access}",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["preferences"], {"engineering_list_filters": False})
+
+        response = self.client.get(reverse("auth-me"), HTTP_AUTHORIZATION=f"Bearer {access}")
+        self.assertEqual(response.data["preferences"], {"engineering_list_filters": False})
+
     def test_refresh_uses_cookie_and_rotates_it(self):
         login_response = self._register_and_login()
         old_cookie_value = login_response.cookies["refresh_token"].value

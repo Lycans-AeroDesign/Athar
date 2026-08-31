@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 import { Can } from "@/components/auth/Can";
+import { ActiveFilterChip } from "@/components/ui/ActiveFilterChip";
 import { Button } from "@/components/ui/Button";
 import { Combobox } from "@/components/ui/Combobox";
 import { Icon } from "@/components/ui/Icon";
@@ -11,6 +12,7 @@ import { Link } from "@/i18n/navigation";
 import { getComponents } from "@/lib/api/engineering";
 import { getCategories } from "@/lib/api/knowledge";
 import type { Category, ComponentStatus, ComponentSummary } from "@/lib/api/types";
+import { useEngineeringListFiltersEnabled } from "@/lib/auth/permissions";
 
 const STATUS_VALUES: ComponentStatus[] = ["CERTIFIED", "TESTING", "DEPRECATED"];
 
@@ -25,13 +27,20 @@ export default function ComponentsPage() {
   const statusT = useTranslations("engineering.componentStatus");
   const commonT = useTranslations("common");
 
+  const filtersEnabled = useEngineeringListFiltersEnabled();
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<ComponentStatus | null>(null);
+  const [searchInput, setSearchInput] = useState("");
+  const [query, setQuery] = useState("");
+  useEffect(() => {
+    const handle = setTimeout(() => setQuery(searchInput.trim()), 300);
+    return () => clearTimeout(handle);
+  }, [searchInput]);
 
-  // Keyed by the filter pair it was fetched for - see projects/page.tsx's
+  // Keyed by the filter combination it was fetched for - see projects/page.tsx's
   // matching comment for why this avoids a plain setComponents(null) reset.
-  const filterKey = `${categoryFilter ?? ""}:${statusFilter ?? ""}`;
+  const filterKey = `${categoryFilter ?? ""}:${statusFilter ?? ""}:${query}`;
   const [result, setResult] = useState<{ key: string; components: ComponentSummary[] } | null>(null);
   const components = result?.key === filterKey ? result.components : null;
 
@@ -40,10 +49,10 @@ export default function ComponentsPage() {
   }, []);
 
   useEffect(() => {
-    getComponents({ category: categoryFilter ?? undefined, status: statusFilter ?? undefined }).then((fetched) =>
-      setResult({ key: filterKey, components: fetched }),
+    getComponents({ category: categoryFilter ?? undefined, status: statusFilter ?? undefined, q: query || undefined }).then(
+      (fetched) => setResult({ key: filterKey, components: fetched }),
     );
-  }, [categoryFilter, statusFilter, filterKey]);
+  }, [categoryFilter, statusFilter, query, filterKey]);
 
   return (
     <div className="space-y-6">
@@ -53,6 +62,16 @@ export default function ComponentsPage() {
           <p className="font-body-lg text-body-lg text-on-surface-variant mt-2">{t("listDescription")}</p>
         </div>
         <div className="flex flex-wrap items-end gap-3">
+          {filtersEnabled && (
+            <div className="w-56">
+              <input
+                className="block w-full px-4 py-2 font-body-md text-body-md text-on-surface bg-surface-container border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
+                placeholder={commonT("searchThisList")}
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+              />
+            </div>
+          )}
           <div className="w-48">
             <Combobox
               placeholder={commonT("select")}
@@ -82,6 +101,18 @@ export default function ComponentsPage() {
           </Can>
         </div>
       </div>
+
+      {filtersEnabled && query && (
+        <div className="flex items-center gap-2">
+          <ActiveFilterChip
+            label={query}
+            onClear={() => {
+              setSearchInput("");
+              setQuery("");
+            }}
+          />
+        </div>
+      )}
 
       {components === null ? (
         <p className="font-body-md text-body-md text-on-surface-variant">{commonT("loading")}</p>

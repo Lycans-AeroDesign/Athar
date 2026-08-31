@@ -5,23 +5,75 @@ import { useEffect, useRef, useState } from "react";
 
 import { Icon } from "@/components/ui/Icon";
 import { Menu } from "@/components/ui/Menu";
-import { useRouter } from "@/i18n/navigation";
+import { usePathname, useRouter } from "@/i18n/navigation";
 import { searchKnowledge } from "@/lib/api/knowledge";
-import type { SearchResult } from "@/lib/api/types";
+import type { RelatableType, SearchResult } from "@/lib/api/types";
+import { useEngineeringListFiltersEnabled } from "@/lib/auth/permissions";
+import { RELATABLE_ICON, RELATABLE_ROUTE_PREFIX } from "@/lib/knowledgeTypes";
 
-type Scope = "all" | "article" | "question";
+type Scope = "all" | RelatableType;
 
-// The one global search bar (see TopBar.tsx) - searches articles and
-// questions together, with a scope dropdown to narrow to a single section.
-// Debounced live results in a dropdown; picking one or hitting Enter
-// navigates straight to it rather than to a separate results page.
+// Every relatable type SearchView actually searches - kept in sync with
+// knowledge/search/page.tsx's CONTENT_TYPES so the scope menu here covers
+// the same six types that page's filter list does.
+const CONTENT_TYPES: RelatableType[] = ["article", "question", "project", "component", "failure", "sop"];
+
+const SCOPE_LABEL_KEYS: Record<Scope, string> = {
+  all: "searchScopeAll",
+  article: "searchScopeArticles",
+  question: "searchScopeQuestions",
+  project: "searchScopeProjects",
+  component: "searchScopeComponents",
+  failure: "searchScopeFailures",
+  sop: "searchScopeSops",
+};
+
+// Pathname prefix -> the scope that page's own content lives under, so the
+// bar auto-narrows to match wherever you already are (a search typed while
+// looking at Failures has no reason to default to hunting through SOPs).
+// `/knowledge/search` itself is deliberately excluded - that page manages
+// its own scope from the URL, not from wherever you were before landing on it.
+const SCOPE_BY_PATH_PREFIX: [prefix: string, scope: RelatableType][] = [
+  ["/knowledge/articles", "article"],
+  ["/knowledge/questions", "question"],
+  ["/projects", "project"],
+  ["/components", "component"],
+  ["/failures", "failure"],
+  ["/sops", "sop"],
+];
+
+function scopeForPathname(pathname: string): Scope {
+  return SCOPE_BY_PATH_PREFIX.find(([prefix]) => pathname.startsWith(prefix))?.[1] ?? "all";
+}
+
+// The one global search bar (see TopBar.tsx) - searches every relatable type
+// together, with a scope dropdown to narrow to a single one. Debounced live
+// results in a dropdown; picking one or hitting Enter navigates straight to
+// it rather than to a separate results page.
 export function GlobalSearch() {
   const t = useTranslations("topbar");
+  const commonT = useTranslations("common");
   const router = useRouter();
+  const pathname = usePathname();
   const containerRef = useRef<HTMLDivElement>(null);
+  // Same preference that gates the list pages' own search box (Account >
+  // Settings > Preferences) - off means no filter gets added automatically
+  // anywhere, so the bar always starts from "all" here too. A manual pick
+  // from the dropdown below still works regardless; this only governs the
+  // automatic part.
+  const autoScopeEnabled = useEngineeringListFiltersEnabled();
 
   const [query, setQuery] = useState("");
-  const [scope, setScope] = useState<Scope>("all");
+  // Keyed by the pathname it was picked on, rather than reset with a plain
+  // setScope(...) in a pathname-watching effect - see knowledge/page.tsx's
+  // status-filter effect for why (that pattern runs setState synchronously
+  // in the effect body, which React's lint rule flags). A manual pick from
+  // the dropdown below sticks for as long as you stay on this page; once you
+  // navigate elsewhere the override's pathname no longer matches and it
+  // falls back to the auto-detected scope (or "all", if that's disabled) below.
+  const [manualScope, setManualScope] = useState<{ pathname: string; scope: Scope } | null>(null);
+  const scope =
+    manualScope?.pathname === pathname ? manualScope.scope : autoScopeEnabled ? scopeForPathname(pathname) : "all";
   const [results, setResults] = useState<SearchResult[] | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
@@ -64,13 +116,17 @@ export function GlobalSearch() {
     setIsOpen(false);
     setQuery("");
     setResults(null);
-    router.push(result.type === "article" ? `/knowledge/articles/${result.id}` : `/knowledge/questions/${result.id}`);
+    router.push(`${RELATABLE_ROUTE_PREFIX[result.type]}/${result.id}`);
   }
 
   const scopeLabels: Record<Scope, string> = {
-    all: t("searchScopeAll"),
-    article: t("searchScopeArticles"),
-    question: t("searchScopeQuestions"),
+    all: t(SCOPE_LABEL_KEYS.all),
+    article: t(SCOPE_LABEL_KEYS.article),
+    question: t(SCOPE_LABEL_KEYS.question),
+    project: t(SCOPE_LABEL_KEYS.project),
+    component: t(SCOPE_LABEL_KEYS.component),
+    failure: t(SCOPE_LABEL_KEYS.failure),
+    sop: t(SCOPE_LABEL_KEYS.sop),
   };
 
   return (
@@ -88,23 +144,40 @@ export function GlobalSearch() {
           if (e.key === "Enter") goToSearchPage();
         }}
       />
-      <div className="absolute end-2 top-1/2 -translate-y-1/2">
+      <div className="absolute end-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
         <Menu
           align="end"
           trigger={
             <button
               type="button"
-              className="flex items-center gap-1 px-2 py-1 rounded-lg font-label-caps text-label-caps uppercase text-on-surface-variant hover:bg-surface-variant transition-colors"
+              className={`flex items-center gap-1 px-2 py-1 rounded-full font-label-caps text-label-caps uppercase transition-colors ${
+                scope === "all"
+                  ? "text-on-surface-variant hover:bg-surface-variant"
+                  : "bg-primary/10 text-primary border border-primary/20"
+              }`}
             >
               {scopeLabels[scope]}
               <Icon name="expand_more" size={16} />
             </button>
           }
-          items={(["all", "article", "question"] as Scope[]).map((value) => ({
+          items={(["all", ...CONTENT_TYPES] as Scope[]).map((value) => ({
             label: scopeLabels[value],
-            onSelect: () => setScope(value),
+            onSelect: () => setManualScope({ pathname, scope: value }),
           }))}
         />
+        {/* A removable "pill" once a scope is active - clicking it clears
+            straight back to "all" without reopening the Menu above, which
+            stays for *picking* a scope. */}
+        {scope !== "all" && (
+          <button
+            type="button"
+            onClick={() => setManualScope({ pathname, scope: "all" })}
+            aria-label={commonT("removeFilter")}
+            className="rounded-full p-1 text-primary hover:bg-primary/20 transition-colors"
+          >
+            <Icon name="close" size={14} />
+          </button>
+        )}
       </div>
 
       {isOpen && query.trim() && (
@@ -123,7 +196,7 @@ export function GlobalSearch() {
                     className="flex w-full items-start gap-3 px-4 py-2.5 text-start hover:bg-surface-variant transition-colors"
                   >
                     <Icon
-                      name={result.type === "article" ? "menu_book" : "forum"}
+                      name={RELATABLE_ICON[result.type]}
                       size={18}
                       className="mt-0.5 text-on-surface-variant shrink-0"
                     />

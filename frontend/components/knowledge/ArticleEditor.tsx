@@ -141,7 +141,12 @@ export function ArticleEditor({ article, onDirtyChange }: ArticleEditorProps) {
         />
       </div>
 
-      <MarkdownEditor value={content} onChange={setContent} placeholder={t("contentPlaceholder")} />
+      <MarkdownEditor
+        value={content}
+        onChange={setContent}
+        placeholder={t("contentPlaceholder")}
+        relateFrom={article ? { type: "article", id: article.id } : undefined}
+      />
 
       {error && (
         <p className="font-body-md text-body-md text-error" role="alert">

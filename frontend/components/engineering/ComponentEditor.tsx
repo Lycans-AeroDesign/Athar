@@ -140,7 +140,12 @@ export function ComponentEditor({ component, onDirtyChange }: ComponentEditorPro
         </div>
       </div>
 
-      <MarkdownEditor value={summary} onChange={setSummary} placeholder={t("summaryPlaceholder")} />
+      <MarkdownEditor
+        value={summary}
+        onChange={setSummary}
+        placeholder={t("summaryPlaceholder")}
+        relateFrom={component ? { type: "component", id: component.id } : undefined}
+      />
 
       <div className="space-y-2">
         <div className="flex items-center justify-between">

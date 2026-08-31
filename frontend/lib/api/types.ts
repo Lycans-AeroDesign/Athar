@@ -6,6 +6,12 @@ export interface Paginated<T> {
   results: T[];
 }
 
+/** Personal UI settings, self-service via PATCH /auth/me/ (see backend/accounts/models.py's User.preferences) - add keys as features need them. */
+export interface UserPreferences {
+  /** Show the per-page search filter (with its active-filter chip) on the Projects/Components/Failures/SOPs list pages. Defaults to on. */
+  engineering_list_filters?: boolean;
+}
+
 export interface User {
   id: string;
   email: string;
@@ -15,6 +21,7 @@ export interface User {
   title: string;
   roles: string[];
   permissions: string[];
+  preferences: UserPreferences;
   date_joined: string;
 }
 

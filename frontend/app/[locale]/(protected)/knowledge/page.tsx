@@ -101,9 +101,9 @@ export default function KnowledgePage() {
 
   return (
     <div className="space-y-8">
-      <div className="text-center border-b border-outline-variant pb-8 space-y-4">
+      <div className="flex flex-wrap items-end justify-between gap-4 border-b border-outline-variant pb-8">
         <h1 className="font-display text-display text-on-surface">{t("heroTitle")}</h1>
-        <div className="flex items-center justify-center gap-3">
+        <div className="flex items-center gap-3">
           <Can permission="question.create">
             <Link href="/knowledge/questions/new">
               <Button variant="secondary">
