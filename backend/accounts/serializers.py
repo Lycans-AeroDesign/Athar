@@ -13,6 +13,7 @@ class UserSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "email",
+            "username",
             "first_name",
             "last_name",
             "title",
@@ -33,7 +34,13 @@ class MeUpdateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ["first_name", "last_name", "title", "preferences"]
+        fields = ["username", "first_name", "last_name", "title", "preferences"]
+
+    def validate_username(self, value):
+        # "" means "clear it" from the client's perspective, but the model
+        # field must never store "" (see models.py's username field comment -
+        # two blank strings would collide on the unique constraint).
+        return value or None
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):

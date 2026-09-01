@@ -1,8 +1,10 @@
 from rest_framework import serializers
 
 from accounts.models import User
+from files.models import StoredFile
 from files.serializers import StoredFileSerializer
 
+from . import relationships
 from .models import (
     Answer,
     Article,
@@ -11,6 +13,7 @@ from .models import (
     Category,
     Component,
     ComponentAttachment,
+    Document,
     Failure,
     FailureAttachment,
     KnowledgeRelation,
@@ -21,6 +24,8 @@ from .models import (
     Sop,
     SopAttachment,
     Tag,
+    Test,
+    TestAttachment,
 )
 
 
@@ -32,7 +37,23 @@ class AuthorSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ["id", "first_name", "last_name", "email", "title"]
+        fields = ["id", "first_name", "last_name", "email", "title", "username"]
+
+
+class UserProfileSerializer(serializers.ModelSerializer):
+    """Public-safe profile shape for a user's contributions page - same
+    minimal fields as AuthorSerializer above (never roles/permissions) plus
+    date_joined and the aggregate contribution counts the view computes and
+    passes in via context - there's no model field backing `stats`."""
+
+    stats = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = ["id", "first_name", "last_name", "email", "title", "username", "date_joined", "stats"]
+
+    def get_stats(self, obj: User) -> dict:
+        return self.context["stats"]
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -194,22 +215,29 @@ class AcceptAnswerSerializer(serializers.Serializer):
 
 
 class KnowledgeRelationSerializer(serializers.ModelSerializer):
-    """Relations have no real directionality in the UI ("related to" reads
-    the same both ways) - this always renders the *other* side relative to
-    context["viewer"] = (viewer_content_type, viewer_object_id), which the
-    view passes in, rather than exposing source/target directly."""
+    """This always renders the *other* side relative to context["viewer"] =
+    (viewer_content_type, viewer_object_id), which the view passes in, rather
+    than exposing source/target directly. `relation_label` is the direction-
+    aware verb (e.g. "USES" from the source's side, "USED_IN" from the
+    target's side, per knowledge/relationships.py's registry) - falls back to
+    the stored relation_type verbatim (typically the generic "RELATED",
+    symmetric either way) when no registry entry matches."""
 
     other_type = serializers.SerializerMethodField()
     other_id = serializers.SerializerMethodField()
     other_title = serializers.SerializerMethodField()
+    relation_label = serializers.SerializerMethodField()
 
     class Meta:
         model = KnowledgeRelation
-        fields = ["id", "relation_type", "other_type", "other_id", "other_title", "created_at"]
+        fields = ["id", "relation_type", "relation_label", "other_type", "other_id", "other_title", "created_at"]
+
+    def _is_viewer_the_source(self, obj: KnowledgeRelation) -> bool:
+        viewer_content_type, viewer_object_id = self.context["viewer"]
+        return obj.source_content_type_id == viewer_content_type.id and obj.source_object_id == viewer_object_id
 
     def _other(self, obj: KnowledgeRelation):
-        viewer_content_type, viewer_object_id = self.context["viewer"]
-        if obj.source_content_type_id == viewer_content_type.id and obj.source_object_id == viewer_object_id:
+        if self._is_viewer_the_source(obj):
             return obj.target_content_type, obj.target
         return obj.source_content_type, obj.source
 
@@ -229,6 +257,18 @@ class KnowledgeRelationSerializer(serializers.ModelSerializer):
         # `name` - falling back rather than renaming one set keeps each
         # model's field named what it actually is.
         return getattr(other, "title", None) or getattr(other, "name", None)
+
+    def get_relation_label(self, obj: KnowledgeRelation) -> str:
+        if obj.relation_type == relationships.GENERIC_RELATED:
+            return obj.relation_type
+        definition = relationships.get_definition(
+            obj.relation_type, obj.source_content_type.model, obj.target_content_type.model
+        )
+        if definition is None:
+            # Shouldn't happen if create_relation() is the only writer (it
+            # only ever stores a canonical name), but stay safe rather than 500.
+            return obj.relation_type
+        return definition.name if self._is_viewer_the_source(obj) else definition.reverse_name
 
 
 class ArticleAttachmentSerializer(serializers.ModelSerializer):
@@ -258,12 +298,17 @@ class CreateRelationSerializer(serializers.Serializer):
     model name (article/question) rather than a raw ContentType id, so
     clients never need to know ContentType pks."""
 
-    _RELATABLE_TYPES = ["article", "question", "project", "component", "failure", "sop"]
+    _RELATABLE_TYPES = ["article", "question", "project", "component", "failure", "sop", "test", "document"]
 
     source_type = serializers.ChoiceField(choices=_RELATABLE_TYPES)
     source_id = serializers.UUIDField()
     target_type = serializers.ChoiceField(choices=_RELATABLE_TYPES)
     target_id = serializers.UUIDField()
+    # Validated against the relationship registry in services.create_relation
+    # (not here - that needs source_type/target_type together, which isn't
+    # available at the single-field validation stage) rather than a fixed
+    # ChoiceField, since which verbs are valid depends on the type pair.
+    relation_type = serializers.CharField(default="RELATED")
 
 
 # --- Engineering domain ----------------------------------------------------
@@ -423,6 +468,59 @@ class SopWriteSerializer(serializers.ModelSerializer):
         fields = ["title", "category_id", "mandatory", "safety_notes", "content", "tag_names"]
 
 
+class TestListSerializer(serializers.ModelSerializer):
+    project = ProjectListSerializer(read_only=True)
+    tags = TagSerializer(many=True, read_only=True)
+    created_by = AuthorSerializer(read_only=True)
+
+    class Meta:
+        model = Test
+        fields = [
+            "id",
+            "title",
+            "test_type",
+            "date",
+            "location",
+            "project",
+            "status",
+            "pass_fail",
+            "tags",
+            "created_by",
+            "created_at",
+            "updated_at",
+        ]
+
+
+class TestDetailSerializer(TestListSerializer):
+    class Meta(TestListSerializer.Meta):
+        fields = [*TestListSerializer.Meta.fields, "objective", "configuration", "procedure", "results", "conclusion"]
+
+
+class TestWriteSerializer(serializers.ModelSerializer):
+    project_id = serializers.PrimaryKeyRelatedField(
+        source="project", queryset=Project.objects.all(), allow_null=True, required=False
+    )
+    tag_names = serializers.ListField(child=serializers.CharField(), required=False)
+
+    class Meta:
+        model = Test
+        fields = [
+            "title",
+            "test_type",
+            "date",
+            "location",
+            "project_id",
+            "objective",
+            "status",
+            "configuration",
+            "procedure",
+            "results",
+            "pass_fail",
+            "conclusion",
+            "tag_names",
+        ]
+
+
 class ProjectAttachmentSerializer(serializers.ModelSerializer):
     file = StoredFileSerializer(read_only=True)
     uploaded_by = AuthorSerializer(read_only=True)
@@ -457,3 +555,75 @@ class SopAttachmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = SopAttachment
         fields = ["id", "file", "uploaded_by", "created_at"]
+
+
+class TestAttachmentSerializer(serializers.ModelSerializer):
+    file = StoredFileSerializer(read_only=True)
+    uploaded_by = AuthorSerializer(read_only=True)
+
+    class Meta:
+        model = TestAttachment
+        fields = ["id", "file", "uploaded_by", "created_at"]
+
+
+class DocumentListSerializer(serializers.ModelSerializer):
+    category = CategorySerializer(read_only=True)
+    tags = TagSerializer(many=True, read_only=True)
+    created_by = AuthorSerializer(read_only=True)
+    file = StoredFileSerializer(read_only=True)
+
+    class Meta:
+        model = Document
+        fields = [
+            "id",
+            "title",
+            "doc_type",
+            "source",
+            "author",
+            "organization",
+            "publication_date",
+            "url",
+            "file",
+            "category",
+            "tags",
+            "visibility",
+            "created_by",
+            "created_at",
+            "updated_at",
+        ]
+
+
+class DocumentDetailSerializer(DocumentListSerializer):
+    class Meta(DocumentListSerializer.Meta):
+        fields = [*DocumentListSerializer.Meta.fields, "description"]
+
+
+class DocumentWriteSerializer(serializers.ModelSerializer):
+    # Two-phase upload like every other file relationship in this app -
+    # upload via files.upload first, then reference the returned id here
+    # (see DocumentEditor.tsx), same pattern as the *AttachmentListView.post
+    # endpoints rather than a raw file field on create.
+    file_id = serializers.PrimaryKeyRelatedField(
+        source="file", queryset=StoredFile.objects.all(), allow_null=True, required=False
+    )
+    category_id = serializers.PrimaryKeyRelatedField(
+        source="category", queryset=Category.objects.all(), allow_null=True, required=False
+    )
+    tag_names = serializers.ListField(child=serializers.CharField(), required=False)
+
+    class Meta:
+        model = Document
+        fields = [
+            "title",
+            "description",
+            "doc_type",
+            "source",
+            "author",
+            "organization",
+            "publication_date",
+            "url",
+            "file_id",
+            "category_id",
+            "tag_names",
+            "visibility",
+        ]

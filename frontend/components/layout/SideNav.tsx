@@ -21,6 +21,8 @@ const NAV_ITEMS: ReadonlyArray<{ href: string; labelKey: string; icon: string; p
   { href: "/components", labelKey: "components", icon: "settings_input_component", permission: "component.read" },
   { href: "/sops", labelKey: "sops", icon: "description", permission: "sop.read" },
   { href: "/failures", labelKey: "failures", icon: "report_problem", permission: "failure.read" },
+  { href: "/tests", labelKey: "tests", icon: "science", permission: "test.read" },
+  { href: "/documents", labelKey: "documents", icon: "folder", permission: "document.read" },
 ];
 
 interface SideNavProps {

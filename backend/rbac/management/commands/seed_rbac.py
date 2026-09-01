@@ -35,6 +35,17 @@ PERMISSION_CATALOGUE = [
     ("sop.create", "Create SOPs"),
     ("sop.update", "Update SOPs"),
     ("sop.delete", "Delete SOPs"),
+    ("test.read", "View tests/experiments"),
+    ("test.create", "Record tests/experiments"),
+    ("test.update", "Update tests/experiments"),
+    ("test.delete", "Delete tests/experiments"),
+    ("document.read", "View documents/resources"),
+    ("document.create", "Add documents/resources"),
+    # No document.delete - services.update_document/delete_document both gate
+    # on "you're created_by, or you hold document.update" (see their own
+    # docstrings), same ownership-or-override shape as question.moderate,
+    # not a tiered read/create/update/delete-only scheme.
+    ("document.update", "Edit/delete any document, and view RESTRICTED ones that aren't yours"),
     ("user.manage", "Manage users"),
     ("role.manage", "Manage roles"),
     ("permission.manage", "Manage role-permission assignments"),
@@ -60,6 +71,10 @@ MEMBER_PERMISSIONS = [
     "component.read",
     "component.create",
     "sop.read",
+    "test.read",
+    "test.create",
+    "document.read",
+    "document.create",
 ]
 SENIOR_MEMBER_PERMISSIONS = MEMBER_PERMISSIONS + [
     "article.review",
@@ -72,6 +87,8 @@ SENIOR_MEMBER_PERMISSIONS = MEMBER_PERMISSIONS + [
     # Senior Member+ rather than Member, unlike Component.
     "sop.create",
     "sop.update",
+    "test.update",
+    "document.update",
 ]
 TEAM_HEAD_PERMISSIONS = SENIOR_MEMBER_PERMISSIONS + [
     "article.publish",
@@ -81,6 +98,7 @@ TEAM_HEAD_PERMISSIONS = SENIOR_MEMBER_PERMISSIONS + [
     "project.delete",
     "component.delete",
     "sop.delete",
+    "test.delete",
 ]
 
 ROLE_CATALOGUE = {

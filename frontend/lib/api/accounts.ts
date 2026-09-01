@@ -2,6 +2,7 @@ import { apiJson } from "./client";
 import type { User, UserPreferences } from "./types";
 
 export function updateMe(payload: {
+  username?: string | null;
   first_name?: string;
   last_name?: string;
   title?: string;

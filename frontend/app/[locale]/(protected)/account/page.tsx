@@ -1,10 +1,13 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
+import { ContributionsPanel } from "@/components/knowledge/ContributionsPanel";
 import { Button } from "@/components/ui/Button";
 import { updateMe } from "@/lib/api/accounts";
+import { getUserProfile } from "@/lib/api/knowledge";
+import type { UserProfile } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth/AuthProvider";
 
 // Structured like GeneralSettingsForm.tsx - a single always-editable card,
@@ -15,6 +18,7 @@ export default function AccountPage() {
   const commonT = useTranslations("common");
   const { user, updateUser } = useAuth();
 
+  const [username, setUsername] = useState(user?.username ?? "");
   const [firstName, setFirstName] = useState(user?.first_name ?? "");
   const [lastName, setLastName] = useState(user?.last_name ?? "");
   const [title, setTitle] = useState(user?.title ?? "");
@@ -22,13 +26,21 @@ export default function AccountPage() {
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Own contributions section below - a second fetch beyond `user` (which
+  // has no `stats`) since ContributionsPanel needs the same aggregate counts
+  // /users/[id] computes server-side (see knowledge/views.py's UserProfileView).
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  useEffect(() => {
+    if (user) getUserProfile(user.id).then(setProfile);
+  }, [user]);
+
   if (!user) return null;
 
   async function handleSave() {
     setIsSaving(true);
     setError(null);
     try {
-      const updated = await updateMe({ first_name: firstName, last_name: lastName, title });
+      const updated = await updateMe({ username: username.trim() || null, first_name: firstName, last_name: lastName, title });
       updateUser(updated);
       setSavedAt(Date.now());
     } catch (err) {
@@ -53,6 +65,19 @@ export default function AccountPage() {
             value={user.email}
             disabled
           />
+        </div>
+
+        <div className="space-y-2">
+          <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase">
+            {t("usernameLabel")}
+          </label>
+          <input
+            className="block w-full px-4 py-2 font-body-md text-body-md text-on-surface bg-surface-container border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
+            placeholder={t("usernamePlaceholder")}
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+          />
+          <p className="font-body-md text-body-md text-on-surface-variant">{t("usernameHint")}</p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -120,6 +145,15 @@ export default function AccountPage() {
           </Button>
           {savedAt && <span className="font-body-md text-body-md text-on-surface-variant">{commonT("saved")}</span>}
         </div>
+      </div>
+
+      <div className="mt-10 space-y-4">
+        <h2 className="font-headline-md text-headline-md text-on-surface">{t("myContributionsTitle")}</h2>
+        {profile ? (
+          <ContributionsPanel profile={profile} />
+        ) : (
+          <p className="font-body-md text-body-md text-on-surface-variant">{commonT("loading")}</p>
+        )}
       </div>
     </section>
   );

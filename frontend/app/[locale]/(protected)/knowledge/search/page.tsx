@@ -16,8 +16,17 @@ type Scope = "all" | RelatableType;
 
 // Every relatable type SearchView actually searches (see backend/knowledge/views.py's
 // SearchView) - kept in this order (matches SideNav/RELATABLE_ICON) so the filter
-// list and result badges cover the same six types the API's `counts` returns.
-const CONTENT_TYPES: RelatableType[] = ["article", "question", "project", "component", "failure", "sop"];
+// list and result badges cover the same types the API's `counts` returns.
+const CONTENT_TYPES: RelatableType[] = [
+  "article",
+  "question",
+  "project",
+  "component",
+  "failure",
+  "sop",
+  "test",
+  "document",
+];
 
 const FILTER_LABEL_KEYS: Record<RelatableType, string> = {
   article: "filterArticles",
@@ -26,6 +35,8 @@ const FILTER_LABEL_KEYS: Record<RelatableType, string> = {
   component: "filterComponents",
   failure: "filterFailures",
   sop: "filterSops",
+  test: "filterTests",
+  document: "filterDocuments",
 };
 
 const BADGE_LABEL_KEYS: Record<RelatableType, string> = {
@@ -35,6 +46,8 @@ const BADGE_LABEL_KEYS: Record<RelatableType, string> = {
   component: "badgeComponent",
   failure: "badgeFailure",
   sop: "badgeSop",
+  test: "badgeTest",
+  document: "badgeDocument",
 };
 
 const SCOPE_OPTIONS: { value: Scope; labelKey: string }[] = [
@@ -42,7 +55,16 @@ const SCOPE_OPTIONS: { value: Scope; labelKey: string }[] = [
   ...CONTENT_TYPES.map((value) => ({ value, labelKey: FILTER_LABEL_KEYS[value] })),
 ];
 
-const EMPTY_COUNTS: SearchCounts = { article: 0, question: 0, project: 0, component: 0, failure: 0, sop: 0 };
+const EMPTY_COUNTS: SearchCounts = {
+  article: 0,
+  question: 0,
+  project: 0,
+  component: 0,
+  failure: 0,
+  sop: 0,
+  test: 0,
+  document: 0,
+};
 
 const SORT_OPTIONS: { value: SearchSort; labelKey: string }[] = [
   { value: "newest", labelKey: "sortNewest" },

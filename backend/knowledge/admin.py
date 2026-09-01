@@ -6,11 +6,13 @@ from .models import (
     ArticleRevision,
     Category,
     Component,
+    Document,
     Failure,
     Project,
     Question,
     Sop,
     Tag,
+    Test,
 )
 
 
@@ -69,3 +71,15 @@ class FailureAdmin(admin.ModelAdmin):
 class SopAdmin(admin.ModelAdmin):
     list_display = ["title", "category", "mandatory", "updated_at"]
     list_filter = ["mandatory", "category"]
+
+
+@admin.register(Test)
+class TestAdmin(admin.ModelAdmin):
+    list_display = ["title", "test_type", "status", "pass_fail", "project", "date"]
+    list_filter = ["test_type", "status", "pass_fail"]
+
+
+@admin.register(Document)
+class DocumentAdmin(admin.ModelAdmin):
+    list_display = ["title", "doc_type", "source", "visibility", "category", "publication_date"]
+    list_filter = ["doc_type", "source", "visibility", "category"]

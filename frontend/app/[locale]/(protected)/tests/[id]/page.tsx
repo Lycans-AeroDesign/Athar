@@ -11,58 +11,61 @@ import { Icon } from "@/components/ui/Icon";
 import { IconButton } from "@/components/ui/IconButton";
 import { Markdown } from "@/components/ui/Markdown";
 import { Link, useRouter } from "@/i18n/navigation";
-import { deleteFailure, getFailure } from "@/lib/api/engineering";
-import type { FailureDetail, FailureSeverity, FailureStatus } from "@/lib/api/types";
+import { deleteTest, getTest } from "@/lib/api/engineering";
+import type { TestDetail, TestPassFail, TestRunStatus } from "@/lib/api/types";
 import { useHasPermission } from "@/lib/auth/permissions";
 
-const SEVERITY_CLASSES: Record<FailureSeverity, string> = {
-  LOW: "bg-surface-variant text-on-surface-variant",
-  MEDIUM: "bg-tertiary-container text-on-tertiary-container",
-  HIGH: "bg-error-container text-on-error-container",
+const STATUS_CLASSES: Record<TestRunStatus, string> = {
+  PLANNED: "border border-outline-variant text-on-surface-variant",
+  IN_PROGRESS: "bg-tertiary-container text-on-tertiary-container",
+  COMPLETED: "bg-secondary-container text-on-secondary-container",
 };
 
-const STATUS_CLASSES: Record<FailureStatus, string> = {
-  UNDER_INVESTIGATION: "border border-outline-variant text-on-surface-variant",
-  RESOLVED: "bg-secondary-container text-on-secondary-container",
+const PASS_FAIL_CLASSES: Record<Exclude<TestPassFail, "">, string> = {
+  PASS: "bg-secondary-container text-on-secondary-container",
+  FAIL: "bg-error-container text-on-error-container",
+  PARTIAL: "bg-tertiary-container text-on-tertiary-container",
+  NOT_APPLICABLE: "border border-outline-variant text-on-surface-variant",
 };
 
-// See engineering/page.tsx's failures list for why this doesn't use
-// lib/datetime.ts's formatDate() - `date` is a plain calendar date, not a UTC timestamp.
+// See tests/page.tsx's list for why this doesn't use lib/datetime.ts's
+// formatDate() - `date` is a plain calendar date, not a UTC timestamp.
 function formatCalendarDate(isoDate: string): string {
   const [year, month, day] = isoDate.split("-").map(Number);
   return new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(new Date(year, month - 1, day));
 }
 
-export default function FailureDetailPage() {
+export default function TestDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const t = useTranslations("engineering.failure");
-  const severityT = useTranslations("engineering.failureSeverity");
-  const statusT = useTranslations("engineering.failureStatus");
+  const t = useTranslations("engineering.test");
+  const typeT = useTranslations("engineering.testType");
+  const statusT = useTranslations("engineering.testStatus");
+  const passFailT = useTranslations("engineering.testPassFail");
   const router = useRouter();
-  const canUpdate = useHasPermission("failure.update");
-  const canDelete = useHasPermission("failure.delete");
+  const canUpdate = useHasPermission("test.update");
+  const canDelete = useHasPermission("test.delete");
 
-  const [failure, setFailure] = useState<FailureDetail | null>(null);
+  const [test, setTest] = useState<TestDetail | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
-    getFailure(id).then(setFailure, () => setNotFound(true));
+    getTest(id).then(setTest, () => setNotFound(true));
   }, [id]);
 
   if (notFound) {
     return <p className="font-body-md text-body-md text-error">{t("notFound")}</p>;
   }
-  if (!failure) {
+  if (!test) {
     return <p className="font-body-md text-body-md text-on-surface-variant">{t("loading")}</p>;
   }
 
   async function handleDelete() {
     setActionError(null);
     try {
-      await deleteFailure(failure!.id);
-      router.push("/failures");
+      await deleteTest(test!.id);
+      router.push("/tests");
     } catch (err) {
       setActionError(err instanceof Error ? err.message : String(err));
     }
@@ -72,30 +75,35 @@ export default function FailureDetailPage() {
     <div className="flex flex-col lg:flex-row gap-8 items-start">
     <div className="flex-1 min-w-0 max-w-[800px] space-y-6">
       <Link
-        href="/failures"
+        href="/tests"
         className="inline-flex items-center gap-1 font-label-caps text-label-caps uppercase text-on-surface-variant hover:text-on-surface transition-colors"
       >
         <Icon name="arrow_back" size={16} />
         {t("backToList")}
       </Link>
 
-      <div className="border-t-4 border-error rounded-t-xl bg-surface pt-6 space-y-3">
+      <div className="border-t-4 border-primary rounded-t-xl bg-surface pt-6 space-y-3">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-2">
-            <span
-              className={`inline-flex items-center px-2.5 py-1 rounded-full font-label-caps text-label-caps uppercase ${SEVERITY_CLASSES[failure.severity]}`}
-            >
-              {severityT(failure.severity)}
+            <span className="inline-flex items-center px-2.5 py-1 rounded-full font-label-caps text-label-caps uppercase border border-outline-variant text-on-surface-variant">
+              {typeT(test.test_type)}
             </span>
             <span
-              className={`inline-flex items-center px-2.5 py-1 rounded-full font-label-caps text-label-caps uppercase ${STATUS_CLASSES[failure.status]}`}
+              className={`inline-flex items-center px-2.5 py-1 rounded-full font-label-caps text-label-caps uppercase ${STATUS_CLASSES[test.status]}`}
             >
-              {statusT(failure.status)}
+              {statusT(test.status)}
             </span>
+            {test.pass_fail && (
+              <span
+                className={`inline-flex items-center px-2.5 py-1 rounded-full font-label-caps text-label-caps uppercase ${PASS_FAIL_CLASSES[test.pass_fail]}`}
+              >
+                {passFailT(test.pass_fail)}
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-2">
             {canUpdate && (
-              <Link href={`/failures/${failure.id}/edit`}>
+              <Link href={`/tests/${test.id}/edit`}>
                 <IconButton icon="edit" variant="secondary" aria-label={t("editButton")} />
               </Link>
             )}
@@ -104,20 +112,15 @@ export default function FailureDetailPage() {
             )}
           </div>
         </div>
-        <h1 className="font-display text-display text-on-surface">{failure.title}</h1>
+        <h1 className="font-display text-display text-on-surface">{test.title}</h1>
         <div className="flex flex-wrap items-center gap-lg font-mono-sm text-mono-sm text-on-surface-variant">
-          {failure.date && <span>{formatCalendarDate(failure.date)}</span>}
-          {failure.component && (
+          {test.date && <span>{formatCalendarDate(test.date)}</span>}
+          {test.project && (
             <span>
-              {t("colComponent")}: {failure.component.name}
+              {t("projectLabel")}: {test.project.name}
             </span>
           )}
-          {failure.project && (
-            <span>
-              {t("projectLabel")}: {failure.project.name}
-            </span>
-          )}
-          {failure.aircraft && <span>{failure.aircraft}</span>}
+          {test.location && <span>{test.location}</span>}
         </div>
       </div>
 
@@ -127,40 +130,48 @@ export default function FailureDetailPage() {
         </p>
       )}
 
-      {failure.summary && (
+      {test.objective && (
         <section>
           <h2 className="font-headline-md text-headline-md text-on-surface mb-2 border-b border-outline-variant pb-1">
-            {t("summaryLabel")}
+            {t("objectiveLabel")}
           </h2>
-          <Markdown content={failure.summary} />
+          <Markdown content={test.objective} />
         </section>
       )}
-      {failure.root_cause && (
+      {test.configuration && (
         <section>
           <h2 className="font-headline-md text-headline-md text-on-surface mb-2 border-b border-outline-variant pb-1">
-            {t("rootCauseLabel")}
+            {t("configurationLabel")}
           </h2>
-          <Markdown content={failure.root_cause} />
+          <Markdown content={test.configuration} />
         </section>
       )}
-      {failure.corrective_action && (
+      {test.procedure && (
         <section>
           <h2 className="font-headline-md text-headline-md text-on-surface mb-2 border-b border-outline-variant pb-1">
-            {t("correctiveActionLabel")}
+            {t("procedureLabel")}
           </h2>
-          <Markdown content={failure.corrective_action} />
+          <Markdown content={test.procedure} />
         </section>
       )}
-      {failure.preventive_action && (
+      {test.results && (
         <section>
           <h2 className="font-headline-md text-headline-md text-on-surface mb-2 border-b border-outline-variant pb-1">
-            {t("preventiveActionLabel")}
+            {t("resultsLabel")}
           </h2>
-          <Markdown content={failure.preventive_action} />
+          <Markdown content={test.results} />
+        </section>
+      )}
+      {test.conclusion && (
+        <section>
+          <h2 className="font-headline-md text-headline-md text-on-surface mb-2 border-b border-outline-variant pb-1">
+            {t("conclusionLabel")}
+          </h2>
+          <Markdown content={test.conclusion} />
         </section>
       )}
 
-      <Attachments type="failure" id={failure.id} canEdit={canUpdate} />
+      <Attachments type="test" id={test.id} canEdit={canUpdate} />
 
       <ConfirmModal
         open={deleteOpen}
@@ -173,7 +184,7 @@ export default function FailureDetailPage() {
       />
     </div>
 
-    <RelatedContent type="failure" id={failure.id} canEdit={canUpdate} />
+    <RelatedContent type="test" id={test.id} canEdit={canUpdate} />
     </div>
   );
 }

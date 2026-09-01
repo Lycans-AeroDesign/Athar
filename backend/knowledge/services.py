@@ -1,10 +1,13 @@
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied
+from django.db.models import Q, QuerySet
 from django.utils import timezone
 from django.utils.text import slugify
 from rest_framework.exceptions import ValidationError
 
 from audit.services import log_action
+
+from . import relationships
 
 from .models import (
     Answer,
@@ -14,6 +17,7 @@ from .models import (
     Category,
     Component,
     ComponentAttachment,
+    Document,
     Failure,
     FailureAttachment,
     KnowledgeRelation,
@@ -24,6 +28,8 @@ from .models import (
     Sop,
     SopAttachment,
     Tag,
+    Test,
+    TestAttachment,
     Visibility,
 )
 
@@ -59,6 +65,41 @@ def _sync_tags(obj, tag_names: list[str] | None) -> None:
     normalized = {name.strip().lower() for name in tag_names if name.strip()}
     tags = [Tag.objects.get_or_create(name=name)[0] for name in normalized]
     obj.tags.set(tags)
+
+
+def visible_articles_for(viewer) -> QuerySet[Article]:
+    """Published articles `viewer` may see - excludes RESTRICTED ones unless
+    they're the author or hold article.review/article.publish. Shared by
+    ArticleListCreateView, SearchView, and the user-profile/contributions
+    endpoints so this rule can't drift out of sync between them the way it
+    already once did (see the search-visibility fix this same rule exists for)."""
+    can_review = viewer.has_permission("article.review") or viewer.has_permission("article.publish")
+    queryset = Article.objects.filter(status=Article.Status.PUBLISHED)
+    if not can_review:
+        queryset = queryset.exclude(Q(visibility=Visibility.RESTRICTED) & ~Q(author=viewer))
+    return queryset
+
+
+def visible_questions_for(viewer) -> QuerySet[Question]:
+    """Questions `viewer` may see - excludes RESTRICTED ones unless they're
+    the author or hold question.moderate. Same sharing rationale as
+    visible_articles_for above."""
+    queryset = Question.objects.all()
+    if not viewer.has_permission("question.moderate"):
+        queryset = queryset.exclude(Q(visibility=Visibility.RESTRICTED) & ~Q(author=viewer))
+    return queryset
+
+
+def visible_documents_for(viewer) -> QuerySet[Document]:
+    """Documents `viewer` may see - excludes RESTRICTED ones unless they're
+    created_by or hold document.update. Simpler than visible_articles_for/
+    visible_questions_for since Document has no draft/review workflow - see
+    models.py's Document docstring. Same sharing rationale (list, search,
+    contributions, and the relation-visibility check must all agree)."""
+    queryset = Document.objects.all()
+    if not viewer.has_permission("document.update"):
+        queryset = queryset.exclude(Q(visibility=Visibility.RESTRICTED) & ~Q(created_by=viewer))
+    return queryset
 
 
 def create_category(*, actor, request=None, name, description="") -> Category:
@@ -533,6 +574,129 @@ def delete_sop(*, sop: Sop, actor, request=None) -> None:
     sop.delete()
 
 
+def create_test(
+    *,
+    actor,
+    request=None,
+    title,
+    test_type="OTHER",
+    date=None,
+    location="",
+    project=None,
+    objective="",
+    status="PLANNED",
+    configuration="",
+    procedure="",
+    results="",
+    pass_fail="",
+    conclusion="",
+    tag_names=None,
+) -> Test:
+    test = Test.objects.create(
+        title=title,
+        test_type=test_type,
+        date=date,
+        location=location,
+        project=project,
+        objective=objective,
+        status=status,
+        configuration=configuration,
+        procedure=procedure,
+        results=results,
+        pass_fail=pass_fail,
+        conclusion=conclusion,
+        created_by=actor,
+    )
+    _sync_tags(test, tag_names)
+    log_action(actor=actor, action="test.create", target=test, request=request)
+    return test
+
+
+def update_test(*, test: Test, actor, request=None, **fields) -> Test:
+    if not actor.has_permission("test.update"):
+        raise PermissionDenied("You need test.update to edit this test.")
+    tag_names = fields.pop("tag_names", None)
+    for field, value in fields.items():
+        setattr(test, field, value)
+    test.save(update_fields=[*fields.keys(), "updated_at"])
+    _sync_tags(test, tag_names)
+    log_action(actor=actor, action="test.update", target=test, request=request)
+    return test
+
+
+def delete_test(*, test: Test, actor, request=None) -> None:
+    if not actor.has_permission("test.delete"):
+        raise PermissionDenied("You need test.delete to remove this test.")
+    log_action(actor=actor, action="test.delete", metadata={"test_id": str(test.pk), "title": test.title}, request=request)
+    test.delete()
+
+
+def create_document(
+    *,
+    actor,
+    request=None,
+    title,
+    description="",
+    doc_type="OTHER",
+    source="INTERNAL",
+    author="",
+    organization="",
+    publication_date=None,
+    url="",
+    file=None,
+    category=None,
+    tag_names=None,
+    visibility=Visibility.PUBLIC,
+) -> Document:
+    document = Document.objects.create(
+        title=title,
+        description=description,
+        doc_type=doc_type,
+        source=source,
+        author=author,
+        organization=organization,
+        publication_date=publication_date,
+        url=url,
+        file=file,
+        category=category,
+        created_by=actor,
+        visibility=visibility,
+    )
+    _sync_tags(document, tag_names)
+    log_action(actor=actor, action="document.create", target=document, request=request)
+    return document
+
+
+def update_document(*, document: Document, actor, request=None, **fields) -> Document:
+    # Same "own it, or hold the override permission" shape as
+    # update_question/delete_question - see models.py's Document docstring
+    # for why this (not a tiered read/create/update/delete-only scheme) is
+    # the right fit here.
+    _require_owner_or_permission(
+        actor=actor, owner=document.created_by, codename="document.update", message="You can only edit your own document."
+    )
+    tag_names = fields.pop("tag_names", None)
+    for field, value in fields.items():
+        setattr(document, field, value)
+    document.save(update_fields=[*fields.keys(), "updated_at"])
+    _sync_tags(document, tag_names)
+    log_action(actor=actor, action="document.update", target=document, request=request)
+    return document
+
+
+def delete_document(*, document: Document, actor, request=None) -> None:
+    _require_owner_or_permission(
+        actor=actor,
+        owner=document.created_by,
+        codename="document.update",
+        message="You can only delete your own document.",
+    )
+    log_action(
+        actor=actor, action="document.delete", metadata={"document_id": str(document.pk), "title": document.title}, request=request
+    )
+    document.delete()
+
+
 def _add_engineering_attachment(*, owner, attachment_model, owner_field: str, file, actor, request, action: str):
     attachment = attachment_model.objects.create(**{owner_field: owner}, file=file, uploaded_by=actor)
     log_action(
@@ -613,9 +777,25 @@ def remove_sop_attachment(*, attachment: SopAttachment, actor, request=None) -> 
     _remove_engineering_attachment(attachment=attachment, actor=actor, request=request, action="attachment.remove", id_field="sop_id")
 
 
-# Only Article/Question/Project/Component/Failure/Sop exist as real content
-# types - this allowlist is what actually stops a relation being created to
-# some other model (ContentType itself has no way to express "only these").
+def add_test_attachment(*, test: Test, file, actor, request=None) -> TestAttachment:
+    if not actor.has_permission("test.update"):
+        raise PermissionDenied("You need test.update to attach files to this test.")
+    return _add_engineering_attachment(
+        owner=test, attachment_model=TestAttachment, owner_field="test", file=file, actor=actor,
+        request=request, action="attachment.add",
+    )
+
+
+def remove_test_attachment(*, attachment: TestAttachment, actor, request=None) -> None:
+    if not actor.has_permission("test.update"):
+        raise PermissionDenied("You need test.update to remove attachments from this test.")
+    _remove_engineering_attachment(attachment=attachment, actor=actor, request=request, action="attachment.remove", id_field="test_id")
+
+
+# Only Article/Question/Project/Component/Failure/Sop/Test/Document exist as
+# real content types - this allowlist is what actually stops a relation
+# being created to some other model (ContentType itself has no way to
+# express "only these").
 _RELATABLE_MODELS = {
     "article": Article,
     "question": Question,
@@ -623,6 +803,8 @@ _RELATABLE_MODELS = {
     "component": Component,
     "failure": Failure,
     "sop": Sop,
+    "test": Test,
+    "document": Document,
 }
 
 # model_name -> the permission that grants edit rights on that type, for
@@ -634,6 +816,7 @@ _RELATABLE_UPDATE_PERMISSION = {
     "component": "component.update",
     "failure": "failure.update",
     "sop": "sop.update",
+    "test": "test.update",
 }
 
 
@@ -652,6 +835,8 @@ def _can_edit_relatable(actor, model_name: str, instance) -> bool:
         return False
     if model_name in _RELATABLE_UPDATE_PERMISSION:
         return actor.has_permission(_RELATABLE_UPDATE_PERMISSION[model_name])
+    if model_name == "document":
+        return actor == getattr(instance, "created_by", None) or actor.has_permission("document.update")
     codename = "article.update" if model_name == "article" else "question.moderate"
     return actor == getattr(instance, "author", None) or actor.has_permission(codename)
 
@@ -664,15 +849,34 @@ def create_relation(
     if source_model is target_model and source.pk == target.pk:
         raise ValidationError("An item can't be related to itself.")
 
+    # Checked against the caller's own source (the item they're adding this
+    # relation FROM) before any canonical-direction normalization below -
+    # normalizing first would check edit rights on the wrong side whenever
+    # the caller picked the relation type from its reverse_name (e.g. adding
+    # "USED_IN" from a Component's own page, where the canonical direction is
+    # actually Project--USES-->Component).
     if not _can_edit_relatable(actor, source_type, source):
         raise PermissionDenied("You can only add related content to something you own (or have edit rights on).")
 
+    stored_relation_type = relation_type
+    store_source_model, store_source, store_target_model, store_target = source_model, source, target_model, target
+    if relation_type != relationships.GENERIC_RELATED:
+        found = relationships.find_definition_for_creation(relation_type, source_type, target_type)
+        if found is None:
+            raise ValidationError(
+                f"'{relation_type}' isn't a valid relationship between {source_type} and {target_type}."
+            )
+        definition, is_reversed = found
+        stored_relation_type = definition.name
+        if is_reversed:
+            store_source_model, store_source, store_target_model, store_target = target_model, target, source_model, source
+
     relation, created = KnowledgeRelation.objects.get_or_create(
-        source_content_type=ContentType.objects.get_for_model(source_model),
-        source_object_id=source.pk,
-        target_content_type=ContentType.objects.get_for_model(target_model),
-        target_object_id=target.pk,
-        relation_type=relation_type,
+        source_content_type=ContentType.objects.get_for_model(store_source_model),
+        source_object_id=store_source.pk,
+        target_content_type=ContentType.objects.get_for_model(store_target_model),
+        target_object_id=store_target.pk,
+        relation_type=stored_relation_type,
         defaults={"created_by": actor},
     )
     if created:
@@ -683,7 +887,7 @@ def create_relation(
             metadata={
                 "source": f"{source_type}:{source.pk}",
                 "target": f"{target_type}:{target.pk}",
-                "relation_type": relation_type,
+                "relation_type": stored_relation_type,
             },
             request=request,
         )
@@ -791,6 +995,8 @@ def _relatable_visible_to(actor, content_type, instance) -> bool:
         )
     if model_name == "question":
         return actor == getattr(instance, "author", None) or actor.has_permission("question.moderate")
+    if model_name == "document":
+        return actor == getattr(instance, "created_by", None) or actor.has_permission("document.update")
     return True
 
 

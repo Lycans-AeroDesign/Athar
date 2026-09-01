@@ -15,8 +15,17 @@ type Scope = "all" | RelatableType;
 
 // Every relatable type SearchView actually searches - kept in sync with
 // knowledge/search/page.tsx's CONTENT_TYPES so the scope menu here covers
-// the same six types that page's filter list does.
-const CONTENT_TYPES: RelatableType[] = ["article", "question", "project", "component", "failure", "sop"];
+// the same types that page's filter list does.
+const CONTENT_TYPES: RelatableType[] = [
+  "article",
+  "question",
+  "project",
+  "component",
+  "failure",
+  "sop",
+  "test",
+  "document",
+];
 
 const SCOPE_LABEL_KEYS: Record<Scope, string> = {
   all: "searchScopeAll",
@@ -26,6 +35,8 @@ const SCOPE_LABEL_KEYS: Record<Scope, string> = {
   component: "searchScopeComponents",
   failure: "searchScopeFailures",
   sop: "searchScopeSops",
+  test: "searchScopeTests",
+  document: "searchScopeDocuments",
 };
 
 // Pathname prefix -> the scope that page's own content lives under, so the
@@ -40,6 +51,8 @@ const SCOPE_BY_PATH_PREFIX: [prefix: string, scope: RelatableType][] = [
   ["/components", "component"],
   ["/failures", "failure"],
   ["/sops", "sop"],
+  ["/tests", "test"],
+  ["/documents", "document"],
 ];
 
 function scopeForPathname(pathname: string): Scope {
@@ -127,6 +140,8 @@ export function GlobalSearch() {
     component: t(SCOPE_LABEL_KEYS.component),
     failure: t(SCOPE_LABEL_KEYS.failure),
     sop: t(SCOPE_LABEL_KEYS.sop),
+    test: t(SCOPE_LABEL_KEYS.test),
+    document: t(SCOPE_LABEL_KEYS.document),
   };
 
   return (

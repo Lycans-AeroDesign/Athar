@@ -10,14 +10,17 @@ import {
   addFailureAttachment,
   addProjectAttachment,
   addSopAttachment,
+  addTestAttachment,
   getComponentAttachments,
   getFailureAttachments,
   getProjectAttachments,
   getSopAttachments,
+  getTestAttachments,
   removeComponentAttachment,
   removeFailureAttachment,
   removeProjectAttachment,
   removeSopAttachment,
+  removeTestAttachment,
 } from "@/lib/api/engineering";
 import { downloadFile, uploadFile } from "@/lib/api/files";
 import {
@@ -30,8 +33,14 @@ import {
 } from "@/lib/api/knowledge";
 import type { KnowledgeAttachment, RelatableType } from "@/lib/api/types";
 
+// Document is deliberately excluded - it has a single primary `file`/`url`
+// field, not a list of attachments (see backend/knowledge/models.py's
+// Document docstring: "not generic file storage"). Its detail page renders
+// that file directly instead of mounting this component.
+type AttachableType = Exclude<RelatableType, "document">;
+
 interface AttachmentsProps {
-  type: RelatableType;
+  type: AttachableType;
   id: string;
   /** Same edit rights as the owning item itself - see attachment.add/remove's
    * permission check in backend/knowledge/services.py. */
@@ -42,7 +51,7 @@ interface AttachmentsProps {
 // better than an ever-growing if/else chain now that this covers six types,
 // not just article/question.
 const ATTACHMENT_API: Record<
-  RelatableType,
+  AttachableType,
   {
     get: (id: string) => Promise<KnowledgeAttachment[]>;
     add: (id: string, fileId: string) => Promise<KnowledgeAttachment>;
@@ -55,6 +64,7 @@ const ATTACHMENT_API: Record<
   component: { get: getComponentAttachments, add: addComponentAttachment, remove: removeComponentAttachment },
   failure: { get: getFailureAttachments, add: addFailureAttachment, remove: removeFailureAttachment },
   sop: { get: getSopAttachments, add: addSopAttachment, remove: removeSopAttachment },
+  test: { get: getTestAttachments, add: addTestAttachment, remove: removeTestAttachment },
 };
 
 function formatFileSize(bytes: number): string {

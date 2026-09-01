@@ -1,9 +1,15 @@
 import uuid
 
 from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
+from django.core.validators import RegexValidator
 from django.db import models
 from django.utils import timezone
 from django.utils.crypto import get_random_string
+
+username_validator = RegexValidator(
+    r"^[a-zA-Z0-9_.-]{3,30}$",
+    "Usernames can only contain letters, numbers, dots, underscores, and hyphens (3-30 characters).",
+)
 
 from rbac.models import Permission
 
@@ -38,6 +44,16 @@ class UserManager(BaseUserManager):
 class User(AbstractBaseUser):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.EmailField(unique=True)
+    # Optional (see username_validator above for the allowed format) - not
+    # required for login (see USERNAME_FIELD below, still "email") or
+    # anything else yet. null=True (not just blank) so most users can leave
+    # it unset without colliding on the unique constraint - Postgres treats
+    # each NULL as distinct, but two users both saving "" would collide, so
+    # callers must normalize a blank submission to None (see
+    # MeUpdateSerializer.validate_username), never store "".
+    username = models.CharField(
+        max_length=30, unique=True, null=True, blank=True, validators=[username_validator]
+    )
     first_name = models.CharField(max_length=150, blank=True)
     last_name = models.CharField(max_length=150, blank=True)
     # Free text, e.g. "Lead Systems Integration" or "Avionics Team Lead" -

@@ -15,6 +15,8 @@ export interface UserPreferences {
 export interface User {
   id: string;
   email: string;
+  /** Optional, unique when set - not required for login (still email-based). null until a user opts in via /account. */
+  username: string | null;
   first_name: string;
   last_name: string;
   /** Free-text role in the team (e.g. "Lead Systems Integration") - distinct from `roles`, which drives permissions. */
@@ -109,6 +111,7 @@ export interface KnowledgeAuthor {
   last_name: string;
   email: string;
   title: string;
+  username: string | null;
 }
 
 export interface Category {
@@ -192,13 +195,26 @@ export interface QuestionDetail extends QuestionSummary {
   answers: Answer[];
 }
 
-export type RelatableType = "article" | "question" | "project" | "component" | "failure" | "sop";
+export type RelatableType =
+  | "article"
+  | "question"
+  | "project"
+  | "component"
+  | "failure"
+  | "sop"
+  | "test"
+  | "document";
 
 export type SearchResult = { type: RelatableType; id: string; title: string; excerpt: string };
 
 export interface KnowledgeRelation {
   id: string;
   relation_type: string;
+  /** Direction-aware display verb (e.g. "USES" from the source's side, "USED_IN" from
+   * the target's - see backend/knowledge/relationships.py) - use this, not relation_type,
+   * for anything shown to the user. Falls back to "RELATED" (symmetric) when no more
+   * specific relationship applies. */
+  relation_label: string;
   other_type: RelatableType;
   other_id: string;
   other_title: string | null;
@@ -297,4 +313,100 @@ export interface SopSummary {
 export interface SopDetail extends SopSummary {
   safety_notes: string;
   content: string;
+}
+
+export type TestType =
+  | "FLIGHT"
+  | "THRUST"
+  | "STRUCTURAL"
+  | "ELECTRICAL"
+  | "GROUND"
+  | "SOFTWARE"
+  | "CALIBRATION"
+  | "EXPERIMENT"
+  | "OTHER";
+export type TestRunStatus = "PLANNED" | "IN_PROGRESS" | "COMPLETED";
+export type TestPassFail = "PASS" | "FAIL" | "PARTIAL" | "NOT_APPLICABLE" | "";
+
+export interface TestSummary {
+  id: string;
+  title: string;
+  test_type: TestType;
+  date: string | null;
+  location: string;
+  project: ProjectSummary | null;
+  status: TestRunStatus;
+  pass_fail: TestPassFail;
+  tags: Tag[];
+  created_by: KnowledgeAuthor | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TestDetail extends TestSummary {
+  objective: string;
+  configuration: string;
+  procedure: string;
+  results: string;
+  conclusion: string;
+}
+
+export type DocType =
+  | "COMPETITION_REPORT"
+  | "TECHNICAL_REPORT"
+  | "RESEARCH_PAPER"
+  | "DATASHEET"
+  | "MANUAL"
+  | "REGULATION"
+  | "PRESENTATION"
+  | "TRAINING_MATERIAL"
+  | "REFERENCE"
+  | "OTHER";
+export type DocumentSource = "INTERNAL" | "EXTERNAL";
+
+export interface DocumentSummary {
+  id: string;
+  title: string;
+  doc_type: DocType;
+  source: DocumentSource;
+  author: string;
+  organization: string;
+  publication_date: string | null;
+  url: string;
+  file: StoredFile | null;
+  category: Category | null;
+  tags: Tag[];
+  visibility: Visibility;
+  created_by: KnowledgeAuthor | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DocumentDetail extends DocumentSummary {
+  description: string;
+}
+
+// --- User profile -----------------------------------------------------------
+
+export type ContributionType =
+  | "article"
+  | "question"
+  | "answer"
+  | "project"
+  | "component"
+  | "failure"
+  | "sop"
+  | "test"
+  | "document";
+
+export interface UserProfile {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  title: string;
+  username: string | null;
+  date_joined: string;
+  /** One count per ContributionType, plus accepted_answers (a subset of "answer", not a separate contribution type of its own). */
+  stats: Record<ContributionType, number> & { accepted_answers: number };
 }

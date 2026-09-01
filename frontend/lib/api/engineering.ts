@@ -23,6 +23,11 @@ import type {
   ProjectSummary,
   SopDetail,
   SopSummary,
+  TestDetail,
+  TestPassFail,
+  TestRunStatus,
+  TestSummary,
+  TestType,
 } from "./types";
 
 // --- Projects ---------------------------------------------------------------
@@ -290,4 +295,79 @@ export function addSopAttachment(sopId: string, fileId: string): Promise<Knowled
 
 export function removeSopAttachment(sopId: string, attachmentId: string): Promise<void> {
   return apiVoid(`/api/v1/knowledge/sops/${sopId}/attachments/${attachmentId}/`, { method: "DELETE" });
+}
+
+// --- Tests / Experiments -----------------------------------------------------
+
+export function getTests(filters?: {
+  test_type?: TestType;
+  status?: TestRunStatus;
+  pass_fail?: TestPassFail;
+  q?: string;
+  page?: number;
+}): Promise<Paginated<TestSummary>> {
+  const params = new URLSearchParams();
+  if (filters?.test_type) params.set("test_type", filters.test_type);
+  if (filters?.status) params.set("status", filters.status);
+  if (filters?.pass_fail) params.set("pass_fail", filters.pass_fail);
+  if (filters?.q) params.set("q", filters.q);
+  if (filters?.page) params.set("page", String(filters.page));
+  const query = params.toString() ? `?${params.toString()}` : "";
+  return apiJson<Paginated<TestSummary>>(`/api/v1/knowledge/tests/${query}`);
+}
+
+export function getTest(id: string): Promise<TestDetail> {
+  return apiJson<TestDetail>(`/api/v1/knowledge/tests/${id}/`);
+}
+
+export interface TestWritePayload {
+  title?: string;
+  test_type?: TestType;
+  date?: string | null;
+  location?: string;
+  project_id?: string | null;
+  objective?: string;
+  status?: TestRunStatus;
+  configuration?: string;
+  procedure?: string;
+  results?: string;
+  pass_fail?: TestPassFail;
+  conclusion?: string;
+  tag_names?: string[];
+}
+
+export function createTest(payload: TestWritePayload): Promise<TestDetail> {
+  return apiJson<TestDetail>("/api/v1/knowledge/tests/", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updateTest(id: string, payload: TestWritePayload): Promise<TestDetail> {
+  return apiJson<TestDetail>(`/api/v1/knowledge/tests/${id}/`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+export function deleteTest(id: string): Promise<void> {
+  return apiVoid(`/api/v1/knowledge/tests/${id}/`, { method: "DELETE" });
+}
+
+export function getTestAttachments(testId: string): Promise<KnowledgeAttachment[]> {
+  return apiJson<KnowledgeAttachment[]>(`/api/v1/knowledge/tests/${testId}/attachments/`);
+}
+
+export function addTestAttachment(testId: string, fileId: string): Promise<KnowledgeAttachment> {
+  return apiJson<KnowledgeAttachment>(`/api/v1/knowledge/tests/${testId}/attachments/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ file_id: fileId }),
+  });
+}
+
+export function removeTestAttachment(testId: string, attachmentId: string): Promise<void> {
+  return apiVoid(`/api/v1/knowledge/tests/${testId}/attachments/${attachmentId}/`, { method: "DELETE" });
 }

@@ -56,7 +56,8 @@ export default function ProjectDetailPage() {
   }
 
   return (
-    <div className="max-w-[800px] mx-auto space-y-6">
+    <div className="flex flex-col lg:flex-row gap-8 items-start">
+    <div className="flex-1 min-w-0 max-w-[800px] space-y-6">
       <Link
         href="/projects"
         className="inline-flex items-center gap-1 font-label-caps text-label-caps uppercase text-on-surface-variant hover:text-on-surface transition-colors"
@@ -110,8 +111,6 @@ export default function ProjectDetailPage() {
         <p className="font-body-md text-body-md text-on-surface-variant">{t("noDescription")}</p>
       )}
 
-      <RelatedContent type="project" id={project.id} canEdit={canUpdate} />
-
       <Attachments type="project" id={project.id} canEdit={canUpdate} />
 
       <ConfirmModal
@@ -123,6 +122,9 @@ export default function ProjectDetailPage() {
         danger
         onConfirm={handleDelete}
       />
+    </div>
+
+    <RelatedContent type="project" id={project.id} canEdit={canUpdate} />
     </div>
   );
 }

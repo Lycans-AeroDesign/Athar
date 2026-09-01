@@ -128,7 +128,8 @@ export default function QuestionDetailPage() {
   }
 
   return (
-    <div className="max-w-[800px] mx-auto space-y-6">
+    <div className="flex flex-col lg:flex-row gap-8 items-start">
+    <div className="flex-1 min-w-0 max-w-[800px] space-y-6">
       <Link
         href="/knowledge"
         className="inline-flex items-center gap-1 font-label-caps text-label-caps uppercase text-on-surface-variant hover:text-on-surface transition-colors"
@@ -143,7 +144,11 @@ export default function QuestionDetailPage() {
             <Icon name="forum" size={16} />
             <span>{questionId}</span>
             <span>•</span>
-            {authorName && <span>{t("askedBy", { name: authorName })}</span>}
+            {authorName && question.author && (
+              <Link href={`/users/${question.author.id}`} className="hover:text-primary hover:underline transition-colors">
+                {t("askedBy", { name: authorName })}
+              </Link>
+            )}
             <span>•</span>
             <span>{formatRelativeTime(question.created_at)}</span>
           </div>
@@ -243,11 +248,25 @@ export default function QuestionDetailPage() {
                   {answer.is_accepted && <div className="absolute top-0 start-0 w-1 h-full bg-primary" />}
                   <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
                     <div className="flex items-center gap-2">
-                      <Avatar person={answer.author} size="sm" />
+                      {answer.author ? (
+                        <Link href={`/users/${answer.author.id}`} className="shrink-0">
+                          <Avatar person={answer.author} size="sm" />
+                        </Link>
+                      ) : (
+                        <Avatar person={answer.author} size="sm" />
+                      )}
                       <div>
-                        {answerAuthorName && (
-                          <div className="font-body-md text-body-md font-bold text-on-surface">{answerAuthorName}</div>
-                        )}
+                        {answerAuthorName &&
+                          (answer.author ? (
+                            <Link
+                              href={`/users/${answer.author.id}`}
+                              className="block font-body-md text-body-md font-bold text-on-surface hover:text-primary hover:underline transition-colors"
+                            >
+                              {answerAuthorName}
+                            </Link>
+                          ) : (
+                            <div className="font-body-md text-body-md font-bold text-on-surface">{answerAuthorName}</div>
+                          ))}
                         <div className="font-mono-sm text-mono-sm text-on-surface-variant">
                           {answer.author?.title && <span>{answer.author.title} • </span>}
                           {formatRelativeTime(answer.created_at)}
@@ -280,8 +299,6 @@ export default function QuestionDetailPage() {
         )}
       </div>
 
-      <RelatedContent type="question" id={question.id} canEdit={canManage} />
-
       <Attachments type="question" id={question.id} canEdit={canManage} />
 
       {question.status === "CLOSED" ? (
@@ -313,6 +330,9 @@ export default function QuestionDetailPage() {
         danger
         onConfirm={handleDelete}
       />
+    </div>
+
+    <RelatedContent type="question" id={question.id} canEdit={canManage} />
     </div>
   );
 }

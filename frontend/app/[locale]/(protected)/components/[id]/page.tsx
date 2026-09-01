@@ -56,7 +56,8 @@ export default function ComponentDetailPage() {
   }
 
   return (
-    <div className="max-w-[800px] mx-auto space-y-6">
+    <div className="flex flex-col lg:flex-row gap-8 items-start">
+    <div className="flex-1 min-w-0 max-w-[800px] space-y-6">
       <Link
         href="/components"
         className="inline-flex items-center gap-1 font-label-caps text-label-caps uppercase text-on-surface-variant hover:text-on-surface transition-colors"
@@ -145,8 +146,6 @@ export default function ComponentDetailPage() {
         </div>
       )}
 
-      <RelatedContent type="component" id={component.id} canEdit={canUpdate} />
-
       <Attachments type="component" id={component.id} canEdit={canUpdate} />
 
       <ConfirmModal
@@ -158,6 +157,9 @@ export default function ComponentDetailPage() {
         danger
         onConfirm={handleDelete}
       />
+    </div>
+
+    <RelatedContent type="component" id={component.id} canEdit={canUpdate} />
     </div>
   );
 }

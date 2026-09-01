@@ -6,6 +6,7 @@ import type {
   ArticleSummary,
   Answer,
   Category,
+  ContributionType,
   KnowledgeAttachment,
   KnowledgeRelation,
   Paginated,
@@ -14,6 +15,7 @@ import type {
   RelatableType,
   SearchResult,
   Tag,
+  UserProfile,
   Visibility,
 } from "./types";
 
@@ -249,6 +251,10 @@ export function createRelation(payload: {
   source_id: string;
   target_type: RelatableType;
   target_id: string;
+  /** Omit for a plain generic "RELATED" link (the default) - see
+   * RELATIONSHIP_DEFINITIONS in lib/knowledgeTypes.ts for the valid verbs
+   * between any two given types. */
+  relation_type?: string;
 }): Promise<KnowledgeRelation> {
   return apiJson<KnowledgeRelation>("/api/v1/knowledge/relations/", {
     method: "POST",
@@ -291,4 +297,22 @@ export function addQuestionAttachment(questionId: string, fileId: string): Promi
 
 export function removeQuestionAttachment(questionId: string, attachmentId: string): Promise<void> {
   return apiVoid(`/api/v1/knowledge/questions/${questionId}/attachments/${attachmentId}/`, { method: "DELETE" });
+}
+
+// --- User profile -------------------------------------------------------------
+
+export function getUserProfile(id: string): Promise<UserProfile> {
+  return apiJson<UserProfile>(`/api/v1/knowledge/users/${id}/`);
+}
+
+/** `T` is the summary type for whichever `type` you pass (e.g. ArticleSummary
+ * for "article", Answer for "answer") - the backend returns a different shape
+ * per type, so the caller picks the right one at the call site. */
+export function getUserContributions<T>(
+  id: string,
+  type: ContributionType,
+  page = 1,
+): Promise<Paginated<T>> {
+  const params = new URLSearchParams({ type, page: String(page) });
+  return apiJson<Paginated<T>>(`/api/v1/knowledge/users/${id}/contributions/?${params.toString()}`);
 }

@@ -15,6 +15,7 @@ from .models import (
     ArticleRevision,
     Category,
     Component,
+    Document,
     Failure,
     KnowledgeRelation,
     Project,
@@ -22,6 +23,7 @@ from .models import (
     QuestionAttachment,
     Sop,
     Tag,
+    Test,
 )
 
 
@@ -809,7 +811,16 @@ class SearchTests(KnowledgeTestCase):
         # search can actually surface, not raw title matches. Only
         # article/question have any matches here - the engineering-domain
         # types (see EngineeringDomainTests) are just 0.
-        expected_counts = {"article": 1, "question": 1, "project": 0, "component": 0, "failure": 0, "sop": 0}
+        expected_counts = {
+            "article": 1,
+            "question": 1,
+            "project": 0,
+            "component": 0,
+            "failure": 0,
+            "sop": 0,
+            "test": 0,
+            "document": 0,
+        }
         self.assertEqual(response.data["counts"], expected_counts)
 
         response = self.client.get(reverse("knowledge-search") + "?q=pixhawk&type=article", **self._auth(author_access))
@@ -1097,6 +1108,132 @@ class KnowledgeRelationTests(KnowledgeTestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
+    def test_semantic_relation_type_stores_canonical_direction_and_labels_both_sides(self):
+        """Picking "USES" from the Project's own page stores Project--USES-->
+        Component, and each side's relation_label reads correctly - the
+        Project sees "USES", the Component sees "USED_IN" - even though only
+        one row exists in the database."""
+        _, head_access = self._login_with_role("semrelhead@example.com", "Team/Subteam Head")
+        project = self.client.post(
+            reverse("knowledge-project-list-create"), {"name": "DBF 2027"}, format="json", **self._auth(head_access)
+        ).data
+        component = self.client.post(
+            reverse("knowledge-component-list-create"), {"name": "Pixhawk 6X"}, format="json", **self._auth(head_access)
+        ).data
+
+        response = self.client.post(
+            reverse("knowledge-relation-create"),
+            {
+                "source_type": "project",
+                "source_id": project["id"],
+                "target_type": "component",
+                "target_id": component["id"],
+                "relation_type": "USES",
+            },
+            format="json",
+            **self._auth(head_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["relation_type"], "USES")
+        self.assertEqual(response.data["relation_label"], "USES")
+        self.assertEqual(KnowledgeRelation.objects.count(), 1)
+
+        project_relations = self.client.get(
+            reverse("knowledge-project-relations", args=[project["id"]]), **self._auth(head_access)
+        ).data
+        self.assertEqual(project_relations[0]["relation_label"], "USES")
+        self.assertEqual(project_relations[0]["other_id"], component["id"])
+
+        component_relations = self.client.get(
+            reverse("knowledge-component-relations", args=[component["id"]]), **self._auth(head_access)
+        ).data
+        self.assertEqual(component_relations[0]["relation_label"], "USED_IN")
+        self.assertEqual(component_relations[0]["other_id"], project["id"])
+
+    def test_semantic_relation_type_normalizes_when_picked_from_reverse_side(self):
+        """Picking "USED_IN" from the Component's own page (source=component,
+        target=project) still stores the canonical Project--USES-->Component
+        direction, not a second, differently-shaped row - and the edit-rights
+        check still applies to the Component (the caller's actual source),
+        not the Project it gets normalized onto."""
+        _, head_access = self._login_with_role("semrelhead2@example.com", "Team/Subteam Head")
+        project = self.client.post(
+            reverse("knowledge-project-list-create"), {"name": "DBF 2027"}, format="json", **self._auth(head_access)
+        ).data
+        component = self.client.post(
+            reverse("knowledge-component-list-create"), {"name": "Pixhawk 6X"}, format="json", **self._auth(head_access)
+        ).data
+
+        response = self.client.post(
+            reverse("knowledge-relation-create"),
+            {
+                "source_type": "component",
+                "source_id": component["id"],
+                "target_type": "project",
+                "target_id": project["id"],
+                "relation_type": "USED_IN",
+            },
+            format="json",
+            **self._auth(head_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        # The response's own "other side" is relative to the caller's source
+        # (component), so it should report USED_IN + the project as other,
+        # even though storage normalized to the opposite direction.
+        self.assertEqual(response.data["relation_label"], "USED_IN")
+        self.assertEqual(response.data["other_id"], project["id"])
+
+        relation = KnowledgeRelation.objects.get()
+        self.assertEqual(relation.relation_type, "USES")
+        self.assertEqual(str(relation.source_object_id), project["id"])
+        self.assertEqual(str(relation.target_object_id), component["id"])
+
+    def test_unknown_semantic_relation_type_for_the_type_pair_is_rejected(self):
+        _, head_access = self._login_with_role("semrelhead3@example.com", "Team/Subteam Head")
+        project = self.client.post(
+            reverse("knowledge-project-list-create"), {"name": "DBF 2027"}, format="json", **self._auth(head_access)
+        ).data
+        sop = self.client.post(
+            reverse("knowledge-sop-list-create"), {"title": "Preflight Checklist"}, format="json", **self._auth(head_access)
+        ).data
+
+        response = self.client.post(
+            reverse("knowledge-relation-create"),
+            {
+                # INVOLVED_IN is only defined between component and failure -
+                # not project and sop.
+                "source_type": "project",
+                "source_id": project["id"],
+                "target_type": "sop",
+                "target_id": sop["id"],
+                "relation_type": "INVOLVED_IN",
+            },
+            format="json",
+            **self._auth(head_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(KnowledgeRelation.objects.exists())
+
+    def test_generic_related_still_works_and_labels_symmetrically(self):
+        """The pre-existing plain "RELATED" behavior is unchanged - every
+        relation created before this registry existed is one of these."""
+        author, author_access = self._login_with_role("semrelplain@example.com", "Member")
+        article_a = self.client.post(
+            reverse("knowledge-article-list-create"), {"title": "A", "content": "..."}, format="json", **self._auth(author_access)
+        ).data
+        article_b = self.client.post(
+            reverse("knowledge-article-list-create"), {"title": "B", "content": "..."}, format="json", **self._auth(author_access)
+        ).data
+        response = self.client.post(
+            reverse("knowledge-relation-create"),
+            {"source_type": "article", "source_id": article_a["id"], "target_type": "article", "target_id": article_b["id"]},
+            format="json",
+            **self._auth(author_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["relation_type"], "RELATED")
+        self.assertEqual(response.data["relation_label"], "RELATED")
+
 
 class ArticleAttachmentTests(KnowledgeTestCase):
     def _upload(self, access_token, filename="datasheet.txt"):
@@ -1367,6 +1504,74 @@ class EngineeringDomainTests(KnowledgeTestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertTrue(response.data["mandatory"])
 
+    def test_test_crud_and_permission_gating(self):
+        _, member_access = self._login_with_role("testmember@example.com", "Member")
+        response = self.client.post(
+            reverse("knowledge-test-list-create"),
+            {"title": "Thrust Stand Run 1", "test_type": "THRUST", "objective": "Measure static thrust."},
+            format="json",
+            **self._auth(member_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)  # Member has test.create
+        test = response.data
+        self.assertEqual(test["status"], "PLANNED")
+
+        response = self.client.patch(
+            reverse("knowledge-test-detail", args=[test["id"]]),
+            {"status": "COMPLETED", "pass_fail": "PASS"},
+            format="json",
+            **self._auth(member_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)  # no test.update
+
+        _, senior_access = self._login_with_role("testsenior@example.com", "Senior Member")
+        response = self.client.patch(
+            reverse("knowledge-test-detail", args=[test["id"]]),
+            {"status": "COMPLETED", "pass_fail": "PASS", "results": "Thrust within spec."},
+            format="json",
+            **self._auth(senior_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["status"], "COMPLETED")
+
+        response = self.client.delete(reverse("knowledge-test-detail", args=[test["id"]]), **self._auth(senior_access))
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)  # no test.delete
+
+        _, head_access = self._login_with_role("testhead@example.com", "Team/Subteam Head")
+        response = self.client.delete(reverse("knowledge-test-detail", args=[test["id"]]), **self._auth(head_access))
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Test.objects.exists())
+
+    def test_test_relations_and_search(self):
+        _, head_access = self._login_with_role("testrel@example.com", "Team/Subteam Head")
+        component = self.client.post(
+            reverse("knowledge-component-list-create"), {"name": "Zephyrix ESC"}, format="json", **self._auth(head_access)
+        ).data
+        test = self.client.post(
+            reverse("knowledge-test-list-create"),
+            {"title": "Zephyrix ESC Bench Test", "objective": "Validate ESC thermal limits."},
+            format="json",
+            **self._auth(head_access),
+        ).data
+
+        response = self.client.post(
+            reverse("knowledge-relation-create"),
+            {"source_type": "test", "source_id": test["id"], "target_type": "component", "target_id": component["id"]},
+            format="json",
+            **self._auth(head_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        test_relations = self.client.get(
+            reverse("knowledge-test-relations", args=[test["id"]]), **self._auth(head_access)
+        ).data
+        self.assertEqual([(r["other_type"], r["other_id"]) for r in test_relations], [("component", component["id"])])
+
+        response = self.client.get(reverse("knowledge-search") + "?q=zephyrix", **self._auth(head_access))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("test", {r["type"] for r in response.data["results"]})
+        self.assertEqual(response.data["counts"]["test"], 1)
+
     def test_relations_link_failure_to_component_and_sop_bidirectionally(self):
         _, head_access = self._login_with_role("relhead@example.com", "Team/Subteam Head")
         component = self.client.post(
@@ -1484,3 +1689,190 @@ class EngineeringDomainTests(KnowledgeTestCase):
         )
         response = self.client.get(reverse("knowledge-sop-list-create") + "?q=thermal", **self._auth(head_access))
         self.assertEqual([s["title"] for s in response.data["results"]], ["Thermal Calibration"])
+
+
+class UserProfileTests(KnowledgeTestCase):
+    def test_profile_returns_public_fields_and_stats_not_roles_or_permissions(self):
+        owner, owner_access = self._login_with_role("profileowner@example.com", "Team/Subteam Head")
+        article = self.client.post(
+            reverse("knowledge-article-list-create"), {"title": "A", "content": "..."}, format="json", **self._auth(owner_access)
+        ).data
+        # Stats only count PUBLISHED articles (same rule visible_articles_for
+        # applies everywhere else) - a draft shouldn't count toward the stat.
+        self.client.post(reverse("knowledge-article-submit", args=[article["id"]]), **self._auth(owner_access))
+        self.client.post(reverse("knowledge-article-publish", args=[article["id"]]), **self._auth(owner_access))
+        self.client.post(
+            reverse("knowledge-project-list-create"), {"name": "P"}, format="json", **self._auth(owner_access)
+        )
+        question = self.client.post(
+            reverse("knowledge-question-list-create"), {"title": "Q", "body": "..."}, format="json", **self._auth(owner_access)
+        ).data
+
+        viewer, viewer_access = self._login_with_role("profileviewer@example.com", "Member")
+        answer = self.client.post(
+            reverse("knowledge-answer-list-create", args=[question["id"]]),
+            {"body": "answer body"},
+            format="json",
+            **self._auth(viewer_access),
+        ).data
+        self.client.post(
+            reverse("knowledge-question-accept", args=[question["id"]]),
+            {"answer_id": answer["id"]},
+            format="json",
+            **self._auth(owner_access),
+        )
+
+        response = self.client.get(reverse("knowledge-user-profile", args=[owner.id]), **self._auth(viewer_access))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["email"], "profileowner@example.com")
+        self.assertNotIn("roles", response.data)
+        self.assertNotIn("permissions", response.data)
+        self.assertEqual(
+            {k: response.data["stats"][k] for k in ("article", "project", "question")},
+            {"article": 1, "project": 1, "question": 1},
+        )
+
+        # The viewer's own profile shows their answer, and that it was accepted.
+        response = self.client.get(reverse("knowledge-user-profile", args=[viewer.id]), **self._auth(viewer_access))
+        self.assertEqual(response.data["stats"]["answer"], 1)
+        self.assertEqual(response.data["stats"]["accepted_answers"], 1)
+
+    def test_profile_404s_for_unknown_user(self):
+        _, access = self._login_with_role("profile404@example.com", "Member")
+        response = self.client.get(
+            reverse("knowledge-user-profile", args=["00000000-0000-0000-0000-000000000000"]), **self._auth(access)
+        )
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_profile_stats_and_contributions_hide_restricted_content_from_non_privileged_viewer(self):
+        owner, owner_access = self._login_with_role("restrictedowner@example.com", "Member")
+        self.client.post(
+            reverse("knowledge-question-list-create"),
+            {"title": "Private Q", "body": "...", "visibility": "RESTRICTED"},
+            format="json",
+            **self._auth(owner_access),
+        )
+
+        _, other_access = self._login_with_role("restrictedviewer@example.com", "Member")
+        response = self.client.get(reverse("knowledge-user-profile", args=[owner.id]), **self._auth(other_access))
+        self.assertEqual(response.data["stats"]["question"], 0)
+
+        response = self.client.get(
+            reverse("knowledge-user-contributions", args=[owner.id]) + "?type=question", **self._auth(other_access)
+        )
+        self.assertEqual(response.data["count"], 0)
+
+        # The owner sees their own restricted question in both places.
+        response = self.client.get(reverse("knowledge-user-profile", args=[owner.id]), **self._auth(owner_access))
+        self.assertEqual(response.data["stats"]["question"], 1)
+        response = self.client.get(
+            reverse("knowledge-user-contributions", args=[owner.id]) + "?type=question", **self._auth(owner_access)
+        )
+        self.assertEqual(response.data["count"], 1)
+
+    def test_contributions_requires_a_known_type(self):
+        owner, owner_access = self._login_with_role("contribtype@example.com", "Member")
+        response = self.client.get(
+            reverse("knowledge-user-contributions", args=[owner.id]) + "?type=bogus", **self._auth(owner_access)
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        response = self.client.get(reverse("knowledge-user-contributions", args=[owner.id]), **self._auth(owner_access))
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+class DocumentTests(KnowledgeTestCase):
+    """Document is the one relatable type besides Article/Question with
+    `visibility` - ownership-or-document.update gates edit/delete (see
+    services.update_document/delete_document), same shape as
+    question.moderate rather than a tiered CRUD-only scheme."""
+
+    def test_document_create_and_ownership_gated_edit_delete(self):
+        owner, owner_access = self._login_with_role("docowner@example.com", "Member")
+        response = self.client.post(
+            reverse("knowledge-document-list-create"),
+            {"title": "Competition Rules 2027", "doc_type": "REGULATION", "source": "EXTERNAL"},
+            format="json",
+            **self._auth(owner_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)  # Member has document.create
+        document = response.data
+        self.assertEqual(document["visibility"], "PUBLIC")
+
+        # The owner can edit their own document without document.update.
+        response = self.client.patch(
+            reverse("knowledge-document-detail", args=[document["id"]]),
+            {"description": "Official rules PDF."},
+            format="json",
+            **self._auth(owner_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # Another Member (no document.update) can't edit or delete someone else's document.
+        _, other_access = self._login_with_role("docother@example.com", "Member")
+        response = self.client.patch(
+            reverse("knowledge-document-detail", args=[document["id"]]),
+            {"description": "Hijacked."},
+            format="json",
+            **self._auth(other_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        response = self.client.delete(reverse("knowledge-document-detail", args=[document["id"]]), **self._auth(other_access))
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        # A Senior Member (document.update) can edit and delete someone else's document.
+        _, senior_access = self._login_with_role("docsenior@example.com", "Senior Member")
+        response = self.client.patch(
+            reverse("knowledge-document-detail", args=[document["id"]]),
+            {"description": "Reviewed by a senior member."},
+            format="json",
+            **self._auth(senior_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        response = self.client.delete(reverse("knowledge-document-detail", args=[document["id"]]), **self._auth(senior_access))
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Document.objects.exists())
+
+    def test_restricted_document_hidden_from_list_search_and_relations(self):
+        owner, owner_access = self._login_with_role("docrestowner@example.com", "Member")
+        document = self.client.post(
+            reverse("knowledge-document-list-create"),
+            {"title": "Zephyrix Sponsor Budget", "visibility": "RESTRICTED"},
+            format="json",
+            **self._auth(owner_access),
+        ).data
+        # Project creation needs project.create (Team/Subteam Head only, see
+        # EngineeringDomainTests) - a separate account from the document
+        # owner just to get a project to relate to; the relation itself is
+        # created from the document owner's side below, which only needs
+        # edit rights on the *source* (the document), not the target.
+        _, head_access = self._login_with_role("docresthead@example.com", "Team/Subteam Head")
+        project = self.client.post(
+            reverse("knowledge-project-list-create"), {"name": "Zephyrix Project"}, format="json", **self._auth(head_access)
+        ).data
+        self.client.post(
+            reverse("knowledge-relation-create"),
+            {"source_type": "document", "source_id": document["id"], "target_type": "project", "target_id": project["id"]},
+            format="json",
+            **self._auth(owner_access),
+        )
+
+        _, other_access = self._login_with_role("docrestother@example.com", "Member")
+
+        # Not visible directly, in the list, in search, or as a relation's other side.
+        response = self.client.get(reverse("knowledge-document-detail", args=[document["id"]]), **self._auth(other_access))
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        response = self.client.get(reverse("knowledge-document-list-create"), **self._auth(other_access))
+        self.assertNotIn(document["id"], {d["id"] for d in response.data["results"]})
+        response = self.client.get(reverse("knowledge-search") + "?q=zephyrix+sponsor", **self._auth(other_access))
+        self.assertNotIn(document["id"], {r["id"] for r in response.data["results"] if r["type"] == "document"})
+        response = self.client.get(reverse("knowledge-project-relations", args=[project["id"]]), **self._auth(other_access))
+        self.assertEqual(response.data, [])
+
+        # The owner and a document.update holder can see it everywhere above.
+        _, senior_access = self._login_with_role("docrestsenior@example.com", "Senior Member")
+        for access in (owner_access, senior_access):
+            response = self.client.get(reverse("knowledge-document-detail", args=[document["id"]]), **self._auth(access))
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            response = self.client.get(reverse("knowledge-project-relations", args=[project["id"]]), **self._auth(access))
+            self.assertEqual([r["other_id"] for r in response.data], [document["id"]])

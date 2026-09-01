@@ -160,7 +160,7 @@ export default function ArticleDetailPage() {
   }
 
   return (
-    <div className="flex gap-8 items-start">
+    <div className="flex flex-col lg:flex-row gap-8 items-start">
       {headings.length > 0 && (
         <aside className="hidden lg:block w-56 shrink-0 sticky top-6">
           <h3 className="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider mb-3">
@@ -231,7 +231,11 @@ export default function ArticleDetailPage() {
                 {t("visibilityRESTRICTED")}
               </span>
             )}
-            {authorName && <span>{t("byAuthor", { name: authorName })}</span>}
+            {authorName && article.author && (
+              <Link href={`/users/${article.author.id}`} className="hover:text-primary hover:underline transition-colors">
+                {t("byAuthor", { name: authorName })}
+              </Link>
+            )}
             <span>{formatDateTime(article.updated_at)}</span>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -285,8 +289,6 @@ export default function ArticleDetailPage() {
 
         <Markdown content={article.content} />
 
-        <RelatedContent type="article" id={article.id} canEdit={canEdit} />
-
         <Attachments type="article" id={article.id} canEdit={canEdit} />
 
         {revisions && revisions.length > 0 && (
@@ -298,12 +300,25 @@ export default function ArticleDetailPage() {
                   key={revision.id}
                   className="flex gap-3 bg-surface p-4 rounded-xl border border-outline-variant"
                 >
-                  <Avatar person={revision.edited_by} />
+                  {revision.edited_by ? (
+                    <Link href={`/users/${revision.edited_by.id}`} className="shrink-0">
+                      <Avatar person={revision.edited_by} />
+                    </Link>
+                  ) : (
+                    <Avatar person={revision.edited_by} />
+                  )}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2 mb-1">
-                      <span className="font-body-md text-body-md font-bold text-on-surface">
-                        {formatPersonName(revision.edited_by) ?? t("systemAuthor")}
-                      </span>
+                      {revision.edited_by ? (
+                        <Link
+                          href={`/users/${revision.edited_by.id}`}
+                          className="font-body-md text-body-md font-bold text-on-surface hover:text-primary hover:underline transition-colors"
+                        >
+                          {formatPersonName(revision.edited_by)}
+                        </Link>
+                      ) : (
+                        <span className="font-body-md text-body-md font-bold text-on-surface">{t("systemAuthor")}</span>
+                      )}
                       <span className="font-mono-sm text-mono-sm text-on-surface-variant shrink-0">
                         {formatDateTime(revision.created_at)}
                       </span>
@@ -359,6 +374,8 @@ export default function ArticleDetailPage() {
           </div>
         </Modal>
       </div>
+
+      <RelatedContent type="article" id={article.id} canEdit={canEdit} />
     </div>
   );
 }

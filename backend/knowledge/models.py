@@ -407,6 +407,128 @@ class Sop(models.Model):
         return self.title
 
 
+class Test(models.Model):
+    class TestType(models.TextChoices):
+        FLIGHT = "FLIGHT", "Flight Test"
+        THRUST = "THRUST", "Thrust Test"
+        STRUCTURAL = "STRUCTURAL", "Structural Test"
+        ELECTRICAL = "ELECTRICAL", "Electrical Test"
+        GROUND = "GROUND", "Ground Test"
+        SOFTWARE = "SOFTWARE", "Software Test"
+        CALIBRATION = "CALIBRATION", "Calibration"
+        EXPERIMENT = "EXPERIMENT", "Experiment"
+        OTHER = "OTHER", "Other"
+
+    class Status(models.TextChoices):
+        PLANNED = "PLANNED", "Planned"
+        IN_PROGRESS = "IN_PROGRESS", "In Progress"
+        COMPLETED = "COMPLETED", "Completed"
+
+    class PassFail(models.TextChoices):
+        PASS = "PASS", "Pass"
+        FAIL = "FAIL", "Fail"
+        PARTIAL = "PARTIAL", "Partial"
+        NOT_APPLICABLE = "NOT_APPLICABLE", "Not Applicable"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    title = models.CharField(max_length=200)
+    test_type = models.CharField(max_length=20, choices=TestType.choices, default=TestType.OTHER)
+    date = models.DateField(null=True, blank=True)
+    location = models.CharField(max_length=150, blank=True)
+    # Direct FK (like Failure.project) since it's the most central Project
+    # relationship for a Test (docs/VISION.md #15.3 lists it first) - Component
+    # is deliberately NOT a direct FK here the way it is on Failure, since a
+    # test typically involves several components at once; that goes through
+    # the generic KnowledgeRelation graph instead (TESTED_IN/TESTS).
+    project = models.ForeignKey(Project, null=True, blank=True, on_delete=models.SET_NULL, related_name="tests")
+    objective = models.TextField(blank=True)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PLANNED)
+    # All markdown source. Aircraft/System, Software/Firmware, and Test
+    # conditions from docs/VISION.md #10.3's "Configuration" subsection all
+    # collapse into `configuration` - same "one narrative field beats several
+    # rarely-all-filled-in structured ones" precedent as Failure.summary.
+    configuration = models.TextField(blank=True)
+    procedure = models.TextField(blank=True)
+    results = models.TextField(blank=True)
+    # Kept structured (not folded into `results`) - useful for filtering
+    # "show me every failed test" the way Failure.severity is, unlike the
+    # free-text fields around it.
+    pass_fail = models.CharField(max_length=20, choices=PassFail.choices, blank=True)
+    # Conclusion/Recommendations/Lessons-Learned (docs/VISION.md #10.3) fold
+    # into one field - same "lessons live inside the record" principle as
+    # Failure's own docstring cites from docs/VISION.md #8.4.
+    conclusion = models.TextField(blank=True)
+    tags = models.ManyToManyField(Tag, blank=True, related_name="tests")
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="created_tests"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-date", "-created_at"]
+
+    def __str__(self):
+        return self.title
+
+
+class Document(models.Model):
+    """The one relatable type with `visibility` besides Article/Question (see
+    docs/VISION.md #11.4) - a single primary `file`/`url`, not a list of
+    attachments like the engineering types above (docs/VISION.md #11.5: "not
+    generic file storage"). RESTRICTED enforcement mirrors Article/Question's
+    (see services.visible_documents_for/_relatable_visible_to), simplified
+    since there's no draft/review workflow - just "not RESTRICTED, or you're
+    created_by, or you hold document.update"."""
+
+    class DocType(models.TextChoices):
+        COMPETITION_REPORT = "COMPETITION_REPORT", "Competition Report"
+        TECHNICAL_REPORT = "TECHNICAL_REPORT", "Technical Report"
+        RESEARCH_PAPER = "RESEARCH_PAPER", "Research Paper"
+        DATASHEET = "DATASHEET", "Datasheet"
+        MANUAL = "MANUAL", "Manual"
+        REGULATION = "REGULATION", "Regulation"
+        PRESENTATION = "PRESENTATION", "Presentation"
+        TRAINING_MATERIAL = "TRAINING_MATERIAL", "Training Material"
+        REFERENCE = "REFERENCE", "Reference"
+        OTHER = "OTHER", "Other"
+
+    class Source(models.TextChoices):
+        INTERNAL = "INTERNAL", "Internal"
+        EXTERNAL = "EXTERNAL", "External"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    title = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+    doc_type = models.CharField(max_length=20, choices=DocType.choices, default=DocType.OTHER)
+    source = models.CharField(max_length=10, choices=Source.choices, default=Source.INTERNAL)
+    # External author/org name (e.g. "SAE International") - distinct from
+    # created_by, which is the Athar user who added the record.
+    author = models.CharField(max_length=200, blank=True)
+    organization = models.CharField(max_length=200, blank=True)
+    publication_date = models.DateField(null=True, blank=True)
+    # For an external reference with no file of its own (e.g. a link to a
+    # competition rules page) - `file` and `url` are both optional, but a
+    # document with neither is a title-only stub (allowed; not worth a
+    # model-level constraint for what's ultimately a data-quality concern).
+    url = models.URLField(blank=True)
+    file = models.ForeignKey(StoredFile, null=True, blank=True, on_delete=models.SET_NULL, related_name="documents")
+    category = models.ForeignKey(Category, null=True, blank=True, on_delete=models.SET_NULL, related_name="documents")
+    tags = models.ManyToManyField(Tag, blank=True, related_name="documents")
+    visibility = models.CharField(max_length=20, choices=Visibility.choices, default=Visibility.PUBLIC)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="created_documents"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-updated_at"]
+
+    def __str__(self):
+        return self.title
+
+
 class ProjectAttachment(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="attachments")
@@ -469,3 +591,19 @@ class SopAttachment(models.Model):
 
     def __str__(self):
         return f"{self.sop_id} <- {self.file_id}"
+
+
+class TestAttachment(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    test = models.ForeignKey(Test, on_delete=models.CASCADE, related_name="attachments")
+    file = models.ForeignKey(StoredFile, on_delete=models.CASCADE, related_name="+")
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.test_id} <- {self.file_id}"
