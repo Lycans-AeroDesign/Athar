@@ -1,9 +1,10 @@
 // Projects/Components/Failures/SOPs - split out from knowledge.ts (which was
 // getting unwieldy) once this domain's CRUD+attachment surface reached the
-// same size as Articles/Questions combined. Same conventions as knowledge.ts:
-// list endpoints unwrap the paginated envelope to a bare array (page 1/20
-// items only, for now - see that file's top-of-file note), write payloads
-// use `..._id`/`tag_names` field names matching the backend's WriteSerializers.
+// same size as Articles/Questions combined. Same conventions as knowledge.ts,
+// except list endpoints return the full `Paginated<T>` envelope (not just
+// `.results`) so the list pages can drive a real Pagination control - write
+// payloads use `..._id`/`tag_names` field names matching the backend's
+// WriteSerializers.
 
 import { apiJson, apiVoid } from "./client";
 import type {
@@ -26,12 +27,17 @@ import type {
 
 // --- Projects ---------------------------------------------------------------
 
-export function getProjects(filters?: { status?: ProjectStatus; q?: string }): Promise<ProjectSummary[]> {
+export function getProjects(filters?: {
+  status?: ProjectStatus;
+  q?: string;
+  page?: number;
+}): Promise<Paginated<ProjectSummary>> {
   const params = new URLSearchParams();
   if (filters?.status) params.set("status", filters.status);
   if (filters?.q) params.set("q", filters.q);
+  if (filters?.page) params.set("page", String(filters.page));
   const query = params.toString() ? `?${params.toString()}` : "";
-  return apiJson<Paginated<ProjectSummary>>(`/api/v1/knowledge/projects/${query}`).then((data) => data.results);
+  return apiJson<Paginated<ProjectSummary>>(`/api/v1/knowledge/projects/${query}`);
 }
 
 export function getProject(id: string): Promise<ProjectDetail> {
@@ -87,13 +93,15 @@ export function getComponents(filters?: {
   category?: string;
   status?: ComponentStatus;
   q?: string;
-}): Promise<ComponentSummary[]> {
+  page?: number;
+}): Promise<Paginated<ComponentSummary>> {
   const params = new URLSearchParams();
   if (filters?.category) params.set("category", filters.category);
   if (filters?.status) params.set("status", filters.status);
   if (filters?.q) params.set("q", filters.q);
+  if (filters?.page) params.set("page", String(filters.page));
   const query = params.toString() ? `?${params.toString()}` : "";
-  return apiJson<Paginated<ComponentSummary>>(`/api/v1/knowledge/components/${query}`).then((data) => data.results);
+  return apiJson<Paginated<ComponentSummary>>(`/api/v1/knowledge/components/${query}`);
 }
 
 export function getComponent(id: string): Promise<ComponentDetail> {
@@ -153,13 +161,15 @@ export function getFailures(filters?: {
   severity?: FailureSeverity;
   status?: FailureStatus;
   q?: string;
-}): Promise<FailureSummary[]> {
+  page?: number;
+}): Promise<Paginated<FailureSummary>> {
   const params = new URLSearchParams();
   if (filters?.severity) params.set("severity", filters.severity);
   if (filters?.status) params.set("status", filters.status);
   if (filters?.q) params.set("q", filters.q);
+  if (filters?.page) params.set("page", String(filters.page));
   const query = params.toString() ? `?${params.toString()}` : "";
-  return apiJson<Paginated<FailureSummary>>(`/api/v1/knowledge/failures/${query}`).then((data) => data.results);
+  return apiJson<Paginated<FailureSummary>>(`/api/v1/knowledge/failures/${query}`);
 }
 
 export function getFailure(id: string): Promise<FailureDetail> {
@@ -218,13 +228,19 @@ export function removeFailureAttachment(failureId: string, attachmentId: string)
 
 // --- SOPs ---------------------------------------------------------------
 
-export function getSops(filters?: { category?: string; mandatory?: boolean; q?: string }): Promise<SopSummary[]> {
+export function getSops(filters?: {
+  category?: string;
+  mandatory?: boolean;
+  q?: string;
+  page?: number;
+}): Promise<Paginated<SopSummary>> {
   const params = new URLSearchParams();
   if (filters?.category) params.set("category", filters.category);
   if (filters?.mandatory) params.set("mandatory", "true");
   if (filters?.q) params.set("q", filters.q);
+  if (filters?.page) params.set("page", String(filters.page));
   const query = params.toString() ? `?${params.toString()}` : "";
-  return apiJson<Paginated<SopSummary>>(`/api/v1/knowledge/sops/${query}`).then((data) => data.results);
+  return apiJson<Paginated<SopSummary>>(`/api/v1/knowledge/sops/${query}`);
 }
 
 export function getSop(id: string): Promise<SopDetail> {

@@ -47,8 +47,11 @@ export function FailureEditor({ failure, onDirtyChange }: FailureEditorProps) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    getComponents().then(setComponents);
-    getProjects().then(setProjects);
+    // First page only (20 items) for these picker dropdowns - same known
+    // limitation as the Components/Projects list pages before their own
+    // Pagination controls were added, just not worth a paged combobox here too.
+    getComponents().then((data) => setComponents(data.results));
+    getProjects().then((data) => setProjects(data.results));
   }, []);
 
   const isDirty =

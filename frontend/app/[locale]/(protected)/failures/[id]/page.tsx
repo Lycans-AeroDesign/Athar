@@ -45,6 +45,7 @@ export default function FailureDetailPage() {
   const [failure, setFailure] = useState<FailureDetail | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
     getFailure(id).then(setFailure, () => setNotFound(true));
@@ -58,8 +59,13 @@ export default function FailureDetailPage() {
   }
 
   async function handleDelete() {
-    await deleteFailure(failure!.id);
-    router.push("/failures");
+    setActionError(null);
+    try {
+      await deleteFailure(failure!.id);
+      router.push("/failures");
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : String(err));
+    }
   }
 
   return (
@@ -113,6 +119,12 @@ export default function FailureDetailPage() {
           {failure.aircraft && <span>{failure.aircraft}</span>}
         </div>
       </div>
+
+      {actionError && (
+        <p className="font-body-md text-body-md text-error" role="alert">
+          {actionError}
+        </p>
+      )}
 
       {failure.summary && (
         <section>

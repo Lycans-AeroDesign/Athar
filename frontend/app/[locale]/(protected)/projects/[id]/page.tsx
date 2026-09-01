@@ -32,6 +32,7 @@ export default function ProjectDetailPage() {
   const [project, setProject] = useState<ProjectDetail | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
     getProject(id).then(setProject, () => setNotFound(true));
@@ -45,8 +46,13 @@ export default function ProjectDetailPage() {
   }
 
   async function handleDelete() {
-    await deleteProject(project!.id);
-    router.push("/projects");
+    setActionError(null);
+    try {
+      await deleteProject(project!.id);
+      router.push("/projects");
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : String(err));
+    }
   }
 
   return (
@@ -91,6 +97,12 @@ export default function ProjectDetailPage() {
           </div>
         )}
       </div>
+
+      {actionError && (
+        <p className="font-body-md text-body-md text-error" role="alert">
+          {actionError}
+        </p>
+      )}
 
       {project.description ? (
         <Markdown content={project.description} />

@@ -41,13 +41,19 @@ export default function DashboardPage() {
   const [articles, setArticles] = useState<ArticleSummary[] | null>(null);
   const [questions, setQuestions] = useState<QuestionSummary[] | null>(null);
   const [activity, setActivity] = useState<AuditLogEntry[] | null>(null);
+  // One shared banner for any of the five independent fetches below - each
+  // still resolves/renders on its own (a failed activity feed shouldn't block
+  // the stat cards), but a silent failure previously meant "Loading..."
+  // forever with no explanation.
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
-    getArticleCount().then(setArticleCount);
-    getOpenQuestionCount().then(setOpenQuestionCount);
-    getArticles().then(setArticles);
-    getQuestions().then(setQuestions);
-    getKnowledgeActivity().then((data) => setActivity(data.results));
+    const onError = (err: unknown) => setLoadError(err instanceof Error ? err.message : String(err));
+    getArticleCount().then(setArticleCount, onError);
+    getOpenQuestionCount().then(setOpenQuestionCount, onError);
+    getArticles().then(setArticles, onError);
+    getQuestions().then(setQuestions, onError);
+    getKnowledgeActivity().then((data) => setActivity(data.results), onError);
   }, []);
 
   const recentItems = useMemo(() => {
@@ -87,6 +93,12 @@ export default function DashboardPage() {
           </Can>
         </div>
       </div>
+
+      {loadError && (
+        <p className="font-body-md text-body-md text-error" role="alert">
+          {loadError}
+        </p>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <StatCard label={t("statArticlesLabel")} value={articleCount ?? "..."} icon="menu_book" />

@@ -32,6 +32,7 @@ export default function ComponentDetailPage() {
   const [component, setComponent] = useState<ComponentDetail | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
     getComponent(id).then(setComponent, () => setNotFound(true));
@@ -45,8 +46,13 @@ export default function ComponentDetailPage() {
   }
 
   async function handleDelete() {
-    await deleteComponent(component!.id);
-    router.push("/components");
+    setActionError(null);
+    try {
+      await deleteComponent(component!.id);
+      router.push("/components");
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : String(err));
+    }
   }
 
   return (
@@ -106,6 +112,12 @@ export default function ComponentDetailPage() {
           </div>
         )}
       </div>
+
+      {actionError && (
+        <p className="font-body-md text-body-md text-error" role="alert">
+          {actionError}
+        </p>
+      )}
 
       {component.summary ? (
         <Markdown content={component.summary} />

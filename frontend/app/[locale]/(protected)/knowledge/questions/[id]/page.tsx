@@ -10,17 +10,20 @@ import { Attachments } from "@/components/knowledge/Attachments";
 import { RelatedContent } from "@/components/knowledge/RelatedContent";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Icon } from "@/components/ui/Icon";
+import { IconButton } from "@/components/ui/IconButton";
 import { Markdown } from "@/components/ui/Markdown";
 import { MarkdownEditor } from "@/components/ui/MarkdownEditor";
 import { ShareButton } from "@/components/ui/ShareButton";
-import { Link } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import { formatRelativeTime } from "@/lib/datetime";
 import { formatPersonName } from "@/lib/format";
 import {
   acceptAnswer,
   closeQuestion,
   createAnswer,
+  deleteQuestion,
   getQuestion,
   promoteQuestion,
   reopenQuestion,
@@ -32,6 +35,7 @@ import { useHasPermission } from "@/lib/auth/permissions";
 export default function QuestionDetailPage() {
   const { id } = useParams<{ id: string }>();
   const t = useTranslations("knowledge.question");
+  const router = useRouter();
   const { user } = useAuth();
   const canModerate = useHasPermission("question.moderate");
   const canCreateArticle = useHasPermission("article.create");
@@ -42,6 +46,7 @@ export default function QuestionDetailPage() {
   const [isSubmittingAnswer, setIsSubmittingAnswer] = useState(false);
   const [workingAnswerId, setWorkingAnswerId] = useState<string | null>(null);
   const [isWorking, setIsWorking] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -99,6 +104,16 @@ export default function QuestionDetailPage() {
     }
   }
 
+  async function handleDelete() {
+    setActionError(null);
+    try {
+      await deleteQuestion(question!.id);
+      router.push("/knowledge");
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
   async function handlePromote() {
     setIsWorking(true);
     setActionError(null);
@@ -132,7 +147,22 @@ export default function QuestionDetailPage() {
             <span>•</span>
             <span>{formatRelativeTime(question.created_at)}</span>
           </div>
-          <ShareButton title={question.title} />
+          <div className="flex items-center gap-2">
+            <ShareButton title={question.title} />
+            {canManage && (
+              <Link href={`/knowledge/questions/${question.id}/edit`}>
+                <IconButton icon="edit" variant="secondary" aria-label={t("editButton")} />
+              </Link>
+            )}
+            {canManage && (
+              <IconButton
+                icon="delete"
+                variant="danger"
+                aria-label={t("deleteButton")}
+                onClick={() => setDeleteOpen(true)}
+              />
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <h1 className="font-headline-lg text-headline-lg text-on-surface">{question.title}</h1>
@@ -273,6 +303,16 @@ export default function QuestionDetailPage() {
           </div>
         </Can>
       )}
+
+      <ConfirmModal
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        title={t("deleteConfirmTitle")}
+        description={t("deleteConfirmBody")}
+        confirmLabel={t("deleteButton")}
+        danger
+        onConfirm={handleDelete}
+      />
     </div>
   );
 }

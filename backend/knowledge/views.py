@@ -719,7 +719,7 @@ class ArticleRelationsView(APIView):
     def get(self, request, pk):
         article = _visible_article_or_404(request, pk)
         content_type = ContentType.objects.get_for_model(Article)
-        relations = services.get_relations_for("article", article.id)
+        relations = services.get_relations_for("article", article.id, actor=request.user)
         serializer = KnowledgeRelationSerializer(relations, many=True, context={"viewer": (content_type, article.id)})
         return Response(serializer.data)
 
@@ -735,7 +735,7 @@ class QuestionRelationsView(APIView):
     def get(self, request, pk):
         question = _visible_question_or_404(request, pk)
         content_type = ContentType.objects.get_for_model(Question)
-        relations = services.get_relations_for("question", question.id)
+        relations = services.get_relations_for("question", question.id, actor=request.user)
         serializer = KnowledgeRelationSerializer(
             relations, many=True, context={"viewer": (content_type, question.id)}
         )
@@ -956,7 +956,7 @@ class ProjectRelationsView(APIView):
     def get(self, request, pk):
         project = get_object_or_404(Project, pk=pk)
         content_type = ContentType.objects.get_for_model(Project)
-        relations = services.get_relations_for("project", project.id)
+        relations = services.get_relations_for("project", project.id, actor=request.user)
         return Response(KnowledgeRelationSerializer(relations, many=True, context={"viewer": (content_type, project.id)}).data)
 
 
@@ -1092,7 +1092,7 @@ class ComponentRelationsView(APIView):
     def get(self, request, pk):
         component = get_object_or_404(Component, pk=pk)
         content_type = ContentType.objects.get_for_model(Component)
-        relations = services.get_relations_for("component", component.id)
+        relations = services.get_relations_for("component", component.id, actor=request.user)
         return Response(
             KnowledgeRelationSerializer(relations, many=True, context={"viewer": (content_type, component.id)}).data
         )
@@ -1227,7 +1227,7 @@ class FailureRelationsView(APIView):
     def get(self, request, pk):
         failure = get_object_or_404(Failure, pk=pk)
         content_type = ContentType.objects.get_for_model(Failure)
-        relations = services.get_relations_for("failure", failure.id)
+        relations = services.get_relations_for("failure", failure.id, actor=request.user)
         return Response(
             KnowledgeRelationSerializer(relations, many=True, context={"viewer": (content_type, failure.id)}).data
         )
@@ -1355,7 +1355,7 @@ class SopRelationsView(APIView):
     def get(self, request, pk):
         sop = get_object_or_404(Sop, pk=pk)
         content_type = ContentType.objects.get_for_model(Sop)
-        relations = services.get_relations_for("sop", sop.id)
+        relations = services.get_relations_for("sop", sop.id, actor=request.user)
         return Response(KnowledgeRelationSerializer(relations, many=True, context={"viewer": (content_type, sop.id)}).data)
 
 

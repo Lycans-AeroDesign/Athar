@@ -1006,6 +1006,56 @@ class KnowledgeRelationTests(KnowledgeTestCase):
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(KnowledgeRelation.objects.exists())
 
+    def test_restricted_other_side_is_hidden_from_relations_list(self):
+        """A relation's "other side" must respect ITS OWN visibility, not just
+        the visibility of the item whose relations list you're viewing -
+        KnowledgeRelationSerializer only ever renders "the other side" with no
+        visibility check of its own, so get_relations_for is what has to filter."""
+        author, author_access = self._login_with_role("relvisauthor@example.com", "Member")
+        article = self.client.post(
+            reverse("knowledge-article-list-create"),
+            {"title": "Public Doc", "content": "Body"},
+            format="json",
+            **self._auth(author_access),
+        ).data
+        # Published, so a non-author, non-privileged viewer can see the article
+        # itself (and thus reach its relations endpoint at all) - the point of
+        # this test is that the *related question* stays hidden, not the article.
+        _, head_access = self._login_with_role("relvishead@example.com", "Team/Subteam Head")
+        self.client.post(reverse("knowledge-article-submit", args=[article["id"]]), **self._auth(author_access))
+        self.client.post(reverse("knowledge-article-publish", args=[article["id"]]), **self._auth(head_access))
+
+        question = self.client.post(
+            reverse("knowledge-question-list-create"),
+            {"title": "Private Q", "body": "...", "visibility": "RESTRICTED"},
+            format="json",
+            **self._auth(author_access),
+        ).data
+        response = self.client.post(
+            reverse("knowledge-relation-create"),
+            {"source_type": "article", "source_id": article["id"], "target_type": "question", "target_id": question["id"]},
+            format="json",
+            **self._auth(author_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        # A viewer with no relationship to the restricted question can see the
+        # (public) article's relations endpoint at all, but the restricted
+        # question must not appear in the list - not its title, not its id.
+        _, other_access = self._login_with_role("relvisother@example.com", "Member")
+        response = self.client.get(reverse("knowledge-article-relations", args=[article["id"]]), **self._auth(other_access))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, [])
+
+        # The question's own author still sees it.
+        response = self.client.get(reverse("knowledge-article-relations", args=[article["id"]]), **self._auth(author_access))
+        self.assertEqual([r["other_id"] for r in response.data], [question["id"]])
+
+        # So does a question.moderate holder who isn't the author.
+        _, moderator_access = self._login_with_role("relvismod@example.com", "Senior Member")
+        response = self.client.get(reverse("knowledge-article-relations", args=[article["id"]]), **self._auth(moderator_access))
+        self.assertEqual([r["other_id"] for r in response.data], [question["id"]])
+
     def test_cannot_relate_to_self_or_unknown_type(self):
         _, author_access = self._login_with_role("relauthor2@example.com", "Member")
         article = self.client.post(

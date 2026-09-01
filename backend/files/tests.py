@@ -93,3 +93,14 @@ class FileServingTests(APITestCase):
                 **self._auth(access),
             )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_upload_rejects_unknown_required_permission_codename(self):
+        access = self._login_with_role("uploader4@example.com", "Member")
+        upload = SimpleUploadedFile("note.txt", b"hello", content_type="text/plain")
+        response = self.client.post(
+            reverse("files-upload"),
+            {"file": upload, "required_permission": "not.a.real.codename"},
+            format="multipart",
+            **self._auth(access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

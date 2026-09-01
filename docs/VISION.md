@@ -1211,7 +1211,9 @@ This is where the connected knowledge model becomes extremely valuable.
 
 ## 41. Development Roadmap
 
-### V0.1 — Foundation
+> This section is the target plan, not a status report — see `README.md`'s own Roadmap section for a condensed, kept-current summary of what's actually built. The status notes below exist so this document alone doesn't read as a plan nobody has started on.
+
+### V0.1 — Foundation *(done)*
 
 * Django
 * PostgreSQL
@@ -1222,7 +1224,7 @@ This is where the connected knowledge model becomes extremely valuable.
 * RBAC
 * Organization configuration
 
-### V0.2 — Knowledge
+### V0.2 — Knowledge *(mostly done — search below is still a plain query, not full-text)*
 
 * Wiki
 * Articles
@@ -1232,30 +1234,30 @@ This is where the connected knowledge model becomes extremely valuable.
 * Revisions
 * Relationships
 
-### V0.3 — Engineering
+### V0.3 — Engineering *(partially done)*
 
-* Projects
-* Components
-* Failures
-* SOPs
-* Flight Logs
-* Design Decisions
-* Lessons Learned
+* Projects — done
+* Components — done
+* Failures — done
+* SOPs — done
+* Flight Logs — not started
+* Design Decisions — not started
+* Lessons Learned — not started
 
-### V0.4 — Collaboration
+### V0.4 — Collaboration *(partially done)*
 
-* Q&A
-* Comments
-* Notifications
-* Reviews
-* Activity
+* Q&A — done
+* Comments — not started (no model)
+* Notifications — not started (no model)
+* Reviews — done, as Article's draft/review/publish workflow
+* Activity — done, as the audit log + a public Knowledge activity feed
 
-### V0.5 — Search
+### V0.5 — Search *(partially done)*
 
-* Full-text search
-* Filters
-* Related knowledge
-* Mention detection
+* Full-text search — not started (search is still a plain `icontains` query, see §33)
+* Filters — done, both cross-type (the global search bar/results page) and per-type (each engineering list page's own search box)
+* Related knowledge — done, as the generic `KnowledgeRelation` graph (§34)
+* Mention detection — not started; the closest thing today is an explicit `@`-mention picker that inserts a link and creates a real relation when you deliberately pick a result — not automatic scanning of prose
 
 ### V1.0 — Open Source Release
 

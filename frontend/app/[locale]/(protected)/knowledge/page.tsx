@@ -47,15 +47,23 @@ export default function KnowledgePage() {
     articles: ArticleSummary[];
   } | null>(null);
   const articles = articlesResult?.status === articleStatus ? articlesResult.articles : null;
+  // Shared across all four fetches below - each still resolves independently
+  // (a failed tag list shouldn't block the article grid), but previously a
+  // rejected promise here just left "Loading..." showing forever.
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    getArticles(articleStatus).then((fetched) => setArticlesResult({ status: articleStatus, articles: fetched }));
+    getArticles(articleStatus).then(
+      (fetched) => setArticlesResult({ status: articleStatus, articles: fetched }),
+      (err) => setError(err instanceof Error ? err.message : String(err)),
+    );
   }, [articleStatus]);
 
   useEffect(() => {
-    getQuestions().then(setQuestions);
-    getCategories().then(setCategories);
-    getTags().then(setTags);
+    const onError = (err: unknown) => setError(err instanceof Error ? err.message : String(err));
+    getQuestions().then(setQuestions, onError);
+    getCategories().then(setCategories, onError);
+    getTags().then(setTags, onError);
   }, []);
 
   const selectedTagName = tags.find((tag) => tag.id === selectedTagId)?.name ?? null;
@@ -122,6 +130,12 @@ export default function KnowledgePage() {
           </Can>
         </div>
       </div>
+
+      {error && (
+        <p className="font-body-md text-body-md text-error" role="alert">
+          {error}
+        </p>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         <div className="lg:col-span-4 space-y-6">

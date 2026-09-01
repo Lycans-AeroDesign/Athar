@@ -8,40 +8,48 @@ import { Combobox } from "@/components/ui/Combobox";
 import { MarkdownEditor } from "@/components/ui/MarkdownEditor";
 import { TagInput } from "@/components/ui/TagInput";
 import { useRouter } from "@/i18n/navigation";
-import { createQuestion } from "@/lib/api/knowledge";
-import type { Visibility } from "@/lib/api/types";
+import { createQuestion, updateQuestion } from "@/lib/api/knowledge";
+import type { QuestionDetail, Visibility } from "@/lib/api/types";
 
 interface QuestionEditorProps {
-  /** Reports whether the draft has any content - lets the parent page's "Back" link confirm before discarding. */
+  /** Omit to ask a new question; pass an existing one to edit it in place. */
+  question?: QuestionDetail;
+  /** Reports whether the draft differs from `question` (or, for a new question, from empty) - lets the parent page's "Back" link confirm before discarding. */
   onDirtyChange?: (dirty: boolean) => void;
 }
 
-// Create-only (there's no question-editing flow yet, inline or otherwise) -
-// structured like ArticleEditor.tsx but simpler, since asking a question has
-// no draft/publish workflow: one submit, straight to the new question.
-export function QuestionEditor({ onDirtyChange }: QuestionEditorProps) {
+// Structured like ArticleEditor.tsx, simpler since asking/editing a question
+// has no draft/publish workflow - one Save action either way.
+export function QuestionEditor({ question, onDirtyChange }: QuestionEditorProps) {
   const t = useTranslations("knowledge.question");
   const router = useRouter();
 
-  const [title, setTitle] = useState("");
-  const [body, setBody] = useState("");
-  const [tags, setTags] = useState<string[]>([]);
-  const [visibility, setVisibility] = useState<Visibility>("PUBLIC");
+  const [title, setTitle] = useState(question?.title ?? "");
+  const [body, setBody] = useState(question?.body ?? "");
+  const [tags, setTags] = useState<string[]>(question?.tags.map((tag) => tag.name) ?? []);
+  const [visibility, setVisibility] = useState<Visibility>(question?.visibility ?? "PUBLIC");
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const isDirty = title.length > 0 || body.length > 0 || tags.length > 0 || visibility !== "PUBLIC";
+  const isDirty = question
+    ? title !== question.title ||
+      body !== question.body ||
+      tags.join(",") !== question.tags.map((tag) => tag.name).join(",") ||
+      visibility !== question.visibility
+    : title.length > 0 || body.length > 0 || tags.length > 0 || visibility !== "PUBLIC";
 
   useEffect(() => {
     onDirtyChange?.(isDirty);
   }, [isDirty, onDirtyChange]);
 
-  async function handleAsk() {
+  async function handleSave() {
     setIsSaving(true);
     setError(null);
     try {
-      const question = await createQuestion({ title, body, tag_names: tags, visibility });
-      router.push(`/knowledge/questions/${question.id}`);
+      const saved = question
+        ? await updateQuestion(question.id, { title, body, tag_names: tags, visibility })
+        : await createQuestion({ title, body, tag_names: tags, visibility });
+      router.push(`/knowledge/questions/${saved.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
       setIsSaving(false);
@@ -73,7 +81,12 @@ export function QuestionEditor({ onDirtyChange }: QuestionEditorProps) {
         </div>
       </div>
 
-      <MarkdownEditor value={body} onChange={setBody} placeholder={t("bodyPlaceholder")} />
+      <MarkdownEditor
+        value={body}
+        onChange={setBody}
+        placeholder={t("bodyPlaceholder")}
+        relateFrom={question ? { type: "question", id: question.id } : undefined}
+      />
 
       {error && (
         <p className="font-body-md text-body-md text-error" role="alert">
@@ -82,8 +95,8 @@ export function QuestionEditor({ onDirtyChange }: QuestionEditorProps) {
       )}
 
       <div className="flex items-center gap-3">
-        <Button onClick={handleAsk} disabled={isSaving || !title.trim()}>
-          {isSaving ? t("asking") : t("askButton")}
+        <Button onClick={handleSave} disabled={isSaving || !title.trim()}>
+          {question ? (isSaving ? t("saving") : t("save")) : isSaving ? t("asking") : t("askButton")}
         </Button>
       </div>
     </div>

@@ -25,6 +25,7 @@ export default function SopDetailPage() {
   const [sop, setSop] = useState<SopDetail | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
     getSop(id).then(setSop, () => setNotFound(true));
@@ -38,8 +39,13 @@ export default function SopDetailPage() {
   }
 
   async function handleDelete() {
-    await deleteSop(sop!.id);
-    router.push("/sops");
+    setActionError(null);
+    try {
+      await deleteSop(sop!.id);
+      router.push("/sops");
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : String(err));
+    }
   }
 
   return (
@@ -89,6 +95,12 @@ export default function SopDetailPage() {
           </div>
         )}
       </div>
+
+      {actionError && (
+        <p className="font-body-md text-body-md text-error" role="alert">
+          {actionError}
+        </p>
+      )}
 
       {sop.safety_notes && (
         <div className="bg-error-container border-s-4 border-error rounded-e-xl p-4 flex gap-3 items-start">

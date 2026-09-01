@@ -8,6 +8,7 @@ import { ActiveFilterChip } from "@/components/ui/ActiveFilterChip";
 import { Button } from "@/components/ui/Button";
 import { Combobox } from "@/components/ui/Combobox";
 import { Icon } from "@/components/ui/Icon";
+import { Pagination } from "@/components/ui/Pagination";
 import { Link } from "@/i18n/navigation";
 import { getSops } from "@/lib/api/engineering";
 import { getCategories } from "@/lib/api/knowledge";
@@ -23,26 +24,44 @@ export default function SopsPage() {
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [searchInput, setSearchInput] = useState("");
   const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
   useEffect(() => {
-    const handle = setTimeout(() => setQuery(searchInput.trim()), 300);
+    const handle = setTimeout(() => {
+      setQuery(searchInput.trim());
+      setPage(1);
+    }, 300);
     return () => clearTimeout(handle);
   }, [searchInput]);
 
-  // Keyed by the filter combination it was fetched for - see projects/page.tsx's
+  // Keyed by the filter+page combination it was fetched for - see projects/page.tsx's
   // matching comment for why this avoids a plain setSops(null) reset.
-  const filterKey = `${categoryFilter ?? ""}:${query}`;
-  const [result, setResult] = useState<{ key: string; sops: SopSummary[] } | null>(null);
+  const filterKey = `${categoryFilter ?? ""}:${query}:${page}`;
+  const [result, setResult] = useState<{ key: string; sops: SopSummary[]; hasNext: boolean; count: number } | null>(
+    null,
+  );
   const sops = result?.key === filterKey ? result.sops : null;
+  // categoriesError: the one-time mount fetch below, set at most once.
+  // errorResult: keyed by filterKey like `result` above, so a stale error
+  // from a previous filter combination doesn't linger once you change filters.
+  const [categoriesError, setCategoriesError] = useState<string | null>(null);
+  const [errorResult, setErrorResult] = useState<{ key: string; message: string } | null>(null);
+  const error = categoriesError ?? (errorResult?.key === filterKey ? errorResult.message : null);
 
   useEffect(() => {
-    getCategories().then(setCategories);
+    getCategories().then(setCategories, (err) => setCategoriesError(err instanceof Error ? err.message : String(err)));
   }, []);
 
   useEffect(() => {
-    getSops({ category: categoryFilter ?? undefined, q: query || undefined }).then((fetched) =>
-      setResult({ key: filterKey, sops: fetched }),
+    getSops({ category: categoryFilter ?? undefined, q: query || undefined, page }).then(
+      (data) => setResult({ key: filterKey, sops: data.results, hasNext: data.next !== null, count: data.count }),
+      (err) => setErrorResult({ key: filterKey, message: err instanceof Error ? err.message : String(err) }),
     );
-  }, [categoryFilter, query, filterKey]);
+  }, [categoryFilter, query, page, filterKey]);
+
+  function updateCategoryFilter(value: string | null) {
+    setCategoryFilter(value);
+    setPage(1);
+  }
 
   return (
     <div className="space-y-6">
@@ -67,7 +86,7 @@ export default function SopsPage() {
               placeholder={t("allCategories")}
               options={[{ value: "", label: t("allCategories") }, ...categories.map((c) => ({ value: c.id, label: c.name }))]}
               value={categoryFilter ?? ""}
-              onChange={(value) => setCategoryFilter(value || null)}
+              onChange={(value) => updateCategoryFilter(value || null)}
             />
           </div>
           <Can permission="sop.create">
@@ -88,12 +107,17 @@ export default function SopsPage() {
             onClear={() => {
               setSearchInput("");
               setQuery("");
+              setPage(1);
             }}
           />
         </div>
       )}
 
-      {sops === null ? (
+      {error ? (
+        <p className="font-body-md text-body-md text-error" role="alert">
+          {error}
+        </p>
+      ) : sops === null ? (
         <p className="font-body-md text-body-md text-on-surface-variant">{commonT("loading")}</p>
       ) : sops.length === 0 ? (
         <p className="font-body-md text-body-md text-on-surface-variant">{t("emptyState")}</p>
@@ -123,6 +147,16 @@ export default function SopsPage() {
             </li>
           ))}
         </ul>
+      )}
+
+      {sops && sops.length > 0 && (
+        <Pagination
+          page={page}
+          hasNext={result?.hasNext ?? false}
+          hasPrevious={page > 1}
+          onPageChange={setPage}
+          totalCount={result?.count}
+        />
       )}
     </div>
   );

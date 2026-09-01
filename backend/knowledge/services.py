@@ -772,12 +772,54 @@ def remove_question_attachment(*, attachment: QuestionAttachment, actor, request
     attachment.delete()
 
 
-def get_relations_for(model_name: str, object_id):
+def _relatable_visible_to(actor, content_type, instance) -> bool:
+    """Whether `actor` may see `instance` as the *other side* of a relation -
+    mirrors views._visible_article_or_404/_visible_question_or_404's RESTRICTED
+    gate. Project/Component/Failure/Sop have no `visibility` field at all, so
+    they're always visible here (their own x.read permission is the real gate,
+    already enforced by the RelationsView the caller is inside)."""
+    if instance is None:
+        return False
+    if getattr(instance, "visibility", None) != Visibility.RESTRICTED:
+        return True
+    model_name = content_type.model
+    if model_name == "article":
+        return (
+            actor == getattr(instance, "author", None)
+            or actor.has_permission("article.review")
+            or actor.has_permission("article.publish")
+        )
+    if model_name == "question":
+        return actor == getattr(instance, "author", None) or actor.has_permission("question.moderate")
+    return True
+
+
+def get_relations_for(model_name: str, object_id, *, actor) -> list[KnowledgeRelation]:
     """Relations where the given object is either side (source or target) -
-    see KnowledgeRelationSerializer for how "the other side" is resolved."""
+    see KnowledgeRelationSerializer for how "the other side" is resolved.
+
+    `actor` is required (not optional) so a RESTRICTED Article/Question can
+    never leak its title/id as the "other side" of a relation to a viewer who
+    couldn't open it directly - see KnowledgeRelationSerializer's own
+    docstring, which only ever renders "the other side", never checking its
+    visibility itself."""
     _, instance = _resolve_relatable(model_name, object_id)
     content_type = ContentType.objects.get_for_model(type(instance))
-    return (
+    relations = (
         KnowledgeRelation.objects.filter(source_content_type=content_type, source_object_id=object_id)
         | KnowledgeRelation.objects.filter(target_content_type=content_type, target_object_id=object_id)
     ).distinct()
+
+    visible = []
+    for relation in relations:
+        is_source = (
+            relation.source_content_type_id == content_type.id and relation.source_object_id == object_id
+        )
+        other_ct, other = (
+            (relation.target_content_type, relation.target)
+            if is_source
+            else (relation.source_content_type, relation.source)
+        )
+        if _relatable_visible_to(actor, other_ct, other):
+            visible.append(relation)
+    return visible

@@ -8,6 +8,7 @@ import { ActiveFilterChip } from "@/components/ui/ActiveFilterChip";
 import { Button } from "@/components/ui/Button";
 import { Combobox } from "@/components/ui/Combobox";
 import { Icon } from "@/components/ui/Icon";
+import { Pagination } from "@/components/ui/Pagination";
 import { Link } from "@/i18n/navigation";
 import { getFailures } from "@/lib/api/engineering";
 import type { FailureSeverity, FailureStatus, FailureSummary } from "@/lib/api/types";
@@ -48,22 +49,51 @@ export default function FailuresPage() {
   const [statusFilter, setStatusFilter] = useState<FailureStatus | null>(null);
   const [searchInput, setSearchInput] = useState("");
   const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
   useEffect(() => {
-    const handle = setTimeout(() => setQuery(searchInput.trim()), 300);
+    const handle = setTimeout(() => {
+      setQuery(searchInput.trim());
+      setPage(1);
+    }, 300);
     return () => clearTimeout(handle);
   }, [searchInput]);
 
-  // Keyed by the filter combination it was fetched for - see projects/page.tsx's
+  // Keyed by the filter+page combination it was fetched for - see projects/page.tsx's
   // matching comment for why this avoids a plain setFailures(null) reset.
-  const filterKey = `${severityFilter ?? ""}:${statusFilter ?? ""}:${query}`;
-  const [result, setResult] = useState<{ key: string; failures: FailureSummary[] } | null>(null);
+  const filterKey = `${severityFilter ?? ""}:${statusFilter ?? ""}:${query}:${page}`;
+  const [result, setResult] = useState<{
+    key: string;
+    failures: FailureSummary[];
+    hasNext: boolean;
+    count: number;
+  } | null>(null);
   const failures = result?.key === filterKey ? result.failures : null;
+  // Same keyed-by-filterKey pattern as `result` above, so a stale error from
+  // a previous filter combination doesn't linger once you change filters.
+  const [errorResult, setErrorResult] = useState<{ key: string; message: string } | null>(null);
+  const error = errorResult?.key === filterKey ? errorResult.message : null;
 
   useEffect(() => {
-    getFailures({ severity: severityFilter ?? undefined, status: statusFilter ?? undefined, q: query || undefined }).then(
-      (fetched) => setResult({ key: filterKey, failures: fetched }),
+    getFailures({
+      severity: severityFilter ?? undefined,
+      status: statusFilter ?? undefined,
+      q: query || undefined,
+      page,
+    }).then(
+      (data) => setResult({ key: filterKey, failures: data.results, hasNext: data.next !== null, count: data.count }),
+      (err) => setErrorResult({ key: filterKey, message: err instanceof Error ? err.message : String(err) }),
     );
-  }, [severityFilter, statusFilter, query, filterKey]);
+  }, [severityFilter, statusFilter, query, page, filterKey]);
+
+  function updateSeverityFilter(value: FailureSeverity | null) {
+    setSeverityFilter(value);
+    setPage(1);
+  }
+
+  function updateStatusFilter(value: FailureStatus | null) {
+    setStatusFilter(value);
+    setPage(1);
+  }
 
   return (
     <div className="space-y-6">
@@ -91,7 +121,7 @@ export default function FailuresPage() {
                 ...SEVERITY_VALUES.map((value) => ({ value, label: severityT(value) })),
               ]}
               value={severityFilter ?? ""}
-              onChange={(value) => setSeverityFilter((value || null) as FailureSeverity | null)}
+              onChange={(value) => updateSeverityFilter((value || null) as FailureSeverity | null)}
             />
           </div>
           <div className="w-48">
@@ -102,7 +132,7 @@ export default function FailuresPage() {
                 ...STATUS_VALUES.map((value) => ({ value, label: statusT(value) })),
               ]}
               value={statusFilter ?? ""}
-              onChange={(value) => setStatusFilter((value || null) as FailureStatus | null)}
+              onChange={(value) => updateStatusFilter((value || null) as FailureStatus | null)}
             />
           </div>
           <Can permission="failure.create">
@@ -123,12 +153,17 @@ export default function FailuresPage() {
             onClear={() => {
               setSearchInput("");
               setQuery("");
+              setPage(1);
             }}
           />
         </div>
       )}
 
-      {failures === null ? (
+      {error ? (
+        <p className="font-body-md text-body-md text-error" role="alert">
+          {error}
+        </p>
+      ) : failures === null ? (
         <p className="font-body-md text-body-md text-on-surface-variant">{commonT("loading")}</p>
       ) : failures.length === 0 ? (
         <p className="font-body-md text-body-md text-on-surface-variant">{t("emptyState")}</p>
@@ -177,6 +212,16 @@ export default function FailuresPage() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {failures && failures.length > 0 && (
+        <Pagination
+          page={page}
+          hasNext={result?.hasNext ?? false}
+          hasPrevious={page > 1}
+          onPageChange={setPage}
+          totalCount={result?.count}
+        />
       )}
     </div>
   );

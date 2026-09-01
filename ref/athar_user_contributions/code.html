@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>User Profile - AeroKMS</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-tint": "#2f54cb",
+                        "on-secondary-fixed": "#0c1c30",
+                        "on-tertiary": "#ffffff",
+                        "secondary": "#505f76",
+                        "surface-container-low": "#f4f2fd",
+                        "tertiary-fixed": "#ffdbd2",
+                        "surface-container-lowest": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "inverse-primary": "#b7c4ff",
+                        "surface-variant": "#e2e1ec",
+                        "surface-container": "#eeedf7",
+                        "primary-container": "#1d4ed8",
+                        "on-primary-container": "#cad3ff",
+                        "error": "#ba1a1a",
+                        "on-primary-fixed": "#001551",
+                        "on-tertiary-container": "#ff967b",
+                        "on-surface": "#1a1b22",
+                        "tertiary": "#3d445a",
+                        "on-secondary": "#ffffff",
+                        "on-tertiary-fixed": "#3c0800",
+                        "on-secondary-container": "#56657c",
+                        "secondary-fixed-dim": "#b8c7e2",
+                        "inverse-on-surface": "#f1f0fa",
+                        "primary-fixed": "#dce1ff",
+                        "on-background": "#1a1b22",
+                        "error-container": "#ffdad6",
+                        "background": "#faf8ff",
+                        "surface-bright": "#faf8ff",
+                        "surface": "#faf8ff",
+                        "secondary-container": "#d4e3ff",
+                        "on-tertiary-fixed-variant": "#872004",
+                        "tertiary-fixed-dim": "#ffb4a2",
+                        "on-surface-variant": "#444654",
+                        "on-error": "#ffffff",
+                        "surface-container-highest": "#e2e1ec",
+                        "outline-variant": "#c4c5d6",
+                        "inverse-surface": "#2f3038",
+                        "secondary-fixed": "#d4e3ff",
+                        "primary": "#00247d",
+                        "on-primary-fixed-variant": "#063ab2",
+                        "surface-container-high": "#e8e7f2",
+                        "outline": "#747686",
+                        "on-primary": "#ffffff",
+                        "tertiary-container": "#841e02",
+                        "primary-fixed-dim": "#b7c4ff",
+                        "surface-dim": "#dad9e3",
+                        "on-secondary-fixed-variant": "#39485e"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "layout-gutter": "20px",
+                        "lg": "24px",
+                        "md": "16px",
+                        "xs": "4px",
+                        "unit": "4px",
+                        "xl": "32px",
+                        "layout-margin": "40px",
+                        "sm": "8px"
+                    },
+                    "fontFamily": {
+                        "headline-lg": ["Inter"],
+                        "label-caps": ["Inter"],
+                        "mono-sm": ["JetBrains Mono"],
+                        "display": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "body-md": ["Inter"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.filled {
+            font-variation-settings: 'FILL' 1;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen flex">
+<!-- SideNavBar -->
+<nav class="hidden md:flex flex-col h-full w-64 p-md space-y-sm bg-surface-container-low dark:bg-inverse-surface border-r border-outline-variant dark:border-outline fixed left-0 top-0">
+<div class="flex items-center gap-md px-md py-sm mb-lg">
+<img alt="Organization Logo" class="w-10 h-10 rounded-lg object-cover" data-alt="A clean, modern organization logo icon for a technical aerospace engineering system, featuring subtle geometric wings or propulsion motifs in deep blue on a stark white background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD0e49X1rNOzMP3f8q2Y3pAummZiIKPAPtadEi2gwDgJzKBh7t-vjliAr6FlZFwW1BRDQHErFP6C_qghLc6cPq0kYZg55Qaj27sYuBX1Q3QF_PmlBhaCZCYfMQthN84E3de98pm1dBuuzXvy28Ln67WqxYpVN21qYd17xz2ozuE0xjlCH-t-F4Dl8a4nMHTQH5cfZNoDaE4-GkslXbFn_9g4RCFkzDIKUwzhb3wFKIihjHCV-qGrKyx"/>
+<div>
+<h1 class="font-display text-[24px] font-bold text-primary dark:text-primary-fixed-dim tracking-tight leading-tight">AeroKMS</h1>
+<p class="font-label-caps text-label-caps text-on-surface-variant dark:text-on-surface-variant uppercase tracking-wider">Technical Operations</p>
+</div>
+</div>
+<button class="w-full flex items-center justify-center gap-sm bg-primary text-on-primary rounded-lg py-sm px-md font-semibold hover:bg-on-primary-fixed-variant transition-colors shadow-sm mb-md">
+<span class="material-symbols-outlined">add</span>
+            New Document
+        </button>
+<div class="flex-1 space-y-unit">
+<a class="flex items-center gap-md text-on-surface-variant dark:text-on-surface-variant px-md py-sm hover:bg-surface-container-highest dark:hover:bg-surface-variant rounded-lg transition-all" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+                Dashboard
+            </a>
+<a class="flex items-center gap-md text-on-surface-variant dark:text-on-surface-variant px-md py-sm hover:bg-surface-container-highest dark:hover:bg-surface-variant rounded-lg transition-all" href="#">
+<span class="material-symbols-outlined">menu_book</span>
+                Knowledge
+            </a>
+<a class="flex items-center gap-md text-on-surface-variant dark:text-on-surface-variant px-md py-sm hover:bg-surface-container-highest dark:hover:bg-surface-variant rounded-lg transition-all" href="#">
+<span class="material-symbols-outlined">inventory_2</span>
+                Projects
+            </a>
+<a class="flex items-center gap-md bg-secondary-container dark:bg-secondary text-on-secondary-container dark:text-on-secondary rounded-lg px-md py-sm font-semibold hover:bg-surface-container-highest dark:hover:bg-surface-variant transition-all" href="#">
+<span class="material-symbols-outlined">settings_input_component</span>
+                Components
+            </a>
+<a class="flex items-center gap-md text-on-surface-variant dark:text-on-surface-variant px-md py-sm hover:bg-surface-container-highest dark:hover:bg-surface-variant rounded-lg transition-all" href="#">
+<span class="material-symbols-outlined">description</span>
+                SOPs
+            </a>
+<a class="flex items-center gap-md text-on-surface-variant dark:text-on-surface-variant px-md py-sm hover:bg-surface-container-highest dark:hover:bg-surface-variant rounded-lg transition-all" href="#">
+<span class="material-symbols-outlined">report_problem</span>
+                Failures
+            </a>
+</div>
+<div class="mt-auto space-y-unit border-t border-outline-variant pt-sm">
+<a class="flex items-center gap-md text-on-surface-variant dark:text-on-surface-variant px-md py-sm hover:bg-surface-container-highest dark:hover:bg-surface-variant rounded-lg transition-all" href="#">
+<span class="material-symbols-outlined">help</span>
+                Support
+            </a>
+<a class="flex items-center gap-md text-on-surface-variant dark:text-on-surface-variant px-md py-sm hover:bg-surface-container-highest dark:hover:bg-surface-variant rounded-lg transition-all" href="#">
+<span class="material-symbols-outlined">archive</span>
+                Archive
+            </a>
+</div>
+</nav>
+<!-- Main Content Area -->
+<div class="flex-1 flex flex-col md:ml-64 w-full bg-background min-h-screen">
+<!-- TopNavBar -->
+<header class="flex justify-between items-center w-full px-lg py-md max-w-full bg-surface dark:bg-surface-dim border-b border-outline-variant dark:border-outline sticky top-0 z-10">
+<!-- Search Bar -->
+<div class="flex-1 max-w-xl">
+<div class="relative">
+<span class="material-symbols-outlined absolute left-sm top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+<input class="w-full pl-[40px] pr-md py-[6px] rounded-lg border border-outline-variant bg-surface-container-lowest focus:ring-1 focus:ring-primary focus:border-primary text-body-md text-on-surface transition-colors" placeholder="Search knowledge base..." type="text"/>
+</div>
+</div>
+<!-- Trailing Actions -->
+<div class="flex items-center gap-md ml-lg">
+<button class="p-unit text-on-surface-variant hover:bg-surface-container-high rounded-full transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-unit text-on-surface-variant hover:bg-surface-container-high rounded-full transition-colors">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<div class="h-6 w-px bg-outline-variant mx-unit"></div>
+<div class="flex items-center gap-sm cursor-pointer hover:opacity-80 transition-opacity p-unit rounded-lg">
+<div class="text-right hidden sm:block">
+<p class="font-body-md font-semibold text-on-surface leading-tight">Dr. Aris Thorne</p>
+<p class="font-label-caps text-on-surface-variant text-[10px]">System Admin</p>
+</div>
+<img alt="User profile avatar" class="w-8 h-8 rounded-full object-cover border border-outline-variant" data-alt="A small, professional circular avatar portrait of a mature male system administrator wearing neat business casual attire against a neutral light grey background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCAIF5JJp9n9gsULWUXhHKHdVtPrn6yNi3mlXUbBeshXJWNPSHs4b4NfJbGgl17vXAxpgkHS1_PWsFcqrUP5wLV_rQviAdpp5sbDGTgEv88bgazsnIMQh60_WHxLLEqqxq3SH5ZKfSEwrPvHjpQt8wCEXERgCQ3ZwKVd7g9vsBQcDtB-x3BlgQv5uV-65paV5Z4E0sQsRFLM_TO-Np3jzfDFTsAr2sriqFzZpoh9USwIRB6Br0jXD6T"/>
+</div>
+</div>
+</header>
+<!-- Page Content -->
+<main class="flex-1 p-layout-margin max-w-7xl mx-auto w-full">
+<!-- Profile Header -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-lg flex flex-col md:flex-row gap-lg items-start relative overflow-hidden mb-lg">
+<!-- Decorative background element -->
+<div class="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-primary-fixed/20 to-transparent rounded-bl-full pointer-events-none -z-0"></div>
+<img alt="Dr. Elena Rostova Avatar" class="w-32 h-32 rounded-xl object-cover border-4 border-surface-container-lowest shadow-sm z-10" data-alt="A high-quality, professional headshot portrait of Dr. Elena Rostova, a confident female Senior Systems Engineer in her late 30s. She wears a sharp navy blazer over a crisp white blouse. Soft, natural light illuminates her face against a clean, out-of-focus high-tech laboratory background with light blue and white tones." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDBGMty9p7csQ-g_NewnWPozn6V3k0hnzaJegLtwSAE9xoo2HEc6n_IwyADfbwTgVsyszJqTRZeYe_y9EM038jbiOZYecKTEBWDGtdUmNuKsrQ0gP9w8wSt-qEYpln9utC2nukqJ8NdPA__m_FB6tLuv0QCyI-cmoXFiZCeYoPqdlAfCKX3c7H5tq67S86rxT5nAJ3sMZMoihZnNjI8HCfjFvgED7k05qgshHuOfZ1BfxtYumDXYQcl"/>
+<div class="flex-1 z-10">
+<div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-md mb-md">
+<div>
+<h2 class="font-headline-lg text-[28px] font-bold text-on-surface mb-unit">Dr. Elena Rostova</h2>
+<p class="font-headline-md text-on-surface-variant text-lg">Senior Systems Engineer</p>
+</div>
+<div class="flex gap-sm">
+<button class="bg-primary text-on-primary font-body-md font-semibold px-md py-[6px] rounded-lg hover:bg-on-primary-fixed-variant transition-colors flex items-center gap-unit shadow-sm">
+<span class="material-symbols-outlined text-[20px]">person_add</span>
+                                Follow
+                            </button>
+<button class="border border-outline text-on-surface font-body-md font-semibold px-md py-[6px] rounded-lg hover:bg-surface-container-high transition-colors flex items-center gap-unit">
+<span class="material-symbols-outlined text-[20px]">chat</span>
+                                Message
+                            </button>
+</div>
+</div>
+<p class="font-body-md text-on-surface mb-md max-w-2xl leading-relaxed">
+                        Specializing in advanced avionics integration and fault-tolerant system architecture. Leading the modernization of flight control systems for NextGen aerodynamic platforms. Active contributor to internal standard operating procedures and diagnostic methodologies.
+                    </p>
+<div class="flex flex-wrap gap-md text-sm text-on-surface-variant">
+<div class="flex items-center gap-unit">
+<span class="material-symbols-outlined text-[18px]">location_on</span>
+                            Facility B - Seattle
+                        </div>
+<div class="flex items-center gap-unit">
+<span class="material-symbols-outlined text-[18px]">mail</span>
+                            e.rostova@aerokms.dev
+                        </div>
+<div class="flex items-center gap-unit">
+<span class="material-symbols-outlined text-[18px]">calendar_month</span>
+                            Joined Mar 2021
+                        </div>
+</div>
+</div>
+</div>
+<!-- Two Column Layout for Details -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-lg">
+<!-- Left Column: Metrics & Info (Span 4) -->
+<div class="lg:col-span-4 space-y-lg">
+<!-- Stats Card -->
+<div class="bg-surface-container-low border border-outline-variant rounded-xl p-md">
+<h3 class="font-headline-md text-[18px] font-semibold text-on-surface mb-md flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary">bar_chart</span>
+                            Impact Metrics
+                        </h3>
+<div class="grid grid-cols-2 gap-md">
+<div class="bg-surface-container-lowest p-md rounded-lg border border-outline-variant text-center">
+<p class="font-display text-[28px] font-bold text-primary mb-unit">342</p>
+<p class="font-label-caps text-on-surface-variant uppercase">Total Contributions</p>
+</div>
+<div class="bg-surface-container-lowest p-md rounded-lg border border-outline-variant text-center">
+<p class="font-display text-[28px] font-bold text-secondary mb-unit">89</p>
+<p class="font-label-caps text-on-surface-variant uppercase">Answers Accepted</p>
+</div>
+<div class="bg-surface-container-lowest p-md rounded-lg border border-outline-variant text-center">
+<p class="font-display text-[28px] font-bold text-tertiary mb-unit">14</p>
+<p class="font-label-caps text-on-surface-variant uppercase">SOPs Authored</p>
+</div>
+<div class="bg-surface-container-lowest p-md rounded-lg border border-outline-variant text-center">
+<p class="font-display text-[28px] font-bold text-on-surface mb-unit">4.9</p>
+<p class="font-label-caps text-on-surface-variant uppercase">Peer Rating</p>
+</div>
+</div>
+</div>
+<!-- Expertise Tags -->
+<div class="bg-surface-container-low border border-outline-variant rounded-xl p-md">
+<h3 class="font-headline-md text-[18px] font-semibold text-on-surface mb-md flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary">psychology</span>
+                            Expertise Areas
+                        </h3>
+<div class="flex flex-wrap gap-sm">
+<span class="px-sm py-[2px] bg-secondary-container text-on-secondary-container font-mono-sm rounded-full text-xs font-semibold">#Avionics</span>
+<span class="px-sm py-[2px] bg-secondary-container text-on-secondary-container font-mono-sm rounded-full text-xs font-semibold">#Flight_Controls</span>
+<span class="px-sm py-[2px] bg-surface-variant text-on-surface-variant font-mono-sm rounded-full text-xs font-semibold border border-outline-variant">#System_Architecture</span>
+<span class="px-sm py-[2px] bg-surface-variant text-on-surface-variant font-mono-sm rounded-full text-xs font-semibold border border-outline-variant">#Diagnostics</span>
+<span class="px-sm py-[2px] bg-surface-variant text-on-surface-variant font-mono-sm rounded-full text-xs font-semibold border border-outline-variant">#Compliance_DO178C</span>
+</div>
+</div>
+<!-- Team -->
+<div class="bg-surface-container-low border border-outline-variant rounded-xl p-md">
+<h3 class="font-headline-md text-[18px] font-semibold text-on-surface mb-md flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary">groups</span>
+                            Direct Team
+                        </h3>
+<div class="space-y-sm">
+<div class="flex items-center gap-md p-sm hover:bg-surface-container-highest rounded-lg transition-colors cursor-pointer">
+<img alt="Team member avatar" class="w-8 h-8 rounded-full bg-outline-variant object-cover" data-alt="Small circular avatar of a male engineer." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCVhzci78hzhbNYgBCvOZ6K_AiGPd9aoSUJVfM6ErxD1C3snouTtueI0En6MB2Ug3xUVJ0HFBhK82tQV2rlL-nTF5cZJYyQGTUTcQ0P1odVMqJQ1tvoWPQkf_xGjxDeQ5Uhl0JJNAP4T5iz0LmwPyU4JrZfmKGepCbrXvAfi7R42v1Kes9_NVmeOJ2rEIQ-RHcZLlXvg8JMWGGtn1S4q1DkJ2LlNnZG5nk0UDNT0MZHUvodEnMW7Q0i"/>
+<div>
+<p class="font-body-md font-semibold text-on-surface leading-tight">Marcus Chen</p>
+<p class="font-label-caps text-on-surface-variant text-[10px]">Lead Propulsions</p>
+</div>
+</div>
+<div class="flex items-center gap-md p-sm hover:bg-surface-container-highest rounded-lg transition-colors cursor-pointer">
+<img alt="Team member avatar" class="w-8 h-8 rounded-full bg-outline-variant object-cover" data-alt="Small circular avatar of a female technician." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBAXuWmfvb78hD0Ie814HfwHpvEIsen6t0cmOW7nq9gAbRVTVrejB9FKXMl72qXt2rwi6phcdytsEYNWCcv1FzBRXPa85lyesgyDhMbgMXK0or7qmICg2ldE9jKk0IaW3mizM5Mk81MNrBcqFfXq-JhgLolA6m2IV3V5Wlc8Fd3s6SWCHrWnR6pa0NYOHCB2HiwHLwnjfPcjWqjmPYSSCeltg-EyHN-IZNv0SNWx0q1VasyV3N1uI7f"/>
+<div>
+<p class="font-body-md font-semibold text-on-surface leading-tight">Sarah Jenkins</p>
+<p class="font-label-caps text-on-surface-variant text-[10px]">Quality Assurance</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column: Contributions Tabs (Span 8) -->
+<div class="lg:col-span-8 bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden flex flex-col">
+<!-- Tabs Header -->
+<div class="flex border-b border-outline-variant bg-surface-container-low px-sm pt-sm gap-sm overflow-x-auto">
+<button class="px-md py-sm font-headline-md text-[16px] font-semibold text-primary border-b-2 border-primary transition-colors flex items-center gap-sm whitespace-nowrap">
+<span class="material-symbols-outlined text-[20px]">forum</span>
+                            Questions (45)
+                        </button>
+<button class="px-md py-sm font-headline-md text-[16px] text-on-surface-variant hover:text-on-surface transition-colors flex items-center gap-sm whitespace-nowrap">
+<span class="material-symbols-outlined text-[20px]">check_circle</span>
+                            Answers (112)
+                        </button>
+<button class="px-md py-sm font-headline-md text-[16px] text-on-surface-variant hover:text-on-surface transition-colors flex items-center gap-sm whitespace-nowrap">
+<span class="material-symbols-outlined text-[20px]">article</span>
+                            Documents (14)
+                        </button>
+</div>
+<!-- Tab Content: Questions List -->
+<div class="p-md flex-1 overflow-y-auto">
+<div class="space-y-md">
+<!-- Item 1 -->
+<div class="p-md border border-outline-variant rounded-lg hover:border-outline transition-colors group cursor-pointer bg-surface">
+<div class="flex justify-between items-start mb-sm">
+<h4 class="font-headline-md text-[16px] font-semibold text-on-surface group-hover:text-primary transition-colors leading-tight">
+                                        Intermittent signal loss on redundant CAN bus during thermal cycling?
+                                    </h4>
+<span class="bg-secondary-container text-on-secondary-container font-mono-sm px-sm py-[2px] rounded-full text-[10px] whitespace-nowrap ml-md">Open</span>
+</div>
+<p class="font-body-md text-on-surface-variant line-clamp-2 mb-md">
+                                    We are observing sporadic 50ms dropouts on the secondary CAN interface when ambient temps drop below -40C in the testing chamber. Primary bus remains stable. Has anyone seen similar transceiver behavior?
+                                </p>
+<div class="flex justify-between items-center text-sm text-on-surface-variant">
+<div class="flex gap-sm">
+<span class="font-mono-sm text-xs bg-surface-container-high px-sm py-[2px] rounded border border-outline-variant">#Avionics</span>
+<span class="font-mono-sm text-xs bg-surface-container-high px-sm py-[2px] rounded border border-outline-variant">#Thermal_Testing</span>
+</div>
+<div class="flex items-center gap-md">
+<span class="flex items-center gap-unit text-xs"><span class="material-symbols-outlined text-[16px]">thumb_up</span> 12</span>
+<span class="flex items-center gap-unit text-xs"><span class="material-symbols-outlined text-[16px]">chat_bubble</span> 3</span>
+<span class="text-xs">2 days ago</span>
+</div>
+</div>
+</div>
+<!-- Item 2 -->
+<div class="p-md border border-outline-variant rounded-lg hover:border-outline transition-colors group cursor-pointer bg-surface">
+<div class="flex justify-between items-start mb-sm">
+<h4 class="font-headline-md text-[16px] font-semibold text-on-surface group-hover:text-primary transition-colors leading-tight">
+                                        Specification limits for actuator response delay in emergency override mode
+                                    </h4>
+<span class="bg-surface-variant text-on-surface-variant border border-outline-variant font-mono-sm px-sm py-[2px] rounded-full text-[10px] whitespace-nowrap ml-md flex items-center gap-unit">
+<span class="material-symbols-outlined text-[12px]">done_all</span> Solved
+                                    </span>
+</div>
+<p class="font-body-md text-on-surface-variant line-clamp-2 mb-md">
+                                    Looking for the updated DO-160G acceptable latency thresholds when switching to manual hydromechanical override. The current internal SOP references an older standard.
+                                </p>
+<div class="flex justify-between items-center text-sm text-on-surface-variant">
+<div class="flex gap-sm">
+<span class="font-mono-sm text-xs bg-surface-container-high px-sm py-[2px] rounded border border-outline-variant">#Flight_Controls</span>
+<span class="font-mono-sm text-xs bg-surface-container-high px-sm py-[2px] rounded border border-outline-variant">#Compliance</span>
+</div>
+<div class="flex items-center gap-md">
+<span class="flex items-center gap-unit text-xs"><span class="material-symbols-outlined text-[16px]">thumb_up</span> 8</span>
+<span class="flex items-center gap-unit text-xs"><span class="material-symbols-outlined text-[16px]">chat_bubble</span> 5</span>
+<span class="text-xs">1 week ago</span>
+</div>
+</div>
+</div>
+<!-- Item 3 -->
+<div class="p-md border border-outline-variant rounded-lg hover:border-outline transition-colors group cursor-pointer bg-surface">
+<div class="flex justify-between items-start mb-sm">
+<h4 class="font-headline-md text-[16px] font-semibold text-on-surface group-hover:text-primary transition-colors leading-tight">
+                                        Recommended conformal coating for high-vibration PCBs in Section 4
+                                    </h4>
+<span class="bg-surface-variant text-on-surface-variant border border-outline-variant font-mono-sm px-sm py-[2px] rounded-full text-[10px] whitespace-nowrap ml-md flex items-center gap-unit">
+<span class="material-symbols-outlined text-[12px]">done_all</span> Solved
+                                    </span>
+</div>
+<p class="font-body-md text-on-surface-variant line-clamp-2 mb-md">
+                                    Experiencing micro-cracking in the standard acrylic coating on controller boards mounted near the main strut. Considering switching to polyurethane or silicone based. Suggestions based on recent lifecycle data?
+                                </p>
+<div class="flex justify-between items-center text-sm text-on-surface-variant">
+<div class="flex gap-sm">
+<span class="font-mono-sm text-xs bg-surface-container-high px-sm py-[2px] rounded border border-outline-variant">#Materials</span>
+<span class="font-mono-sm text-xs bg-surface-container-high px-sm py-[2px] rounded border border-outline-variant">#Hardware</span>
+</div>
+<div class="flex items-center gap-md">
+<span class="flex items-center gap-unit text-xs"><span class="material-symbols-outlined text-[16px]">thumb_up</span> 24</span>
+<span class="flex items-center gap-unit text-xs"><span class="material-symbols-outlined text-[16px]">chat_bubble</span> 11</span>
+<span class="text-xs">3 weeks ago</span>
+</div>
+</div>
+</div>
+<button class="w-full py-sm text-primary font-semibold hover:bg-surface-container-high rounded-lg transition-colors text-sm">
+                                Load More Questions
+                            </button>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

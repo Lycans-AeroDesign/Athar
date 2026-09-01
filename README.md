@@ -2,7 +2,7 @@
 
 Open-source, self-hosted **Knowledge Management System** for student AeroDesign teams — built and self-hosted by [Lycans AeroDesign](https://github.com/Lycans-AeroDesign) as its reference deployment.
 
-> **Status: early development.** Authentication, RBAC, organization settings, and i18n are built. The Knowledge module (articles, Q&A, categories/tags, attachments, cross-linking, search, activity feed, dashboard) is a working first slice. Engineering areas (projects, components, failures, SOPs) haven't started. See [Roadmap](#roadmap) below.
+> **Status: early development.** Authentication, RBAC, organization settings, and i18n are built. The Knowledge module (articles, Q&A, categories/tags, attachments, cross-linking, search, activity feed, dashboard) is a working first slice, and the engineering domain (projects, components, failures, SOPs) is now built alongside it on the same relation/attachment/tag infrastructure. See [Roadmap](#roadmap) below.
 
 ## Why
 
@@ -111,7 +111,7 @@ Condensed from [`docs/VISION.md` §41](docs/VISION.md#41-development-roadmap):
 
 - **V0.1 — Foundation**: Django, PostgreSQL, Next.js, Docker, auth, RBAC, org configuration *(done)*
 - **V0.2 — Knowledge**: wiki, articles, categories, tags, attachments, revisions, relationships *(in progress — articles, Q&A, categories/tags, attachments, revisions, and cross-linking all built; search is a plain query, not full-text)*
-- **V0.3 — Engineering**: projects, components, failures, SOPs, flight logs, design decisions, lessons learned *(not started)*
+- **V0.3 — Engineering**: projects, components, failures, SOPs, flight logs, design decisions, lessons learned *(partially in progress — projects, components, failures, and SOPs are built with full CRUD, tags/categories where applicable, attachments, and cross-linking; flight logs, design decisions, and lessons learned haven't started)*
 - **V0.4 — Collaboration**: Q&A ✅, comments, notifications, reviews ✅, activity ✅
 - **V0.5 — Search**: full-text search, filters ✅, related knowledge ✅, mention detection
 - **V1.0 — Open source release**: production hardening, backups, self-hosting guide, versioned Docker images
