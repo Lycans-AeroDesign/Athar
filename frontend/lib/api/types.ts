@@ -154,6 +154,8 @@ export interface ArticleSummary {
 
 export interface ArticleDetail extends ArticleSummary {
   content: string;
+  /** Distinct authors of every create/update to this article - see AuthorSerializer/ContributorsMixin. */
+  contributors: KnowledgeAuthor[];
 }
 
 export interface ArticleRevision {
@@ -193,6 +195,7 @@ export interface QuestionSummary {
 export interface QuestionDetail extends QuestionSummary {
   body: string;
   answers: Answer[];
+  contributors: KnowledgeAuthor[];
 }
 
 export type RelatableType =
@@ -248,6 +251,7 @@ export interface ProjectSummary {
 
 export interface ProjectDetail extends ProjectSummary {
   description: string;
+  contributors: KnowledgeAuthor[];
 }
 
 export type ComponentStatus = "CERTIFIED" | "TESTING" | "DEPRECATED";
@@ -273,6 +277,7 @@ export interface ComponentSummary {
 
 export interface ComponentDetail extends ComponentSummary {
   summary: string;
+  contributors: KnowledgeAuthor[];
 }
 
 export type FailureSeverity = "LOW" | "MEDIUM" | "HIGH";
@@ -297,6 +302,7 @@ export interface FailureDetail extends FailureSummary {
   root_cause: string;
   corrective_action: string;
   preventive_action: string;
+  contributors: KnowledgeAuthor[];
 }
 
 export interface SopSummary {
@@ -313,6 +319,7 @@ export interface SopSummary {
 export interface SopDetail extends SopSummary {
   safety_notes: string;
   content: string;
+  contributors: KnowledgeAuthor[];
 }
 
 export type TestType =
@@ -349,6 +356,7 @@ export interface TestDetail extends TestSummary {
   procedure: string;
   results: string;
   conclusion: string;
+  contributors: KnowledgeAuthor[];
 }
 
 export type DocType =
@@ -384,6 +392,7 @@ export interface DocumentSummary {
 
 export interface DocumentDetail extends DocumentSummary {
   description: string;
+  contributors: KnowledgeAuthor[];
 }
 
 // --- User profile -----------------------------------------------------------
@@ -399,6 +408,12 @@ export type ContributionType =
   | "test"
   | "document";
 
+/** One row of GET /knowledge/leaderboard/ - see knowledge/scoring.py's CONTRIBUTION_POINTS table. */
+export interface LeaderboardEntry {
+  user: KnowledgeAuthor;
+  score: number;
+}
+
 export interface UserProfile {
   id: string;
   first_name: string;
@@ -409,4 +424,6 @@ export interface UserProfile {
   date_joined: string;
   /** One count per ContributionType, plus accepted_answers (a subset of "answer", not a separate contribution type of its own). */
   stats: Record<ContributionType, number> & { accepted_answers: number };
+  /** The same weighted score the leaderboard sorts by - see knowledge/scoring.py's CONTRIBUTION_POINTS table. */
+  score: number;
 }

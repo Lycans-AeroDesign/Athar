@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { ContributorsRow } from "@/components/knowledge/Contributors";
 import { RelatedContent } from "@/components/knowledge/RelatedContent";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Icon } from "@/components/ui/Icon";
@@ -122,6 +123,7 @@ export default function DocumentDetailPage() {
             </span>
           )}
         </div>
+        <ContributorsRow contributors={document.contributors} />
       </div>
 
       {actionError && (

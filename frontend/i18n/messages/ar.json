@@ -20,7 +20,8 @@
     "next": "التالي",
     "resultCount": "{count, plural, =0 {لا توجد نتائج} one {نتيجة واحدة} two {نتيجتان} few {# نتائج} many {# نتيجة} other {# نتيجة}}",
     "removeFilter": "إزالة الفلتر",
-    "searchThisList": "ابحث في هذه القائمة..."
+    "searchThisList": "ابحث في هذه القائمة...",
+    "contributorsLabel": "المساهمون"
   },
   "auth": {
     "emailLabel": "البريد الإلكتروني",
@@ -42,10 +43,15 @@
     },
     "register": {
       "tagline": "أنشئ حسابك",
+      "modeOrganization": "إنشاء فريق",
+      "modeInvite": "لدي دعوة",
+      "organizationNameLabel": "اسم الفريق/المنظمة",
       "firstNameLabel": "الاسم الأول",
       "lastNameLabel": "اسم العائلة",
+      "usernameLabel": "اسم المستخدم (اختياري)",
       "invitationCodeLabel": "رمز الدعوة",
       "submit": "إنشاء الحساب",
+      "submitOrganization": "إنشاء المنظمة",
       "submitting": "جارٍ إنشاء الحساب...",
       "error": "تعذّر إنشاء حسابك. تحقق من البيانات وحاول مرة أخرى.",
       "hasAccount": "لديك حساب بالفعل؟",
@@ -109,6 +115,9 @@
     "activityEmptyState": "لا يوجد نشاط حديث بعد.",
     "activityLoading": "جارٍ التحميل...",
     "systemActor": "النظام",
+    "leaderboardTitle": "أبرز المساهمين",
+    "leaderboardEmptyState": "لا توجد مساهمات بعد.",
+    "leaderboardPoints": "{count, plural, =0 {0 نقطة} one {نقطة واحدة} two {نقطتان} few {# نقاط} many {# نقطة} other {# نقطة}}",
     "activityActions": {
       "articlePublish": "نشر",
       "articleSubmit": "أرسل للمراجعة",
@@ -263,6 +272,7 @@
     "loading": "جارٍ تحميل الملف الشخصي...",
     "notFound": "هذا المستخدم غير موجود.",
     "joinedLabel": "انضم في {date}",
+    "scoreLabel": "نقاط المساهمة",
     "groupKnowledgeTitle": "المعرفة",
     "groupEngineeringTitle": "الهندسة",
     "groupResourcesTitle": "الموارد",
@@ -287,7 +297,19 @@
     "tabDocument": "المستندات",
     "emptyState": "لا يوجد شيء هنا بعد.",
     "loadingTab": "جارٍ التحميل...",
-    "acceptedBadge": "مقبولة"
+    "acceptedBadge": "مقبولة",
+    "recentActivityTitle": "النشاط الأخير",
+    "recentActivityEmptyState": "لا يوجد نشاط حديث بعد.",
+    "activityActions": {
+      "articlePublish": "نشر",
+      "articleSubmit": "أرسل للمراجعة",
+      "articleReject": "رفض",
+      "articleArchive": "أرشف",
+      "questionCreate": "طرح",
+      "questionAnswer": "أجاب على",
+      "questionAcceptAnswer": "قبل إجابة على",
+      "questionPromote": "رقّى"
+    }
   },
   "knowledge": {
     "landing": {

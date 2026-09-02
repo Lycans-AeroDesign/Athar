@@ -64,11 +64,19 @@ export async function apiFetch(
  * same "invalid email or password" copy for both. */
 export class ApiError extends Error {
   status: number;
+  /** Field-level messages from a DRF serializer.is_valid(raise_exception=True)
+   * 400 response (e.g. {"username": ["A user with that username already
+   * exists."]}) - empty for a plain {"detail": "..."} error. Callers that
+   * want to show an error next to a specific field (e.g. the Account/Register
+   * pages' username input) use this instead of parsing `message`, which
+   * stays a single flattened string for callers that just show one banner. */
+  fields: Record<string, string>;
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, fields: Record<string, string> = {}) {
     super(message);
     this.name = "ApiError";
     this.status = status;
+    this.fields = fields;
   }
 }
 
@@ -76,31 +84,40 @@ export class ApiError extends Error {
 // plain-string ValidationError, throttling, ...) or a field-error dict like
 // {"title": ["This field is required."], "non_field_errors": [...]} from
 // serializer.is_valid(raise_exception=True) - this flattens either shape
-// into one human-readable string instead of the status-code-only message
-// apiJson used to throw, which meant every backend validation/permission
-// message (e.g. "Only a draft or in-review article can be published.") never
-// reached the user.
-export async function extractErrorMessage(res: Response, path: string): Promise<string> {
+// into one human-readable string (for callers that just show one banner)
+// alongside the per-field breakdown (for callers that show inline errors),
+// instead of the status-code-only message apiJson used to throw, which meant
+// every backend validation/permission message (e.g. "Only a draft or
+// in-review article can be published.") never reached the user.
+export async function extractApiError(
+  res: Response,
+  path: string,
+): Promise<{ message: string; fields: Record<string, string> }> {
   try {
     const body: unknown = await res.json();
     if (body && typeof body === "object") {
       const record = body as Record<string, unknown>;
-      if (typeof record.detail === "string") return record.detail;
-      const messages = Object.values(record)
-        .flat()
-        .filter((value): value is string => typeof value === "string");
-      if (messages.length > 0) return messages.join(" ");
+      if (typeof record.detail === "string") return { message: record.detail, fields: {} };
+      const fields: Record<string, string> = {};
+      for (const [key, value] of Object.entries(record)) {
+        if (Array.isArray(value) && value.every((entry): entry is string => typeof entry === "string") && value.length > 0) {
+          fields[key] = value.join(" ");
+        }
+      }
+      const messages = Object.values(fields);
+      if (messages.length > 0) return { message: messages.join(" "), fields };
     }
   } catch {
     // Response body wasn't JSON (or was empty) - fall through to the generic message.
   }
-  return `Request to ${path} failed with ${res.status}`;
+  return { message: `Request to ${path} failed with ${res.status}`, fields: {} };
 }
 
 export async function apiJson<T>(path: string, options: RequestInit = {}): Promise<T> {
   const res = await apiFetch(path, options);
   if (!res.ok) {
-    throw new ApiError(await extractErrorMessage(res, path), res.status);
+    const { message, fields } = await extractApiError(res, path);
+    throw new ApiError(message, res.status, fields);
   }
   return res.json() as Promise<T>;
 }
@@ -111,6 +128,7 @@ export async function apiJson<T>(path: string, options: RequestInit = {}): Promi
 export async function apiVoid(path: string, options: RequestInit = {}): Promise<void> {
   const res = await apiFetch(path, options);
   if (!res.ok) {
-    throw new ApiError(await extractErrorMessage(res, path), res.status);
+    const { message, fields } = await extractApiError(res, path);
+    throw new ApiError(message, res.status, fields);
   }
 }

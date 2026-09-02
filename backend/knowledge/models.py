@@ -28,14 +28,18 @@ class Category(models.Model):
     doesn't require touching existing rows."""
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    name = models.CharField(max_length=100, unique=True)
-    slug = models.SlugField(max_length=120, unique=True)
+    organization = models.ForeignKey("organization.Organization", on_delete=models.CASCADE, related_name="+")
+    name = models.CharField(max_length=100)
+    slug = models.SlugField(max_length=120)
     description = models.CharField(max_length=255, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ["name"]
         verbose_name_plural = "categories"
+        # Was globally unique - now per-org, so two organizations can each
+        # have their own "Avionics" category without colliding.
+        unique_together = [("organization", "name"), ("organization", "slug")]
 
     def __str__(self):
         return self.name
@@ -43,12 +47,14 @@ class Category(models.Model):
 
 class Tag(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey("organization.Organization", on_delete=models.CASCADE, related_name="+")
     # Normalized (stripped/lowercased) in services._sync_tags before saving.
-    name = models.CharField(max_length=50, unique=True)
+    name = models.CharField(max_length=50)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ["name"]
+        unique_together = [("organization", "name")]
 
     def __str__(self):
         return self.name
@@ -63,8 +69,9 @@ class Article(models.Model):
         ARCHIVED = "ARCHIVED", "Archived"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey("organization.Organization", on_delete=models.CASCADE, related_name="+")
     title = models.CharField(max_length=200)
-    slug = models.SlugField(max_length=220, unique=True)
+    slug = models.SlugField(max_length=220)
     excerpt = models.CharField(max_length=300, blank=True)
     content = models.TextField(blank=True)  # markdown source
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT)
@@ -88,6 +95,8 @@ class Article(models.Model):
 
     class Meta:
         ordering = ["-updated_at"]
+        # slug was globally unique - now per-org.
+        unique_together = [("organization", "slug")]
 
     def __str__(self):
         return self.title
@@ -123,6 +132,7 @@ class Question(models.Model):
         CLOSED = "CLOSED", "Closed"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey("organization.Organization", on_delete=models.CASCADE, related_name="+")
     title = models.CharField(max_length=200)
     body = models.TextField(blank=True)  # markdown source
     # Derived from accepted_answer/answers by services.py (_recomputed_open_status)
@@ -191,6 +201,13 @@ class KnowledgeRelation(models.Model):
     arrive once Component/Project/Failure are real models to relate to."""
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    # Not "owned" by exactly one side (it references source/target
+    # generically), so it needs its own organization FK rather than
+    # inheriting scoping from a parent - see services.create_relation, which
+    # additionally enforces source/target/actor all share this same org
+    # (the one place a cross-org link could otherwise sneak in via a
+    # guessed target UUID, since the two sides resolve independently).
+    organization = models.ForeignKey("organization.Organization", on_delete=models.CASCADE, related_name="+")
 
     source_content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, related_name="+")
     source_object_id = models.UUIDField()
@@ -285,6 +302,7 @@ class Project(models.Model):
         COMPLETED = "COMPLETED", "Completed"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey("organization.Organization", on_delete=models.CASCADE, related_name="+")
     name = models.CharField(max_length=200)
     description = models.TextField(blank=True)  # markdown source
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.ACTIVE)
@@ -309,6 +327,7 @@ class Component(models.Model):
         DEPRECATED = "DEPRECATED", "Deprecated"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey("organization.Organization", on_delete=models.CASCADE, related_name="+")
     name = models.CharField(max_length=200)
     category = models.ForeignKey(
         Category, null=True, blank=True, on_delete=models.SET_NULL, related_name="components"
@@ -347,6 +366,7 @@ class Failure(models.Model):
         RESOLVED = "RESOLVED", "Resolved"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey("organization.Organization", on_delete=models.CASCADE, related_name="+")
     title = models.CharField(max_length=200)
     component = models.ForeignKey(
         Component, null=True, blank=True, on_delete=models.SET_NULL, related_name="failures"
@@ -379,6 +399,7 @@ class Failure(models.Model):
 
 class Sop(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey("organization.Organization", on_delete=models.CASCADE, related_name="+")
     title = models.CharField(max_length=200)
     category = models.ForeignKey(Category, null=True, blank=True, on_delete=models.SET_NULL, related_name="sops")
     mandatory = models.BooleanField(default=False)
@@ -431,6 +452,7 @@ class Test(models.Model):
         NOT_APPLICABLE = "NOT_APPLICABLE", "Not Applicable"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey("organization.Organization", on_delete=models.CASCADE, related_name="+")
     title = models.CharField(max_length=200)
     test_type = models.CharField(max_length=20, choices=TestType.choices, default=TestType.OTHER)
     date = models.DateField(null=True, blank=True)
@@ -498,14 +520,18 @@ class Document(models.Model):
         EXTERNAL = "EXTERNAL", "External"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey("organization.Organization", on_delete=models.CASCADE, related_name="+")
     title = models.CharField(max_length=200)
     description = models.TextField(blank=True)
     doc_type = models.CharField(max_length=20, choices=DocType.choices, default=DocType.OTHER)
     source = models.CharField(max_length=10, choices=Source.choices, default=Source.INTERNAL)
     # External author/org name (e.g. "SAE International") - distinct from
-    # created_by, which is the Athar user who added the record.
+    # created_by (the Athar user who added the record) AND from the
+    # `organization` FK above (the tenant this Document belongs to) - renamed
+    # from the field's original name `organization` once the multi-tenancy
+    # retrofit needed that name for the tenant FK on every model.
     author = models.CharField(max_length=200, blank=True)
-    organization = models.CharField(max_length=200, blank=True)
+    external_organization = models.CharField(max_length=200, blank=True)
     publication_date = models.DateField(null=True, blank=True)
     # For an external reference with no file of its own (e.g. a link to a
     # competition rules page) - `file` and `url` are both optional, but a

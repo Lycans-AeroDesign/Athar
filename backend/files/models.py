@@ -10,6 +10,7 @@ def stored_file_upload_path(instance, filename):
 
 class StoredFile(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey("organization.Organization", on_delete=models.CASCADE, related_name="+")
     file = models.FileField(upload_to=stored_file_upload_path)
     original_filename = models.CharField(max_length=255)
     content_type = models.CharField(max_length=100, blank=True)

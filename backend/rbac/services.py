@@ -1,10 +1,47 @@
 from audit.services import log_action
 
+from .catalogue import PERMISSION_CATALOGUE, ROLE_CATALOGUE
 from .models import Permission, Role, RolePermission, UserRole
 
 
-def create_role(*, name: str, description: str = "", actor, request=None) -> Role:
-    role = Role.objects.create(name=name, description=description)
+def seed_permissions() -> dict[str, Permission]:
+    """Idempotently ensures the global Permission catalogue exists - this is
+    the one piece of rbac.catalogue that is NOT per-organization (see Role's
+    own docstring). Called once at app bootstrap (management command) and
+    again defensively from seed_rbac_for_organization, so a fresh org can be
+    created even before the management command has ever run."""
+    permissions_by_codename = {}
+    for codename, description in PERMISSION_CATALOGUE:
+        permission, _ = Permission.objects.get_or_create(
+            codename=codename, defaults={"description": description}
+        )
+        permissions_by_codename[codename] = permission
+    return permissions_by_codename
+
+
+def seed_rbac_for_organization(organization) -> int:
+    """Idempotently seeds ROLE_CATALOGUE's fixed six roles into `organization`
+    - called from organization.services.create_organization for every newly
+    self-service-created org, and from the seed_rbac management command for
+    every existing org (so the command stays the dev/self-hosted bootstrap
+    path it always was). Returns the number of newly created Role rows.
+    Every organization gets an identical copy of the same named roles/
+    permission sets - see the multi-tenancy plan's explicit non-goal on
+    per-org custom roles; this is not a customization point."""
+    permissions_by_codename = seed_permissions()
+    created_roles = 0
+    for name, (description, codenames) in ROLE_CATALOGUE.items():
+        role, created = Role.objects.get_or_create(
+            organization=organization, name=name, defaults={"description": description, "is_system": True}
+        )
+        created_roles += created
+        for codename in codenames:
+            role.permissions.add(permissions_by_codename[codename])
+    return created_roles
+
+
+def create_role(*, organization, name: str, description: str = "", actor, request=None) -> Role:
+    role = Role.objects.create(organization=organization, name=name, description=description)
     log_action(actor=actor, action="role.create", target=role, request=request)
     return role
 

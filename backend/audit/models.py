@@ -8,6 +8,12 @@ from django.db import models
 
 class AuditLog(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    # Nullable - some genuinely-system/anonymous actions (a failed login
+    # attempt, say) may have no resolvable organization; set from
+    # actor.organization inside log_action() itself when the actor is known.
+    organization = models.ForeignKey(
+        "organization.Organization", null=True, blank=True, on_delete=models.CASCADE, related_name="+"
+    )
     actor = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         null=True,

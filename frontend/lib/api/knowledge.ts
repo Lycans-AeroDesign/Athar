@@ -9,6 +9,7 @@ import type {
   ContributionType,
   KnowledgeAttachment,
   KnowledgeRelation,
+  LeaderboardEntry,
   Paginated,
   QuestionDetail,
   QuestionSummary,
@@ -315,4 +316,11 @@ export function getUserContributions<T>(
 ): Promise<Paginated<T>> {
   const params = new URLSearchParams({ type, page: String(page) });
   return apiJson<Paginated<T>>(`/api/v1/knowledge/users/${id}/contributions/?${params.toString()}`);
+}
+
+/** Org-scoped "Top Contributors" leaderboard, sorted descending, capped at
+ * the backend's own top-20 - see knowledge/scoring.py's CONTRIBUTION_POINTS
+ * table. Powers the Dashboard's "Top Contributors" card. */
+export function getLeaderboard(): Promise<LeaderboardEntry[]> {
+  return apiJson<LeaderboardEntry[]>("/api/v1/knowledge/leaderboard/");
 }

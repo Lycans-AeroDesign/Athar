@@ -13,13 +13,19 @@ export default async function AboutPage() {
   ];
 
   return (
-    <section className="max-w-3xl">
+    <section>
       <h1 className="font-display text-display text-on-surface">{t("title")}</h1>
       <p className="font-body-lg text-body-lg text-on-surface-variant mt-2">{t("tagline")}</p>
 
       <div className="bg-surface rounded-xl border border-outline-variant p-6 mt-6">
         <h2 className="font-headline-md text-headline-md text-on-surface">{t("whyTitle")}</h2>
-        <p className="font-body-md text-body-md text-on-surface-variant mt-3 leading-relaxed">{t("whyBody")}</p>
+        {/* max-w-3xl on the prose itself (not the card) - the card fills the
+            page width like every other page now, but a paragraph stretched
+            to ~1200px/line would be much harder to read than a normal
+            reading-width column. */}
+        <p className="font-body-md text-body-md text-on-surface-variant mt-3 leading-relaxed max-w-3xl">
+          {t("whyBody")}
+        </p>
       </div>
 
       <div className="bg-surface rounded-xl border border-outline-variant p-6 mt-6">
@@ -29,8 +35,10 @@ export default async function AboutPage() {
           <span className="font-body-lg text-body-lg text-on-surface italic">{t("nameWord")}</span>
           <span className="font-body-md text-body-md text-on-surface-variant">{t("namePronunciation")}</span>
         </div>
-        <p className="font-body-md text-body-md text-on-surface-variant mt-2">{t("nameMeaning")}</p>
-        <p className="font-body-md text-body-md text-on-surface-variant mt-3 leading-relaxed">{t("nameBody")}</p>
+        <p className="font-body-md text-body-md text-on-surface-variant mt-2 max-w-3xl">{t("nameMeaning")}</p>
+        <p className="font-body-md text-body-md text-on-surface-variant mt-3 leading-relaxed max-w-3xl">
+          {t("nameBody")}
+        </p>
       </div>
 
       <div className="mt-6">
@@ -47,7 +55,9 @@ export default async function AboutPage() {
 
       <div className="bg-surface-container-low rounded-xl border border-outline-variant p-6 mt-6">
         <h2 className="font-headline-md text-headline-md text-on-surface">{t("creditTitle")}</h2>
-        <p className="font-body-md text-body-md text-on-surface-variant mt-3 leading-relaxed">{t("creditBody")}</p>
+        <p className="font-body-md text-body-md text-on-surface-variant mt-3 leading-relaxed max-w-3xl">
+          {t("creditBody")}
+        </p>
       </div>
     </section>
   );

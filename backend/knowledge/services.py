@@ -8,6 +8,7 @@ from rest_framework.exceptions import ValidationError
 from audit.services import log_action
 
 from . import relationships
+from .scoring import ACCEPTED_ANSWER_ACTION, ACCEPTED_ANSWER_POINTS, CONTRIBUTION_POINTS
 
 from .models import (
     Answer,
@@ -34,14 +35,15 @@ from .models import (
 )
 
 
-def _unique_slug(model, base: str) -> str:
+def _unique_slug(model, base: str, organization) -> str:
     """Shared slugify-and-dedupe helper for Article. Lives here rather than
     utils.py because it queries the DB for uniqueness - a pure formatting
     helper would belong in utils.py per CONTRIBUTING.md 3.3, but this isn't
-    pure."""
+    pure. Uniqueness is scoped per-organization (see Article/Category's Meta) -
+    two tenants can each have a "flight-review" slug without colliding."""
     slug = slugify(base)[:120] or "item"
     candidate, suffix = slug, 1
-    while model.objects.filter(slug=candidate).exists():
+    while model.objects.filter(organization=organization, slug=candidate).exists():
         suffix += 1
         candidate = f"{slug}-{suffix}"
     return candidate
@@ -56,14 +58,15 @@ def _require_owner_or_permission(*, actor, owner, codename: str, message: str) -
 
 
 def _sync_tags(obj, tag_names: list[str] | None) -> None:
-    """Shared by Article and Question. Normalizes (strip/lowercase/dedupe),
-    get_or_creates each Tag, and sets obj.tags to the result. A None
-    tag_names leaves existing tags untouched (distinct from an empty list,
-    which clears them)."""
+    """Shared across every taggable type. Normalizes (strip/lowercase/dedupe),
+    get_or_creates each Tag *within obj's own organization* (see Tag's Meta -
+    uniqueness is per-org, so two tenants can each have their own "motors"
+    tag), and sets obj.tags to the result. A None tag_names leaves existing
+    tags untouched (distinct from an empty list, which clears them)."""
     if tag_names is None:
         return
     normalized = {name.strip().lower() for name in tag_names if name.strip()}
-    tags = [Tag.objects.get_or_create(name=name)[0] for name in normalized]
+    tags = [Tag.objects.get_or_create(organization=obj.organization, name=name)[0] for name in normalized]
     obj.tags.set(tags)
 
 
@@ -74,7 +77,7 @@ def visible_articles_for(viewer) -> QuerySet[Article]:
     endpoints so this rule can't drift out of sync between them the way it
     already once did (see the search-visibility fix this same rule exists for)."""
     can_review = viewer.has_permission("article.review") or viewer.has_permission("article.publish")
-    queryset = Article.objects.filter(status=Article.Status.PUBLISHED)
+    queryset = Article.objects.filter(organization=viewer.organization, status=Article.Status.PUBLISHED)
     if not can_review:
         queryset = queryset.exclude(Q(visibility=Visibility.RESTRICTED) & ~Q(author=viewer))
     return queryset
@@ -84,7 +87,7 @@ def visible_questions_for(viewer) -> QuerySet[Question]:
     """Questions `viewer` may see - excludes RESTRICTED ones unless they're
     the author or hold question.moderate. Same sharing rationale as
     visible_articles_for above."""
-    queryset = Question.objects.all()
+    queryset = Question.objects.filter(organization=viewer.organization)
     if not viewer.has_permission("question.moderate"):
         queryset = queryset.exclude(Q(visibility=Visibility.RESTRICTED) & ~Q(author=viewer))
     return queryset
@@ -96,7 +99,7 @@ def visible_documents_for(viewer) -> QuerySet[Document]:
     visible_questions_for since Document has no draft/review workflow - see
     models.py's Document docstring. Same sharing rationale (list, search,
     contributions, and the relation-visibility check must all agree)."""
-    queryset = Document.objects.all()
+    queryset = Document.objects.filter(organization=viewer.organization)
     if not viewer.has_permission("document.update"):
         queryset = queryset.exclude(Q(visibility=Visibility.RESTRICTED) & ~Q(created_by=viewer))
     return queryset
@@ -104,7 +107,10 @@ def visible_documents_for(viewer) -> QuerySet[Document]:
 
 def create_category(*, actor, request=None, name, description="") -> Category:
     category = Category.objects.create(
-        name=name, slug=_unique_slug(Category, name), description=description
+        organization=actor.organization,
+        name=name,
+        slug=_unique_slug(Category, name, actor.organization),
+        description=description,
     )
     log_action(actor=actor, action="category.create", target=category, request=request)
     return category
@@ -132,7 +138,7 @@ def delete_category(*, category: Category, actor, request=None) -> None:
 
 def create_tag(*, actor, request=None, name) -> Tag:
     normalized = name.strip().lower()
-    tag, created = Tag.objects.get_or_create(name=normalized)
+    tag, created = Tag.objects.get_or_create(organization=actor.organization, name=normalized)
     if created:
         log_action(actor=actor, action="tag.create", target=tag, request=request)
     return tag
@@ -155,8 +161,9 @@ def create_article(
     visibility=Visibility.PUBLIC,
 ) -> Article:
     article = Article.objects.create(
+        organization=actor.organization,
         title=title,
-        slug=_unique_slug(Article, title),
+        slug=_unique_slug(Article, title, actor.organization),
         excerpt=excerpt,
         content=content,
         category=category,
@@ -261,7 +268,9 @@ def delete_article(*, article: Article, actor, request=None) -> None:
 
 
 def create_question(*, actor, request=None, title, body="", tag_names=None, visibility=Visibility.PUBLIC) -> Question:
-    question = Question.objects.create(title=title, body=body, author=actor, visibility=visibility)
+    question = Question.objects.create(
+        organization=actor.organization, title=title, body=body, author=actor, visibility=visibility
+    )
     _sync_tags(question, tag_names)
     log_action(actor=actor, action="question.create", target=question, request=request)
     return question
@@ -411,7 +420,11 @@ def promote_question_to_article(*, question: Question, actor, request=None) -> A
     accepted = question.accepted_answer
     content = f"{question.body}\n\n---\n\n**Accepted answer:**\n\n{accepted.body}"
     article = Article.objects.create(
-        title=question.title, slug=_unique_slug(Article, question.title), content=content, author=actor
+        organization=actor.organization,
+        title=question.title,
+        slug=_unique_slug(Article, question.title, actor.organization),
+        content=content,
+        author=actor,
     )
     article.tags.set(question.tags.all())
     ArticleRevision.objects.create(article=article, title=article.title, content=article.content, edited_by=actor)
@@ -439,7 +452,9 @@ def promote_question_to_article(*, question: Question, actor, request=None) -> A
 
 
 def create_project(*, actor, request=None, name, description="", status=Project.Status.ACTIVE, tag_names=None) -> Project:
-    project = Project.objects.create(name=name, description=description, status=status, created_by=actor)
+    project = Project.objects.create(
+        organization=actor.organization, name=name, description=description, status=status, created_by=actor
+    )
     _sync_tags(project, tag_names)
     log_action(actor=actor, action="project.create", target=project, request=request)
     return project
@@ -469,6 +484,7 @@ def create_component(
     summary="", specifications=None, tag_names=None,
 ) -> Component:
     component = Component.objects.create(
+        organization=actor.organization,
         name=name,
         category=category,
         manufacturer=manufacturer,
@@ -510,6 +526,7 @@ def create_failure(
     summary="", root_cause="", corrective_action="", preventive_action="",
 ) -> Failure:
     failure = Failure.objects.create(
+        organization=actor.organization,
         title=title,
         component=component,
         project=project,
@@ -548,7 +565,13 @@ def create_sop(
     *, actor, request=None, title, category=None, mandatory=False, safety_notes="", content="", tag_names=None
 ) -> Sop:
     sop = Sop.objects.create(
-        title=title, category=category, mandatory=mandatory, safety_notes=safety_notes, content=content, created_by=actor
+        organization=actor.organization,
+        title=title,
+        category=category,
+        mandatory=mandatory,
+        safety_notes=safety_notes,
+        content=content,
+        created_by=actor,
     )
     _sync_tags(sop, tag_names)
     log_action(actor=actor, action="sop.create", target=sop, request=request)
@@ -593,6 +616,7 @@ def create_test(
     tag_names=None,
 ) -> Test:
     test = Test.objects.create(
+        organization=actor.organization,
         title=title,
         test_type=test_type,
         date=date,
@@ -640,7 +664,7 @@ def create_document(
     doc_type="OTHER",
     source="INTERNAL",
     author="",
-    organization="",
+    external_organization="",
     publication_date=None,
     url="",
     file=None,
@@ -649,12 +673,13 @@ def create_document(
     visibility=Visibility.PUBLIC,
 ) -> Document:
     document = Document.objects.create(
+        organization=actor.organization,
         title=title,
         description=description,
         doc_type=doc_type,
         source=source,
         author=author,
-        organization=organization,
+        external_organization=external_organization,
         publication_date=publication_date,
         url=url,
         file=file,
@@ -820,11 +845,15 @@ _RELATABLE_UPDATE_PERMISSION = {
 }
 
 
-def _resolve_relatable(model_name: str, object_id):
+def _resolve_relatable(model_name: str, object_id, organization):
+    """Org-scoped on purpose (see `organization` param) - a cross-org UUID
+    guess resolves to "not found" here, the same 400 as a genuinely
+    nonexistent id, rather than leaking whether the id exists in a
+    different tenant."""
     model = _RELATABLE_MODELS.get(model_name)
     if model is None:
         raise ValidationError(f"'{model_name}' isn't a type that can be related yet.")
-    instance = model.objects.filter(pk=object_id).first()
+    instance = model.objects.filter(pk=object_id, organization=organization).first()
     if instance is None:
         raise ValidationError(f"No {model_name} with id {object_id}.")
     return model, instance
@@ -844,8 +873,11 @@ def _can_edit_relatable(actor, model_name: str, instance) -> bool:
 def create_relation(
     *, actor, request=None, source_type: str, source_id, target_type: str, target_id, relation_type="RELATED"
 ) -> KnowledgeRelation:
-    source_model, source = _resolve_relatable(source_type, source_id)
-    target_model, target = _resolve_relatable(target_type, target_id)
+    # Both sides resolved within actor's own organization (see
+    # _resolve_relatable's own docstring) - this is what actually prevents a
+    # cross-org relation from ever being created, not a check after the fact.
+    source_model, source = _resolve_relatable(source_type, source_id, actor.organization)
+    target_model, target = _resolve_relatable(target_type, target_id, actor.organization)
     if source_model is target_model and source.pk == target.pk:
         raise ValidationError("An item can't be related to itself.")
 
@@ -872,6 +904,7 @@ def create_relation(
             store_source_model, store_source, store_target_model, store_target = target_model, target, source_model, source
 
     relation, created = KnowledgeRelation.objects.get_or_create(
+        organization=actor.organization,
         source_content_type=ContentType.objects.get_for_model(store_source_model),
         source_object_id=store_source.pk,
         target_content_type=ContentType.objects.get_for_model(store_target_model),
@@ -1009,11 +1042,15 @@ def get_relations_for(model_name: str, object_id, *, actor) -> list[KnowledgeRel
     couldn't open it directly - see KnowledgeRelationSerializer's own
     docstring, which only ever renders "the other side", never checking its
     visibility itself."""
-    _, instance = _resolve_relatable(model_name, object_id)
+    _, instance = _resolve_relatable(model_name, object_id, actor.organization)
     content_type = ContentType.objects.get_for_model(type(instance))
     relations = (
-        KnowledgeRelation.objects.filter(source_content_type=content_type, source_object_id=object_id)
-        | KnowledgeRelation.objects.filter(target_content_type=content_type, target_object_id=object_id)
+        KnowledgeRelation.objects.filter(
+            organization=actor.organization, source_content_type=content_type, source_object_id=object_id
+        )
+        | KnowledgeRelation.objects.filter(
+            organization=actor.organization, target_content_type=content_type, target_object_id=object_id
+        )
     ).distinct()
 
     visible = []
@@ -1029,3 +1066,78 @@ def get_relations_for(model_name: str, object_id, *, actor) -> list[KnowledgeRel
         if _relatable_visible_to(actor, other_ct, other):
             visible.append(relation)
     return visible
+
+
+def compute_contribution_scores_for(organization) -> dict:
+    """user_id -> total score, for the org's leaderboard - see scoring.py's
+    own docstring for why this is creation-weighted (not a flat count) and
+    computed on demand from AuditLog rather than a denormalized column.
+
+    `question.accept_answer` is deliberately excluded from the generic
+    CONTRIBUTION_POINTS lookup and handled as its own pass below: the log
+    entry's `actor` is whoever clicked "accept" (usually the question's own
+    author), but the points belong to the answer's author - resolved via the
+    log's `metadata["answer_id"]`, not `log.actor`."""
+    from audit.models import AuditLog
+
+    scores: dict = {}
+    generic_actions = [action for action in CONTRIBUTION_POINTS if action != ACCEPTED_ANSWER_ACTION]
+    generic_logs = AuditLog.objects.filter(
+        organization=organization, action__in=generic_actions, actor__isnull=False
+    ).values_list("actor_id", "action")
+    for actor_id, action in generic_logs:
+        scores[actor_id] = scores.get(actor_id, 0) + CONTRIBUTION_POINTS[action]
+
+    accept_logs = AuditLog.objects.filter(organization=organization, action=ACCEPTED_ANSWER_ACTION)
+    answer_ids = [
+        log.metadata.get("answer_id") for log in accept_logs if log.metadata.get("answer_id")
+    ]
+    authors_by_answer_id = {
+        str(answer_id): author_id
+        for answer_id, author_id in Answer.objects.filter(pk__in=answer_ids).values_list("pk", "author_id")
+    }
+    for answer_id in answer_ids:
+        author_id = authors_by_answer_id.get(answer_id)
+        if author_id is not None:
+            scores[author_id] = scores.get(author_id, 0) + ACCEPTED_ANSWER_POINTS
+
+    return scores
+
+
+def leaderboard_for(organization, *, limit: int = 20) -> list[dict]:
+    """Top contributors for the org's Dashboard card, sorted descending by
+    score. `user` objects are attached (not just ids) so the caller's
+    serializer can render avatar/name without a second query per row."""
+    from accounts.models import User
+
+    scores = compute_contribution_scores_for(organization)
+    top_user_ids = sorted(scores, key=lambda user_id: scores[user_id], reverse=True)[:limit]
+    users_by_id = {user.id: user for user in User.objects.filter(pk__in=top_user_ids)}
+    return [
+        {"user": users_by_id[user_id], "score": scores[user_id]}
+        for user_id in top_user_ids
+        if user_id in users_by_id
+    ]
+
+
+def contributors_for(model_name: str, obj) -> list:
+    """Distinct authors of every {model}.create/{model}.update AuditLog entry
+    targeting `obj` - see scoring.py's module docstring and PART 2 of the
+    plan for why this reuses AuditLog instead of adding real per-type
+    revision history the way ArticleRevision does for Article alone."""
+    from audit.models import AuditLog
+
+    from accounts.models import User
+
+    content_type = ContentType.objects.get_for_model(type(obj))
+    actor_ids = (
+        AuditLog.objects.filter(
+            target_content_type=content_type,
+            target_object_id=str(obj.pk),
+            action__in=[f"{model_name}.create", f"{model_name}.update"],
+            actor__isnull=False,
+        )
+        .values_list("actor_id", flat=True)
+        .distinct()
+    )
+    return list(User.objects.filter(pk__in=actor_ids))

@@ -18,8 +18,18 @@ class Permission(models.Model):
 
 
 class Role(models.Model):
+    """Org-scoped (see `organization` below) - every organization gets its
+    own copy of the standard role catalogue (see rbac/services.py's
+    seed_rbac_for_organization), not a shared global row. `Permission` above
+    stays global/unscoped on purpose - the codename vocabulary (what
+    "article.read" means) is platform-wide; only which permissions bundle
+    into which named role, per org, varies."""
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    name = models.CharField(max_length=100, unique=True)
+    organization = models.ForeignKey(
+        "organization.Organization", on_delete=models.CASCADE, related_name="roles"
+    )
+    name = models.CharField(max_length=100)
     description = models.CharField(max_length=255, blank=True)
     is_system = models.BooleanField(default=False)
     permissions = models.ManyToManyField(
@@ -30,6 +40,7 @@ class Role(models.Model):
 
     class Meta:
         ordering = ["name"]
+        unique_together = ("organization", "name")
 
     def __str__(self):
         return self.name

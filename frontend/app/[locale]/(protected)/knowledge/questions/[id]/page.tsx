@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { Can } from "@/components/auth/Can";
 import { QuestionStatusPill } from "@/components/knowledge/QuestionStatusPill";
 import { Attachments } from "@/components/knowledge/Attachments";
+import { ContributorsRow } from "@/components/knowledge/Contributors";
 import { RelatedContent } from "@/components/knowledge/RelatedContent";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
@@ -189,6 +190,7 @@ export default function QuestionDetailPage() {
             </span>
           ))}
         </div>
+        <ContributorsRow contributors={question.contributors} />
         <div className="flex flex-wrap items-center gap-2">
           {canManage && (
             <Button variant="secondary" onClick={handleToggleClose} disabled={isWorking}>

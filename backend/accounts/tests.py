@@ -1,13 +1,14 @@
 from unittest.mock import patch
 
 from django.core.cache import cache
-from django.core.management import call_command
+
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 from rest_framework.throttling import ScopedRateThrottle
 
+from core.testing import create_test_organization
 from rbac.models import Role
 
 from .models import InvitationCode, User
@@ -16,9 +17,10 @@ from .models import InvitationCode, User
 class AuthFlowTests(APITestCase):
     @classmethod
     def setUpTestData(cls):
-        call_command("seed_rbac")
+        cls.organization = create_test_organization()
 
     def _invitation_code(self, **kwargs) -> InvitationCode:
+        kwargs.setdefault("organization", self.organization)
         return InvitationCode.objects.create(**kwargs)
 
     def _register_and_login(self, email="guest@example.com", password="guestpass123"):
@@ -44,6 +46,36 @@ class AuthFlowTests(APITestCase):
 
         code.refresh_from_db()
         self.assertEqual(code.uses_count, 1)
+
+    def test_register_accepts_optional_username_and_rejects_duplicates(self):
+        User.objects.create_user(email="existing@example.com", username="taken", organization=self.organization)
+
+        response = self.client.post(
+            reverse("auth-register"),
+            {
+                "email": "dup@example.com",
+                "password": "somepassword123",
+                "invitation_code": self._invitation_code().code,
+                "username": "taken",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("username", response.data)
+        self.assertFalse(User.objects.filter(email="dup@example.com").exists())
+
+        response = self.client.post(
+            reverse("auth-register"),
+            {
+                "email": "unique@example.com",
+                "password": "somepassword123",
+                "invitation_code": self._invitation_code().code,
+                "username": "brandnew",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["username"], "brandnew")
 
     def test_register_requires_invitation_code(self):
         response = self.client.post(
@@ -222,7 +254,9 @@ class AuthFlowTests(APITestCase):
     @patch.dict(ScopedRateThrottle.THROTTLE_RATES, {"auth": "3/min"})
     def test_login_is_rate_limited_after_repeated_attempts(self):
         cache.clear()
-        User.objects.create_user(email="throttled@example.com", password="correctpassword123")
+        User.objects.create_user(
+            email="throttled@example.com", password="correctpassword123", organization=self.organization
+        )
 
         for _ in range(3):
             response = self.client.post(
@@ -252,11 +286,11 @@ class AuthFlowTests(APITestCase):
 class InvitationCodeAdminTests(APITestCase):
     @classmethod
     def setUpTestData(cls):
-        call_command("seed_rbac")
+        cls.organization = create_test_organization()
 
     def _login_with_role(self, email, role_name):
-        user = User.objects.create_user(email=email, password="password123")
-        Role.objects.get(name=role_name).user_roles.create(user=user)
+        user = User.objects.create_user(email=email, password="password123", organization=self.organization)
+        Role.objects.get(organization=self.organization, name=role_name).user_roles.create(user=user)
         response = self.client.post(reverse("auth-login"), {"email": email, "password": "password123"}, format="json")
         return user, response.data["access"]
 

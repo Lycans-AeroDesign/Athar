@@ -67,7 +67,13 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ["email", "password", "first_name", "last_name", "invitation_code"]
+        fields = ["email", "password", "first_name", "last_name", "invitation_code", "username"]
+
+    def validate_username(self, value):
+        # Same "" -> None normalization as MeUpdateSerializer.validate_username
+        # (see models.py's username field comment) - optional here too, not
+        # required at signup.
+        return value or None
 
 
 class InvitationCodeSerializer(serializers.ModelSerializer):

@@ -12,3 +12,10 @@ export function getAuditLogs(page = 1): Promise<Paginated<AuditLogEntry>> {
 export function getKnowledgeActivity(page = 1): Promise<Paginated<AuditLogEntry>> {
   return apiJson<Paginated<AuditLogEntry>>(`/api/v1/audit/activity/?page=${page}`);
 }
+
+/** One user's own recent activity, same allowlist as getKnowledgeActivity above
+ * (see audit/views.py's KNOWLEDGE_ACTIVITY_ACTIONS) - filtered to that user, for
+ * ContributionsPanel's "Recent Activity" section on /account and /users/[id]. */
+export function getUserActivity(userId: string, page = 1): Promise<Paginated<AuditLogEntry>> {
+  return apiJson<Paginated<AuditLogEntry>>(`/api/v1/audit/users/${userId}/activity/?page=${page}`);
+}

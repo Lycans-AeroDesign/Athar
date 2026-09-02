@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { Attachments } from "@/components/knowledge/Attachments";
+import { ContributorsRow } from "@/components/knowledge/Contributors";
 import { RelatedContent } from "@/components/knowledge/RelatedContent";
 import { StatusPill } from "@/components/knowledge/StatusPill";
 import { Avatar } from "@/components/ui/Avatar";
@@ -253,6 +254,7 @@ export default function ArticleDetailPage() {
               </span>
             ))}
           </div>
+          <ContributorsRow contributors={article.contributors} />
         </div>
 
         {(canSubmit || canPublishNow || canRejectNow || canUnarchiveNow) && (

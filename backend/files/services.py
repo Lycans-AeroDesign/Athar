@@ -5,6 +5,7 @@ from .models import StoredFile
 
 def upload_file(*, uploaded_file, required_permission: str, actor, request=None) -> StoredFile:
     stored_file = StoredFile.objects.create(
+        organization=actor.organization,
         file=uploaded_file,
         original_filename=uploaded_file.name,
         content_type=uploaded_file.content_type or "",

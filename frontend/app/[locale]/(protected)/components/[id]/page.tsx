@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { Attachments } from "@/components/knowledge/Attachments";
+import { ContributorsRow } from "@/components/knowledge/Contributors";
 import { RelatedContent } from "@/components/knowledge/RelatedContent";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Icon } from "@/components/ui/Icon";
@@ -112,6 +113,7 @@ export default function ComponentDetailPage() {
             ))}
           </div>
         )}
+        <ContributorsRow contributors={component.contributors} />
       </div>
 
       {actionError && (

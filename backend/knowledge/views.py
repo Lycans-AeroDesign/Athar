@@ -62,6 +62,7 @@ from .serializers import (
     FailureListSerializer,
     FailureWriteSerializer,
     KnowledgeRelationSerializer,
+    LeaderboardEntrySerializer,
     ProjectAttachmentSerializer,
     ProjectDetailSerializer,
     ProjectListSerializer,
@@ -96,7 +97,8 @@ class CategoryListView(APIView):
         responses={200: CategorySerializer(many=True), **COMMON_ERRORS},
     )
     def get(self, request):
-        return paginated_response(request, Category.objects.all(), CategorySerializer)
+        queryset = Category.objects.filter(organization=request.user.organization)
+        return paginated_response(request, queryset, CategorySerializer)
 
     @extend_schema(
         tags=["Knowledge"],
@@ -121,7 +123,7 @@ class CategoryDetailView(APIView):
         responses={200: CategorySerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def patch(self, request, pk):
-        category = get_object_or_404(Category, pk=pk)
+        category = get_object_or_404(Category, pk=pk, organization=request.user.organization)
         serializer = CategoryWriteSerializer(category, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         category = services.update_category(
@@ -135,7 +137,7 @@ class CategoryDetailView(APIView):
         responses={204: OpenApiResponse(description="Deleted."), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def delete(self, request, pk):
-        category = get_object_or_404(Category, pk=pk)
+        category = get_object_or_404(Category, pk=pk, organization=request.user.organization)
         services.delete_category(category=category, actor=request.user, request=request)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -149,7 +151,7 @@ class TagListView(APIView):
         responses={200: TagSerializer(many=True), **COMMON_ERRORS},
     )
     def get(self, request):
-        tags = Tag.objects.annotate(
+        tags = Tag.objects.filter(organization=request.user.organization).annotate(
             usage_count=Count("articles", distinct=True) + Count("questions", distinct=True)
         ).order_by("-usage_count", "name")
         return paginated_response(request, tags, TagSerializer)
@@ -176,7 +178,7 @@ class TagDetailView(APIView):
         responses={204: OpenApiResponse(description="Deleted."), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def delete(self, request, pk):
-        tag = get_object_or_404(Tag, pk=pk)
+        tag = get_object_or_404(Tag, pk=pk, organization=request.user.organization)
         services.delete_tag(tag=tag, actor=request.user, request=request)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -242,12 +244,14 @@ class SearchView(APIView):
             else Question.objects.none()
         )
         project_matches = (
-            Project.objects.filter(Q(name__icontains=query) | Q(description__icontains=query))
+            Project.objects.filter(organization=request.user.organization).filter(
+                Q(name__icontains=query) | Q(description__icontains=query)
+            )
             if query
             else Project.objects.none()
         )
         component_matches = (
-            Component.objects.filter(
+            Component.objects.filter(organization=request.user.organization).filter(
                 Q(name__icontains=query)
                 | Q(summary__icontains=query)
                 | Q(manufacturer__icontains=query)
@@ -257,15 +261,21 @@ class SearchView(APIView):
             else Component.objects.none()
         )
         failure_matches = (
-            Failure.objects.filter(Q(title__icontains=query) | Q(summary__icontains=query) | Q(root_cause__icontains=query))
+            Failure.objects.filter(organization=request.user.organization).filter(
+                Q(title__icontains=query) | Q(summary__icontains=query) | Q(root_cause__icontains=query)
+            )
             if query
             else Failure.objects.none()
         )
         sop_matches = (
-            Sop.objects.filter(Q(title__icontains=query) | Q(content__icontains=query)) if query else Sop.objects.none()
+            Sop.objects.filter(organization=request.user.organization).filter(
+                Q(title__icontains=query) | Q(content__icontains=query)
+            )
+            if query
+            else Sop.objects.none()
         )
         test_matches = (
-            Test.objects.filter(
+            Test.objects.filter(organization=request.user.organization).filter(
                 Q(title__icontains=query)
                 | Q(objective__icontains=query)
                 | Q(results__icontains=query)
@@ -359,13 +369,17 @@ class UserProfileView(APIView):
         responses={200: UserProfileSerializer, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def get(self, request, pk):
-        user = get_object_or_404(User, pk=pk)
+        user = get_object_or_404(User, pk=pk, organization=request.user.organization)
         handlers = _contribution_handlers(request, user)
         stats = {contribution_type: queryset.count() for contribution_type, (queryset, _) in handlers.items()}
         stats["accepted_answers"] = services.visible_questions_for(request.user).filter(
             accepted_answer__author=user
         ).count()
-        return Response(UserProfileSerializer(user, context={"stats": stats}).data)
+        # Same weighted score the leaderboard sorts by (see scoring.py) - 0
+        # for a user with no scored actions yet, not absent, so the profile
+        # page/ContributionsPanel can always render a number.
+        score = services.compute_contribution_scores_for(request.user.organization).get(user.id, 0)
+        return Response(UserProfileSerializer(user, context={"stats": stats, "score": score}).data)
 
 
 class UserContributionsView(APIView):
@@ -380,7 +394,7 @@ class UserContributionsView(APIView):
         responses={200: OpenApiResponse(description="Paginated list, in that type's own list-serializer shape."), 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def get(self, request, pk):
-        user = get_object_or_404(User, pk=pk)
+        user = get_object_or_404(User, pk=pk, organization=request.user.organization)
         handlers = _contribution_handlers(request, user)
         contribution_type = request.query_params.get("type")
         handler = handlers.get(contribution_type)
@@ -390,8 +404,27 @@ class UserContributionsView(APIView):
         return paginated_response(request, queryset, serializer_class)
 
 
+class LeaderboardView(APIView):
+    """Org-scoped "Top Contributors" list for the Dashboard - see
+    services.leaderboard_for/compute_contribution_scores_for and
+    knowledge/scoring.py's CONTRIBUTION_POINTS table."""
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        tags=["Knowledge"],
+        summary="Top contributors leaderboard for the caller's organization",
+        responses={200: LeaderboardEntrySerializer(many=True), **COMMON_ERRORS},
+    )
+    def get(self, request):
+        entries = services.leaderboard_for(request.user.organization)
+        return Response(LeaderboardEntrySerializer(entries, many=True).data)
+
+
 def _visible_article_or_404(request, pk):
-    article = get_object_or_404(Article.objects.select_related("category", "author"), pk=pk)
+    article = get_object_or_404(
+        Article.objects.select_related("category", "author"), pk=pk, organization=request.user.organization
+    )
     is_privileged = (
         request.user == article.author
         or request.user.has_permission("article.review")
@@ -409,7 +442,9 @@ def _visible_article_or_404(request, pk):
 
 def _visible_question_or_404(request, pk):
     question = get_object_or_404(
-        Question.objects.select_related("author").prefetch_related("tags", "answers__author"), pk=pk
+        Question.objects.select_related("author").prefetch_related("tags", "answers__author"),
+        pk=pk,
+        organization=request.user.organization,
     )
     if question.visibility != Visibility.RESTRICTED:
         return question
@@ -434,7 +469,9 @@ class ArticleListCreateView(APIView):
     )
     def get(self, request):
         status_param = request.query_params.get("status", Article.Status.PUBLISHED)
-        queryset = Article.objects.select_related("category", "author").prefetch_related("tags")
+        queryset = Article.objects.filter(organization=request.user.organization).select_related(
+            "category", "author"
+        ).prefetch_related("tags")
         can_review = request.user.has_permission("article.review") or request.user.has_permission("article.publish")
         if status_param == "ALL":
             # A reviewer/publisher sees every article regardless of status -
@@ -496,7 +533,7 @@ class ArticleDetailView(APIView):
         responses={200: ArticleDetailSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def patch(self, request, pk):
-        article = get_object_or_404(Article, pk=pk)
+        article = get_object_or_404(Article, pk=pk, organization=request.user.organization)
         serializer = ArticleWriteSerializer(article, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         article = services.update_article(
@@ -510,7 +547,7 @@ class ArticleDetailView(APIView):
         responses={204: OpenApiResponse(description="Deleted."), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def delete(self, request, pk):
-        article = get_object_or_404(Article, pk=pk)
+        article = get_object_or_404(Article, pk=pk, organization=request.user.organization)
         services.delete_article(article=article, actor=request.user, request=request)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -524,7 +561,7 @@ class ArticleSubmitView(APIView):
         responses={200: ArticleDetailSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def post(self, request, pk):
-        article = get_object_or_404(Article, pk=pk)
+        article = get_object_or_404(Article, pk=pk, organization=request.user.organization)
         article = services.submit_article(article=article, actor=request.user, request=request)
         return Response(ArticleDetailSerializer(article).data)
 
@@ -538,7 +575,7 @@ class ArticlePublishView(APIView):
         responses={200: ArticleDetailSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def post(self, request, pk):
-        article = get_object_or_404(Article, pk=pk)
+        article = get_object_or_404(Article, pk=pk, organization=request.user.organization)
         article = services.publish_article(article=article, actor=request.user, request=request)
         return Response(ArticleDetailSerializer(article).data)
 
@@ -552,7 +589,7 @@ class ArticleRejectView(APIView):
         responses={200: ArticleDetailSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def post(self, request, pk):
-        article = get_object_or_404(Article, pk=pk)
+        article = get_object_or_404(Article, pk=pk, organization=request.user.organization)
         article = services.reject_article(
             article=article, actor=request.user, reason=request.data.get("reason", ""), request=request
         )
@@ -568,7 +605,7 @@ class ArticleArchiveView(APIView):
         responses={200: ArticleDetailSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def post(self, request, pk):
-        article = get_object_or_404(Article, pk=pk)
+        article = get_object_or_404(Article, pk=pk, organization=request.user.organization)
         article = services.archive_article(article=article, actor=request.user, request=request)
         return Response(ArticleDetailSerializer(article).data)
 
@@ -582,7 +619,7 @@ class ArticleUnarchiveView(APIView):
         responses={200: ArticleDetailSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def post(self, request, pk):
-        article = get_object_or_404(Article, pk=pk)
+        article = get_object_or_404(Article, pk=pk, organization=request.user.organization)
         article = services.unarchive_article(article=article, actor=request.user, request=request)
         return Response(ArticleDetailSerializer(article).data)
 
@@ -655,7 +692,7 @@ class QuestionDetailView(APIView):
         responses={200: QuestionDetailSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def patch(self, request, pk):
-        question = get_object_or_404(Question, pk=pk)
+        question = get_object_or_404(Question, pk=pk, organization=request.user.organization)
         serializer = QuestionWriteSerializer(question, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         question = services.update_question(
@@ -669,7 +706,7 @@ class QuestionDetailView(APIView):
         responses={204: OpenApiResponse(description="Deleted."), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def delete(self, request, pk):
-        question = get_object_or_404(Question, pk=pk)
+        question = get_object_or_404(Question, pk=pk, organization=request.user.organization)
         services.delete_question(question=question, actor=request.user, request=request)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -683,7 +720,7 @@ class QuestionCloseView(APIView):
         responses={200: QuestionDetailSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def post(self, request, pk):
-        question = get_object_or_404(Question, pk=pk)
+        question = get_object_or_404(Question, pk=pk, organization=request.user.organization)
         question = services.close_question(question=question, actor=request.user, request=request)
         return Response(QuestionDetailSerializer(question).data)
 
@@ -697,7 +734,7 @@ class QuestionReopenView(APIView):
         responses={200: QuestionDetailSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def post(self, request, pk):
-        question = get_object_or_404(Question, pk=pk)
+        question = get_object_or_404(Question, pk=pk, organization=request.user.organization)
         question = services.reopen_question(question=question, actor=request.user, request=request)
         return Response(QuestionDetailSerializer(question).data)
 
@@ -711,7 +748,7 @@ class QuestionPromoteView(APIView):
         responses={201: ArticleDetailSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def post(self, request, pk):
-        question = get_object_or_404(Question, pk=pk)
+        question = get_object_or_404(Question, pk=pk, organization=request.user.organization)
         article = services.promote_question_to_article(question=question, actor=request.user, request=request)
         return Response(ArticleDetailSerializer(article).data, status=status.HTTP_201_CREATED)
 
@@ -728,7 +765,7 @@ class AnswerListCreateView(APIView):
         responses={200: AnswerSerializer(many=True), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def get(self, request, pk):
-        question = get_object_or_404(Question, pk=pk)
+        question = get_object_or_404(Question, pk=pk, organization=request.user.organization)
         return paginated_response(request, question.answers.select_related("author"), AnswerSerializer)
 
     @extend_schema(
@@ -738,7 +775,7 @@ class AnswerListCreateView(APIView):
         responses={201: AnswerSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def post(self, request, pk):
-        question = get_object_or_404(Question, pk=pk)
+        question = get_object_or_404(Question, pk=pk, organization=request.user.organization)
         serializer = AnswerWriteSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         answer = services.create_answer(
@@ -757,7 +794,7 @@ class AnswerDetailView(APIView):
         responses={200: AnswerSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def patch(self, request, pk):
-        answer = get_object_or_404(Answer, pk=pk)
+        answer = get_object_or_404(Answer, pk=pk, question__organization=request.user.organization)
         serializer = AnswerWriteSerializer(answer, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         answer = services.update_answer(answer=answer, actor=request.user, request=request, **serializer.validated_data)
@@ -769,7 +806,7 @@ class AnswerDetailView(APIView):
         responses={204: OpenApiResponse(description="Deleted."), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def delete(self, request, pk):
-        answer = get_object_or_404(Answer, pk=pk)
+        answer = get_object_or_404(Answer, pk=pk, question__organization=request.user.organization)
         services.delete_answer(answer=answer, actor=request.user, request=request)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -784,11 +821,11 @@ class QuestionAcceptAnswerView(APIView):
         responses={200: QuestionDetailSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def post(self, request, pk):
-        question = get_object_or_404(Question, pk=pk)
+        question = get_object_or_404(Question, pk=pk, organization=request.user.organization)
         serializer = AcceptAnswerSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         answer_id = serializer.validated_data["answer_id"]
-        answer = get_object_or_404(Answer, pk=answer_id) if answer_id else None
+        answer = get_object_or_404(Answer, pk=answer_id, question__organization=request.user.organization) if answer_id else None
         question = services.accept_answer(question=question, actor=request.user, answer=answer, request=request)
         return Response(QuestionDetailSerializer(question).data)
 
@@ -858,7 +895,7 @@ class RelationDetailView(APIView):
         responses={204: OpenApiResponse(description="Deleted."), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def delete(self, request, pk):
-        relation = get_object_or_404(KnowledgeRelation, pk=pk)
+        relation = get_object_or_404(KnowledgeRelation, pk=pk, organization=request.user.organization)
         services.delete_relation(relation=relation, actor=request.user, request=request)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -883,10 +920,10 @@ class ArticleAttachmentListView(APIView):
         responses={201: ArticleAttachmentSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def post(self, request, pk):
-        article = get_object_or_404(Article, pk=pk)
+        article = get_object_or_404(Article, pk=pk, organization=request.user.organization)
         serializer = AddAttachmentSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        file = get_object_or_404(StoredFile, pk=serializer.validated_data["file_id"])
+        file = get_object_or_404(StoredFile, pk=serializer.validated_data["file_id"], organization=request.user.organization)
         attachment = services.add_article_attachment(article=article, file=file, actor=request.user, request=request)
         return Response(ArticleAttachmentSerializer(attachment).data, status=status.HTTP_201_CREATED)
 
@@ -900,7 +937,7 @@ class ArticleAttachmentDetailView(APIView):
         responses={204: OpenApiResponse(description="Deleted."), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def delete(self, request, pk, attachment_pk):
-        attachment = get_object_or_404(ArticleAttachment, pk=attachment_pk, article_id=pk)
+        attachment = get_object_or_404(ArticleAttachment, pk=attachment_pk, article_id=pk, article__organization=request.user.organization)
         services.remove_article_attachment(attachment=attachment, actor=request.user, request=request)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -925,10 +962,10 @@ class QuestionAttachmentListView(APIView):
         responses={201: QuestionAttachmentSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def post(self, request, pk):
-        question = get_object_or_404(Question, pk=pk)
+        question = get_object_or_404(Question, pk=pk, organization=request.user.organization)
         serializer = AddAttachmentSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        file = get_object_or_404(StoredFile, pk=serializer.validated_data["file_id"])
+        file = get_object_or_404(StoredFile, pk=serializer.validated_data["file_id"], organization=request.user.organization)
         attachment = services.add_question_attachment(
             question=question, file=file, actor=request.user, request=request
         )
@@ -944,7 +981,7 @@ class QuestionAttachmentDetailView(APIView):
         responses={204: OpenApiResponse(description="Deleted."), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def delete(self, request, pk, attachment_pk):
-        attachment = get_object_or_404(QuestionAttachment, pk=attachment_pk, question_id=pk)
+        attachment = get_object_or_404(QuestionAttachment, pk=attachment_pk, question_id=pk, question__organization=request.user.organization)
         services.remove_question_attachment(attachment=attachment, actor=request.user, request=request)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -969,7 +1006,9 @@ class ProjectListCreateView(APIView):
         responses={200: ProjectListSerializer(many=True), **COMMON_ERRORS},
     )
     def get(self, request):
-        queryset = Project.objects.prefetch_related("tags").select_related("created_by")
+        queryset = Project.objects.filter(organization=request.user.organization).prefetch_related(
+            "tags"
+        ).select_related("created_by")
         status_param = request.query_params.get("status")
         if status_param:
             queryset = queryset.filter(status=status_param)
@@ -1003,7 +1042,7 @@ class ProjectDetailView(APIView):
         tags=["Engineering"], summary="Get a project", responses={200: ProjectDetailSerializer, 404: NOT_FOUND, **COMMON_ERRORS}
     )
     def get(self, request, pk):
-        project = get_object_or_404(Project, pk=pk)
+        project = get_object_or_404(Project, pk=pk, organization=request.user.organization)
         return Response(ProjectDetailSerializer(project).data)
 
     @extend_schema(
@@ -1013,7 +1052,7 @@ class ProjectDetailView(APIView):
         responses={200: ProjectDetailSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def patch(self, request, pk):
-        project = get_object_or_404(Project, pk=pk)
+        project = get_object_or_404(Project, pk=pk, organization=request.user.organization)
         serializer = ProjectWriteSerializer(project, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         project = services.update_project(project=project, actor=request.user, request=request, **serializer.validated_data)
@@ -1025,7 +1064,7 @@ class ProjectDetailView(APIView):
         responses={204: OpenApiResponse(description="Deleted."), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def delete(self, request, pk):
-        project = get_object_or_404(Project, pk=pk)
+        project = get_object_or_404(Project, pk=pk, organization=request.user.organization)
         services.delete_project(project=project, actor=request.user, request=request)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -1039,7 +1078,7 @@ class ProjectRelationsView(APIView):
         responses={200: KnowledgeRelationSerializer(many=True), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def get(self, request, pk):
-        project = get_object_or_404(Project, pk=pk)
+        project = get_object_or_404(Project, pk=pk, organization=request.user.organization)
         content_type = ContentType.objects.get_for_model(Project)
         relations = services.get_relations_for("project", project.id, actor=request.user)
         return Response(KnowledgeRelationSerializer(relations, many=True, context={"viewer": (content_type, project.id)}).data)
@@ -1053,7 +1092,7 @@ class ProjectAttachmentListView(APIView):
         responses={200: ProjectAttachmentSerializer(many=True), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def get(self, request, pk):
-        project = get_object_or_404(Project, pk=pk)
+        project = get_object_or_404(Project, pk=pk, organization=request.user.organization)
         return Response(ProjectAttachmentSerializer(project.attachments.select_related("file", "uploaded_by"), many=True).data)
 
     @extend_schema(
@@ -1062,10 +1101,10 @@ class ProjectAttachmentListView(APIView):
         responses={201: ProjectAttachmentSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def post(self, request, pk):
-        project = get_object_or_404(Project, pk=pk)
+        project = get_object_or_404(Project, pk=pk, organization=request.user.organization)
         serializer = AddAttachmentSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        file = get_object_or_404(StoredFile, pk=serializer.validated_data["file_id"])
+        file = get_object_or_404(StoredFile, pk=serializer.validated_data["file_id"], organization=request.user.organization)
         attachment = services.add_project_attachment(project=project, file=file, actor=request.user, request=request)
         return Response(ProjectAttachmentSerializer(attachment).data, status=status.HTTP_201_CREATED)
 
@@ -1078,7 +1117,7 @@ class ProjectAttachmentDetailView(APIView):
         responses={204: OpenApiResponse(description="Deleted."), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def delete(self, request, pk, attachment_pk):
-        attachment = get_object_or_404(ProjectAttachment, pk=attachment_pk, project_id=pk)
+        attachment = get_object_or_404(ProjectAttachment, pk=attachment_pk, project_id=pk, project__organization=request.user.organization)
         services.remove_project_attachment(attachment=attachment, actor=request.user, request=request)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -1095,7 +1134,9 @@ class ComponentListCreateView(APIView):
         responses={200: ComponentListSerializer(many=True), **COMMON_ERRORS},
     )
     def get(self, request):
-        queryset = Component.objects.select_related("category", "created_by").prefetch_related("tags")
+        queryset = Component.objects.filter(organization=request.user.organization).select_related(
+            "category", "created_by"
+        ).prefetch_related("tags")
         category_id = request.query_params.get("category")
         if category_id:
             queryset = queryset.filter(category_id=category_id)
@@ -1137,7 +1178,7 @@ class ComponentDetailView(APIView):
         tags=["Engineering"], summary="Get a component", responses={200: ComponentDetailSerializer, 404: NOT_FOUND, **COMMON_ERRORS}
     )
     def get(self, request, pk):
-        component = get_object_or_404(Component, pk=pk)
+        component = get_object_or_404(Component, pk=pk, organization=request.user.organization)
         return Response(ComponentDetailSerializer(component).data)
 
     @extend_schema(
@@ -1147,7 +1188,7 @@ class ComponentDetailView(APIView):
         responses={200: ComponentDetailSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def patch(self, request, pk):
-        component = get_object_or_404(Component, pk=pk)
+        component = get_object_or_404(Component, pk=pk, organization=request.user.organization)
         serializer = ComponentWriteSerializer(component, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         component = services.update_component(
@@ -1161,7 +1202,7 @@ class ComponentDetailView(APIView):
         responses={204: OpenApiResponse(description="Deleted."), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def delete(self, request, pk):
-        component = get_object_or_404(Component, pk=pk)
+        component = get_object_or_404(Component, pk=pk, organization=request.user.organization)
         services.delete_component(component=component, actor=request.user, request=request)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -1175,7 +1216,7 @@ class ComponentRelationsView(APIView):
         responses={200: KnowledgeRelationSerializer(many=True), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def get(self, request, pk):
-        component = get_object_or_404(Component, pk=pk)
+        component = get_object_or_404(Component, pk=pk, organization=request.user.organization)
         content_type = ContentType.objects.get_for_model(Component)
         relations = services.get_relations_for("component", component.id, actor=request.user)
         return Response(
@@ -1191,7 +1232,7 @@ class ComponentAttachmentListView(APIView):
         responses={200: ComponentAttachmentSerializer(many=True), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def get(self, request, pk):
-        component = get_object_or_404(Component, pk=pk)
+        component = get_object_or_404(Component, pk=pk, organization=request.user.organization)
         return Response(
             ComponentAttachmentSerializer(component.attachments.select_related("file", "uploaded_by"), many=True).data
         )
@@ -1202,10 +1243,10 @@ class ComponentAttachmentListView(APIView):
         responses={201: ComponentAttachmentSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def post(self, request, pk):
-        component = get_object_or_404(Component, pk=pk)
+        component = get_object_or_404(Component, pk=pk, organization=request.user.organization)
         serializer = AddAttachmentSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        file = get_object_or_404(StoredFile, pk=serializer.validated_data["file_id"])
+        file = get_object_or_404(StoredFile, pk=serializer.validated_data["file_id"], organization=request.user.organization)
         attachment = services.add_component_attachment(component=component, file=file, actor=request.user, request=request)
         return Response(ComponentAttachmentSerializer(attachment).data, status=status.HTTP_201_CREATED)
 
@@ -1218,7 +1259,7 @@ class ComponentAttachmentDetailView(APIView):
         responses={204: OpenApiResponse(description="Deleted."), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def delete(self, request, pk, attachment_pk):
-        attachment = get_object_or_404(ComponentAttachment, pk=attachment_pk, component_id=pk)
+        attachment = get_object_or_404(ComponentAttachment, pk=attachment_pk, component_id=pk, component__organization=request.user.organization)
         services.remove_component_attachment(attachment=attachment, actor=request.user, request=request)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -1235,7 +1276,9 @@ class FailureListCreateView(APIView):
         responses={200: FailureListSerializer(many=True), **COMMON_ERRORS},
     )
     def get(self, request):
-        queryset = Failure.objects.select_related("component", "project", "created_by")
+        queryset = Failure.objects.filter(organization=request.user.organization).select_related(
+            "component", "project", "created_by"
+        )
         severity = request.query_params.get("severity")
         if severity:
             queryset = queryset.filter(severity=severity)
@@ -1274,7 +1317,7 @@ class FailureDetailView(APIView):
         tags=["Engineering"], summary="Get a failure report", responses={200: FailureDetailSerializer, 404: NOT_FOUND, **COMMON_ERRORS}
     )
     def get(self, request, pk):
-        failure = get_object_or_404(Failure, pk=pk)
+        failure = get_object_or_404(Failure, pk=pk, organization=request.user.organization)
         return Response(FailureDetailSerializer(failure).data)
 
     @extend_schema(
@@ -1284,7 +1327,7 @@ class FailureDetailView(APIView):
         responses={200: FailureDetailSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def patch(self, request, pk):
-        failure = get_object_or_404(Failure, pk=pk)
+        failure = get_object_or_404(Failure, pk=pk, organization=request.user.organization)
         serializer = FailureWriteSerializer(failure, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         failure = services.update_failure(failure=failure, actor=request.user, request=request, **serializer.validated_data)
@@ -1296,7 +1339,7 @@ class FailureDetailView(APIView):
         responses={204: OpenApiResponse(description="Deleted."), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def delete(self, request, pk):
-        failure = get_object_or_404(Failure, pk=pk)
+        failure = get_object_or_404(Failure, pk=pk, organization=request.user.organization)
         services.delete_failure(failure=failure, actor=request.user, request=request)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -1310,7 +1353,7 @@ class FailureRelationsView(APIView):
         responses={200: KnowledgeRelationSerializer(many=True), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def get(self, request, pk):
-        failure = get_object_or_404(Failure, pk=pk)
+        failure = get_object_or_404(Failure, pk=pk, organization=request.user.organization)
         content_type = ContentType.objects.get_for_model(Failure)
         relations = services.get_relations_for("failure", failure.id, actor=request.user)
         return Response(
@@ -1326,7 +1369,7 @@ class FailureAttachmentListView(APIView):
         responses={200: FailureAttachmentSerializer(many=True), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def get(self, request, pk):
-        failure = get_object_or_404(Failure, pk=pk)
+        failure = get_object_or_404(Failure, pk=pk, organization=request.user.organization)
         return Response(FailureAttachmentSerializer(failure.attachments.select_related("file", "uploaded_by"), many=True).data)
 
     @extend_schema(
@@ -1335,10 +1378,10 @@ class FailureAttachmentListView(APIView):
         responses={201: FailureAttachmentSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def post(self, request, pk):
-        failure = get_object_or_404(Failure, pk=pk)
+        failure = get_object_or_404(Failure, pk=pk, organization=request.user.organization)
         serializer = AddAttachmentSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        file = get_object_or_404(StoredFile, pk=serializer.validated_data["file_id"])
+        file = get_object_or_404(StoredFile, pk=serializer.validated_data["file_id"], organization=request.user.organization)
         attachment = services.add_failure_attachment(failure=failure, file=file, actor=request.user, request=request)
         return Response(FailureAttachmentSerializer(attachment).data, status=status.HTTP_201_CREATED)
 
@@ -1351,7 +1394,7 @@ class FailureAttachmentDetailView(APIView):
         responses={204: OpenApiResponse(description="Deleted."), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def delete(self, request, pk, attachment_pk):
-        attachment = get_object_or_404(FailureAttachment, pk=attachment_pk, failure_id=pk)
+        attachment = get_object_or_404(FailureAttachment, pk=attachment_pk, failure_id=pk, failure__organization=request.user.organization)
         services.remove_failure_attachment(attachment=attachment, actor=request.user, request=request)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -1368,7 +1411,9 @@ class SopListCreateView(APIView):
         responses={200: SopListSerializer(many=True), **COMMON_ERRORS},
     )
     def get(self, request):
-        queryset = Sop.objects.select_related("category", "created_by").prefetch_related("tags")
+        queryset = Sop.objects.filter(organization=request.user.organization).select_related(
+            "category", "created_by"
+        ).prefetch_related("tags")
         category_id = request.query_params.get("category")
         if category_id:
             queryset = queryset.filter(category_id=category_id)
@@ -1402,7 +1447,7 @@ class SopDetailView(APIView):
 
     @extend_schema(tags=["Engineering"], summary="Get an SOP", responses={200: SopDetailSerializer, 404: NOT_FOUND, **COMMON_ERRORS})
     def get(self, request, pk):
-        sop = get_object_or_404(Sop, pk=pk)
+        sop = get_object_or_404(Sop, pk=pk, organization=request.user.organization)
         return Response(SopDetailSerializer(sop).data)
 
     @extend_schema(
@@ -1412,7 +1457,7 @@ class SopDetailView(APIView):
         responses={200: SopDetailSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def patch(self, request, pk):
-        sop = get_object_or_404(Sop, pk=pk)
+        sop = get_object_or_404(Sop, pk=pk, organization=request.user.organization)
         serializer = SopWriteSerializer(sop, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         sop = services.update_sop(sop=sop, actor=request.user, request=request, **serializer.validated_data)
@@ -1424,7 +1469,7 @@ class SopDetailView(APIView):
         responses={204: OpenApiResponse(description="Deleted."), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def delete(self, request, pk):
-        sop = get_object_or_404(Sop, pk=pk)
+        sop = get_object_or_404(Sop, pk=pk, organization=request.user.organization)
         services.delete_sop(sop=sop, actor=request.user, request=request)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -1438,7 +1483,7 @@ class SopRelationsView(APIView):
         responses={200: KnowledgeRelationSerializer(many=True), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def get(self, request, pk):
-        sop = get_object_or_404(Sop, pk=pk)
+        sop = get_object_or_404(Sop, pk=pk, organization=request.user.organization)
         content_type = ContentType.objects.get_for_model(Sop)
         relations = services.get_relations_for("sop", sop.id, actor=request.user)
         return Response(KnowledgeRelationSerializer(relations, many=True, context={"viewer": (content_type, sop.id)}).data)
@@ -1452,7 +1497,7 @@ class SopAttachmentListView(APIView):
         responses={200: SopAttachmentSerializer(many=True), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def get(self, request, pk):
-        sop = get_object_or_404(Sop, pk=pk)
+        sop = get_object_or_404(Sop, pk=pk, organization=request.user.organization)
         return Response(SopAttachmentSerializer(sop.attachments.select_related("file", "uploaded_by"), many=True).data)
 
     @extend_schema(
@@ -1461,10 +1506,10 @@ class SopAttachmentListView(APIView):
         responses={201: SopAttachmentSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def post(self, request, pk):
-        sop = get_object_or_404(Sop, pk=pk)
+        sop = get_object_or_404(Sop, pk=pk, organization=request.user.organization)
         serializer = AddAttachmentSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        file = get_object_or_404(StoredFile, pk=serializer.validated_data["file_id"])
+        file = get_object_or_404(StoredFile, pk=serializer.validated_data["file_id"], organization=request.user.organization)
         attachment = services.add_sop_attachment(sop=sop, file=file, actor=request.user, request=request)
         return Response(SopAttachmentSerializer(attachment).data, status=status.HTTP_201_CREATED)
 
@@ -1477,7 +1522,7 @@ class SopAttachmentDetailView(APIView):
         responses={204: OpenApiResponse(description="Deleted."), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def delete(self, request, pk, attachment_pk):
-        attachment = get_object_or_404(SopAttachment, pk=attachment_pk, sop_id=pk)
+        attachment = get_object_or_404(SopAttachment, pk=attachment_pk, sop_id=pk, sop__organization=request.user.organization)
         services.remove_sop_attachment(attachment=attachment, actor=request.user, request=request)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -1494,7 +1539,9 @@ class TestListCreateView(APIView):
         responses={200: TestListSerializer(many=True), **COMMON_ERRORS},
     )
     def get(self, request):
-        queryset = Test.objects.select_related("project", "created_by").prefetch_related("tags")
+        queryset = Test.objects.filter(organization=request.user.organization).select_related(
+            "project", "created_by"
+        ).prefetch_related("tags")
         test_type = request.query_params.get("test_type")
         if test_type:
             queryset = queryset.filter(test_type=test_type)
@@ -1539,7 +1586,7 @@ class TestDetailView(APIView):
         tags=["Engineering"], summary="Get a test", responses={200: TestDetailSerializer, 404: NOT_FOUND, **COMMON_ERRORS}
     )
     def get(self, request, pk):
-        test = get_object_or_404(Test, pk=pk)
+        test = get_object_or_404(Test, pk=pk, organization=request.user.organization)
         return Response(TestDetailSerializer(test).data)
 
     @extend_schema(
@@ -1549,7 +1596,7 @@ class TestDetailView(APIView):
         responses={200: TestDetailSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def patch(self, request, pk):
-        test = get_object_or_404(Test, pk=pk)
+        test = get_object_or_404(Test, pk=pk, organization=request.user.organization)
         serializer = TestWriteSerializer(test, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         test = services.update_test(test=test, actor=request.user, request=request, **serializer.validated_data)
@@ -1561,7 +1608,7 @@ class TestDetailView(APIView):
         responses={204: OpenApiResponse(description="Deleted."), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def delete(self, request, pk):
-        test = get_object_or_404(Test, pk=pk)
+        test = get_object_or_404(Test, pk=pk, organization=request.user.organization)
         services.delete_test(test=test, actor=request.user, request=request)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -1575,7 +1622,7 @@ class TestRelationsView(APIView):
         responses={200: KnowledgeRelationSerializer(many=True), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def get(self, request, pk):
-        test = get_object_or_404(Test, pk=pk)
+        test = get_object_or_404(Test, pk=pk, organization=request.user.organization)
         content_type = ContentType.objects.get_for_model(Test)
         relations = services.get_relations_for("test", test.id, actor=request.user)
         return Response(KnowledgeRelationSerializer(relations, many=True, context={"viewer": (content_type, test.id)}).data)
@@ -1589,7 +1636,7 @@ class TestAttachmentListView(APIView):
         responses={200: TestAttachmentSerializer(many=True), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def get(self, request, pk):
-        test = get_object_or_404(Test, pk=pk)
+        test = get_object_or_404(Test, pk=pk, organization=request.user.organization)
         return Response(TestAttachmentSerializer(test.attachments.select_related("file", "uploaded_by"), many=True).data)
 
     @extend_schema(
@@ -1598,10 +1645,10 @@ class TestAttachmentListView(APIView):
         responses={201: TestAttachmentSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def post(self, request, pk):
-        test = get_object_or_404(Test, pk=pk)
+        test = get_object_or_404(Test, pk=pk, organization=request.user.organization)
         serializer = AddAttachmentSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        file = get_object_or_404(StoredFile, pk=serializer.validated_data["file_id"])
+        file = get_object_or_404(StoredFile, pk=serializer.validated_data["file_id"], organization=request.user.organization)
         attachment = services.add_test_attachment(test=test, file=file, actor=request.user, request=request)
         return Response(TestAttachmentSerializer(attachment).data, status=status.HTTP_201_CREATED)
 
@@ -1614,13 +1661,17 @@ class TestAttachmentDetailView(APIView):
         responses={204: OpenApiResponse(description="Deleted."), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def delete(self, request, pk, attachment_pk):
-        attachment = get_object_or_404(TestAttachment, pk=attachment_pk, test_id=pk)
+        attachment = get_object_or_404(TestAttachment, pk=attachment_pk, test_id=pk, test__organization=request.user.organization)
         services.remove_test_attachment(attachment=attachment, actor=request.user, request=request)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 def _visible_document_or_404(request, pk):
-    document = get_object_or_404(Document.objects.select_related("category", "created_by", "file"), pk=pk)
+    document = get_object_or_404(
+        Document.objects.select_related("category", "created_by", "file"),
+        pk=pk,
+        organization=request.user.organization,
+    )
     if document.visibility != Visibility.RESTRICTED:
         return document
     if request.user == document.created_by or request.user.has_permission("document.update"):
@@ -1692,7 +1743,7 @@ class DocumentDetailView(APIView):
         responses={200: DocumentDetailSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def patch(self, request, pk):
-        document = get_object_or_404(Document, pk=pk)
+        document = get_object_or_404(Document, pk=pk, organization=request.user.organization)
         serializer = DocumentWriteSerializer(document, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         document = services.update_document(
@@ -1706,7 +1757,7 @@ class DocumentDetailView(APIView):
         responses={204: OpenApiResponse(description="Deleted."), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def delete(self, request, pk):
-        document = get_object_or_404(Document, pk=pk)
+        document = get_object_or_404(Document, pk=pk, organization=request.user.organization)
         services.delete_document(document=document, actor=request.user, request=request)
         return Response(status=status.HTTP_204_NO_CONTENT)
 

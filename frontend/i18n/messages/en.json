@@ -20,7 +20,8 @@
     "next": "Next",
     "resultCount": "{count, plural, =0 {No results} one {# result} other {# results}}",
     "removeFilter": "Remove filter",
-    "searchThisList": "Search this list..."
+    "searchThisList": "Search this list...",
+    "contributorsLabel": "Contributors"
   },
   "auth": {
     "emailLabel": "Email Address",
@@ -42,10 +43,15 @@
     },
     "register": {
       "tagline": "Create your account",
+      "modeOrganization": "Create a Team",
+      "modeInvite": "I Have an Invite",
+      "organizationNameLabel": "Team/Organization Name",
       "firstNameLabel": "First Name",
       "lastNameLabel": "Last Name",
+      "usernameLabel": "Username (optional)",
       "invitationCodeLabel": "Invitation Code",
       "submit": "Create Account",
+      "submitOrganization": "Create Organization",
       "submitting": "Creating account...",
       "error": "Couldn't create your account. Check your details and try again.",
       "hasAccount": "Already have an account?",
@@ -109,6 +115,9 @@
     "activityEmptyState": "No recent activity yet.",
     "activityLoading": "Loading...",
     "systemActor": "System",
+    "leaderboardTitle": "Top Contributors",
+    "leaderboardEmptyState": "No contributions yet.",
+    "leaderboardPoints": "{count, plural, =0 {0 pts} one {# pt} other {# pts}}",
     "activityActions": {
       "articlePublish": "published",
       "articleSubmit": "submitted",
@@ -263,6 +272,7 @@
     "loading": "Loading profile...",
     "notFound": "This user doesn't exist.",
     "joinedLabel": "Joined {date}",
+    "scoreLabel": "Contribution Score",
     "groupKnowledgeTitle": "Knowledge",
     "groupEngineeringTitle": "Engineering",
     "groupResourcesTitle": "Resources",
@@ -287,7 +297,19 @@
     "tabDocument": "Documents",
     "emptyState": "Nothing here yet.",
     "loadingTab": "Loading...",
-    "acceptedBadge": "Accepted"
+    "acceptedBadge": "Accepted",
+    "recentActivityTitle": "Recent Activity",
+    "recentActivityEmptyState": "No recent activity yet.",
+    "activityActions": {
+      "articlePublish": "published",
+      "articleSubmit": "submitted",
+      "articleReject": "rejected",
+      "articleArchive": "archived",
+      "questionCreate": "asked",
+      "questionAnswer": "answered",
+      "questionAcceptAnswer": "accepted an answer for",
+      "questionPromote": "promoted"
+    }
   },
   "knowledge": {
     "landing": {

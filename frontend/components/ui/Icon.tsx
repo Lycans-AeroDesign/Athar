@@ -3,6 +3,7 @@ import {
   Archive,
   ArchiveRestore,
   ArrowLeft,
+  Award,
   Bell,
   Bold,
   BookOpen,
@@ -32,6 +33,7 @@ import {
   List,
   ListOrdered,
   Lock,
+  LogOut,
   Mail,
   Menu as MenuIcon,
   MessageSquare,
@@ -50,6 +52,7 @@ import {
   Trash2,
   Undo2,
   Upload,
+  User,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -59,6 +62,7 @@ import {
 // props - e.g. SideNav's NAV_ITEMS, Menu's MenuEntry.icon - didn't need to
 // change) to their lucide-react equivalents.
 const ICONS: Record<string, LucideIcon> = {
+  account: User,
   add: Plus,
   archive: Archive,
   unarchive: ArchiveRestore,
@@ -94,6 +98,7 @@ const ICONS: Record<string, LucideIcon> = {
   light_mode: Sun,
   link: Link2,
   lock: Lock,
+  logout: LogOut,
   mail: Mail,
   menu: MenuIcon,
   menu_book: BookOpen,
@@ -108,6 +113,7 @@ const ICONS: Record<string, LucideIcon> = {
   share: Share2,
   table_chart: Table,
   travel_explore: Compass,
+  trophy: Award,
   undo: Undo2,
   upload: Upload,
   visibility: Eye,

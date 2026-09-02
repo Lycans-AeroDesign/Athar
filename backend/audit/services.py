@@ -16,9 +16,17 @@ def log_action(
     target: models.Model | None = None,
     metadata: dict | None = None,
     request=None,
+    organization=None,
 ) -> AuditLog:
+    """`organization` defaults to actor.organization - only pass it
+    explicitly for the rare case where the actor is None/anonymous but the
+    org is still known from context (e.g. accounts.services.register_user,
+    which logs with actor=None since the user didn't exist yet at the start
+    of that call, but already knows which org they're joining)."""
+    is_authenticated = actor and getattr(actor, "is_authenticated", False)
     entry = AuditLog(
-        actor=actor if actor and getattr(actor, "is_authenticated", False) else None,
+        organization=organization or (actor.organization if is_authenticated else None),
+        actor=actor if is_authenticated else None,
         action=action,
         target=target,
         target_repr=str(target) if target is not None else "",

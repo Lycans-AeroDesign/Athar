@@ -6,14 +6,16 @@ import { useEffect, useMemo, useState } from "react";
 import { ArticleCard } from "@/components/knowledge/ArticleCard";
 import { QuestionCard } from "@/components/knowledge/QuestionCard";
 import { Can } from "@/components/auth/Can";
+import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { StatCard } from "@/components/ui/StatCard";
 import { Link } from "@/i18n/navigation";
 import { getKnowledgeActivity } from "@/lib/api/audit";
-import { getArticleCount, getArticles, getOpenQuestionCount, getQuestions } from "@/lib/api/knowledge";
-import type { ArticleSummary, AuditLogEntry, QuestionSummary } from "@/lib/api/types";
+import { getArticleCount, getArticles, getLeaderboard, getOpenQuestionCount, getQuestions } from "@/lib/api/knowledge";
+import type { ArticleSummary, AuditLogEntry, LeaderboardEntry, QuestionSummary } from "@/lib/api/types";
 import { formatRelativeTime } from "@/lib/datetime";
+import { formatPersonName } from "@/lib/format";
 import { useAuth } from "@/lib/auth/AuthProvider";
 
 // Maps an audit action string (see backend/audit/views.py's
@@ -41,7 +43,8 @@ export default function DashboardPage() {
   const [articles, setArticles] = useState<ArticleSummary[] | null>(null);
   const [questions, setQuestions] = useState<QuestionSummary[] | null>(null);
   const [activity, setActivity] = useState<AuditLogEntry[] | null>(null);
-  // One shared banner for any of the five independent fetches below - each
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[] | null>(null);
+  // One shared banner for any of the six independent fetches below - each
   // still resolves/renders on its own (a failed activity feed shouldn't block
   // the stat cards), but a silent failure previously meant "Loading..."
   // forever with no explanation.
@@ -54,6 +57,7 @@ export default function DashboardPage() {
     getArticles().then(setArticles, onError);
     getQuestions().then(setQuestions, onError);
     getKnowledgeActivity().then((data) => setActivity(data.results), onError);
+    getLeaderboard().then(setLeaderboard, onError);
   }, []);
 
   const recentItems = useMemo(() => {
@@ -131,35 +135,67 @@ export default function DashboardPage() {
           )}
         </div>
 
-        <div className="lg:col-span-4 bg-surface-container-low border border-outline-variant rounded-xl p-4 space-y-4">
-          <h2 className="font-headline-md text-headline-md text-on-surface">{t("activityTitle")}</h2>
+        <div className="lg:col-span-4 space-y-6">
+          <div className="bg-surface-container-low border border-outline-variant rounded-xl p-4 space-y-4">
+            <h2 className="font-headline-md text-headline-md text-on-surface">{t("activityTitle")}</h2>
 
-          {activity === null ? (
-            <p className="font-body-md text-body-md text-on-surface-variant">{t("activityLoading")}</p>
-          ) : activity.length === 0 ? (
-            <p className="font-body-md text-body-md text-on-surface-variant">{t("activityEmptyState")}</p>
-          ) : (
-            <ul className="space-y-4">
-              {activity.map((entry) => {
-                const actionKey = ACTIVITY_ACTION_KEYS[entry.action];
-                const actionLabel = actionKey ? t(`activityActions.${actionKey}`) : entry.action;
-                return (
-                  <li key={entry.id} className="flex gap-2.5">
-                    <span className="mt-1.5 size-1.5 rounded-full bg-primary shrink-0" />
-                    <div className="min-w-0">
-                      <p className="font-body-md text-body-md text-on-surface">
-                        <span className="font-medium">{entry.actor_email ?? t("systemActor")}</span>{" "}
-                        {actionLabel} {entry.target_repr}
-                      </p>
-                      <p className="font-mono-sm text-mono-sm text-on-surface-variant mt-0.5">
-                        {formatRelativeTime(entry.created_at)}
-                      </p>
-                    </div>
+            {activity === null ? (
+              <p className="font-body-md text-body-md text-on-surface-variant">{t("activityLoading")}</p>
+            ) : activity.length === 0 ? (
+              <p className="font-body-md text-body-md text-on-surface-variant">{t("activityEmptyState")}</p>
+            ) : (
+              <ul className="space-y-4">
+                {activity.map((entry) => {
+                  const actionKey = ACTIVITY_ACTION_KEYS[entry.action];
+                  const actionLabel = actionKey ? t(`activityActions.${actionKey}`) : entry.action;
+                  return (
+                    <li key={entry.id} className="flex gap-2.5">
+                      <span className="mt-1.5 size-1.5 rounded-full bg-primary shrink-0" />
+                      <div className="min-w-0">
+                        <p className="font-body-md text-body-md text-on-surface">
+                          <span className="font-medium">{entry.actor_email ?? t("systemActor")}</span>{" "}
+                          {actionLabel} {entry.target_repr}
+                        </p>
+                        <p className="font-mono-sm text-mono-sm text-on-surface-variant mt-0.5">
+                          {formatRelativeTime(entry.created_at)}
+                        </p>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+
+          <div className="bg-surface-container-low border border-outline-variant rounded-xl p-4 space-y-4">
+            <h2 className="font-headline-md text-headline-md text-on-surface">{t("leaderboardTitle")}</h2>
+
+            {leaderboard === null ? (
+              <p className="font-body-md text-body-md text-on-surface-variant">{t("activityLoading")}</p>
+            ) : leaderboard.length === 0 ? (
+              <p className="font-body-md text-body-md text-on-surface-variant">{t("leaderboardEmptyState")}</p>
+            ) : (
+              <ol className="space-y-3">
+                {leaderboard.slice(0, 5).map((entry, index) => (
+                  <li key={entry.user.id} className="flex items-center gap-3">
+                    <span className="w-4 font-mono-sm text-mono-sm text-on-surface-variant shrink-0">{index + 1}</span>
+                    <Link href={`/users/${entry.user.id}`} className="shrink-0">
+                      <Avatar person={entry.user} size="sm" />
+                    </Link>
+                    <Link
+                      href={`/users/${entry.user.id}`}
+                      className="flex-1 min-w-0 font-body-md text-body-md text-on-surface truncate hover:text-primary hover:underline transition-colors"
+                    >
+                      {formatPersonName(entry.user)}
+                    </Link>
+                    <span className="font-mono-sm text-mono-sm text-on-surface-variant shrink-0">
+                      {t("leaderboardPoints", { count: entry.score })}
+                    </span>
                   </li>
-                );
-              })}
-            </ul>
-          )}
+                ))}
+              </ol>
+            )}
+          </div>
         </div>
       </div>
     </div>

@@ -8,18 +8,23 @@ import { BrandMark } from "@/components/ui/BrandMark";
 import { FloatingLabelInput } from "@/components/ui/FloatingLabelInput";
 import { Link, useRouter } from "@/i18n/navigation";
 import { ApiError, apiUrl } from "@/lib/api/client";
-import { registerRequest } from "@/lib/api/auth";
+import { createOrganizationRequest, registerRequest } from "@/lib/api/auth";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { useOrganization } from "@/lib/organization/OrganizationProvider";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-// Matches accounts/serializers.py's RegisterSerializer.password min_length=8.
+// Matches accounts/serializers.py's RegisterSerializer.password min_length=8
+// and organization/serializers.py's OrganizationCreateSerializer.admin_password.
 const MIN_PASSWORD_LENGTH = 8;
+
+type Mode = "invite" | "organization";
 
 interface FieldErrors {
   email?: string;
   password?: string;
   invitationCode?: string;
+  organizationName?: string;
+  username?: string;
 }
 
 export default function RegisterPage() {
@@ -37,8 +42,15 @@ function RegisterForm() {
   const searchParams = useSearchParams();
   const t = useTranslations("auth");
 
+  // Defaults to "invite" - most visitors to a self-hosted Athar instance are
+  // joining an existing team, not starting a new SaaS org. Anyone landing
+  // with an invite link (?code=...) gets this anyway, and "Create a new
+  // organization" is one tab click away for the rarer self-service signup.
+  const [mode, setMode] = useState<Mode>("invite");
+  const [organizationName, setOrganizationName] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [invitationCode, setInvitationCode] = useState(searchParams.get("code") ?? "");
@@ -54,7 +66,8 @@ function RegisterForm() {
     else if (password.length < MIN_PASSWORD_LENGTH) {
       errors.password = t("passwordTooShort", { min: MIN_PASSWORD_LENGTH });
     }
-    if (!invitationCode.trim()) errors.invitationCode = t("fieldRequired");
+    if (mode === "invite" && !invitationCode.trim()) errors.invitationCode = t("fieldRequired");
+    if (mode === "organization" && !organizationName.trim()) errors.organizationName = t("fieldRequired");
     return errors;
   }
 
@@ -67,19 +80,39 @@ function RegisterForm() {
 
     setIsSubmitting(true);
     try {
-      await registerRequest({
-        email,
-        password,
-        invitation_code: invitationCode,
-        first_name: firstName,
-        last_name: lastName,
-      });
-      // register/ only creates the account (see lib/api/auth.ts) - log in
+      if (mode === "invite") {
+        await registerRequest({
+          email,
+          password,
+          invitation_code: invitationCode,
+          first_name: firstName,
+          last_name: lastName,
+          username: username.trim() || undefined,
+        });
+      } else {
+        await createOrganizationRequest({
+          name: organizationName,
+          admin_email: email,
+          admin_password: password,
+          admin_first_name: firstName,
+          admin_last_name: lastName,
+          admin_username: username.trim() || undefined,
+        });
+      }
+      // Neither endpoint logs the caller in (see lib/api/auth.ts) - log in
       // with the same credentials to actually start the session.
       await login(email, password);
       router.push("/");
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t("register.error"));
+      // Organization mode's field is "admin_username" server-side (see
+      // OrganizationCreateSerializer) but this form has just one shared
+      // username input either way - normalize both to the same fieldErrors key.
+      const usernameMessage = err instanceof ApiError ? err.fields.username ?? err.fields.admin_username : undefined;
+      if (usernameMessage) {
+        setFieldErrors((prev) => ({ ...prev, username: usernameMessage }));
+      } else {
+        setError(err instanceof ApiError ? err.message : t("register.error"));
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -108,8 +141,53 @@ function RegisterForm() {
             </p>
           </div>
 
+          <div className="flex bg-surface-container rounded-lg p-1 mb-6" role="tablist">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mode === "invite"}
+              onClick={() => setMode("invite")}
+              className={`flex-1 py-2 rounded-md font-label-caps text-label-caps uppercase transition-colors ${
+                mode === "invite"
+                  ? "bg-surface-container-lowest text-primary shadow-[0_1px_3px_0_rgba(0,0,0,0.08)]"
+                  : "text-on-surface-variant"
+              }`}
+            >
+              {t("register.modeInvite")}
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mode === "organization"}
+              onClick={() => setMode("organization")}
+              className={`flex-1 py-2 rounded-md font-label-caps text-label-caps uppercase transition-colors ${
+                mode === "organization"
+                  ? "bg-surface-container-lowest text-primary shadow-[0_1px_3px_0_rgba(0,0,0,0.08)]"
+                  : "text-on-surface-variant"
+              }`}
+            >
+              {t("register.modeOrganization")}
+            </button>
+          </div>
+
           <form className="space-y-6" noValidate onSubmit={handleSubmit}>
             <div className="space-y-1">
+              {mode === "organization" && (
+                <FloatingLabelInput
+                  autoComplete="organization"
+                  error={fieldErrors.organizationName}
+                  icon="architecture"
+                  id="organizationName"
+                  label={t("register.organizationNameLabel")}
+                  name="organizationName"
+                  value={organizationName}
+                  onChange={(e) => {
+                    setOrganizationName(e.target.value);
+                    setFieldErrors((prev) => ({ ...prev, organizationName: undefined }));
+                  }}
+                />
+              )}
+
               <div className="grid grid-cols-2 gap-4">
                 <FloatingLabelInput
                   autoComplete="given-name"
@@ -128,6 +206,20 @@ function RegisterForm() {
                   onChange={(e) => setLastName(e.target.value)}
                 />
               </div>
+
+              <FloatingLabelInput
+                autoComplete="username"
+                error={fieldErrors.username}
+                icon="account"
+                id="username"
+                label={t("register.usernameLabel")}
+                name="username"
+                value={username}
+                onChange={(e) => {
+                  setUsername(e.target.value);
+                  setFieldErrors((prev) => ({ ...prev, username: undefined }));
+                }}
+              />
 
               <FloatingLabelInput
                 autoComplete="email"
@@ -159,19 +251,21 @@ function RegisterForm() {
                 }}
               />
 
-              <FloatingLabelInput
-                autoComplete="off"
-                error={fieldErrors.invitationCode}
-                icon="label"
-                id="invitationCode"
-                label={t("register.invitationCodeLabel")}
-                name="invitationCode"
-                value={invitationCode}
-                onChange={(e) => {
-                  setInvitationCode(e.target.value);
-                  setFieldErrors((prev) => ({ ...prev, invitationCode: undefined }));
-                }}
-              />
+              {mode === "invite" && (
+                <FloatingLabelInput
+                  autoComplete="off"
+                  error={fieldErrors.invitationCode}
+                  icon="label"
+                  id="invitationCode"
+                  label={t("register.invitationCodeLabel")}
+                  name="invitationCode"
+                  value={invitationCode}
+                  onChange={(e) => {
+                    setInvitationCode(e.target.value);
+                    setFieldErrors((prev) => ({ ...prev, invitationCode: undefined }));
+                  }}
+                />
+              )}
             </div>
 
             {error && (
@@ -186,7 +280,11 @@ function RegisterForm() {
                 disabled={isSubmitting}
                 type="submit"
               >
-                {isSubmitting ? t("register.submitting") : t("register.submit")}
+                {isSubmitting
+                  ? t("register.submitting")
+                  : mode === "organization"
+                    ? t("register.submitOrganization")
+                    : t("register.submit")}
               </button>
             </div>
           </form>

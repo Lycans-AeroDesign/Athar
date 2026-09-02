@@ -80,6 +80,7 @@ export function TopBar({ onOpenMenu }: TopBarProps) {
               type="button"
               aria-label={t("accountMenu")}
             >
+              <Icon name="expand_more" size={18} className="hidden sm:block text-on-surface-variant shrink-0" />
               <span className="hidden sm:flex flex-col items-end leading-tight text-end">
                 <span className="font-body-md text-body-md font-semibold text-on-surface normal-case">
                   {displayName}
@@ -97,7 +98,7 @@ export function TopBar({ onOpenMenu }: TopBarProps) {
           }
           header={user?.email}
           items={[
-            { label: t("myAccount"), onSelect: () => router.push("/account") },
+            { label: t("myAccount"), icon: "account", onSelect: () => router.push("/account") },
             { type: "separator" },
             {
               type: "submenu",
@@ -120,7 +121,7 @@ export function TopBar({ onOpenMenu }: TopBarProps) {
               options: locales.map((code) => ({ value: code, label: localeNames[code] })),
             },
             { type: "separator" },
-            { label: t("logout"), onSelect: () => setConfirmLogoutOpen(true), danger: true },
+            { label: t("logout"), icon: "logout", onSelect: () => setConfirmLogoutOpen(true), danger: true },
           ]}
         />
       </div>

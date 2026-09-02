@@ -1,13 +1,16 @@
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.core.management import call_command
+
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 
+from core.testing import create_test_organization
 from accounts.models import User
 from audit.models import AuditLog
+from files.models import StoredFile
 from rbac.models import Role
 
+from . import services
 from .models import (
     Answer,
     Article,
@@ -30,11 +33,11 @@ from .models import (
 class KnowledgeTestCase(APITestCase):
     @classmethod
     def setUpTestData(cls):
-        call_command("seed_rbac")
+        cls.organization = create_test_organization()
 
     def _login_with_role(self, email, role_name):
-        user = User.objects.create_user(email=email, password="password123")
-        Role.objects.get(name=role_name).user_roles.create(user=user)
+        user = User.objects.create_user(email=email, password="password123", organization=self.organization)
+        Role.objects.get(organization=self.organization, name=role_name).user_roles.create(user=user)
         response = self.client.post(
             reverse("auth-login"), {"email": email, "password": "password123"}, format="json"
         )
@@ -330,6 +333,12 @@ class CategoryAndTagTests(KnowledgeTestCase):
     def test_require_authentication_only(self):
         response = self.client.get(reverse("knowledge-category-list"))
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+        # Categories are now org-scoped (multi-tenancy retrofit) - this
+        # test's own fresh organization starts with none of its own, unlike
+        # the fixed set knowledge/migrations/0002_manual_seed_categories.py
+        # seeds for the migration-time bootstrap organization only.
+        Category.objects.create(organization=self.organization, name="Avionics", slug="avionics")
 
         _, guest_access = self._login_with_role("guest3@example.com", "Guest")
         response = self.client.get(reverse("knowledge-category-list"), **self._auth(guest_access))
@@ -1731,11 +1740,16 @@ class UserProfileTests(KnowledgeTestCase):
             {k: response.data["stats"][k] for k in ("article", "project", "question")},
             {"article": 1, "project": 1, "question": 1},
         )
+        # article.create(3) + article.publish(5) + project.create(2) + question.create(1) - see scoring.py.
+        self.assertEqual(response.data["score"], 11)
 
         # The viewer's own profile shows their answer, and that it was accepted.
         response = self.client.get(reverse("knowledge-user-profile", args=[viewer.id]), **self._auth(viewer_access))
         self.assertEqual(response.data["stats"]["answer"], 1)
         self.assertEqual(response.data["stats"]["accepted_answers"], 1)
+        # question.answer(2) + accepted-answer credit(5), attributed to the
+        # answer's own author (viewer), not the owner who clicked accept.
+        self.assertEqual(response.data["score"], 7)
 
     def test_profile_404s_for_unknown_user(self):
         _, access = self._login_with_role("profile404@example.com", "Member")
@@ -1876,3 +1890,292 @@ class DocumentTests(KnowledgeTestCase):
             self.assertEqual(response.status_code, status.HTTP_200_OK)
             response = self.client.get(reverse("knowledge-project-relations", args=[project["id"]]), **self._auth(access))
             self.assertEqual([r["other_id"] for r in response.data], [document["id"]])
+
+
+class MultiTenancyIsolationTests(APITestCase):
+    """Phase F of the multi-tenancy retrofit plan - a dedicated adversarial
+    pass, not "every model has a filter so it must be fine." Two real,
+    independent organizations (own RBAC catalogue, own users, own data),
+    proving a logged-in user from Organization A cannot read, list, search,
+    relate-to, or modify anything belonging to Organization B - by guessed
+    id or otherwise - across every layer this retrofit touched: knowledge
+    content, search, relations, files, and RBAC itself."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.org_a = create_test_organization(name="Org A")
+        cls.org_b = create_test_organization(name="Org B")
+
+    def _login_with_role(self, email, role_name, organization):
+        user = User.objects.create_user(email=email, password="password123", organization=organization)
+        Role.objects.get(organization=organization, name=role_name).user_roles.create(user=user)
+        response = self.client.post(
+            reverse("auth-login"), {"email": email, "password": "password123"}, format="json"
+        )
+        return user, response.data["access"]
+
+    def _auth(self, access_token):
+        return {"HTTP_AUTHORIZATION": f"Bearer {access_token}"}
+
+    def test_knowledge_content_is_isolated(self):
+        """One representative knowledge type (Article) - list, detail-by-id,
+        and search all stay within the actor's own organization."""
+        _, a_head_access = self._login_with_role("a-head@example.com", "Team/Subteam Head", self.org_a)
+        article = self.client.post(
+            reverse("knowledge-article-list-create"),
+            {"title": "Org A Secret Battery Chemistry Notes", "content": "..."},
+            format="json",
+            **self._auth(a_head_access),
+        ).data
+        self.client.post(reverse("knowledge-article-publish", args=[article["id"]]), **self._auth(a_head_access))
+
+        _, b_head_access = self._login_with_role("b-head@example.com", "Team/Subteam Head", self.org_b)
+
+        # Not in Org B's list.
+        response = self.client.get(reverse("knowledge-article-list-create"), **self._auth(b_head_access))
+        self.assertNotIn(article["id"], {a["id"] for a in response.data["results"]})
+
+        # Not fetchable by id, even though it's PUBLISHED and PUBLIC (not RESTRICTED) -
+        # org boundary applies regardless of visibility.
+        response = self.client.get(reverse("knowledge-article-detail", args=[article["id"]]), **self._auth(b_head_access))
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+        # Not in Org B's search results.
+        response = self.client.get(
+            reverse("knowledge-search") + "?q=battery+chemistry", **self._auth(b_head_access)
+        )
+        self.assertNotIn(article["id"], {r["id"] for r in response.data["results"]})
+        self.assertEqual(response.data["counts"]["article"], 0)
+
+        # Org A's own head still sees it fine, unaffected by any of the above.
+        response = self.client.get(reverse("knowledge-article-detail", args=[article["id"]]), **self._auth(a_head_access))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_relation_creation_across_organizations_is_rejected(self):
+        """The one place a cross-org link could otherwise sneak in via a
+        guessed target UUID, since source and target resolve independently."""
+        _, a_head_access = self._login_with_role("a-relhead@example.com", "Team/Subteam Head", self.org_a)
+        a_project = self.client.post(
+            reverse("knowledge-project-list-create"), {"name": "Org A Project"}, format="json", **self._auth(a_head_access)
+        ).data
+
+        _, b_head_access = self._login_with_role("b-relhead@example.com", "Team/Subteam Head", self.org_b)
+        b_project = self.client.post(
+            reverse("knowledge-project-list-create"), {"name": "Org B Project"}, format="json", **self._auth(b_head_access)
+        ).data
+
+        # Org B's head tries to relate their own project to Org A's project
+        # by its (leaked/guessed) id - source ownership check would normally
+        # pass (b_project is Org B's own), but target resolution must fail
+        # since Org A's project doesn't exist *within Org B's organization*.
+        response = self.client.post(
+            reverse("knowledge-relation-create"),
+            {
+                "source_type": "project",
+                "source_id": b_project["id"],
+                "target_type": "project",
+                "target_id": a_project["id"],
+            },
+            format="json",
+            **self._auth(b_head_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(KnowledgeRelation.objects.count(), 0)
+
+    def test_files_are_isolated(self):
+        """Even holding file.read, Org B can't download or see Org A's file
+        by id - required_permission alone says nothing about *whose* file it is."""
+        _, a_member_access = self._login_with_role("a-filemember@example.com", "Member", self.org_a)
+        upload = SimpleUploadedFile("org-a-secret.txt", b"org a only", content_type="text/plain")
+        upload_response = self.client.post(
+            reverse("files-upload"),
+            {"file": upload, "required_permission": "file.read"},
+            format="multipart",
+            **self._auth(a_member_access),
+        )
+        file_id = upload_response.data["id"]
+
+        _, b_member_access = self._login_with_role("b-filemember@example.com", "Member", self.org_b)
+        response = self.client.get(reverse("files-download", args=[file_id]), **self._auth(b_member_access))
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+        # Org A's own uploader can still download it fine.
+        response = self.client.get(reverse("files-download", args=[file_id]), **self._auth(a_member_access))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_rbac_is_isolated(self):
+        """Each org's RBAC admin manages only their own org's roles/users -
+        role.manage/user.manage don't leak across organizations, and each
+        org's seeded catalogue is independent (renaming one org's "Member"
+        role never touches the other org's)."""
+        _, a_admin_access = self._login_with_role("a-rbacadmin@example.com", "Organization Admin", self.org_a)
+        _, b_admin_access = self._login_with_role("b-rbacadmin@example.com", "Organization Admin", self.org_b)
+
+        a_member_role = Role.objects.get(organization=self.org_a, name="Member")
+
+        # Org B's admin can't see, fetch, or rename Org A's "Member" role by
+        # its (leaked/guessed) id - despite holding role.manage themselves.
+        response = self.client.get(reverse("rbac-roles"), **self._auth(b_admin_access))
+        self.assertNotIn(str(a_member_role.id), {r["id"] for r in response.data["results"]})
+
+        response = self.client.get(reverse("rbac-role-detail", args=[a_member_role.id]), **self._auth(b_admin_access))
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+        response = self.client.patch(
+            reverse("rbac-role-detail", args=[a_member_role.id]),
+            {"name": "Hijacked"},
+            format="json",
+            **self._auth(b_admin_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        a_member_role.refresh_from_db()
+        self.assertEqual(a_member_role.name, "Member")
+
+        # Org B's admin also can't see Org A's users.
+        b_user_ids = {
+            u["id"]
+            for u in self.client.get(reverse("rbac-users"), **self._auth(b_admin_access)).data["results"]
+        }
+        a_admin_id = str(User.objects.get(email="a-rbacadmin@example.com").id)
+        self.assertNotIn(a_admin_id, b_user_ids)
+
+        # Org A's own admin still manages their own role/users fine.
+        response = self.client.get(reverse("rbac-role-detail", args=[a_member_role.id]), **self._auth(a_admin_access))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+
+class ContributionScoringTests(KnowledgeTestCase):
+    """Part 2 of the plan - weighted scoring (services.compute_contribution_scores_for),
+    the org-scoped leaderboard endpoint, and the `contributors` field on
+    detail serializers. See knowledge/scoring.py's own docstring for why
+    accepted-answer points go to the answer's author, not whoever clicked accept."""
+
+    def test_accepted_answer_credits_the_answers_author_not_the_acceptor(self):
+        asker, asker_access = self._login_with_role("scoreasker@example.com", "Member")
+        question = self.client.post(
+            reverse("knowledge-question-list-create"),
+            {"title": "Why does it beep?", "body": "It beeps a lot."},
+            format="json",
+            **self._auth(asker_access),
+        ).data
+
+        answerer, answerer_access = self._login_with_role("scoreanswerer@example.com", "Member")
+        answer = self.client.post(
+            reverse("knowledge-answer-list-create", args=[question["id"]]),
+            {"body": "Try this."},
+            format="json",
+            **self._auth(answerer_access),
+        ).data
+
+        # Asker (not the answerer) clicks accept - the +5 must land on the
+        # answerer, not the asker who merely performed the accept action.
+        self.client.post(
+            reverse("knowledge-question-accept", args=[question["id"]]),
+            {"answer_id": answer["id"]},
+            format="json",
+            **self._auth(asker_access),
+        )
+
+        scores = services.compute_contribution_scores_for(self.organization)
+        # asker: +1 for question.create only - no accept-answer credit.
+        self.assertEqual(scores.get(asker.id), 1)
+        # answerer: +2 for question.answer, +5 for being the accepted answer's author.
+        self.assertEqual(scores.get(answerer.id), 7)
+
+    def test_leaderboard_is_org_scoped_and_sorted_descending(self):
+        prolific, prolific_access = self._login_with_role("scoreprolific@example.com", "Member")
+        for i in range(3):
+            self.client.post(
+                reverse("knowledge-question-list-create"),
+                {"title": f"Question {i}", "body": "..."},
+                format="json",
+                **self._auth(prolific_access),
+            )
+        quiet, quiet_access = self._login_with_role("scorequiet@example.com", "Member")
+        self.client.post(
+            reverse("knowledge-question-list-create"),
+            {"title": "One question", "body": "..."},
+            format="json",
+            **self._auth(quiet_access),
+        )
+
+        other_org = create_test_organization(name="Other Org For Leaderboard")
+        other_user = User.objects.create_user(email="otherorgleader@example.com", password="password123", organization=other_org)
+        Role.objects.get(organization=other_org, name="Member").user_roles.create(user=other_user)
+        other_login = self.client.post(
+            reverse("auth-login"), {"email": "otherorgleader@example.com", "password": "password123"}, format="json"
+        ).data
+        for i in range(10):
+            self.client.post(
+                reverse("knowledge-question-list-create"),
+                {"title": f"Other org question {i}", "body": "..."},
+                format="json",
+                **self._auth(other_login["access"]),
+            )
+
+        response = self.client.get(reverse("knowledge-leaderboard"), **self._auth(prolific_access))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        entry_by_email = {entry["user"]["email"]: entry["score"] for entry in response.data}
+
+        self.assertNotIn("otherorgleader@example.com", entry_by_email)
+        self.assertEqual(entry_by_email["scoreprolific@example.com"], 3)
+        self.assertEqual(entry_by_email["scorequiet@example.com"], 1)
+        scores_in_order = [entry["score"] for entry in response.data]
+        self.assertEqual(scores_in_order, sorted(scores_in_order, reverse=True))
+
+    def test_contributors_field_lists_distinct_editors(self):
+        author, author_access = self._login_with_role("scorearticleauthor@example.com", "Member")
+        article = self.client.post(
+            reverse("knowledge-article-list-create"),
+            {"title": "Motor Notes", "content": "Body"},
+            format="json",
+            **self._auth(author_access),
+        ).data
+
+        _, senior_access = self._login_with_role("scorearticleeditor@example.com", "Senior Member")
+        self.client.patch(
+            reverse("knowledge-article-detail", args=[article["id"]]),
+            {"content": "Revised body"},
+            format="json",
+            **self._auth(senior_access),
+        )
+
+        response = self.client.get(reverse("knowledge-article-detail", args=[article["id"]]), **self._auth(author_access))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        contributor_emails = {c["email"] for c in response.data["contributors"]}
+        self.assertEqual(contributor_emails, {"scorearticleauthor@example.com", "scorearticleeditor@example.com"})
+
+    def test_user_activity_feed_is_scoped_to_the_target_user_and_organization(self):
+        target, target_access = self._login_with_role("scoreactivitytarget@example.com", "Member")
+        self.client.post(
+            reverse("knowledge-question-list-create"),
+            {"title": "Target's question", "body": "..."},
+            format="json",
+            **self._auth(target_access),
+        )
+
+        _, other_access = self._login_with_role("scoreactivityother@example.com", "Member")
+        self.client.post(
+            reverse("knowledge-question-list-create"),
+            {"title": "Other's question", "body": "..."},
+            format="json",
+            **self._auth(other_access),
+        )
+
+        response = self.client.get(
+            reverse("audit-user-activity", args=[target.id]), **self._auth(other_access)
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data["results"]), 1)
+        self.assertEqual(response.data["results"][0]["action"], "question.create")
+
+        other_org = create_test_organization(name="Other Org For Activity")
+        outsider = User.objects.create_user(email="activityoutsider@example.com", password="password123", organization=other_org)
+        Role.objects.get(organization=other_org, name="Member").user_roles.create(user=outsider)
+        outsider_login = self.client.post(
+            reverse("auth-login"), {"email": "activityoutsider@example.com", "password": "password123"}, format="json"
+        ).data
+        response = self.client.get(
+            reverse("audit-user-activity", args=[target.id]), **self._auth(outsider_login["access"])
+        )
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)

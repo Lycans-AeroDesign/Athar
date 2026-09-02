@@ -29,6 +29,7 @@ from .views import (
     FailureDetailView,
     FailureListCreateView,
     FailureRelationsView,
+    LeaderboardView,
     ProjectAttachmentDetailView,
     ProjectAttachmentListView,
     ProjectDetailView,
@@ -64,6 +65,7 @@ from .views import (
 
 urlpatterns = [
     path("search/", SearchView.as_view(), name="knowledge-search"),
+    path("leaderboard/", LeaderboardView.as_view(), name="knowledge-leaderboard"),
     path("users/<uuid:pk>/", UserProfileView.as_view(), name="knowledge-user-profile"),
     path("users/<uuid:pk>/contributions/", UserContributionsView.as_view(), name="knowledge-user-contributions"),
     path("categories/", CategoryListView.as_view(), name="knowledge-category-list"),

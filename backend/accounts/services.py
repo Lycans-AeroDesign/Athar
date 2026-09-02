@@ -30,7 +30,14 @@ def consume_invitation_code(code: str) -> InvitationCode:
 
 @transaction.atomic
 def register_user(
-    *, email: str, password: str, invitation_code: str, first_name: str = "", last_name: str = "", request=None
+    *,
+    email: str,
+    password: str,
+    invitation_code: str,
+    first_name: str = "",
+    last_name: str = "",
+    username: str | None = None,
+    request=None,
 ) -> User:
     """Create a user and assign the default self-registration role (Guest).
 
@@ -42,10 +49,15 @@ def register_user(
     invitation = consume_invitation_code(invitation_code)
 
     user = User.objects.create_user(
-        email=email, password=password, first_name=first_name, last_name=last_name
+        email=email,
+        password=password,
+        organization=invitation.organization,
+        first_name=first_name,
+        last_name=last_name,
+        username=username,
     )
 
-    guest_role = Role.objects.filter(name="Guest").first()
+    guest_role = Role.objects.filter(organization=invitation.organization, name="Guest").first()
     if guest_role:
         guest_role.user_roles.create(user=user)
 
@@ -55,6 +67,7 @@ def register_user(
         target=user,
         metadata={"invitation_code": invitation.code},
         request=request,
+        organization=invitation.organization,
     )
     return user
 
@@ -73,7 +86,7 @@ def create_invitation_code(
     *, created_by: User, max_uses: int = 1, expires_at=None, request=None
 ) -> InvitationCode:
     invitation = InvitationCode.objects.create(
-        created_by=created_by, max_uses=max_uses, expires_at=expires_at
+        organization=created_by.organization, created_by=created_by, max_uses=max_uses, expires_at=expires_at
     )
     log_action(actor=created_by, action="invitation.create", target=invitation, request=request)
     return invitation

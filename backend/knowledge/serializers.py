@@ -4,7 +4,7 @@ from accounts.models import User
 from files.models import StoredFile
 from files.serializers import StoredFileSerializer
 
-from . import relationships
+from . import relationships, services
 from .models import (
     Answer,
     Article,
@@ -43,17 +43,46 @@ class AuthorSerializer(serializers.ModelSerializer):
 class UserProfileSerializer(serializers.ModelSerializer):
     """Public-safe profile shape for a user's contributions page - same
     minimal fields as AuthorSerializer above (never roles/permissions) plus
-    date_joined and the aggregate contribution counts the view computes and
-    passes in via context - there's no model field backing `stats`."""
+    date_joined, the aggregate contribution counts, and the weighted
+    leaderboard score (see scoring.py) - all computed by the view and passed
+    in via context, no model field backing either."""
 
     stats = serializers.SerializerMethodField()
+    score = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ["id", "first_name", "last_name", "email", "title", "username", "date_joined", "stats"]
+        fields = ["id", "first_name", "last_name", "email", "title", "username", "date_joined", "stats", "score"]
 
     def get_stats(self, obj: User) -> dict:
         return self.context["stats"]
+
+    def get_score(self, obj: User) -> int:
+        return self.context["score"]
+
+
+class LeaderboardEntrySerializer(serializers.Serializer):
+    """One row of GET /knowledge/leaderboard/ - `user` is a plain dict
+    ({"user": <User>, "score": <int>}) built by services.leaderboard_for,
+    not a model instance, so this is a plain Serializer, not a ModelSerializer."""
+
+    user = AuthorSerializer(read_only=True)
+    score = serializers.IntegerField(read_only=True)
+
+
+class ContributorsMixin:
+    """get_contributors backing a `contributors` SerializerMethodField each
+    *DetailSerializer below declares directly (DRF's SerializerMetaclass only
+    collects declared Fields from `Meta`-bearing bases, so the field itself
+    can't live on a plain mixin - only this method can be shared) - distinct
+    authors of every {type}.create/{type}.update AuditLog entry for this
+    object, via services.contributors_for. See that function's own docstring
+    for why this reuses AuditLog instead of adding real per-type revision
+    history."""
+
+    def get_contributors(self, obj) -> list:
+        model_name = obj.__class__.__name__.lower()
+        return AuthorSerializer(services.contributors_for(model_name, obj), many=True).data
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -116,9 +145,11 @@ class ArticleListSerializer(serializers.ModelSerializer):
         ]
 
 
-class ArticleDetailSerializer(ArticleListSerializer):
+class ArticleDetailSerializer(ContributorsMixin, ArticleListSerializer):
+    contributors = serializers.SerializerMethodField()
+
     class Meta(ArticleListSerializer.Meta):
-        fields = [*ArticleListSerializer.Meta.fields, "content"]
+        fields = [*ArticleListSerializer.Meta.fields, "content", "contributors"]
 
 
 class ArticleWriteSerializer(serializers.ModelSerializer):
@@ -188,11 +219,12 @@ class QuestionListSerializer(serializers.ModelSerializer):
         return str(obj.promoted_to_article_id) if obj.promoted_to_article_id else None
 
 
-class QuestionDetailSerializer(QuestionListSerializer):
+class QuestionDetailSerializer(ContributorsMixin, QuestionListSerializer):
     answers = serializers.SerializerMethodField()
+    contributors = serializers.SerializerMethodField()
 
     class Meta(QuestionListSerializer.Meta):
-        fields = [*QuestionListSerializer.Meta.fields, "body", "answers"]
+        fields = [*QuestionListSerializer.Meta.fields, "body", "answers", "contributors"]
 
     def get_answers(self, obj: Question) -> list:
         # Accepted answer first, then chronological - needs obj.accepted_answer_id,
@@ -323,9 +355,11 @@ class ProjectListSerializer(serializers.ModelSerializer):
         fields = ["id", "name", "status", "tags", "created_by", "created_at", "updated_at"]
 
 
-class ProjectDetailSerializer(ProjectListSerializer):
+class ProjectDetailSerializer(ContributorsMixin, ProjectListSerializer):
+    contributors = serializers.SerializerMethodField()
+
     class Meta(ProjectListSerializer.Meta):
-        fields = [*ProjectListSerializer.Meta.fields, "description"]
+        fields = [*ProjectListSerializer.Meta.fields, "description", "contributors"]
 
 
 class ProjectWriteSerializer(serializers.ModelSerializer):
@@ -358,9 +392,11 @@ class ComponentListSerializer(serializers.ModelSerializer):
         ]
 
 
-class ComponentDetailSerializer(ComponentListSerializer):
+class ComponentDetailSerializer(ContributorsMixin, ComponentListSerializer):
+    contributors = serializers.SerializerMethodField()
+
     class Meta(ComponentListSerializer.Meta):
-        fields = [*ComponentListSerializer.Meta.fields, "summary"]
+        fields = [*ComponentListSerializer.Meta.fields, "summary", "contributors"]
 
 
 class ComponentWriteSerializer(serializers.ModelSerializer):
@@ -412,9 +448,18 @@ class FailureListSerializer(serializers.ModelSerializer):
         ]
 
 
-class FailureDetailSerializer(FailureListSerializer):
+class FailureDetailSerializer(ContributorsMixin, FailureListSerializer):
+    contributors = serializers.SerializerMethodField()
+
     class Meta(FailureListSerializer.Meta):
-        fields = [*FailureListSerializer.Meta.fields, "summary", "root_cause", "corrective_action", "preventive_action"]
+        fields = [
+            *FailureListSerializer.Meta.fields,
+            "summary",
+            "root_cause",
+            "corrective_action",
+            "preventive_action",
+            "contributors",
+        ]
 
 
 class FailureWriteSerializer(serializers.ModelSerializer):
@@ -452,9 +497,11 @@ class SopListSerializer(serializers.ModelSerializer):
         fields = ["id", "title", "category", "mandatory", "tags", "created_by", "created_at", "updated_at"]
 
 
-class SopDetailSerializer(SopListSerializer):
+class SopDetailSerializer(ContributorsMixin, SopListSerializer):
+    contributors = serializers.SerializerMethodField()
+
     class Meta(SopListSerializer.Meta):
-        fields = [*SopListSerializer.Meta.fields, "safety_notes", "content"]
+        fields = [*SopListSerializer.Meta.fields, "safety_notes", "content", "contributors"]
 
 
 class SopWriteSerializer(serializers.ModelSerializer):
@@ -491,9 +538,19 @@ class TestListSerializer(serializers.ModelSerializer):
         ]
 
 
-class TestDetailSerializer(TestListSerializer):
+class TestDetailSerializer(ContributorsMixin, TestListSerializer):
+    contributors = serializers.SerializerMethodField()
+
     class Meta(TestListSerializer.Meta):
-        fields = [*TestListSerializer.Meta.fields, "objective", "configuration", "procedure", "results", "conclusion"]
+        fields = [
+            *TestListSerializer.Meta.fields,
+            "objective",
+            "configuration",
+            "procedure",
+            "results",
+            "conclusion",
+            "contributors",
+        ]
 
 
 class TestWriteSerializer(serializers.ModelSerializer):
@@ -571,6 +628,13 @@ class DocumentListSerializer(serializers.ModelSerializer):
     tags = TagSerializer(many=True, read_only=True)
     created_by = AuthorSerializer(read_only=True)
     file = StoredFileSerializer(read_only=True)
+    # API field name kept as "organization" (the external org/author's own
+    # organization, e.g. "SAE International") even though the model field
+    # is now `external_organization` - see Document's own docstring for why
+    # it was renamed (the multi-tenancy retrofit needed the bare
+    # `organization` name for the tenant-scoping FK instead). Keeping the
+    # API shape unchanged means no frontend changes were needed for this.
+    organization = serializers.CharField(source="external_organization", required=False, allow_blank=True)
 
     class Meta:
         model = Document
@@ -593,9 +657,11 @@ class DocumentListSerializer(serializers.ModelSerializer):
         ]
 
 
-class DocumentDetailSerializer(DocumentListSerializer):
+class DocumentDetailSerializer(ContributorsMixin, DocumentListSerializer):
+    contributors = serializers.SerializerMethodField()
+
     class Meta(DocumentListSerializer.Meta):
-        fields = [*DocumentListSerializer.Meta.fields, "description"]
+        fields = [*DocumentListSerializer.Meta.fields, "description", "contributors"]
 
 
 class DocumentWriteSerializer(serializers.ModelSerializer):
@@ -610,6 +676,10 @@ class DocumentWriteSerializer(serializers.ModelSerializer):
         source="category", queryset=Category.objects.all(), allow_null=True, required=False
     )
     tag_names = serializers.ListField(child=serializers.CharField(), required=False)
+    # See DocumentListSerializer's matching comment - API name unchanged.
+    organization = serializers.CharField(
+        source="external_organization", required=False, allow_blank=True
+    )
 
     class Meta:
         model = Document

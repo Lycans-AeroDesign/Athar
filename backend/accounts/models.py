@@ -43,6 +43,13 @@ class UserManager(BaseUserManager):
 
 class User(AbstractBaseUser):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    # Every user belongs to exactly one organization (not core.OrganizationScopedModel -
+    # User isn't reached "through" an org the way Article/etc. are; it's the
+    # membership edge itself). Multi-org membership (one login, several
+    # orgs) is an explicit non-goal of this retrofit - see the multi-tenancy
+    # plan. `email` stays globally unique across the whole platform, not
+    # per-org, so login never needs an org selector.
+    organization = models.ForeignKey("organization.Organization", on_delete=models.CASCADE, related_name="users")
     email = models.EmailField(unique=True)
     # Optional (see username_validator above for the allowed format) - not
     # required for login (see USERNAME_FIELD below, still "email") or
@@ -118,6 +125,10 @@ class InvitationCode(models.Model):
     registrant gets."""
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    # Which org a registrant using this code joins - see accounts.services.register_user.
+    organization = models.ForeignKey(
+        "organization.Organization", on_delete=models.CASCADE, related_name="invitation_codes"
+    )
     code = models.CharField(max_length=16, unique=True, default=generate_invitation_code)
     created_by = models.ForeignKey(
         User, null=True, blank=True, on_delete=models.SET_NULL, related_name="invitation_codes"

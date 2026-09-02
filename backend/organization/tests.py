@@ -1,24 +1,25 @@
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.core.management import call_command
+
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 
+from core.testing import create_test_organization
 from accounts.models import User
 from files.models import StoredFile
 from rbac.models import Role
 
-from .models import OrganizationSettings
+from .models import Organization, OrganizationSettings
 
 
 class OrganizationSettingsTests(APITestCase):
     @classmethod
     def setUpTestData(cls):
-        call_command("seed_rbac")
+        cls.organization = create_test_organization()
 
     def _login_with_role(self, email, role_name):
-        user = User.objects.create_user(email=email, password="password123")
-        Role.objects.get(name=role_name).user_roles.create(user=user)
+        user = User.objects.create_user(email=email, password="password123", organization=self.organization)
+        Role.objects.get(organization=self.organization, name=role_name).user_roles.create(user=user)
         response = self.client.post(
             reverse("auth-login"), {"email": email, "password": "password123"}, format="json"
         )
@@ -27,11 +28,11 @@ class OrganizationSettingsTests(APITestCase):
     def _auth(self, access_token):
         return {"HTTP_AUTHORIZATION": f"Bearer {access_token}"}
 
-    def test_settings_is_a_singleton(self):
-        first = OrganizationSettings.load()
-        second = OrganizationSettings.load()
+    def test_settings_load_is_idempotent_per_organization(self):
+        first = OrganizationSettings.load(self.organization)
+        second = OrganizationSettings.load(self.organization)
         self.assertEqual(first.pk, second.pk)
-        self.assertEqual(OrganizationSettings.objects.count(), 1)
+        self.assertEqual(OrganizationSettings.objects.filter(organization=self.organization).count(), 1)
 
     def test_any_authenticated_user_can_read_settings(self):
         access = self._login_with_role("member@example.com", "Member")
@@ -67,7 +68,7 @@ class OrganizationSettingsTests(APITestCase):
             **self._auth(admin_access),
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(OrganizationSettings.load().name, "New Name")
+        self.assertEqual(OrganizationSettings.load(self.organization).name, "New Name")
 
     def test_branding_update_requires_branding_manage(self):
         access = self._login_with_role("member3@example.com", "Member")
@@ -87,14 +88,32 @@ class OrganizationSettingsTests(APITestCase):
             **self._auth(admin_access),
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(OrganizationSettings.load().primary_color, "#ff0000")
+        self.assertEqual(OrganizationSettings.load(self.organization).primary_color, "#ff0000")
 
     def test_logo_endpoint_is_public_and_streams_the_image(self):
+        # _public_organization()'s anonymous fallback resolves to the
+        # *oldest* Organization (no subdomain routing yet - see its own
+        # docstring) - a bootstrap Organization already exists from the
+        # knowledge/document seed migrations by the time any test runs, and
+        # it's always older than self.organization, so it (not
+        # self.organization) is what an anonymous request actually sees.
+        # This test exercises that real, documented behavior explicitly
+        # rather than assuming the anonymous fallback is "your own org."
+        public_organization = Organization.objects.order_by("created_at").first()
+
         # No logo set yet - 404.
         self.assertEqual(self.client.get(reverse("organization-logo")).status_code, status.HTTP_404_NOT_FOUND)
 
-        admin_access = self._login_with_role("logoadmin@example.com", "Organization Admin")
+        admin = User.objects.create_user(
+            email="logoadmin@example.com", password="password123", organization=public_organization
+        )
+        Role.objects.get(organization=public_organization, name="Organization Admin").user_roles.create(user=admin)
+        admin_access = self.client.post(
+            reverse("auth-login"), {"email": "logoadmin@example.com", "password": "password123"}, format="json"
+        ).data["access"]
+
         logo_file = StoredFile.objects.create(
+            organization=public_organization,
             file=SimpleUploadedFile("logo.png", b"fake-png-bytes", content_type="image/png"),
             original_filename="logo.png",
             content_type="image/png",
@@ -114,3 +133,60 @@ class OrganizationSettingsTests(APITestCase):
         logo_response = self.client.get(reverse("organization-logo"))
         self.assertEqual(logo_response.status_code, status.HTTP_200_OK)
         self.assertEqual(b"".join(logo_response.streaming_content), b"fake-png-bytes")
+
+
+class OrganizationCreateTests(APITestCase):
+    """The self-service SaaS signup entrypoint - POST /api/v1/organization/,
+    AllowAny. See services.create_organization's own docstring for how this
+    differs from accounts.RegisterView (joins an existing org via invite)."""
+
+    def test_creates_organization_with_first_admin(self):
+        response = self.client.post(
+            reverse("organization-create"),
+            {"name": "Brand New Org", "admin_email": "founder@neworg.example", "admin_password": "somepassword123"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["roles"], ["Organization Admin"])
+
+        user = User.objects.get(email="founder@neworg.example")
+        self.assertEqual(user.organization.name, "Brand New Org")
+        # Doesn't auto-login the caller (see the view's own docstring) - the
+        # response is the created admin, not a token pair.
+        self.assertNotIn("access", response.data)
+
+    def test_admin_username_accepted_and_rejects_duplicates(self):
+        self.client.post(
+            reverse("organization-create"),
+            {
+                "name": "First Org",
+                "admin_email": "first@neworg.example",
+                "admin_password": "somepassword123",
+                "admin_username": "founder",
+            },
+            format="json",
+        )
+
+        response = self.client.post(
+            reverse("organization-create"),
+            {
+                "name": "Second Org",
+                "admin_email": "second@neworg.example",
+                "admin_password": "somepassword123",
+                "admin_username": "founder",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("admin_username", response.data)
+        self.assertFalse(User.objects.filter(email="second@neworg.example").exists())
+        self.assertFalse(Organization.objects.filter(name="Second Org").exists())
+
+    def test_admin_username_is_optional(self):
+        response = self.client.post(
+            reverse("organization-create"),
+            {"name": "No Username Org", "admin_email": "nouser@neworg.example", "admin_password": "somepassword123"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertIsNone(User.objects.get(email="nouser@neworg.example").username)

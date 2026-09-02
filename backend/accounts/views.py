@@ -196,7 +196,8 @@ class InvitationCodeListCreateView(APIView):
         responses={200: InvitationCodeSerializer(many=True), **COMMON_ERRORS},
     )
     def get(self, request):
-        return paginated_response(request, InvitationCode.objects.all(), InvitationCodeSerializer)
+        queryset = InvitationCode.objects.filter(organization=request.user.organization)
+        return paginated_response(request, queryset, InvitationCodeSerializer)
 
     @extend_schema(
         tags=["Auth"],
@@ -221,6 +222,6 @@ class InvitationCodeRevokeView(APIView):
         responses={200: InvitationCodeSerializer, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def post(self, request, pk):
-        invitation = get_object_or_404(InvitationCode, pk=pk)
+        invitation = get_object_or_404(InvitationCode, pk=pk, organization=request.user.organization)
         invitation = revoke_invitation_code(invitation=invitation, actor=request.user, request=request)
         return Response(InvitationCodeSerializer(invitation).data)

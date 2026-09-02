@@ -9,10 +9,12 @@ import { Icon } from "@/components/ui/Icon";
 import { Pagination } from "@/components/ui/Pagination";
 import { StatCard } from "@/components/ui/StatCard";
 import { Link } from "@/i18n/navigation";
+import { getUserActivity } from "@/lib/api/audit";
 import { getUserContributions } from "@/lib/api/knowledge";
 import type {
   Answer,
   ArticleSummary,
+  AuditLogEntry,
   ComponentSummary,
   ContributionType,
   DocumentSummary,
@@ -26,6 +28,69 @@ import type {
 } from "@/lib/api/types";
 import { formatRelativeTime } from "@/lib/datetime";
 import { RELATABLE_ICON, RELATABLE_ROUTE_PREFIX } from "@/lib/knowledgeTypes";
+
+// Same audit action -> translation-key remap as the Dashboard's own "Recent
+// Team Activity" widget (see app/[locale]/(protected)/page.tsx) - kept as
+// its own copy rather than a shared import since it's a small fixed lookup,
+// not logic, and the two widgets' translation namespaces differ ("dashboard"
+// vs "userProfile").
+const ACTIVITY_ACTION_KEYS: Record<string, string> = {
+  "article.publish": "articlePublish",
+  "article.submit": "articleSubmit",
+  "article.reject": "articleReject",
+  "article.archive": "articleArchive",
+  "question.create": "questionCreate",
+  "question.answer": "questionAnswer",
+  "question.accept_answer": "questionAcceptAnswer",
+  "question.promote": "questionPromote",
+};
+
+function RecentActivity({ userId }: { userId: string }) {
+  const t = useTranslations("userProfile");
+  // Keyed by userId, same "avoid a plain setState(null) reset in the effect
+  // body" pattern the parent component uses for its own tab/page results -
+  // switching between profiles never shows a stale list.
+  const [result, setResult] = useState<{ userId: string; entries: AuditLogEntry[] } | null>(null);
+  const activity = result?.userId === userId ? result.entries : null;
+
+  useEffect(() => {
+    getUserActivity(userId).then((data) => setResult({ userId, entries: data.results }));
+  }, [userId]);
+
+  return (
+    <div className="space-y-3">
+      <h3 className="flex items-center gap-2 font-label-caps text-label-caps text-on-surface-variant uppercase">
+        <Icon name="schedule" size={16} className="text-primary" />
+        {t("recentActivityTitle")}
+      </h3>
+      {activity === null ? (
+        <p className="font-body-md text-body-md text-on-surface-variant">{t("loadingTab")}</p>
+      ) : activity.length === 0 ? (
+        <p className="font-body-md text-body-md text-on-surface-variant">{t("recentActivityEmptyState")}</p>
+      ) : (
+        <ul className="space-y-3">
+          {activity.map((entry) => {
+            const actionKey = ACTIVITY_ACTION_KEYS[entry.action];
+            const actionLabel = actionKey ? t(`activityActions.${actionKey}`) : entry.action;
+            return (
+              <li key={entry.id} className="flex gap-2.5">
+                <span className="mt-1.5 size-1.5 rounded-full bg-primary shrink-0" />
+                <div className="min-w-0">
+                  <p className="font-body-md text-body-md text-on-surface">
+                    {actionLabel} {entry.target_repr}
+                  </p>
+                  <p className="font-mono-sm text-mono-sm text-on-surface-variant mt-0.5">
+                    {formatRelativeTime(entry.created_at)}
+                  </p>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
 
 // Shared by /users/[id] (someone else's public profile) and /account (your
 // own "My Contributions" section) - factored out once the same stats grid +
@@ -138,6 +203,14 @@ export function ContributionsPanel({ profile }: ContributionsPanelProps) {
 
   return (
     <div className="space-y-6">
+      <div className="bg-primary-container rounded-xl border border-outline-variant p-6 flex items-center justify-between gap-4">
+        <div>
+          <p className="font-label-caps text-label-caps text-on-primary-container uppercase">{t("scoreLabel")}</p>
+          <p className="font-display text-display text-on-primary-container mt-1">{profile.score}</p>
+        </div>
+        <Icon name="trophy" size={40} className="text-on-primary-container opacity-70 shrink-0" />
+      </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div>
           <h3 className="flex items-center gap-2 font-label-caps text-label-caps text-on-surface-variant uppercase mb-3">
@@ -145,10 +218,15 @@ export function ContributionsPanel({ profile }: ContributionsPanelProps) {
             {t("groupKnowledgeTitle")}
           </h3>
           <div className="grid grid-cols-2 gap-3">
-            <StatCard label={t("statArticles")} value={profile.stats.article} icon="menu_book" />
-            <StatCard label={t("statQuestions")} value={profile.stats.question} icon="forum" />
-            <StatCard label={t("statAnswers")} value={profile.stats.answer} icon="send" />
-            <StatCard label={t("statAcceptedAnswers")} value={profile.stats.accepted_answers} icon="check_circle" />
+            <StatCard layout="stacked" label={t("statArticles")} value={profile.stats.article} icon="menu_book" />
+            <StatCard layout="stacked" label={t("statQuestions")} value={profile.stats.question} icon="forum" />
+            <StatCard layout="stacked" label={t("statAnswers")} value={profile.stats.answer} icon="send" />
+            <StatCard
+              layout="stacked"
+              label={t("statAcceptedAnswers")}
+              value={profile.stats.accepted_answers}
+              icon="check_circle"
+            />
           </div>
         </div>
         <div>
@@ -157,11 +235,16 @@ export function ContributionsPanel({ profile }: ContributionsPanelProps) {
             {t("groupEngineeringTitle")}
           </h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            <StatCard label={t("statProjects")} value={profile.stats.project} icon="architecture" />
-            <StatCard label={t("statComponents")} value={profile.stats.component} icon="settings_input_component" />
-            <StatCard label={t("statFailures")} value={profile.stats.failure} icon="report_problem" />
-            <StatCard label={t("statSops")} value={profile.stats.sop} icon="description" />
-            <StatCard label={t("statTests")} value={profile.stats.test} icon="science" />
+            <StatCard layout="stacked" label={t("statProjects")} value={profile.stats.project} icon="architecture" />
+            <StatCard
+              layout="stacked"
+              label={t("statComponents")}
+              value={profile.stats.component}
+              icon="settings_input_component"
+            />
+            <StatCard layout="stacked" label={t("statFailures")} value={profile.stats.failure} icon="report_problem" />
+            <StatCard layout="stacked" label={t("statSops")} value={profile.stats.sop} icon="description" />
+            <StatCard layout="stacked" label={t("statTests")} value={profile.stats.test} icon="science" />
           </div>
         </div>
         <div>
@@ -170,10 +253,12 @@ export function ContributionsPanel({ profile }: ContributionsPanelProps) {
             {t("groupResourcesTitle")}
           </h3>
           <div className="grid grid-cols-1 gap-3">
-            <StatCard label={t("statDocuments")} value={profile.stats.document} icon="folder" />
+            <StatCard layout="stacked" label={t("statDocuments")} value={profile.stats.document} icon="folder" />
           </div>
         </div>
       </div>
+
+      <RecentActivity userId={profile.id} />
 
       <div className="border-b border-outline-variant">
         <div className="flex flex-wrap items-center gap-2">

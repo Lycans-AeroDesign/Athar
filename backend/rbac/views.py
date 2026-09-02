@@ -16,11 +16,16 @@ from .serializers import PermissionSerializer, RoleSerializer, RoleWriteSerializ
 
 
 class UserListView(APIView):
+    """Every list/detail/assignment view below is scoped to
+    request.user.organization - an org.manage-holding admin manages their
+    own org's users/roles only, never another tenant's, even by guessed id."""
+
     permission_classes = [require_permission("user.manage")]
 
     @extend_schema(tags=["RBAC"], summary="List all users", responses={200: UserSerializer(many=True), **COMMON_ERRORS})
     def get(self, request):
-        return paginated_response(request, User.objects.all(), UserSerializer)
+        queryset = User.objects.filter(organization=request.user.organization).order_by("email")
+        return paginated_response(request, queryset, UserSerializer)
 
 
 class RoleListCreateView(APIView):
@@ -28,7 +33,8 @@ class RoleListCreateView(APIView):
 
     @extend_schema(tags=["RBAC"], summary="List all roles", responses={200: RoleSerializer(many=True), **COMMON_ERRORS})
     def get(self, request):
-        return paginated_response(request, Role.objects.all(), RoleSerializer)
+        queryset = Role.objects.filter(organization=request.user.organization)
+        return paginated_response(request, queryset, RoleSerializer)
 
     @extend_schema(
         tags=["RBAC"],
@@ -39,7 +45,9 @@ class RoleListCreateView(APIView):
     def post(self, request):
         serializer = RoleWriteSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        role = services.create_role(actor=request.user, request=request, **serializer.validated_data)
+        role = services.create_role(
+            organization=request.user.organization, actor=request.user, request=request, **serializer.validated_data
+        )
         return Response(RoleSerializer(role).data, status=status.HTTP_201_CREATED)
 
 
@@ -50,7 +58,7 @@ class RoleDetailView(APIView):
         tags=["RBAC"], summary="Get a role", responses={200: RoleSerializer, 404: NOT_FOUND, **COMMON_ERRORS}
     )
     def get(self, request, pk):
-        role = get_object_or_404(Role, pk=pk)
+        role = get_object_or_404(Role, pk=pk, organization=request.user.organization)
         return Response(RoleSerializer(role).data)
 
     @extend_schema(
@@ -60,7 +68,7 @@ class RoleDetailView(APIView):
         responses={200: RoleSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def patch(self, request, pk):
-        role = get_object_or_404(Role, pk=pk)
+        role = get_object_or_404(Role, pk=pk, organization=request.user.organization)
         serializer = RoleWriteSerializer(role, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         role = services.update_role(role=role, actor=request.user, request=request, **serializer.validated_data)
@@ -72,12 +80,16 @@ class RoleDetailView(APIView):
         responses={204: OpenApiResponse(description="Deleted."), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def delete(self, request, pk):
-        role = get_object_or_404(Role, pk=pk)
+        role = get_object_or_404(Role, pk=pk, organization=request.user.organization)
         services.delete_role(role=role, actor=request.user, request=request)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class PermissionListView(APIView):
+    """Permission (the codename catalogue) is deliberately global/unscoped -
+    see rbac/models.py's Role docstring - so this is the one view in this
+    file that intentionally does NOT filter by organization."""
+
     permission_classes = [require_permission("permission.manage")]
 
     @extend_schema(
@@ -98,7 +110,7 @@ class RolePermissionsView(APIView):
         responses={200: PermissionSerializer(many=True), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def get(self, request, pk):
-        role = get_object_or_404(Role, pk=pk)
+        role = get_object_or_404(Role, pk=pk, organization=request.user.organization)
         return Response(PermissionSerializer(role.permissions.all(), many=True).data)
 
     @extend_schema(
@@ -108,7 +120,9 @@ class RolePermissionsView(APIView):
         responses={200: PermissionSerializer(many=True), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def post(self, request, pk):
-        role = get_object_or_404(Role, pk=pk)
+        role = get_object_or_404(Role, pk=pk, organization=request.user.organization)
+        # Permission itself is global (see PermissionListView's docstring) -
+        # no organization filter here is correct, not an oversight.
         permission = get_object_or_404(Permission, pk=request.data.get("permission_id"))
         services.grant_permission(role=role, permission=permission, actor=request.user, request=request)
         return Response(PermissionSerializer(role.permissions.all(), many=True).data)
@@ -123,7 +137,7 @@ class RolePermissionDetailView(APIView):
         responses={204: OpenApiResponse(description="Revoked (or was already absent)."), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def delete(self, request, pk, permission_id):
-        role = get_object_or_404(Role, pk=pk)
+        role = get_object_or_404(Role, pk=pk, organization=request.user.organization)
         permission = get_object_or_404(Permission, pk=permission_id)
         services.revoke_permission(role=role, permission=permission, actor=request.user, request=request)
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -139,8 +153,8 @@ class UserRolesView(APIView):
         responses={204: OpenApiResponse(description="Assigned (or already held)."), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def post(self, request, pk):
-        user = get_object_or_404(User, pk=pk)
-        role = get_object_or_404(Role, pk=request.data.get("role_id"))
+        user = get_object_or_404(User, pk=pk, organization=request.user.organization)
+        role = get_object_or_404(Role, pk=request.data.get("role_id"), organization=request.user.organization)
         services.assign_role(user=user, role=role, actor=request.user, request=request)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -154,7 +168,7 @@ class UserRoleDetailView(APIView):
         responses={204: OpenApiResponse(description="Unassigned (or was not held)."), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def delete(self, request, pk, role_id):
-        user = get_object_or_404(User, pk=pk)
-        role = get_object_or_404(Role, pk=role_id)
+        user = get_object_or_404(User, pk=pk, organization=request.user.organization)
+        role = get_object_or_404(Role, pk=role_id, organization=request.user.organization)
         services.unassign_role(user=user, role=role, actor=request.user, request=request)
         return Response(status=status.HTTP_204_NO_CONTENT)

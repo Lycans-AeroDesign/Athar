@@ -52,7 +52,10 @@ class FileDownloadView(APIView):
         },
     )
     def get(self, request, pk):
-        stored_file = get_object_or_404(StoredFile, pk=pk)
+        # organization filter is defense in depth beyond required_permission
+        # (Section 11 of the multi-tenancy plan) - required_permission alone
+        # says nothing about *which org's* file.read grants access to.
+        stored_file = get_object_or_404(StoredFile, pk=pk, organization=request.user.organization)
         if not request.user.has_permission(stored_file.required_permission):
             raise PermissionDenied("You do not have permission to access this file.")
         # as_attachment=True (Content-Disposition: attachment) rather than
@@ -80,6 +83,6 @@ class FileDeleteView(APIView):
         responses={204: OpenApiResponse(description="Deleted."), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def delete(self, request, pk):
-        stored_file = get_object_or_404(StoredFile, pk=pk)
+        stored_file = get_object_or_404(StoredFile, pk=pk, organization=request.user.organization)
         services.delete_file(stored_file=stored_file, actor=request.user, request=request)
         return Response(status=status.HTTP_204_NO_CONTENT)

@@ -1,17 +1,40 @@
-import uuid
-
 from django.db import models
+
+from core.models import TimeStampedModel, UUIDPrimaryKeyModel
+
+
+class Organization(UUIDPrimaryKeyModel, TimeStampedModel):
+    """The multi-tenancy root - every tenant-owned row across every app
+    ultimately traces back to one of these via core.OrganizationScopedModel
+    (knowledge/files/audit/rbac) or a direct FK (accounts.User). Deliberately
+    minimal for now - no billing/plan/quota fields, per the explicit
+    non-goals in the multi-tenancy plan this model was introduced for.
+
+    `slug` is reserved for future subdomain-based routing (team-a.example.com)
+    - not wired up anywhere yet; every request currently resolves its
+    organization from `request.user.organization`, not from the URL/host."""
+
+    name = models.CharField(max_length=200)
+    slug = models.SlugField(max_length=100, unique=True)
+
+    class Meta:
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
 
 
 class OrganizationSettings(models.Model):
-    """Singleton - use OrganizationSettings.load(), never .objects.create() directly.
-
-    Single-org-per-installation (see docs/VISION.md section 2), so there is
-    exactly one row; UUID pk kept for consistency with every other model
-    rather than hard-coding pk=1.
+    """One row per Organization (see `organization` FK below) - branding/
+    general config. No longer a true singleton now that Organization exists;
+    use OrganizationSettings.load(organization), never .objects.create()
+    directly, same "always go through one accessor" precedent as before,
+    just parameterized by which org now.
     """
 
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.OneToOneField(
+        Organization, on_delete=models.CASCADE, primary_key=True, related_name="settings"
+    )
 
     # General
     # No stored timezone - every timestamp is rendered in the viewer's local
@@ -43,10 +66,13 @@ class OrganizationSettings(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     @classmethod
-    def load(cls) -> "OrganizationSettings":
-        instance = cls.objects.first()
-        if instance is None:
-            instance = cls.objects.create()
+    def load(cls, organization: Organization) -> "OrganizationSettings":
+        # Deliberately NOT defaulting `name` to organization.name - that's
+        # the tenant's own registered identity (business/admin purposes),
+        # while OrganizationSettings.name is a customizable *display* name
+        # that starts at the model field's own default ("Athar") for every
+        # org until someone explicitly renames it via organization.manage.
+        instance, _ = cls.objects.get_or_create(organization=organization)
         return instance
 
     def __str__(self):

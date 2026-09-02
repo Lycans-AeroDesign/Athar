@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 import { ContributionsPanel } from "@/components/knowledge/ContributionsPanel";
 import { Button } from "@/components/ui/Button";
+import { ApiError } from "@/lib/api/client";
 import { updateMe } from "@/lib/api/accounts";
 import { getUserProfile } from "@/lib/api/knowledge";
 import type { UserProfile } from "@/lib/api/types";
@@ -25,6 +26,7 @@ export default function AccountPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [usernameError, setUsernameError] = useState<string | null>(null);
 
   // Own contributions section below - a second fetch beyond `user` (which
   // has no `stats`) since ContributionsPanel needs the same aggregate counts
@@ -39,12 +41,17 @@ export default function AccountPage() {
   async function handleSave() {
     setIsSaving(true);
     setError(null);
+    setUsernameError(null);
     try {
       const updated = await updateMe({ username: username.trim() || null, first_name: firstName, last_name: lastName, title });
       updateUser(updated);
       setSavedAt(Date.now());
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      if (err instanceof ApiError && err.fields.username) {
+        setUsernameError(err.fields.username);
+      } else {
+        setError(err instanceof Error ? err.message : String(err));
+      }
     } finally {
       setIsSaving(false);
     }
@@ -55,32 +62,51 @@ export default function AccountPage() {
       <h1 className="font-display text-display text-on-surface">{t("title")}</h1>
       <p className="font-body-lg text-body-lg text-on-surface-variant mt-2">{t("description")}</p>
 
-      <div className="bg-surface rounded-xl border border-outline-variant p-6 space-y-6 mt-6 max-w-2xl">
-        <div className="space-y-2">
-          <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase">
-            {t("emailLabel")}
-          </label>
-          <input
-            className="block w-full px-4 py-2 font-body-md text-body-md text-on-surface-variant bg-surface-container-low border border-outline-variant rounded-lg outline-none"
-            value={user.email}
-            disabled
-          />
-        </div>
+      <div className="bg-surface rounded-xl border border-outline-variant p-6 space-y-6 mt-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="space-y-2">
+            <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase">
+              {t("emailLabel")}
+            </label>
+            <input
+              className="block w-full px-4 py-2 font-body-md text-body-md text-on-surface-variant bg-surface-container-low border border-outline-variant rounded-lg outline-none"
+              value={user.email}
+              disabled
+            />
+          </div>
 
-        <div className="space-y-2">
-          <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase">
-            {t("usernameLabel")}
-          </label>
-          <input
-            className="block w-full px-4 py-2 font-body-md text-body-md text-on-surface bg-surface-container border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
-            placeholder={t("usernamePlaceholder")}
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-          />
-          <p className="font-body-md text-body-md text-on-surface-variant">{t("usernameHint")}</p>
-        </div>
+          <div className="space-y-2">
+            <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase">
+              {t("usernameLabel")}
+            </label>
+            <input
+              className={`block w-full px-4 py-2 font-body-md text-body-md text-on-surface bg-surface-container border rounded-lg focus:ring-1 focus:ring-primary outline-none transition-colors ${
+                usernameError ? "border-error focus:border-error" : "border-outline-variant focus:border-primary"
+              }`}
+              placeholder={t("usernamePlaceholder")}
+              value={username}
+              onChange={(e) => {
+                setUsername(e.target.value);
+                setUsernameError(null);
+              }}
+            />
+            <p className={`font-body-md text-body-md ${usernameError ? "text-error" : "text-on-surface-variant"}`}>
+              {usernameError ?? t("usernameHint")}
+            </p>
+          </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase">
+              {t("titleLabel")}
+            </label>
+            <input
+              className="block w-full px-4 py-2 font-body-md text-body-md text-on-surface bg-surface-container border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
+              placeholder={t("titlePlaceholder")}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+            />
+          </div>
+
           <div className="space-y-2">
             <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase">
               {t("firstNameLabel")}
@@ -101,18 +127,6 @@ export default function AccountPage() {
               onChange={(e) => setLastName(e.target.value)}
             />
           </div>
-        </div>
-
-        <div className="space-y-2">
-          <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase">
-            {t("titleLabel")}
-          </label>
-          <input
-            className="block w-full px-4 py-2 font-body-md text-body-md text-on-surface bg-surface-container border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
-            placeholder={t("titlePlaceholder")}
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
         </div>
 
         {user.roles.length > 0 && (

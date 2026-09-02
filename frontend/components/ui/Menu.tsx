@@ -10,6 +10,7 @@ export interface MenuItemConfig {
   label: string;
   onSelect: () => void;
   danger?: boolean;
+  icon?: string;
 }
 
 export interface MenuSubmenuOption {
@@ -44,7 +45,7 @@ interface MenuProps {
 const itemClass =
   "flex items-center gap-2 px-4 py-2 rounded-lg font-body-md text-body-md cursor-pointer outline-none transition-colors text-on-surface hover:bg-surface-variant data-[state=open]:bg-surface-variant";
 const dangerItemClass =
-  "flex items-center px-4 py-2 rounded-lg font-body-md text-body-md cursor-pointer outline-none transition-colors text-error hover:bg-error-container";
+  "flex items-center gap-2 px-4 py-2 rounded-lg font-body-md text-body-md cursor-pointer outline-none transition-colors text-error hover:bg-error-container";
 
 // Action/context menu (e.g. the top bar avatar menu, row "..." actions) -
 // distinct from Combobox, which is for picking a value inside a form.
@@ -112,7 +113,8 @@ export function Menu({ trigger, items, header, align = "end" }: MenuProps) {
                 onSelect={entry.onSelect}
                 className={entry.danger ? dangerItemClass : itemClass}
               >
-                {entry.label}
+                {entry.icon && <Icon name={entry.icon} size={18} />}
+                <span className="flex-1">{entry.label}</span>
               </DropdownMenu.Item>
             );
           })}
