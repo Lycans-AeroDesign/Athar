@@ -25,7 +25,7 @@ services:
       context: ./backend
       target: dev
     restart: unless-stopped
-    environment:
+    environment: &backend_env
       SECRET_KEY: ${SECRET_KEY:-django-insecure-dev-key-change-me}
       DEBUG: ${DEBUG:-True}
       ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1,backend}
@@ -39,6 +39,16 @@ services:
       JWT_REFRESH_COOKIE_SAMESITE: ${JWT_REFRESH_COOKIE_SAMESITE:-Lax}
       JWT_REFRESH_COOKIE_DOMAIN: ${JWT_REFRESH_COOKIE_DOMAIN:-}
       ENABLE_REGISTRATION: ${ENABLE_REGISTRATION:-True}
+      # File storage - empty means local disk (see backend/.env.example);
+      # set AWS_STORAGE_BUCKET_NAME (root .env) to switch to S3-compatible
+      # object storage instead.
+      AWS_STORAGE_BUCKET_NAME: ${AWS_STORAGE_BUCKET_NAME:-}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_S3_REGION_NAME: ${AWS_S3_REGION_NAME:-}
+      AWS_S3_ENDPOINT_URL: ${AWS_S3_ENDPOINT_URL:-}
+      AWS_S3_ADDRESSING_STYLE: ${AWS_S3_ADDRESSING_STYLE:-virtual}
+      CELERY_BROKER_URL: redis://redis:6379/0
     volumes:
       - ./backend:/app
       - backend_venv:/app/.venv
@@ -47,6 +57,39 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # Background job runner for backups.tasks.generate_org_backup (see Settings
+  # > Backups) - same image/env as backend, just a different container
+  # command. Runs the same entrypoint.sh (migrate/seed_rbac on start too,
+  # which is idempotent) before execing the worker instead of runserver.
+  celery-worker:
+    build:
+      context: ./backend
+      target: dev
+    restart: unless-stopped
+    command: ["celery", "-A", "config", "worker", "-l", "info"]
+    environment: *backend_env
+    volumes:
+      - ./backend:/app
+      - backend_venv:/app/.venv
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   frontend:
     build:
@@ -82,6 +125,7 @@ services:
 
 volumes:
   postgres_data:
+  redis_data:
   backend_venv:
   frontend_node_modules:
   frontend_next:

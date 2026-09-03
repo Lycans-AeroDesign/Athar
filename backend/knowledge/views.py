@@ -14,6 +14,7 @@ from config.pagination import paginated_response
 from files.models import StoredFile
 from rbac.permissions import require_permission
 
+from . import search
 from . import services
 from . import visibility as visibility_rules
 from .models import (
@@ -191,11 +192,11 @@ class TagDetailView(APIView):
 
 
 class SearchView(APIView):
-    """Simple icontains search across published articles and questions - no
-    ranking/scoring, Postgres full-text search, or category/tag-name
-    matching yet (see docs/VISION.md #12's fuller sketch). Good enough for
-    the current content volume; swap the queryset for a SearchVector-based
-    one if/when result quality matters more than simplicity."""
+    """Postgres full-text search (with trigram-similarity fallback for mid-
+    word/typo matches) across every relatable content type, ranked by
+    relevance - see knowledge/search.py for the shared implementation.
+    Category/tag-name matching isn't included yet (see docs/VISION.md #12's
+    fuller sketch)."""
 
     permission_classes = [IsAuthenticated]
 
@@ -203,8 +204,8 @@ class SearchView(APIView):
         tags=["Knowledge"],
         summary=(
             "Search across articles, questions, projects, components, failures, SOPs, tests, and documents "
-            "(?q=; optional ?type=<one of those> to scope to one section; ?sort=newest|oldest, "
-            "default newest; ?page= for 20-per-type pages within that scope)"
+            "(?q=; optional ?type=<one of those> to scope to one section; ?sort=relevance|newest|oldest, "
+            "default relevance; ?page= for 20-per-type pages within that scope)"
         ),
         responses={
             200: OpenApiResponse(
@@ -224,10 +225,15 @@ class SearchView(APIView):
         valid_types = ("article", "question", "project", "component", "failure", "sop", "test", "document")
         if scope not in (None, *valid_types):
             raise ValidationError(f"type must be one of {', '.join(valid_types)}.")
-        sort_param = request.query_params.get("sort", "newest")
-        if sort_param not in ("newest", "oldest"):
-            raise ValidationError("sort must be 'newest' or 'oldest'.")
-        order = "-updated_at" if sort_param == "newest" else "updated_at"
+        sort_param = request.query_params.get("sort", "relevance")
+        if sort_param not in ("relevance", "newest", "oldest"):
+            raise ValidationError("sort must be 'relevance', 'newest', or 'oldest'.")
+        if sort_param == "newest":
+            order = ("-updated_at",)
+        elif sort_param == "oldest":
+            order = ("updated_at",)
+        else:
+            order = ("-rank", "-similarity", "-updated_at")
         try:
             page = max(1, int(request.query_params.get("page", 1)))
         except ValueError:
@@ -238,64 +244,45 @@ class SearchView(APIView):
         # even when the caller is only viewing one type's results. Every type
         # now carries a `visibility` field (see models.py) - each queryset
         # below is already narrowed to what request.user may see via the
-        # matching services.visible_*_for helper.
+        # matching services.visible_*_for helper, then further filtered/
+        # ranked by knowledge.search.search_filter.
         article_matches = (
-            services.visible_articles_for(request.user).filter(
-                Q(title__icontains=query) | Q(excerpt__icontains=query) | Q(content__icontains=query)
-            )
+            search.search_filter(services.visible_articles_for(request.user), query, "article")
             if query
             else Article.objects.none()
         )
         question_matches = (
-            services.visible_questions_for(request.user).filter(Q(title__icontains=query) | Q(body__icontains=query))
+            search.search_filter(services.visible_questions_for(request.user), query, "question")
             if query
             else Question.objects.none()
         )
         project_matches = (
-            services.visible_projects_for(request.user).filter(
-                Q(name__icontains=query) | Q(description__icontains=query)
-            )
+            search.search_filter(services.visible_projects_for(request.user), query, "project")
             if query
             else Project.objects.none()
         )
         component_matches = (
-            services.visible_components_for(request.user).filter(
-                Q(name__icontains=query)
-                | Q(summary__icontains=query)
-                | Q(manufacturer__icontains=query)
-                | Q(part_number__icontains=query)
-            )
+            search.search_filter(services.visible_components_for(request.user), query, "component")
             if query
             else Component.objects.none()
         )
         failure_matches = (
-            services.visible_failures_for(request.user).filter(
-                Q(title__icontains=query) | Q(summary__icontains=query) | Q(root_cause__icontains=query)
-            )
+            search.search_filter(services.visible_failures_for(request.user), query, "failure")
             if query
             else Failure.objects.none()
         )
         sop_matches = (
-            services.visible_sops_for(request.user).filter(
-                Q(title__icontains=query) | Q(content__icontains=query)
-            )
+            search.search_filter(services.visible_sops_for(request.user), query, "sop")
             if query
             else Sop.objects.none()
         )
         test_matches = (
-            services.visible_tests_for(request.user).filter(
-                Q(title__icontains=query)
-                | Q(objective__icontains=query)
-                | Q(results__icontains=query)
-                | Q(conclusion__icontains=query)
-            )
+            search.search_filter(services.visible_tests_for(request.user), query, "test")
             if query
             else Test.objects.none()
         )
         document_matches = (
-            services.visible_documents_for(request.user).filter(
-                Q(title__icontains=query) | Q(description__icontains=query)
-            )
+            search.search_filter(services.visible_documents_for(request.user), query, "document")
             if query
             else Document.objects.none()
         )
@@ -322,7 +309,7 @@ class SearchView(APIView):
             nonlocal has_more
             if not (query and scope in (None, type_name)):
                 return
-            page_qs = matches.order_by(order)
+            page_qs = matches.order_by(*order)
             rows = page_qs[offset : offset + 20]
             has_more = has_more or page_qs[offset + 20 : offset + 21].exists()
             for row in rows:
@@ -1051,7 +1038,7 @@ class ProjectListCreateView(APIView):
             queryset = queryset.filter(status=status_param)
         query = request.query_params.get("q", "").strip()
         if query:
-            queryset = queryset.filter(Q(name__icontains=query) | Q(description__icontains=query))
+            queryset = search.search_filter(queryset, query, "project")
         return paginated_response(request, queryset, ProjectListSerializer)
 
     @extend_schema(
@@ -1182,12 +1169,7 @@ class ComponentListCreateView(APIView):
             queryset = queryset.filter(status=status_param)
         query = request.query_params.get("q", "").strip()
         if query:
-            queryset = queryset.filter(
-                Q(name__icontains=query)
-                | Q(summary__icontains=query)
-                | Q(manufacturer__icontains=query)
-                | Q(part_number__icontains=query)
-            )
+            queryset = search.search_filter(queryset, query, "component")
         return paginated_response(request, queryset, ComponentListSerializer)
 
     @extend_schema(
@@ -1324,9 +1306,7 @@ class FailureListCreateView(APIView):
             queryset = queryset.filter(status=status_param)
         query = request.query_params.get("q", "").strip()
         if query:
-            queryset = queryset.filter(
-                Q(title__icontains=query) | Q(summary__icontains=query) | Q(root_cause__icontains=query)
-            )
+            queryset = search.search_filter(queryset, query, "failure")
         return paginated_response(request, queryset, FailureListSerializer)
 
     @extend_schema(
@@ -1458,7 +1438,7 @@ class SopListCreateView(APIView):
             queryset = queryset.filter(mandatory=True)
         query = request.query_params.get("q", "").strip()
         if query:
-            queryset = queryset.filter(Q(title__icontains=query) | Q(content__icontains=query))
+            queryset = search.search_filter(queryset, query, "sop")
         return paginated_response(request, queryset, SopListSerializer)
 
     @extend_schema(
@@ -1590,12 +1570,7 @@ class TestListCreateView(APIView):
             queryset = queryset.filter(pass_fail=pass_fail)
         query = request.query_params.get("q", "").strip()
         if query:
-            queryset = queryset.filter(
-                Q(title__icontains=query)
-                | Q(objective__icontains=query)
-                | Q(results__icontains=query)
-                | Q(conclusion__icontains=query)
-            )
+            queryset = search.search_filter(queryset, query, "test")
         return paginated_response(request, queryset, TestListSerializer)
 
     @extend_schema(
@@ -1734,7 +1709,7 @@ class DocumentListCreateView(APIView):
             queryset = queryset.filter(category_id=category)
         query = request.query_params.get("q", "").strip()
         if query:
-            queryset = queryset.filter(Q(title__icontains=query) | Q(description__icontains=query))
+            queryset = search.search_filter(queryset, query, "document")
         return paginated_response(request, queryset, DocumentListSerializer)
 
     @extend_schema(

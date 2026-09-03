@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { AuditLogSettingsForm } from "@/components/settings/AuditLogSettingsForm";
+import { BackupsSettingsForm } from "@/components/settings/BackupsSettingsForm";
 import { BrandingSettingsForm } from "@/components/settings/BrandingSettingsForm";
 import { CategorySettingsForm } from "@/components/settings/CategorySettingsForm";
 import { GeneralSettingsForm } from "@/components/settings/GeneralSettingsForm";
@@ -14,11 +15,20 @@ import { useHasPermission } from "@/lib/auth/permissions";
 import { useOrganization } from "@/lib/organization/OrganizationProvider";
 
 // Only General, Branding, Categories, Roles & Permissions, Users,
-// Invitations, and Audit Log are implemented - the Stitch reference
+// Invitations, Audit Log, and Backups are implemented - the Stitch reference
 // (ref/athar_general_settings) also shows Authentication/Teams/Visibility/
 // Notifications/Storage tabs, but those aren't wired to a real backend yet,
 // so they're left out rather than shown as non-functional placeholders.
-const ALL_TAB_IDS = ["general", "branding", "categories", "permissions", "users", "invitations", "audit"] as const;
+const ALL_TAB_IDS = [
+  "general",
+  "branding",
+  "categories",
+  "permissions",
+  "users",
+  "invitations",
+  "audit",
+  "backups",
+] as const;
 type TabId = (typeof ALL_TAB_IDS)[number];
 
 export default function SettingsPage() {
@@ -43,6 +53,10 @@ export default function SettingsPage() {
   const canManageUsers = canManageInvitations;
   // GET /audit/logs/ itself requires audit.read - same reasoning as roles above.
   const canReadAudit = useHasPermission("audit.read");
+  // GET /backups/ itself requires organization.manage - same reasoning as
+  // roles above (and the same permission General's own edit gate uses,
+  // since "who can back up this org's data" is exactly "who administers it").
+  const canManageBackups = canEditGeneral;
 
   const visibleTabs = ALL_TAB_IDS.filter(
     (tabId) =>
@@ -50,7 +64,8 @@ export default function SettingsPage() {
       (tabId !== "categories" || canManageCategories) &&
       (tabId !== "users" || canManageUsers) &&
       (tabId !== "invitations" || canManageInvitations) &&
-      (tabId !== "audit" || canReadAudit),
+      (tabId !== "audit" || canReadAudit) &&
+      (tabId !== "backups" || canManageBackups),
   );
 
   return (
@@ -85,6 +100,8 @@ export default function SettingsPage() {
         <InvitationsSettingsForm />
       ) : activeTab === "audit" ? (
         <AuditLogSettingsForm />
+      ) : activeTab === "backups" ? (
+        <BackupsSettingsForm />
       ) : !settings ? (
         <p className="font-body-md text-body-md text-on-surface-variant">{commonT("loading")}</p>
       ) : activeTab === "general" ? (

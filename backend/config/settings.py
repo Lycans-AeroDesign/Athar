@@ -51,6 +51,10 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    # Needed for full-text search (SearchVector/SearchQuery/SearchRank) and
+    # trigram similarity (pg_trgm, enabled via core's migration 0001) - see
+    # knowledge/search.py.
+    "django.contrib.postgres",
     "corsheaders",
     "rest_framework",
     "rest_framework_simplejwt",
@@ -63,6 +67,7 @@ INSTALLED_APPS = [
     "files",
     "organization",
     "knowledge",
+    "backups",
 ]
 
 AUTH_USER_MODEL = "accounts.User"
@@ -171,6 +176,41 @@ STORAGES = {
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
+# --- S3-compatible object storage (opt-in) ------------------------------
+# Local disk (STORAGES["default"] above) is the zero-config self-hosted
+# default. Set AWS_STORAGE_BUCKET_NAME to switch StoredFile's storage
+# backend to any S3-compatible provider (AWS S3, Cloudflare R2, Backblaze
+# B2, self-hosted MinIO, ...) - every file consumer in this app goes
+# through StoredFile.file's storage API (.open()/.delete(), never .path/
+# .url - see files/models.py's docstring), so this is the only place that
+# needs to change; no view code depends on which backend is active.
+AWS_STORAGE_BUCKET_NAME = env("AWS_STORAGE_BUCKET_NAME", default="")
+if AWS_STORAGE_BUCKET_NAME:
+    STORAGES["default"] = {
+        "BACKEND": "storages.backends.s3.S3Storage",
+        "OPTIONS": {
+            "bucket_name": AWS_STORAGE_BUCKET_NAME,
+            "access_key": env("AWS_ACCESS_KEY_ID", default=""),
+            "secret_key": env("AWS_SECRET_ACCESS_KEY", default=""),
+            "region_name": env("AWS_S3_REGION_NAME", default=None),
+            # Only needed for non-AWS S3-compatible providers (R2, MinIO, B2) -
+            # leave unset for real AWS S3, where boto3 resolves the regional
+            # endpoint from region_name on its own.
+            "endpoint_url": env("AWS_S3_ENDPOINT_URL", default=None),
+            # The bucket stays private - every file is served through an
+            # authenticated Django view (FileDownloadView et al.), never a
+            # direct/public bucket URL, so there's nothing for a public ACL
+            # or a browser-facing querystring-signed URL to do here.
+            "default_acl": "private",
+            "querystring_auth": False,
+            # MinIO and some other self-hosted S3-compatible servers need
+            # "path" (bucket name in the URL path); real AWS S3 and most
+            # managed providers want the default "virtual" (bucket as a
+            # subdomain of the endpoint).
+            "addressing_style": env("AWS_S3_ADDRESSING_STYLE", default="virtual"),
+        },
+    }
+
 # Branding logo/favicon uploads are the only thing that uses the generic file
 # upload endpoint today, hence a small default matching the Stitch design's
 # "Max size: 2MB" note - raise this (or make it per-endpoint) once general
@@ -260,6 +300,24 @@ JWT_REFRESH_COOKIE_SAMESITE = env("JWT_REFRESH_COOKIE_SAMESITE", default="Lax")
 JWT_REFRESH_COOKIE_DOMAIN = env("JWT_REFRESH_COOKIE_DOMAIN", default="") or None
 
 ENABLE_REGISTRATION = env.bool("ENABLE_REGISTRATION", default=True)
+
+
+# Celery (background jobs - currently just backups.tasks.generate_org_backup)
+# https://docs.celeryq.dev/en/stable/userguide/configuration.html
+# config.celery's `namespace="CELERY"` maps CELERY_BROKER_URL here to Celery's
+# own `broker_url` setting, etc.
+
+CELERY_BROKER_URL = env("CELERY_BROKER_URL", default="redis://redis:6379/0")
+CELERY_RESULT_BACKEND = env("CELERY_RESULT_BACKEND", default=CELERY_BROKER_URL)
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TIMEZONE = TIME_ZONE
+# Tests run the task function inline instead of round-tripping through a
+# real broker/worker - same "test" in sys.argv gate the throttle-rate
+# override above uses, for the same reason (no Redis/worker process in CI).
+CELERY_TASK_ALWAYS_EAGER = "test" in sys.argv
+CELERY_TASK_EAGER_PROPAGATES = True
 
 
 # Email

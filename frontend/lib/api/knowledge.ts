@@ -67,7 +67,7 @@ export function deleteTag(id: string): Promise<void> {
   return apiVoid(`/api/v1/knowledge/tags/${id}/`, { method: "DELETE" });
 }
 
-export type SearchSort = "newest" | "oldest";
+export type SearchSort = "relevance" | "newest" | "oldest";
 
 export type SearchCounts = Record<RelatableType, number>;
 
@@ -82,7 +82,7 @@ export function searchKnowledge(
   query: string,
   type?: RelatableType,
   page = 1,
-  sort: SearchSort = "newest",
+  sort: SearchSort = "relevance",
 ): Promise<SearchPage> {
   const params = new URLSearchParams({ q: query, page: String(page), sort });
   if (type) params.set("type", type);

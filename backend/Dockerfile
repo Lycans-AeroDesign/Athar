@@ -9,8 +9,20 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PATH="/app/.venv/bin:$PATH"
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 WORKDIR /app
+# Debian's own "postgresql-client" package trails the Postgres release this
+# app actually runs (postgres:18-alpine, see docker-compose.yml) - pg_dump
+# refuses to dump from a server newer than itself, so `manage.py
+# create_full_backup` needs a real v18 client. The PGDG apt repo is the
+# standard way to get an exact-version match regardless of Debian's own
+# packaged version.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends libpq5 netcat-openbsd \
+    && apt-get install -y --no-install-recommends libpq5 netcat-openbsd curl gnupg \
+    && install -d /usr/share/postgresql-common/pgdg \
+    && curl -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc --fail https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+    && echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt trixie-pgdg main" > /etc/apt/sources.list.d/pgdg.list \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends postgresql-client-18 \
+    && apt-get purge -y --auto-remove curl gnupg \
     && rm -rf /var/lib/apt/lists/* \
     && useradd --create-home --uid 1000 appuser
 COPY docker/entrypoint.sh /entrypoint.sh

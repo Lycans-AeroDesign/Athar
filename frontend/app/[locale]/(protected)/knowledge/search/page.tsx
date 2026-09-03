@@ -67,13 +67,14 @@ const EMPTY_COUNTS: SearchCounts = {
 };
 
 const SORT_OPTIONS: { value: SearchSort; labelKey: string }[] = [
+  { value: "relevance", labelKey: "sortRelevance" },
   { value: "newest", labelKey: "sortNewest" },
   { value: "oldest", labelKey: "sortOldest" },
 ];
 
 // Wraps <mark> around every case-insensitive occurrence of `query` inside
-// `text` - no scoring/relevance behind this (see SearchView's plain icontains
-// query), just a visual aid for why a result matched.
+// `text` - purely a visual aid for why a result matched, independent of the
+// actual relevance ranking/ordering (see backend/knowledge/search.py).
 function highlight(text: string, query: string): ReactNode {
   const trimmed = query.trim();
   if (!trimmed) return text;
@@ -105,7 +106,7 @@ function SearchResults() {
 
   const query = searchParams.get("q") ?? "";
   const scope = (searchParams.get("type") as Scope | null) ?? "all";
-  const sort = (searchParams.get("sort") as SearchSort | null) ?? "newest";
+  const sort = (searchParams.get("sort") as SearchSort | null) ?? "relevance";
   const page = Number(searchParams.get("page") ?? "1");
 
   const [results, setResults] = useState<SearchResult[] | null>(null);
@@ -131,7 +132,7 @@ function SearchResults() {
     const nextType = next.type ?? scope;
     if (nextType !== "all") params.set("type", nextType);
     const nextSort = next.sort ?? sort;
-    if (nextSort !== "newest") params.set("sort", nextSort);
+    if (nextSort !== "relevance") params.set("sort", nextSort);
     const nextPage = next.page ?? 1;
     if (nextPage > 1) params.set("page", String(nextPage));
     router.push(`/knowledge/search?${params.toString()}`);

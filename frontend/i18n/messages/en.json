@@ -142,7 +142,8 @@
       "permissions": "Roles & Permissions",
       "users": "Users",
       "invitations": "Invitations",
-      "audit": "Audit Log"
+      "audit": "Audit Log",
+      "backups": "Backups"
     },
     "general": {
       "title": "General Details",
@@ -246,6 +247,26 @@
       "actorColumn": "Actor",
       "timeColumn": "Time",
       "systemActor": "System"
+    },
+    "backups": {
+      "title": "Backups",
+      "description": "Export all of your organization's data and uploaded files as a downloadable archive. Runs in the background - this can take a while for a large organization.",
+      "createButton": "Create Backup",
+      "emptyState": "No backups yet.",
+      "statusPENDING": "Pending",
+      "statusRUNNING": "Running",
+      "statusDONE": "Done",
+      "statusFAILED": "Failed",
+      "requestedBy": "Requested by {email}",
+      "downloadButton": "Download",
+      "restoreButton": "Restore",
+      "restoreConfirmTitle": "Restore this backup?",
+      "restoreConfirmDescription": "This replaces ALL of your organization's current content - articles, questions, documents, projects, components, failures, SOPs, tests, tags, categories, relations, bookmarks, and attachments - with the contents of this backup. Members, roles, and invitation codes are not affected. This cannot be undone.",
+      "restoreConfirmButton": "Wipe and restore",
+      "restoresTitle": "Restore History",
+      "restoresEmptyState": "No restores yet.",
+      "restoreSummaryOrphanedUsers": "{count} reference(s) to since-deleted users were cleared.",
+      "restoreSummaryMissingFiles": "{count} file(s) referenced by the backup could not be found and were skipped."
     }
   },
   "account": {
@@ -355,6 +376,7 @@
       "filterTests": "Tests",
       "filterDocuments": "Documents",
       "sortByLabel": "Sort by",
+      "sortRelevance": "Best Match",
       "sortNewest": "Date (Newest)",
       "sortOldest": "Date (Oldest)",
       "emptyQuery": "Type something to search.",

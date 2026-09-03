@@ -32,6 +32,10 @@ dist/
 staticfiles/
 media/
 
+# Output of manage.py create_full_backup (see README's Backups section) -
+# NOT backups/, which is the real `backups` Django app's source directory.
+backend/backup_archives/
+
 # ------------------------------------------------------------
 # Environment variables / secrets
 # ------------------------------------------------------------

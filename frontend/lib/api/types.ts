@@ -58,6 +58,37 @@ export interface InvitationCode {
   is_valid: boolean;
 }
 
+export type BackupJobStatus = "PENDING" | "RUNNING" | "DONE" | "FAILED";
+
+export interface BackupJob {
+  id: string;
+  status: BackupJobStatus;
+  requested_by: string | null;
+  error: string;
+  created_at: string;
+  completed_at: string | null;
+  can_download: boolean;
+}
+
+export type RestoreJobStatus = "PENDING" | "RUNNING" | "DONE" | "FAILED";
+
+export interface RestoreSummary {
+  created: Record<string, number>;
+  orphaned_user_refs: number;
+  missing_files: number;
+}
+
+export interface RestoreJob {
+  id: string;
+  source_backup_id: string;
+  status: RestoreJobStatus;
+  requested_by: string | null;
+  summary: RestoreSummary | Record<string, never>;
+  error: string;
+  created_at: string;
+  completed_at: string | null;
+}
+
 export interface AuditLogEntry {
   id: string;
   actor: string | null;

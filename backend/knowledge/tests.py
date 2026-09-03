@@ -864,12 +864,21 @@ class SearchTests(KnowledgeTestCase):
         self.client.post(reverse("knowledge-article-submit", args=[newer["id"]]), **self._auth(head_access))
         self.client.post(reverse("knowledge-article-publish", args=[newer["id"]]), **self._auth(head_access))
 
-        # Default (no ?sort=) matches ?sort=newest.
-        response = self.client.get(reverse("knowledge-search") + "?q=sortex", **self._auth(head_access))
+        response = self.client.get(reverse("knowledge-search") + "?q=sortex&sort=newest", **self._auth(head_access))
         self.assertEqual([r["id"] for r in response.data["results"]], [newer["id"], older["id"]])
 
         response = self.client.get(reverse("knowledge-search") + "?q=sortex&sort=oldest", **self._auth(head_access))
         self.assertEqual([r["id"] for r in response.data["results"]], [older["id"], newer["id"]])
+
+        # Default (no ?sort=) is now "relevance" (see knowledge/search.py) -
+        # both are equally good title matches for "sortex" so the exact tie-
+        # break order isn't asserted here, just that ranking is what's
+        # actually engaged (not an error, both still found).
+        response = self.client.get(reverse("knowledge-search") + "?q=sortex", **self._auth(head_access))
+        self.assertEqual({r["id"] for r in response.data["results"]}, {newer["id"], older["id"]})
+
+        response = self.client.get(reverse("knowledge-search") + "?q=sortex&sort=relevance", **self._auth(head_access))
+        self.assertEqual({r["id"] for r in response.data["results"]}, {newer["id"], older["id"]})
 
         response = self.client.get(reverse("knowledge-search") + "?q=sortex&sort=bogus", **self._auth(head_access))
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
