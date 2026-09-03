@@ -180,8 +180,6 @@
     "general": {
       "title": "General Details",
       "nameLabel": "Organization Name",
-      "domainLabel": "Primary Domain",
-      "domainPlaceholder": "athar.example.com",
       "preferencesTitle": "Preferences",
       "themeLabel": "Theme",
       "languageLabel": "Language",

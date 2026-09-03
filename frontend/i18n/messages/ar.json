@@ -180,8 +180,6 @@
     "general": {
       "title": "التفاصيل العامة",
       "nameLabel": "اسم المؤسسة",
-      "domainLabel": "النطاق الأساسي",
-      "domainPlaceholder": "athar.example.com",
       "preferencesTitle": "التفضيلات",
       "themeLabel": "المظهر",
       "languageLabel": "اللغة",

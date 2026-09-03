@@ -7,7 +7,6 @@ export function getOrganizationSettings(): Promise<OrganizationSettings> {
 
 export function updateGeneralSettings(payload: {
   name?: string;
-  primary_domain?: string;
   product_tour_enabled?: boolean;
 }): Promise<OrganizationSettings> {
   return apiJson<OrganizationSettings>("/api/v1/organization/settings/general/", {

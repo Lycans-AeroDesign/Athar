@@ -27,7 +27,6 @@ class OrganizationSettingsSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "name",
-            "primary_domain",
             "logo",
             "favicon",
             "logo_url",
@@ -80,7 +79,7 @@ class OrganizationCreateSerializer(serializers.Serializer):
 class OrganizationGeneralUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = OrganizationSettings
-        fields = ["name", "primary_domain", "product_tour_enabled"]
+        fields = ["name", "product_tour_enabled"]
 
 
 class OrganizationBrandingUpdateSerializer(serializers.ModelSerializer):

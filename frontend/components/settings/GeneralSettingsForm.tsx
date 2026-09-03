@@ -33,7 +33,6 @@ export function GeneralSettingsForm({ settings, onUpdate, canEdit }: GeneralSett
   const router = useRouter();
   const { user, updateUser } = useAuth();
   const [name, setName] = useState(settings.name);
-  const [primaryDomain, setPrimaryDomain] = useState(settings.primary_domain);
   const [productTourEnabled, setProductTourEnabled] = useState(settings.product_tour_enabled);
   const [isSaving, setIsSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
@@ -43,7 +42,6 @@ export function GeneralSettingsForm({ settings, onUpdate, canEdit }: GeneralSett
     try {
       const updated = await updateGeneralSettings({
         name,
-        primary_domain: primaryDomain,
         product_tour_enabled: productTourEnabled,
       });
       onUpdate(updated);
@@ -79,19 +77,6 @@ export function GeneralSettingsForm({ settings, onUpdate, canEdit }: GeneralSett
             disabled={!canEdit}
             value={name}
             onChange={(e) => setName(e.target.value)}
-          />
-        </div>
-
-        <div className="space-y-2">
-          <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase">
-            {t("domainLabel")}
-          </label>
-          <input
-            className="block w-full px-4 py-2 font-mono-sm text-mono-sm text-on-surface bg-surface-container border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors disabled:opacity-60"
-            disabled={!canEdit}
-            placeholder={t("domainPlaceholder")}
-            value={primaryDomain}
-            onChange={(e) => setPrimaryDomain(e.target.value)}
           />
         </div>
 

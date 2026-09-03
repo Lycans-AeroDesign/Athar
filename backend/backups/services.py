@@ -483,11 +483,10 @@ def _write_organization_settings(zf: zipfile.ZipFile, organization) -> None:
     with zf.open("organization_settings.csv", "w") as raw:
         text_stream = io.TextIOWrapper(raw, encoding="utf-8", newline="")
         writer = csv.writer(text_stream)
-        writer.writerow(["name", "primary_domain", "primary_color", "secondary_color", "updated_at"])
+        writer.writerow(["name", "primary_color", "secondary_color", "updated_at"])
         writer.writerow(
             [
                 settings_row.name,
-                settings_row.primary_domain,
                 settings_row.primary_color,
                 settings_row.secondary_color,
                 _s(settings_row.updated_at),

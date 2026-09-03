@@ -127,7 +127,6 @@ export interface StoredFileRef {
 export interface OrganizationSettings {
   id: string;
   name: string;
-  primary_domain: string;
   logo: StoredFileRef | null;
   favicon: StoredFileRef | null;
   /** Always-public URL (no auth needed) - use this to actually render the image. */

@@ -5,4 +5,4 @@ from .models import OrganizationSettings
 
 @admin.register(OrganizationSettings)
 class OrganizationSettingsAdmin(admin.ModelAdmin):
-    list_display = ["name", "primary_domain", "updated_at"]
+    list_display = ["name", "updated_at"]
