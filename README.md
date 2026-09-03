@@ -2,7 +2,7 @@
 
 Open-source, self-hosted **Knowledge Management System** for student AeroDesign teams — built and self-hosted by [Lycans AeroDesign](https://github.com/Lycans-AeroDesign) as its reference deployment.
 
-> **Status: early development.** Authentication, RBAC, organization settings, and i18n are built. The Knowledge module (articles, Q&A, categories/tags, attachments, cross-linking, search, activity feed, dashboard) is a working first slice, and the engineering domain (projects, components, failures, SOPs) is now built alongside it on the same relation/attachment/tag infrastructure. See [Roadmap](#roadmap) below.
+> **Status: early development.** Authentication, RBAC, organization settings, and i18n are built. The Knowledge module (articles, Q&A, categories/tags, attachments, cross-linking, search, activity feed, dashboard) is a working first slice, and the engineering domain — projects, components, failures, SOPs, plus test/experiment records and a document/resource library — is built alongside it on the same relation/attachment/tag infrastructure. The backend is also multi-tenant: every deployment can host one self-hosted organization (the default/primary use case) or several independent organizations with full data isolation, via either invitation-based joining or self-service org creation. A weighted contribution-scoring/leaderboard system sits on top of all of it. See [Roadmap](#roadmap) below.
 
 ## Why
 
@@ -14,8 +14,8 @@ The name reflects that purpose — the system exists to preserve the trace a tea
 
 The full product specification (vision, feature areas, roles/permissions, roadmap) lives in [`docs/VISION.md`](docs/VISION.md). Three principles sit above everything else in it:
 
-1. **Self-hosted and open source** — every organization deploys and owns its own instance and data; this is not a hosted SaaS product.
-2. **Connected knowledge** — knowledge objects (articles, components, projects, failures, SOPs, flights, decisions...) link to each other so context is discoverable, not siloed.
+1. **Self-hosted-first, multi-tenant-capable** — a team can still clone/deploy their own fully independent instance and own their data outright, same as always; the backend is also genuinely multi-tenant now (an `Organization` model, every row scoped to it, self-service org creation alongside invite-based joining), so one deployment can serve several isolated organizations instead of exactly one. See [`docs/VISION.md` §2](docs/VISION.md#2-open-source-philosophy) for the fuller status note on this.
+2. **Connected knowledge** — knowledge objects (articles, components, projects, failures, SOPs, tests, documents, decisions...) link to each other so context is discoverable, not siloed.
 3. **Backend-enforced authorization** — the frontend is never a security boundary; every API request is authorized server-side, regardless of client.
 
 ## Tech stack
@@ -27,7 +27,7 @@ The full product specification (vision, feature areas, roles/permissions, roadma
 | Database | PostgreSQL 18 (via Docker), no SQLite fallback | PostgreSQL full-text search for V1 (current search is a plain `icontains` query) |
 | Background work | — | Redis + Celery |
 | File storage | Local filesystem (dev) | S3-compatible / MinIO (prod) |
-| Deployment | Docker, Docker Compose | — |
+| Deployment | Docker, Docker Compose, nginx reverse proxy (rate limiting, security headers, health check - see `nginx/nginx.conf`) | — |
 | CI/CD | GitHub Actions (backend + frontend CI, PR checks, manual release/publish) | — |
 | Testing | Backend: DRF `APITestCase` suite (`backend/*/tests.py`), run via `manage.py test` | Frontend: Vitest/RTL, Playwright; backend: possibly migrate to pytest |
 
@@ -42,6 +42,7 @@ docker compose up
 
 - Frontend: http://localhost:3000
 - Backend: http://localhost:8000
+- Nginx (reverse proxy in front of the backend only - see `nginx/nginx.conf`): http://localhost:80
 
 For a production-shaped build (gunicorn, standalone Next.js server, no bind mounts):
 
@@ -77,8 +78,9 @@ Copy `backend/.env.example` → `backend/.env` and `frontend/.env.example` → `
 ```text
 backend/            Django project (config/, manage.py, pyproject.toml)
 frontend/            Next.js app (app/, package.json)
-docker-compose.yml           dev stack (hot reload, Postgres)
-docker-compose.prod.yml      prod-shaped stack (gunicorn, standalone Next.js)
+nginx/nginx.conf              reverse proxy config (backend only - see the Quickstart section)
+docker-compose.yml           dev stack (hot reload, Postgres, nginx)
+docker-compose.prod.yml      prod-shaped stack (gunicorn, standalone Next.js, nginx)
 scripts/generate_env.py      generates local .env files with real secrets
 docs/VISION.md                full product specification
 .github/                      CI, PR automation, issue/PR templates
@@ -109,10 +111,10 @@ The language picker in Settings > General is generated from `locales`/`localeNam
 
 Condensed from [`docs/VISION.md` §41](docs/VISION.md#41-development-roadmap):
 
-- **V0.1 — Foundation**: Django, PostgreSQL, Next.js, Docker, auth, RBAC, org configuration *(done)*
+- **V0.1 — Foundation**: Django, PostgreSQL, Next.js, Docker, auth, RBAC, org configuration *(done — plus multi-tenancy and an nginx reverse proxy, both added beyond the original scope of this milestone; see [`docs/VISION.md` §2](docs/VISION.md#2-open-source-philosophy))*
 - **V0.2 — Knowledge**: wiki, articles, categories, tags, attachments, revisions, relationships *(in progress — articles, Q&A, categories/tags, attachments, revisions, and cross-linking all built; search is a plain query, not full-text)*
-- **V0.3 — Engineering**: projects, components, failures, SOPs, flight logs, design decisions, lessons learned *(partially in progress — projects, components, failures, and SOPs are built with full CRUD, tags/categories where applicable, attachments, and cross-linking; flight logs, design decisions, and lessons learned haven't started)*
-- **V0.4 — Collaboration**: Q&A ✅, comments, notifications, reviews ✅, activity ✅
+- **V0.3 — Engineering**: projects, components, failures, SOPs, flight logs, design decisions, lessons learned *(partially in progress — projects, components, failures, and SOPs are built with full CRUD, tags/categories where applicable, attachments, and cross-linking; test/experiment records and a document/resource library are also built, beyond this milestone's original list; flight logs' relationship to the new test-record type is unresolved, see VISION §41; design decisions and lessons learned haven't started)*
+- **V0.4 — Collaboration**: Q&A ✅, comments, notifications, reviews ✅, activity ✅, contribution scoring/leaderboard ✅
 - **V0.5 — Search**: full-text search, filters ✅, related knowledge ✅, mention detection
 - **V1.0 — Open source release**: production hardening, backups, self-hosting guide, versioned Docker images
 - **V2+ — AI**: embeddings, vector search, permission-aware RAG assistant over the knowledge graph

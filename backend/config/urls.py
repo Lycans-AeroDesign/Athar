@@ -4,6 +4,7 @@ from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 v1_patterns = [
+    path("health/", include("core.urls")),
     path("auth/", include("accounts.urls")),
     path("rbac/", include("rbac.urls")),
     path("audit/", include("audit.urls")),

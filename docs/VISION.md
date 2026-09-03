@@ -30,6 +30,8 @@ A new member should be able to search the system and understand not only **what 
 
 Athar will **not be a hosted SaaS platform by default**.
 
+> **Status update**: the sentence above and the diagram/bullets below described the *only* supported shape as of the original spec. As of the multi-tenancy retrofit, the backend is genuinely multi-tenant (a real `Organization` model, every tenant-owned row scoped to it, and a self-service "create a new organization" signup alongside invitation-based joining) — one deployment can now serve several independent organizations with full data isolation, not only one. The rest of this section is kept largely as originally written because **both shapes remain valid and the self-hosted, single-org deployment is still the default/primary intended use** — nothing about self-hosting a single-org instance changed. What changed is that "hosting other teams," previously described below as a hypothetical future option outside the core product, is now an actual built-in capability of the core product itself. Whichever framing this section should settle on long-term is a product decision, not something this note resolves — flagged here so the text below isn't read as still fully accurate.
+
 Instead:
 
 ```text
@@ -45,7 +47,7 @@ Athar Open Source
               └── Self-hosted instance
 ```
 
-Each organization owns and operates its own installation and data.
+Each organization owns and operates its own installation and data. (Still fully supported — a `docker compose up` deploys one instance that can serve exactly one organization, same as always, if that's all a team ever registers.)
 
 Teams can:
 
@@ -57,7 +59,7 @@ Teams can:
 * Configure their own categories
 * Configure their own content
 
-If organizations want someone else to host/manage it, that can be offered separately in the future, but **hosting other teams is not part of the core product**.
+If organizations want someone else to host/manage it, that can be offered separately in the future, but **hosting other teams is not part of the core product**. (See the status update above — this specific sentence is the one now out of date: the same deployment hosting multiple organizations, each fully isolated, is implemented today, not just planned.)
 
 ---
 
@@ -989,6 +991,7 @@ Production:
 
 * Docker
 * Docker Compose
+* nginx (reverse proxy in front of the backend - rate limiting, security headers, `/api/v1/health/` liveness check; see `nginx/nginx.conf`) - done, not originally listed here
 * Linux
 
 ### CI/CD
@@ -1092,6 +1095,8 @@ PostgreSQL
 Redis
 Celery
 MinIO
+Nginx      (done - reverse proxy in front of the backend, both dev and prod
+            Compose stacks; see docs/VISION.md §32 and nginx/nginx.conf)
 ```
 
 The exact production architecture can be finalized later.
@@ -1223,6 +1228,8 @@ This is where the connected knowledge model becomes extremely valuable.
 * Authentication
 * RBAC
 * Organization configuration
+* Multi-tenancy — done, beyond what this section originally scoped: a real `Organization` model, every tenant-owned row scoped to it, self-service org creation alongside invitation-based joining, and adversarial cross-org isolation tests. See §2's status update.
+* Nginx reverse proxy (rate limiting, security headers, a `/api/v1/health/` liveness check) in front of the backend, in both the dev and prod Docker Compose stacks — not part of the original spec, added for basic production-readiness.
 
 ### V0.2 — Knowledge *(mostly done — search below is still a plain query, not full-text)*
 
@@ -1240,7 +1247,9 @@ This is where the connected knowledge model becomes extremely valuable.
 * Components — done
 * Failures — done
 * SOPs — done
-* Flight Logs — not started
+* Test/Experiment records — done (not originally in this section's list; a full CRUD type covering test/flight/thrust/structural/etc. records, permission-gated like the four above, added alongside them)
+* Document/Resource — done (not originally in this section's list; closest in shape to §20 Resources below - datasheets/manuals/reports/external references with a category, tags, and one primary file, plus `visibility`, which none of the other five Engineering types have)
+* Flight Logs — **status unclear, not simply "not started"**: Test/Experiment above now covers flight/thrust/etc. test *records*, which overlaps a lot of what this line originally meant, but there is still no `Flight`/`Aircraft` model - whether Test is meant to fully replace this line or the two are meant to coexist as separate concepts was never resolved when Test was added. Flagged as an open question, not resolved here.
 * Design Decisions — not started
 * Lessons Learned — not started
 
@@ -1250,7 +1259,8 @@ This is where the connected knowledge model becomes extremely valuable.
 * Comments — not started (no model)
 * Notifications — not started (no model)
 * Reviews — done, as Article's draft/review/publish workflow
-* Activity — done, as the audit log + a public Knowledge activity feed
+* Activity — done, as the audit log + a public Knowledge activity feed, plus a per-user personal activity feed
+* Contribution recognition — done, not originally in this section's list: a weighted per-action scoring system (creating/publishing/answering/etc. each worth different points, not a flat count), an org-scoped leaderboard, and a "contributors" list on every knowledge/engineering object
 
 ### V0.5 — Search *(partially done)*
 
