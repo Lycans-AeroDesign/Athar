@@ -36,6 +36,7 @@ class OrganizationSettingsSerializer(serializers.ModelSerializer):
             "secondary_color",
             "primary_color_dark",
             "secondary_color_dark",
+            "product_tour_enabled",
             "updated_at",
         ]
 
@@ -79,7 +80,7 @@ class OrganizationCreateSerializer(serializers.Serializer):
 class OrganizationGeneralUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = OrganizationSettings
-        fields = ["name", "primary_domain"]
+        fields = ["name", "primary_domain", "product_tour_enabled"]
 
 
 class OrganizationBrandingUpdateSerializer(serializers.ModelSerializer):

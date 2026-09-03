@@ -10,6 +10,8 @@ export interface Paginated<T> {
 export interface UserPreferences {
   /** Show the per-page search filter (with its active-filter chip) on the Projects/Components/Failures/SOPs list pages. Defaults to on. */
   engineering_list_filters?: boolean;
+  /** Whether this user has finished (or skipped) the first-run interactive product tour - see lib/onboarding/tour.ts. Defaults to off (not yet seen). */
+  has_completed_tour?: boolean;
 }
 
 export interface User {
@@ -135,6 +137,8 @@ export interface OrganizationSettings {
   secondary_color: string;
   primary_color_dark: string;
   secondary_color_dark: string;
+  /** Org-wide kill switch for the first-run interactive product tour - see UserPreferences.has_completed_tour for the per-user "already seen it" flag. */
+  product_tour_enabled: boolean;
   updated_at: string;
 }
 

@@ -103,7 +103,7 @@ class BackupJobGenerationTests(BackupJobTestCase):
     broker/worker needed for these."""
 
     def test_backup_job_runs_and_produces_a_downloadable_archive(self):
-        author, author_access = self._login_with_role("backupauthor@example.com", "Team/Subteam Head")
+        author, author_access = self._login_with_role("backupauthor@example.com", "Subteam Head")
         self.client.post(
             reverse("knowledge-project-list-create"),
             {"name": "Backed Up Project", "description": "..."},
@@ -186,7 +186,7 @@ class RestoreJobTests(BackupJobTestCase):
         return backup_job
 
     def test_restore_round_trips_ids_content_tags_relations_and_bookmarks(self):
-        author, _ = self._login_with_role("restoreauthor@example.com", "Team/Subteam Head")
+        author, _ = self._login_with_role("restoreauthor@example.com", "Subteam Head")
         _, admin_access = self._login_with_role("restoreadmin@example.com", "Organization Admin")
 
         project, article, tag = self._seed_content(author)
@@ -229,7 +229,7 @@ class RestoreJobTests(BackupJobTestCase):
         )
 
     def test_restore_nulls_out_references_to_deleted_users(self):
-        author, _ = self._login_with_role("orphanauthor@example.com", "Team/Subteam Head")
+        author, _ = self._login_with_role("orphanauthor@example.com", "Subteam Head")
         _, admin_access = self._login_with_role("orphanadmin@example.com", "Organization Admin")
 
         _, article, _ = self._seed_content(author)
@@ -253,7 +253,7 @@ class RestoreJobTests(BackupJobTestCase):
         self.assertIsNone(restored_article.author_id)
 
     def test_only_organization_manage_can_list_or_create_restores(self):
-        author, _ = self._login_with_role("restorepermauthor@example.com", "Team/Subteam Head")
+        author, _ = self._login_with_role("restorepermauthor@example.com", "Subteam Head")
         _, member_access = self._login_with_role("restorepermmember@example.com", "Member")
         _, admin_access = self._login_with_role("restorepermadmin@example.com", "Organization Admin")
 

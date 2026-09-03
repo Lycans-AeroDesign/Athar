@@ -10,10 +10,9 @@ from rbac.models import Role
 # convenience only, invoke by hand: `manage.py seed_test_users`.
 TEST_USERS = {
     "guest": "Guest",
-    "applicant": "Applicant",
     "member": "Member",
-    "senior": "Senior Member",
-    "head": "Team/Subteam Head",
+    "mentor": "Mentor",
+    "head": "Subteam Head",
     "admin": "Organization Admin",
 }
 

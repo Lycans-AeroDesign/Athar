@@ -3,9 +3,18 @@ management/commands/seed_rbac.py once rbac.services.seed_rbac_for_organization
 needed to call it per-organization (at org-creation time), not just once as a
 global bootstrap command. `PERMISSION_CATALOGUE` is still global/unscoped
 (see Role's own docstring); `ROLE_CATALOGUE` is seeded fresh into every new
-organization - every org gets an identical copy of these six named roles,
+organization - every org gets an identical copy of these five named roles,
 not a customizable set (see the multi-tenancy plan's explicit non-goal on
 per-org custom roles).
+
+Role names match this app's actual student-team structure: Guest (lowest
+tier - kept as the self-registration default, see accounts.services.
+register_user), Member (current members), Mentor (graduated members who
+still review/moderate - formerly "Senior Member"), Subteam Head (formerly
+"Team/Subteam Head"), Organization Admin (board). A prior "Applicant" tier
+was removed - it was never assigned anywhere in the app (self-registration
+has always landed new users in Guest, not Applicant), so dropping it has no
+effect on the registration flow.
 """
 
 PERMISSION_CATALOGUE = [
@@ -78,7 +87,7 @@ MEMBER_PERMISSIONS = [
     "document.read",
     "document.create",
 ]
-SENIOR_MEMBER_PERMISSIONS = MEMBER_PERMISSIONS + [
+MENTOR_PERMISSIONS = MEMBER_PERMISSIONS + [
     "article.review",
     "article.update",
     "question.moderate",
@@ -86,13 +95,13 @@ SENIOR_MEMBER_PERMISSIONS = MEMBER_PERMISSIONS + [
     "component.update",
     # SOPs are safety-critical procedural docs and there's no review step
     # (see knowledge/models.py's Sop docstring) - gating creation/editing at
-    # Senior Member+ rather than Member, unlike Component.
+    # Mentor+ rather than Member, unlike Component.
     "sop.create",
     "sop.update",
     "test.update",
     "document.update",
 ]
-TEAM_HEAD_PERMISSIONS = SENIOR_MEMBER_PERMISSIONS + [
+SUBTEAM_HEAD_PERMISSIONS = MENTOR_PERMISSIONS + [
     "article.publish",
     "article.archive",
     "project.create",
@@ -105,9 +114,8 @@ TEAM_HEAD_PERMISSIONS = SENIOR_MEMBER_PERMISSIONS + [
 
 ROLE_CATALOGUE = {
     "Guest": ("Public knowledge only.", ["article.read"]),
-    "Applicant": ("Public/team handbook and permitted training.", ["article.read", "file.read"]),
     "Member": ("Standard team member.", MEMBER_PERMISSIONS),
-    "Senior Member": ("Reviews and moderates content.", SENIOR_MEMBER_PERMISSIONS),
-    "Team/Subteam Head": ("Publishes content, manages subteam knowledge.", TEAM_HEAD_PERMISSIONS),
-    "Organization Admin": ("Full administrative access.", [codename for codename, _ in PERMISSION_CATALOGUE]),
+    "Mentor": ("Graduated member who reviews and moderates content.", MENTOR_PERMISSIONS),
+    "Subteam Head": ("Publishes content, manages subteam knowledge.", SUBTEAM_HEAD_PERMISSIONS),
+    "Organization Admin": ("Full administrative access (board).", [codename for codename, _ in PERMISSION_CATALOGUE]),
 }

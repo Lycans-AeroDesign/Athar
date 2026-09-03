@@ -70,6 +70,20 @@ class OrganizationSettingsTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(OrganizationSettings.load(self.organization).name, "New Name")
 
+    def test_product_tour_enabled_defaults_on_and_is_toggleable_by_an_admin(self):
+        self.assertTrue(OrganizationSettings.load(self.organization).product_tour_enabled)
+
+        admin_access = self._login_with_role("touradmin@example.com", "Organization Admin")
+        response = self.client.patch(
+            reverse("organization-general-update"),
+            {"product_tour_enabled": False},
+            format="json",
+            **self._auth(admin_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(response.data["product_tour_enabled"])
+        self.assertFalse(OrganizationSettings.load(self.organization).product_tour_enabled)
+
     def test_branding_update_requires_branding_manage(self):
         access = self._login_with_role("member3@example.com", "Member")
         response = self.client.patch(

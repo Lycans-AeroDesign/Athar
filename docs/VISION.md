@@ -738,15 +738,12 @@ Potential defaults:
 
 ### Guest
 
-Public knowledge only.
-
-### Applicant
-
-Public/team handbook and permitted training.
+Public knowledge only. Also the default role a self-registered user lands in
+before a board member or subteam head promotes them to Member.
 
 ### Member
 
-Can:
+Current team members. Can:
 
 * Read knowledge
 * Create articles/drafts
@@ -757,8 +754,9 @@ Can:
 * Upload resources
 * Comment
 
-### Senior Member
+### Mentor
 
+Graduated members who stay on to review and guide the current team.
 Additional:
 
 * Review articles
@@ -766,7 +764,7 @@ Additional:
 * Moderate questions
 * Update failures
 
-### Team/Subteam Head
+### Subteam Head
 
 Additional:
 
@@ -777,7 +775,7 @@ Additional:
 
 ### Organization Admin
 
-Additional:
+The board. Additional:
 
 * Manage users
 * Manage roles

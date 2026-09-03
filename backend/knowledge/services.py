@@ -466,7 +466,7 @@ def promote_question_to_article(*, question: Question, actor, request=None) -> A
 # docstring) - so unlike Article/Question, there's no "owner can edit their
 # own draft" case to account for. Editing/deleting is gated purely on the
 # x.update/x.delete permission, full stop - matches docs/VISION.md #26's
-# "Member: report failures" vs "Senior Member: update failures" split
+# "Member: report failures" vs "Mentor: update failures" split
 # (create and update are deliberately separate tiers, not "ownership
 # unlocks editing"). They do each carry a `visibility` field though - see
 # Visibility's docstring in models.py and knowledge/visibility.py for how

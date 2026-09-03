@@ -63,6 +63,13 @@ class OrganizationSettings(models.Model):
     primary_color_dark = models.CharField(max_length=7, default="#B7C4FF")
     secondary_color_dark = models.CharField(max_length=7, default="#B8C7E2")
 
+    # Org-wide kill switch for the first-run interactive product tour
+    # (frontend/lib/onboarding/tour.ts) - distinct from a given user having
+    # already seen it (accounts.User.preferences.has_completed_tour), which
+    # stays per-user even if an admin later re-enables this. Defaults on so
+    # existing installs get the tour without an admin opting in.
+    product_tour_enabled = models.BooleanField(default=True)
+
     updated_at = models.DateTimeField(auto_now=True)
 
     @classmethod

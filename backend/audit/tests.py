@@ -33,7 +33,7 @@ class KnowledgeActivityViewTests(AuditTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_only_shows_knowledge_actions_not_sensitive_ones(self):
-        _, head_access = self._login_with_role("activityhead@example.com", "Team/Subteam Head")
+        _, head_access = self._login_with_role("activityhead@example.com", "Subteam Head")
         article = self.client.post(
             reverse("knowledge-article-list-create"),
             {"title": "Activity Article", "content": "Body"},

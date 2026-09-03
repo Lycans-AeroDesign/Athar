@@ -9,8 +9,10 @@ import { Icon } from "@/components/ui/Icon";
 import { Menu } from "@/components/ui/Menu";
 import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import { locales, localeNames, type Locale } from "@/i18n/request";
+import { updateMe } from "@/lib/api/accounts";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { formatPersonName } from "@/lib/format";
+import { runProductTour } from "@/lib/onboarding/tour";
 import { useOrganization } from "@/lib/organization/OrganizationProvider";
 import { useTheme } from "@/lib/theme/ThemeProvider";
 import type { ThemePreference } from "@/lib/theme/theme";
@@ -21,18 +23,26 @@ interface TopBarProps {
 }
 
 export function TopBar({ onOpenMenu }: TopBarProps) {
-  const { user, logout } = useAuth();
+  const { user, logout, updateUser } = useAuth();
   const { theme, setTheme } = useTheme();
   const { settings } = useOrganization();
   const locale = useLocale();
   const pathname = usePathname();
   const router = useRouter();
   const t = useTranslations("topbar");
+  const tourT = useTranslations("tour");
   const [confirmLogoutOpen, setConfirmLogoutOpen] = useState(false);
 
   async function handleLogout() {
     await logout();
     router.push("/login");
+  }
+
+  function handleStartTour() {
+    if (!user) return;
+    runProductTour(tourT, () => {
+      updateMe({ preferences: { ...user.preferences, has_completed_tour: true } }).then(updateUser);
+    });
   }
 
   const displayName = formatPersonName(user) ?? "";
@@ -53,7 +63,7 @@ export function TopBar({ onOpenMenu }: TopBarProps) {
         <Icon name="menu" />
       </button>
 
-      <div className="flex-1 flex items-center max-w-2xl">
+      <div className="flex-1 flex items-center max-w-2xl" data-tour="global-search">
         <GlobalSearch />
       </div>
 
@@ -73,6 +83,7 @@ export function TopBar({ onOpenMenu }: TopBarProps) {
               className="flex items-center gap-2 rounded-xl border border-outline-variant ps-2 sm:ps-4 pe-2 py-1 bg-surface-container hover:bg-surface-container-high transition-colors cursor-pointer"
               type="button"
               aria-label={t("accountMenu")}
+              data-tour="account-menu"
             >
               <Icon name="expand_more" size={18} className="hidden sm:block text-on-surface-variant shrink-0" />
               <span className="hidden sm:flex flex-col items-end leading-tight text-end">
@@ -93,6 +104,9 @@ export function TopBar({ onOpenMenu }: TopBarProps) {
           header={user?.email}
           items={[
             { label: t("myAccount"), icon: "account", onSelect: () => router.push("/account") },
+            ...(settings?.product_tour_enabled
+              ? [{ label: t("takeTour"), icon: "travel_explore", onSelect: handleStartTour }]
+              : []),
             { type: "separator" },
             {
               type: "submenu",

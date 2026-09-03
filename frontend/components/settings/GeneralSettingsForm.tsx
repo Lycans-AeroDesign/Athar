@@ -34,13 +34,18 @@ export function GeneralSettingsForm({ settings, onUpdate, canEdit }: GeneralSett
   const { user, updateUser } = useAuth();
   const [name, setName] = useState(settings.name);
   const [primaryDomain, setPrimaryDomain] = useState(settings.primary_domain);
+  const [productTourEnabled, setProductTourEnabled] = useState(settings.product_tour_enabled);
   const [isSaving, setIsSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
 
   async function handleSave() {
     setIsSaving(true);
     try {
-      const updated = await updateGeneralSettings({ name, primary_domain: primaryDomain });
+      const updated = await updateGeneralSettings({
+        name,
+        primary_domain: primaryDomain,
+        product_tour_enabled: productTourEnabled,
+      });
       onUpdate(updated);
       setSavedAt(Date.now());
     } finally {
@@ -89,6 +94,24 @@ export function GeneralSettingsForm({ settings, onUpdate, canEdit }: GeneralSett
             onChange={(e) => setPrimaryDomain(e.target.value)}
           />
         </div>
+
+        <label className="flex items-start gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            disabled={!canEdit}
+            checked={productTourEnabled}
+            onChange={(e) => setProductTourEnabled(e.target.checked)}
+            className="mt-1 rounded border-outline-variant text-primary focus:ring-primary w-4 h-4 shrink-0 disabled:opacity-60"
+          />
+          <span>
+            <span className="block font-body-md text-body-md text-on-surface">
+              {t("productTourLabel")}
+            </span>
+            <span className="block font-body-md text-body-md text-on-surface-variant">
+              {t("productTourDescription")}
+            </span>
+          </span>
+        </label>
 
         {canEdit && (
           <div className="flex items-center gap-4">

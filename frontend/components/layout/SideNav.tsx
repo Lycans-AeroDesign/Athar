@@ -16,22 +16,49 @@ import { useOrganization } from "@/lib/organization/OrganizationProvider";
 // endpoint(s), and this list stops showing it to users who'd just hit a 403.
 // `separatorBefore` draws a divider above that item - used for Bookmarks,
 // which is a personal feature set apart from the shared content sections above it.
+// `tourId` maps to a step target in lib/onboarding/tour.ts (data-tour="<tourId>") -
+// only set on the couple of items the tour actually points at.
 const NAV_ITEMS: ReadonlyArray<{
   href: string;
   labelKey: string;
   icon: string;
   permission?: string;
   separatorBefore?: boolean;
+  tourId?: string;
 }> = [
-  { href: "/", labelKey: "dashboard", icon: "dashboard" },
-  { href: "/knowledge", labelKey: "knowledge", icon: "menu_book" },
-  { href: "/projects", labelKey: "projects", icon: "architecture", permission: "project.read" },
-  { href: "/components", labelKey: "components", icon: "settings_input_component", permission: "component.read" },
-  { href: "/sops", labelKey: "sops", icon: "description", permission: "sop.read" },
-  { href: "/failures", labelKey: "failures", icon: "report_problem", permission: "failure.read" },
-  { href: "/tests", labelKey: "tests", icon: "science", permission: "test.read" },
-  { href: "/documents", labelKey: "documents", icon: "folder", permission: "document.read" },
-  { href: "/bookmarks", labelKey: "bookmarks", icon: "bookmark", separatorBefore: true },
+  { href: "/", labelKey: "dashboard", icon: "dashboard", tourId: "nav-dashboard" },
+  { href: "/knowledge", labelKey: "knowledge", icon: "menu_book", tourId: "nav-knowledge" },
+  {
+    href: "/projects",
+    labelKey: "projects",
+    icon: "architecture",
+    permission: "project.read",
+    tourId: "nav-projects",
+  },
+  {
+    href: "/components",
+    labelKey: "components",
+    icon: "settings_input_component",
+    permission: "component.read",
+    tourId: "nav-components",
+  },
+  { href: "/sops", labelKey: "sops", icon: "description", permission: "sop.read", tourId: "nav-sops" },
+  {
+    href: "/failures",
+    labelKey: "failures",
+    icon: "report_problem",
+    permission: "failure.read",
+    tourId: "nav-failures",
+  },
+  { href: "/tests", labelKey: "tests", icon: "science", permission: "test.read", tourId: "nav-tests" },
+  {
+    href: "/documents",
+    labelKey: "documents",
+    icon: "folder",
+    permission: "document.read",
+    tourId: "nav-documents",
+  },
+  { href: "/bookmarks", labelKey: "bookmarks", icon: "bookmark", separatorBefore: true, tourId: "nav-bookmarks" },
 ];
 
 interface SideNavProps {
@@ -109,6 +136,7 @@ export function SideNav({ open, onClose }: SideNavProps) {
                         : "flex items-center gap-4 px-4 py-2 text-on-surface-variant hover:bg-surface-variant transition-colors duration-150 rounded-xl"
                     }
                     href={item.href}
+                    data-tour={item.tourId}
                   >
                     <Icon name={item.icon} />
                     {t(item.labelKey)}
@@ -127,6 +155,7 @@ export function SideNav({ open, onClose }: SideNavProps) {
                 : "flex items-center gap-4 px-4 py-2 text-on-surface-variant hover:bg-surface-variant transition-colors duration-150 rounded-xl"
             }
             href="/settings"
+            data-tour="nav-settings"
           >
             <Icon name="settings" />
             {t("settings")}
