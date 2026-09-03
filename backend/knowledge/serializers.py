@@ -45,9 +45,11 @@ class AuthorSerializer(serializers.ModelSerializer):
     every author's full permission set, since article.read is granted to
     every seeded role including Guest."""
 
+    profile_picture = StoredFileSerializer(read_only=True)
+
     class Meta:
         model = User
-        fields = ["id", "first_name", "last_name", "email", "title", "username"]
+        fields = ["id", "first_name", "last_name", "email", "title", "username", "profile_picture"]
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
@@ -57,12 +59,24 @@ class UserProfileSerializer(serializers.ModelSerializer):
     leaderboard score (see scoring.py) - all computed by the view and passed
     in via context, no model field backing either."""
 
+    profile_picture = StoredFileSerializer(read_only=True)
     stats = serializers.SerializerMethodField()
     score = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ["id", "first_name", "last_name", "email", "title", "username", "date_joined", "stats", "score"]
+        fields = [
+            "id",
+            "first_name",
+            "last_name",
+            "email",
+            "title",
+            "username",
+            "profile_picture",
+            "date_joined",
+            "stats",
+            "score",
+        ]
 
     def get_stats(self, obj: User) -> dict:
         return self.context["stats"]

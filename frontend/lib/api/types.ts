@@ -23,6 +23,7 @@ export interface User {
   last_name: string;
   /** Free-text role in the team (e.g. "Lead Systems Integration") - distinct from `roles`, which drives permissions. */
   title: string;
+  profile_picture: StoredFileRef | null;
   roles: string[];
   permissions: string[];
   preferences: UserPreferences;
@@ -148,6 +149,7 @@ export interface KnowledgeAuthor {
   email: string;
   title: string;
   username: string | null;
+  profile_picture: StoredFileRef | null;
 }
 
 export interface Category {
@@ -497,6 +499,7 @@ export interface UserProfile {
   email: string;
   title: string;
   username: string | null;
+  profile_picture: StoredFileRef | null;
   date_joined: string;
   /** One count per ContributionType, plus accepted_answers (a subset of "answer", not a separate contribution type of its own). */
   stats: Record<ContributionType, number> & { accepted_answers: number };

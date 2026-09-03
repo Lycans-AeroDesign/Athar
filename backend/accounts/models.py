@@ -67,6 +67,13 @@ class User(AbstractBaseUser):
     # display-only context shown alongside the user's name (answer cards,
     # the account page), distinct from rbac.Role which drives permissions.
     title = models.CharField(max_length=150, blank=True)
+    # Self-service via MeView.patch, same upload-then-attach flow as
+    # OrganizationSettings.logo/favicon (see files.FileUploadView) - SET_NULL,
+    # not CASCADE, so deleting the underlying StoredFile never deletes the
+    # user, same precedent as every other StoredFile FK in this app.
+    profile_picture = models.ForeignKey(
+        "files.StoredFile", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
     is_active = models.BooleanField(default=True)
     # Django admin break-glass access only - never the authorization path for the app itself.
     is_staff = models.BooleanField(default=False)

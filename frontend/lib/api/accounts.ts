@@ -7,6 +7,7 @@ export function updateMe(payload: {
   last_name?: string;
   title?: string;
   preferences?: UserPreferences;
+  profile_picture_id?: string | null;
 }): Promise<User> {
   return apiJson<User>("/api/v1/auth/me/", {
     method: "PATCH",

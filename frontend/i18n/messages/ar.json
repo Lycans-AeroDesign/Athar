@@ -305,6 +305,10 @@
     "title": "حسابي",
     "description": "إدارة معلومات ملفك الشخصي.",
     "emailLabel": "البريد الإلكتروني",
+    "profilePictureLabel": "الصورة الشخصية",
+    "uploadPictureButton": "رفع صورة",
+    "removePictureButton": "إزالة",
+    "profilePictureHint": "تظهر بجانب اسمك في كل مكان في أثر. الحجم الأقصى {maxSize} ميجابايت.",
     "usernameLabel": "اسم المستخدم",
     "usernamePlaceholder": "مثال: ahmad_w",
     "usernameHint": "اختياري حاليًا. إذا حددته، يظهر بدلاً من اسمك في جميع أنحاء الموقع.",
@@ -314,7 +318,8 @@
     "titlePlaceholder": "مثال: قيادة تكامل الأنظمة",
     "rolesLabel": "الأدوار",
     "myContributionsTitle": "مساهماتي",
-    "editProfileTitle": "تعديل الملف الشخصي"
+    "editProfileTitle": "تعديل الملف الشخصي",
+    "editProfileButton": "تعديل الملف الشخصي"
   },
   "about": {
     "title": "عن أثر",

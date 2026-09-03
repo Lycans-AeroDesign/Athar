@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 from django.core.cache import cache
+from django.core.files.uploadedfile import SimpleUploadedFile
 
 from django.urls import reverse
 from django.utils import timezone
@@ -9,6 +10,7 @@ from rest_framework.test import APITestCase
 from rest_framework.throttling import ScopedRateThrottle
 
 from core.testing import create_test_organization
+from files.models import StoredFile
 from rbac.models import Role
 
 from .models import InvitationCode, User
@@ -207,6 +209,57 @@ class AuthFlowTests(APITestCase):
 
         response = self.client.get(reverse("auth-me"), HTTP_AUTHORIZATION=f"Bearer {access}")
         self.assertEqual(response.data["preferences"], {"engineering_list_filters": False})
+
+    def test_me_patch_sets_and_clears_profile_picture(self):
+        login_response = self._register_and_login("avatar@example.com", "avatarpass123")
+        access = login_response.data["access"]
+        user = User.objects.get(email="avatar@example.com")
+
+        avatar_file = StoredFile.objects.create(
+            organization=user.organization,
+            file=SimpleUploadedFile("avatar.png", b"fake-png-bytes", content_type="image/png"),
+            original_filename="avatar.png",
+            content_type="image/png",
+            size=14,
+        )
+        response = self.client.patch(
+            reverse("auth-me"),
+            {"profile_picture_id": str(avatar_file.pk)},
+            format="json",
+            HTTP_AUTHORIZATION=f"Bearer {access}",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["profile_picture"]["id"], str(avatar_file.pk))
+        self.assertEqual(response.data["profile_picture"]["download_url"], f"/api/v1/files/{avatar_file.pk}/download/")
+
+        response = self.client.patch(
+            reverse("auth-me"),
+            {"profile_picture_id": None},
+            format="json",
+            HTTP_AUTHORIZATION=f"Bearer {access}",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIsNone(response.data["profile_picture"])
+
+    def test_me_patch_rejects_profile_picture_from_another_organization(self):
+        login_response = self._register_and_login("avatarcross@example.com", "avatarpass123")
+        access = login_response.data["access"]
+
+        other_organization = create_test_organization(name="Someone Else's Org")
+        other_file = StoredFile.objects.create(
+            organization=other_organization,
+            file=SimpleUploadedFile("avatar.png", b"fake-png-bytes", content_type="image/png"),
+            original_filename="avatar.png",
+            content_type="image/png",
+            size=14,
+        )
+        response = self.client.patch(
+            reverse("auth-me"),
+            {"profile_picture_id": str(other_file.pk)},
+            format="json",
+            HTTP_AUTHORIZATION=f"Bearer {access}",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_refresh_uses_cookie_and_rotates_it(self):
         login_response = self._register_and_login()

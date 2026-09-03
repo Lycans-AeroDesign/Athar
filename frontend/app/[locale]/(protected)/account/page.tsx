@@ -1,18 +1,25 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { ContributionsPanel } from "@/components/knowledge/ContributionsPanel";
+import { AuthenticatedImage } from "@/components/ui/AuthenticatedImage";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { ApiError } from "@/lib/api/client";
 import { updateMe } from "@/lib/api/accounts";
+import { uploadFile } from "@/lib/api/files";
 import { getUserProfile } from "@/lib/api/knowledge";
-import type { UserProfile } from "@/lib/api/types";
+import type { StoredFileRef, UserProfile } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { formatPersonName } from "@/lib/format";
+import { formatPersonName, getInitials } from "@/lib/format";
+
+// Matches BrandingSettingsForm.tsx's own copy of this constant (backend/config/
+// settings.py's MAX_UPLOAD_SIZE_MB default) - shown for the description text
+// only, not enforced client-side.
+const MAX_UPLOAD_SIZE_MB = 2;
 
 // Contributions leads the page (the thing you come here to check most
 // often); editing your profile is the occasional action, so it's tucked
@@ -29,6 +36,14 @@ export default function AccountPage() {
   const [firstName, setFirstName] = useState(user?.first_name ?? "");
   const [lastName, setLastName] = useState(user?.last_name ?? "");
   const [title, setTitle] = useState(user?.title ?? "");
+  // undefined = unchanged from the saved profile picture; null = explicitly
+  // removed; StoredFileRef = a newly uploaded file staged but not yet saved -
+  // same three-state pattern as BrandingSettingsForm.tsx's pendingLogo.
+  const [pendingPicture, setPendingPicture] = useState<StoredFileRef | null | undefined>(undefined);
+  const [isUploadingPicture, setIsUploadingPicture] = useState(false);
+  const [pictureError, setPictureError] = useState<string | null>(null);
+  const pictureInputRef = useRef<HTMLInputElement>(null);
+  const editSectionRef = useRef<HTMLDivElement>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -44,13 +59,36 @@ export default function AccountPage() {
 
   if (!user) return null;
 
+  async function handlePictureSelected(file: File) {
+    setIsUploadingPicture(true);
+    setPictureError(null);
+    try {
+      // Uploading stages the file (and lets us preview it) - it isn't
+      // attached to the account until Save is clicked, same as
+      // BrandingSettingsForm.tsx's logo/favicon flow.
+      const uploaded = await uploadFile(file);
+      setPendingPicture(uploaded);
+    } catch (err) {
+      setPictureError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setIsUploadingPicture(false);
+    }
+  }
+
   async function handleSave() {
     setIsSaving(true);
     setError(null);
     setUsernameError(null);
     try {
-      const updated = await updateMe({ username: username.trim() || null, first_name: firstName, last_name: lastName, title });
+      const updated = await updateMe({
+        username: username.trim() || null,
+        first_name: firstName,
+        last_name: lastName,
+        title,
+        ...(pendingPicture !== undefined ? { profile_picture_id: pendingPicture?.id ?? null } : {}),
+      });
       updateUser(updated);
+      setPendingPicture(undefined);
       setSavedAt(Date.now());
     } catch (err) {
       if (err instanceof ApiError && err.fields.username) {
@@ -63,30 +101,46 @@ export default function AccountPage() {
     }
   }
 
+  const displayedPicture = pendingPicture !== undefined ? pendingPicture : user.profile_picture;
+
+  // Opens the disclosure (it may already be) and scrolls its container into
+  // view - scrolling to its top edge works regardless of open/closed state,
+  // since expanding only grows the box downward, never moves its top.
+  function handleEditProfileClick() {
+    setIsEditOpen(true);
+    editSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
   return (
     <section>
       {/* Basic identity at a glance - same header treatment as the public
           profile page (/users/[id]) for consistency, sourced from `user`
           (available synchronously from AuthProvider) rather than waiting on
           the async `profile` fetch below, so this never flashes empty. */}
-      <div className="flex items-start gap-4 bg-surface-container-low border border-outline-variant rounded-xl p-6">
-        <Avatar person={user} size="md" />
-        <div className="min-w-0">
-          <h1 className="font-display text-display text-on-surface truncate">{formatPersonName(user)}</h1>
-          {user.title && <p className="font-body-lg text-body-lg text-on-surface-variant">{user.title}</p>}
-          <div className="flex flex-wrap items-center gap-3 mt-2 font-mono-sm text-mono-sm text-on-surface-variant">
-            <span className="flex items-center gap-1">
-              <Icon name="mail" size={14} />
-              {user.email}
-            </span>
-            {user.roles.length > 0 && (
+      <div className="flex items-start justify-between gap-4 bg-surface-container-low border border-outline-variant rounded-xl p-6">
+        <div className="flex items-start gap-4 min-w-0">
+          <Avatar person={user} size="md" />
+          <div className="min-w-0">
+            <h1 className="font-display text-display text-on-surface truncate">{formatPersonName(user)}</h1>
+            {user.title && <p className="font-body-lg text-body-lg text-on-surface-variant">{user.title}</p>}
+            <div className="flex flex-wrap items-center gap-3 mt-2 font-mono-sm text-mono-sm text-on-surface-variant">
               <span className="flex items-center gap-1">
-                <Icon name="account" size={14} />
-                {user.roles.join(", ")}
+                <Icon name="mail" size={14} />
+                {user.email}
               </span>
-            )}
+              {user.roles.length > 0 && (
+                <span className="flex items-center gap-1">
+                  <Icon name="account" size={14} />
+                  {user.roles.join(", ")}
+                </span>
+              )}
+            </div>
           </div>
         </div>
+        <Button variant="secondary" onClick={handleEditProfileClick} className="shrink-0">
+          <Icon name="edit" size={16} />
+          {t("editProfileButton")}
+        </Button>
       </div>
 
       <div className="mt-6 space-y-4">
@@ -98,7 +152,7 @@ export default function AccountPage() {
         )}
       </div>
 
-      <div className="bg-surface rounded-xl border border-outline-variant mt-10 overflow-hidden">
+      <div ref={editSectionRef} className="bg-surface rounded-xl border border-outline-variant mt-10 overflow-hidden">
         <button
           type="button"
           onClick={() => setIsEditOpen((open) => !open)}
@@ -119,6 +173,64 @@ export default function AccountPage() {
         >
           <div className="overflow-hidden">
             <div className="space-y-6 px-6 pb-6">
+              <div className="space-y-2">
+                <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase">
+                  {t("profilePictureLabel")}
+                </label>
+                <div className="flex items-center gap-4">
+                  <div className="h-16 w-16 rounded-full border border-outline-variant bg-surface-container-low flex items-center justify-center overflow-hidden shrink-0">
+                    {displayedPicture ? (
+                      <AuthenticatedImage
+                        src={displayedPicture.download_url}
+                        alt={t("profilePictureLabel")}
+                        className="h-full w-full object-cover"
+                        fallback={
+                          <span className="font-label-caps text-label-caps text-on-surface-variant">
+                            {getInitials(user)}
+                          </span>
+                        }
+                      />
+                    ) : (
+                      <span className="font-label-caps text-label-caps text-on-surface-variant">
+                        {getInitials(user)}
+                      </span>
+                    )}
+                  </div>
+                  <input
+                    ref={pictureInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handlePictureSelected(file);
+                      e.target.value = "";
+                    }}
+                  />
+                  <Button
+                    variant="secondary"
+                    disabled={isUploadingPicture}
+                    onClick={() => pictureInputRef.current?.click()}
+                  >
+                    <Icon name="upload" size={16} />
+                    {isUploadingPicture ? commonT("working") : t("uploadPictureButton")}
+                  </Button>
+                  {displayedPicture && (
+                    <Button variant="ghost" disabled={isUploadingPicture} onClick={() => setPendingPicture(null)}>
+                      {t("removePictureButton")}
+                    </Button>
+                  )}
+                </div>
+                <p className="font-body-md text-body-md text-on-surface-variant">
+                  {t("profilePictureHint", { maxSize: MAX_UPLOAD_SIZE_MB })}
+                </p>
+                {pictureError && (
+                  <p className="font-body-md text-body-md text-error" role="alert">
+                    {pictureError}
+                  </p>
+                )}
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase">

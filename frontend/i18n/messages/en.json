@@ -305,6 +305,10 @@
     "title": "My Account",
     "description": "Manage your own profile information.",
     "emailLabel": "Email",
+    "profilePictureLabel": "Profile Picture",
+    "uploadPictureButton": "Upload Photo",
+    "removePictureButton": "Remove",
+    "profilePictureHint": "Shown next to your name everywhere in Athar. Max size {maxSize}MB.",
     "usernameLabel": "Username",
     "usernamePlaceholder": "e.g. ahmad_w",
     "usernameHint": "Optional for now. If set, it's shown instead of your name across the site.",
@@ -314,7 +318,8 @@
     "titlePlaceholder": "e.g. Lead Systems Integration",
     "rolesLabel": "Roles",
     "myContributionsTitle": "My Contributions",
-    "editProfileTitle": "Edit Profile"
+    "editProfileTitle": "Edit Profile",
+    "editProfileButton": "Edit Profile"
   },
   "about": {
     "title": "About Athar",
