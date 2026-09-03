@@ -8,6 +8,12 @@ import { Combobox } from "@/components/ui/Combobox";
 import { Icon } from "@/components/ui/Icon";
 import { MarkdownEditor } from "@/components/ui/MarkdownEditor";
 import { TagInput } from "@/components/ui/TagInput";
+import {
+  EMPTY_RESTRICTED_ACCESS_DRAFT,
+  RestrictedAccessPicker,
+  type RestrictedAccessDraft,
+} from "@/components/knowledge/RestrictedAccessPicker";
+import { addAccessGrant, removeAccessGrant } from "@/lib/api/accessGrants";
 import { createDocument, updateDocument, type DocumentWritePayload } from "@/lib/api/documents";
 import { uploadFile } from "@/lib/api/files";
 import { getCategories } from "@/lib/api/knowledge";
@@ -27,7 +33,7 @@ const DOC_TYPE_VALUES: DocType[] = [
   "OTHER",
 ];
 const SOURCE_VALUES: DocumentSource[] = ["INTERNAL", "EXTERNAL"];
-const VISIBILITY_VALUES: Visibility[] = ["PUBLIC", "ORGANIZATION", "RESTRICTED"];
+const VISIBILITY_VALUES: Visibility[] = ["PUBLIC", "RESTRICTED"];
 
 interface DocumentEditorProps {
   document?: DocumentDetail;
@@ -59,6 +65,9 @@ export function DocumentEditor({ document, onDirtyChange }: DocumentEditorProps)
   const [categoryId, setCategoryId] = useState<string | null>(document?.category?.id ?? null);
   const [tags, setTags] = useState<string[]>(document?.tags.map((tag) => tag.name) ?? []);
   const [visibility, setVisibility] = useState<Visibility>(document?.visibility ?? "PUBLIC");
+  const [restrictedAccessDraft, setRestrictedAccessDraft] = useState<RestrictedAccessDraft>(
+    EMPTY_RESTRICTED_ACCESS_DRAFT,
+  );
   const [description, setDescription] = useState(document?.description ?? "");
   const [fileId, setFileId] = useState<string | null>(document?.file?.id ?? null);
   const [fileName, setFileName] = useState(document?.file?.original_filename ?? "");
@@ -82,7 +91,9 @@ export function DocumentEditor({ document, onDirtyChange }: DocumentEditorProps)
     tags.join(",") !== (document?.tags.map((tag) => tag.name).join(",") ?? "") ||
     visibility !== (document?.visibility ?? "PUBLIC") ||
     description !== (document?.description ?? "") ||
-    fileId !== (document?.file?.id ?? null);
+    fileId !== (document?.file?.id ?? null) ||
+    restrictedAccessDraft.pendingAdd.length > 0 ||
+    restrictedAccessDraft.pendingRemoveGrantIds.length > 0;
 
   useEffect(() => {
     onDirtyChange?.(isDirty);
@@ -122,6 +133,15 @@ export function DocumentEditor({ document, onDirtyChange }: DocumentEditorProps)
     };
   }
 
+  async function syncRestrictedAccess(documentId: string) {
+    for (const grantId of restrictedAccessDraft.pendingRemoveGrantIds) {
+      await removeAccessGrant(grantId);
+    }
+    for (const user of restrictedAccessDraft.pendingAdd) {
+      await addAccessGrant("document", documentId, user.id);
+    }
+  }
+
   async function handleSave() {
     setIsSaving(true);
     setError(null);
@@ -129,6 +149,7 @@ export function DocumentEditor({ document, onDirtyChange }: DocumentEditorProps)
       const saved = document
         ? await updateDocument(document.id, buildPayload())
         : await createDocument(buildPayload());
+      await syncRestrictedAccess(saved.id);
       router.push(`/documents/${saved.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -220,6 +241,13 @@ export function DocumentEditor({ document, onDirtyChange }: DocumentEditorProps)
           <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileSelected} />
           {fileName && <span className="font-body-md text-body-md text-on-surface-variant truncate">{fileName}</span>}
         </div>
+        {visibility === "RESTRICTED" && (
+          <RestrictedAccessPicker
+            initialGrants={document?.restricted_to ?? []}
+            value={restrictedAccessDraft}
+            onChange={setRestrictedAccessDraft}
+          />
+        )}
       </div>
 
       <div className="space-y-2">

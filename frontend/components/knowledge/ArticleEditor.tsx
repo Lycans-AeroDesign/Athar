@@ -7,7 +7,13 @@ import { Button } from "@/components/ui/Button";
 import { Combobox } from "@/components/ui/Combobox";
 import { MarkdownEditor } from "@/components/ui/MarkdownEditor";
 import { TagInput } from "@/components/ui/TagInput";
+import {
+  EMPTY_RESTRICTED_ACCESS_DRAFT,
+  RestrictedAccessPicker,
+  type RestrictedAccessDraft,
+} from "@/components/knowledge/RestrictedAccessPicker";
 import { useRouter } from "@/i18n/navigation";
+import { addAccessGrant, removeAccessGrant } from "@/lib/api/accessGrants";
 import {
   type ArticleWritePayload,
   createArticle,
@@ -44,6 +50,9 @@ export function ArticleEditor({ article, onDirtyChange }: ArticleEditorProps) {
   const [categoryId, setCategoryId] = useState<string | null>(article?.category?.id ?? null);
   const [tags, setTags] = useState<string[]>(article?.tags.map((tag) => tag.name) ?? []);
   const [visibility, setVisibility] = useState<Visibility>(article?.visibility ?? "PUBLIC");
+  const [restrictedAccessDraft, setRestrictedAccessDraft] = useState<RestrictedAccessDraft>(
+    EMPTY_RESTRICTED_ACCESS_DRAFT,
+  );
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -57,7 +66,9 @@ export function ArticleEditor({ article, onDirtyChange }: ArticleEditorProps) {
     content !== (article?.content ?? "") ||
     categoryId !== (article?.category?.id ?? null) ||
     tags.join(",") !== (article?.tags.map((tag) => tag.name).join(",") ?? "") ||
-    visibility !== (article?.visibility ?? "PUBLIC");
+    visibility !== (article?.visibility ?? "PUBLIC") ||
+    restrictedAccessDraft.pendingAdd.length > 0 ||
+    restrictedAccessDraft.pendingRemoveGrantIds.length > 0;
 
   useEffect(() => {
     onDirtyChange?.(isDirty);
@@ -81,7 +92,17 @@ export function ArticleEditor({ article, onDirtyChange }: ArticleEditorProps) {
     setCategoryId(article?.category?.id ?? null);
     setTags(article?.tags.map((tag) => tag.name) ?? []);
     setVisibility(article?.visibility ?? "PUBLIC");
+    setRestrictedAccessDraft(EMPTY_RESTRICTED_ACCESS_DRAFT);
     setError(null);
+  }
+
+  async function syncRestrictedAccess(articleId: string) {
+    for (const grantId of restrictedAccessDraft.pendingRemoveGrantIds) {
+      await removeAccessGrant(grantId);
+    }
+    for (const user of restrictedAccessDraft.pendingAdd) {
+      await addAccessGrant("article", articleId, user.id);
+    }
   }
 
   async function saveAndThen(after?: (id: string) => Promise<unknown>) {
@@ -89,6 +110,7 @@ export function ArticleEditor({ article, onDirtyChange }: ArticleEditorProps) {
     setError(null);
     try {
       const saved = article ? await updateArticle(article.id, buildPayload()) : await createArticle(buildPayload());
+      await syncRestrictedAccess(saved.id);
       if (after) await after(saved.id);
       router.push(`/knowledge/articles/${saved.id}`);
     } catch (err) {
@@ -124,7 +146,7 @@ export function ArticleEditor({ article, onDirtyChange }: ArticleEditorProps) {
           <div className="w-48">
             <Combobox
               placeholder={t("visibilityLabel")}
-              options={(["PUBLIC", "ORGANIZATION", "RESTRICTED"] as Visibility[]).map((value) => ({
+              options={(["PUBLIC", "RESTRICTED"] as Visibility[]).map((value) => ({
                 value,
                 label: t(`visibility${value}`),
               }))}
@@ -139,6 +161,13 @@ export function ArticleEditor({ article, onDirtyChange }: ArticleEditorProps) {
           value={excerpt}
           onChange={(e) => setExcerpt(e.target.value)}
         />
+        {visibility === "RESTRICTED" && (
+          <RestrictedAccessPicker
+            initialGrants={article?.restricted_to ?? []}
+            value={restrictedAccessDraft}
+            onChange={setRestrictedAccessDraft}
+          />
+        )}
       </div>
 
       <MarkdownEditor

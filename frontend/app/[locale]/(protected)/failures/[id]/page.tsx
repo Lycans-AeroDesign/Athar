@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { Attachments } from "@/components/knowledge/Attachments";
 import { ContributorsRow } from "@/components/knowledge/Contributors";
 import { RelatedContent } from "@/components/knowledge/RelatedContent";
+import { BookmarkButton } from "@/components/ui/BookmarkButton";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Icon } from "@/components/ui/Icon";
 import { IconButton } from "@/components/ui/IconButton";
@@ -95,6 +96,7 @@ export default function FailureDetailPage() {
             </span>
           </div>
           <div className="flex items-center gap-2">
+            <BookmarkButton key={failure.id} type="failure" objectId={failure.id} bookmarkId={failure.bookmark_id} />
             {canUpdate && (
               <Link href={`/failures/${failure.id}/edit`}>
                 <IconButton icon="edit" variant="secondary" aria-label={t("editButton")} />
@@ -105,7 +107,15 @@ export default function FailureDetailPage() {
             )}
           </div>
         </div>
-        <h1 className="font-display text-display text-on-surface">{failure.title}</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="font-display text-display text-on-surface">{failure.title}</h1>
+          {failure.visibility === "RESTRICTED" && (
+            <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-error-container text-on-error-container font-label-caps text-label-caps uppercase">
+              <Icon name="lock" size={12} />
+              {t("visibilityRESTRICTED")}
+            </span>
+          )}
+        </div>
         <div className="flex flex-wrap items-center gap-lg font-mono-sm text-mono-sm text-on-surface-variant">
           {failure.date && <span>{formatCalendarDate(failure.date)}</span>}
           {failure.component && (

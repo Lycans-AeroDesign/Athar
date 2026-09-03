@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 
 import { ContributorsRow } from "@/components/knowledge/Contributors";
 import { RelatedContent } from "@/components/knowledge/RelatedContent";
+import { BookmarkButton } from "@/components/ui/BookmarkButton";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Icon } from "@/components/ui/Icon";
 import { IconButton } from "@/components/ui/IconButton";
@@ -102,6 +103,7 @@ export default function DocumentDetailPage() {
             )}
           </div>
           <div className="flex items-center gap-2">
+            <BookmarkButton key={document.id} type="document" objectId={document.id} bookmarkId={document.bookmark_id} />
             {canEdit && (
               <Link href={`/documents/${document.id}/edit`}>
                 <IconButton icon="edit" variant="secondary" aria-label={t("editButton")} />

@@ -6,9 +6,15 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Combobox } from "@/components/ui/Combobox";
 import { MarkdownEditor } from "@/components/ui/MarkdownEditor";
+import {
+  EMPTY_RESTRICTED_ACCESS_DRAFT,
+  RestrictedAccessPicker,
+  type RestrictedAccessDraft,
+} from "@/components/knowledge/RestrictedAccessPicker";
 import { useRouter } from "@/i18n/navigation";
+import { addAccessGrant, removeAccessGrant } from "@/lib/api/accessGrants";
 import { createTest, getProjects, updateTest, type TestWritePayload } from "@/lib/api/engineering";
-import type { ProjectSummary, TestDetail, TestPassFail, TestRunStatus, TestType } from "@/lib/api/types";
+import type { ProjectSummary, TestDetail, TestPassFail, TestRunStatus, TestType, Visibility } from "@/lib/api/types";
 
 const TEST_TYPE_VALUES: TestType[] = [
   "FLIGHT",
@@ -23,6 +29,7 @@ const TEST_TYPE_VALUES: TestType[] = [
 ];
 const STATUS_VALUES: TestRunStatus[] = ["PLANNED", "IN_PROGRESS", "COMPLETED"];
 const PASS_FAIL_VALUES: TestPassFail[] = ["PASS", "FAIL", "PARTIAL", "NOT_APPLICABLE"];
+const VISIBILITY_VALUES: Visibility[] = ["PUBLIC", "RESTRICTED"];
 
 interface TestEditorProps {
   test?: TestDetail;
@@ -54,6 +61,10 @@ export function TestEditor({ test, onDirtyChange }: TestEditorProps) {
   const [procedure, setProcedure] = useState(test?.procedure ?? "");
   const [results, setResults] = useState(test?.results ?? "");
   const [conclusion, setConclusion] = useState(test?.conclusion ?? "");
+  const [visibility, setVisibility] = useState<Visibility>(test?.visibility ?? "PUBLIC");
+  const [restrictedAccessDraft, setRestrictedAccessDraft] = useState<RestrictedAccessDraft>(
+    EMPTY_RESTRICTED_ACCESS_DRAFT,
+  );
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -75,7 +86,10 @@ export function TestEditor({ test, onDirtyChange }: TestEditorProps) {
     configuration !== (test?.configuration ?? "") ||
     procedure !== (test?.procedure ?? "") ||
     results !== (test?.results ?? "") ||
-    conclusion !== (test?.conclusion ?? "");
+    conclusion !== (test?.conclusion ?? "") ||
+    visibility !== (test?.visibility ?? "PUBLIC") ||
+    restrictedAccessDraft.pendingAdd.length > 0 ||
+    restrictedAccessDraft.pendingRemoveGrantIds.length > 0;
 
   useEffect(() => {
     onDirtyChange?.(isDirty);
@@ -95,7 +109,17 @@ export function TestEditor({ test, onDirtyChange }: TestEditorProps) {
       procedure,
       results,
       conclusion,
+      visibility,
     };
+  }
+
+  async function syncRestrictedAccess(testId: string) {
+    for (const grantId of restrictedAccessDraft.pendingRemoveGrantIds) {
+      await removeAccessGrant(grantId);
+    }
+    for (const user of restrictedAccessDraft.pendingAdd) {
+      await addAccessGrant("test", testId, user.id);
+    }
   }
 
   async function handleSave() {
@@ -103,6 +127,7 @@ export function TestEditor({ test, onDirtyChange }: TestEditorProps) {
     setError(null);
     try {
       const saved = test ? await updateTest(test.id, buildPayload()) : await createTest(buildPayload());
+      await syncRestrictedAccess(saved.id);
       router.push(`/tests/${saved.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -172,6 +197,21 @@ export function TestEditor({ test, onDirtyChange }: TestEditorProps) {
             onChange={(value) => setPassFail((value || "") as TestPassFail)}
           />
         </div>
+        <div className="w-48">
+          <Combobox
+            placeholder={t("visibilityLabel")}
+            options={VISIBILITY_VALUES.map((value) => ({ value, label: t(`visibility${value}`) }))}
+            value={visibility}
+            onChange={(value) => setVisibility(value as Visibility)}
+          />
+        </div>
+        {visibility === "RESTRICTED" && (
+          <RestrictedAccessPicker
+            initialGrants={test?.restricted_to ?? []}
+            value={restrictedAccessDraft}
+            onChange={setRestrictedAccessDraft}
+          />
+        )}
       </div>
 
       <div className="space-y-2">

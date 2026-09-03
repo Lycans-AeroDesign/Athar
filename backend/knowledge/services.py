@@ -8,6 +8,7 @@ from rest_framework.exceptions import ValidationError
 from audit.services import log_action
 
 from . import relationships
+from . import visibility as visibility_rules
 from .scoring import ACCEPTED_ANSWER_ACTION, ACCEPTED_ANSWER_POINTS, CONTRIBUTION_POINTS
 
 from .models import (
@@ -15,6 +16,7 @@ from .models import (
     Article,
     ArticleAttachment,
     ArticleRevision,
+    Bookmark,
     Category,
     Component,
     ComponentAttachment,
@@ -26,6 +28,7 @@ from .models import (
     ProjectAttachment,
     Question,
     QuestionAttachment,
+    RestrictedAccessGrant,
     Sop,
     SopAttachment,
     Tag,
@@ -72,37 +75,54 @@ def _sync_tags(obj, tag_names: list[str] | None) -> None:
 
 def visible_articles_for(viewer) -> QuerySet[Article]:
     """Published articles `viewer` may see - excludes RESTRICTED ones unless
-    they're the author or hold article.review/article.publish. Shared by
+    they're privileged for it (owner, org admin, or article.review/
+    article.publish holder) or hold an explicit grant. Shared by
     ArticleListCreateView, SearchView, and the user-profile/contributions
     endpoints so this rule can't drift out of sync between them the way it
     already once did (see the search-visibility fix this same rule exists for)."""
-    can_review = viewer.has_permission("article.review") or viewer.has_permission("article.publish")
     queryset = Article.objects.filter(organization=viewer.organization, status=Article.Status.PUBLISHED)
-    if not can_review:
-        queryset = queryset.exclude(Q(visibility=Visibility.RESTRICTED) & ~Q(author=viewer))
-    return queryset
+    return visibility_rules.exclude_inaccessible(queryset, viewer, Article, "article")
 
 
 def visible_questions_for(viewer) -> QuerySet[Question]:
-    """Questions `viewer` may see - excludes RESTRICTED ones unless they're
-    the author or hold question.moderate. Same sharing rationale as
-    visible_articles_for above."""
+    """Questions `viewer` may see - same rule as visible_articles_for above,
+    via question.moderate as the override permission."""
     queryset = Question.objects.filter(organization=viewer.organization)
-    if not viewer.has_permission("question.moderate"):
-        queryset = queryset.exclude(Q(visibility=Visibility.RESTRICTED) & ~Q(author=viewer))
-    return queryset
+    return visibility_rules.exclude_inaccessible(queryset, viewer, Question, "question")
 
 
 def visible_documents_for(viewer) -> QuerySet[Document]:
-    """Documents `viewer` may see - excludes RESTRICTED ones unless they're
-    created_by or hold document.update. Simpler than visible_articles_for/
-    visible_questions_for since Document has no draft/review workflow - see
-    models.py's Document docstring. Same sharing rationale (list, search,
-    contributions, and the relation-visibility check must all agree)."""
+    """Documents `viewer` may see - same rule as visible_articles_for above,
+    via document.update as the override permission. Simpler than Article/
+    Question since Document has no draft/review workflow - see models.py's
+    Document docstring."""
     queryset = Document.objects.filter(organization=viewer.organization)
-    if not viewer.has_permission("document.update"):
-        queryset = queryset.exclude(Q(visibility=Visibility.RESTRICTED) & ~Q(created_by=viewer))
-    return queryset
+    return visibility_rules.exclude_inaccessible(queryset, viewer, Document, "document")
+
+
+def visible_projects_for(viewer) -> QuerySet[Project]:
+    queryset = Project.objects.filter(organization=viewer.organization)
+    return visibility_rules.exclude_inaccessible(queryset, viewer, Project, "project")
+
+
+def visible_components_for(viewer) -> QuerySet[Component]:
+    queryset = Component.objects.filter(organization=viewer.organization)
+    return visibility_rules.exclude_inaccessible(queryset, viewer, Component, "component")
+
+
+def visible_failures_for(viewer) -> QuerySet[Failure]:
+    queryset = Failure.objects.filter(organization=viewer.organization)
+    return visibility_rules.exclude_inaccessible(queryset, viewer, Failure, "failure")
+
+
+def visible_sops_for(viewer) -> QuerySet[Sop]:
+    queryset = Sop.objects.filter(organization=viewer.organization)
+    return visibility_rules.exclude_inaccessible(queryset, viewer, Sop, "sop")
+
+
+def visible_tests_for(viewer) -> QuerySet[Test]:
+    queryset = Test.objects.filter(organization=viewer.organization)
+    return visibility_rules.exclude_inaccessible(queryset, viewer, Test, "test")
 
 
 def create_category(*, actor, request=None, name, description="") -> Category:
@@ -442,18 +462,24 @@ def promote_question_to_article(*, question: Question, actor, request=None) -> A
 
 # --- Engineering domain (Project/Component/Failure/Sop) -------------------
 #
-# No draft/review workflow and no `visibility` field on any of these (see
-# models.py's module docstring) - so unlike Article/Question, there's no
-# "owner can edit their own draft" case to account for. Editing/deleting is
-# gated purely on the x.update/x.delete permission, full stop - matches
-# docs/VISION.md #26's "Member: report failures" vs "Senior Member: update
-# failures" split (create and update are deliberately separate tiers, not
-# "ownership unlocks editing").
+# No draft/review workflow on any of these (see models.py's module
+# docstring) - so unlike Article/Question, there's no "owner can edit their
+# own draft" case to account for. Editing/deleting is gated purely on the
+# x.update/x.delete permission, full stop - matches docs/VISION.md #26's
+# "Member: report failures" vs "Senior Member: update failures" split
+# (create and update are deliberately separate tiers, not "ownership
+# unlocks editing"). They do each carry a `visibility` field though - see
+# Visibility's docstring in models.py and knowledge/visibility.py for how
+# RESTRICTED is enforced identically to Article/Question/Document.
 
 
-def create_project(*, actor, request=None, name, description="", status=Project.Status.ACTIVE, tag_names=None) -> Project:
+def create_project(
+    *, actor, request=None, name, description="", status=Project.Status.ACTIVE, tag_names=None,
+    visibility=Visibility.PUBLIC,
+) -> Project:
     project = Project.objects.create(
-        organization=actor.organization, name=name, description=description, status=status, created_by=actor
+        organization=actor.organization, name=name, description=description, status=status, created_by=actor,
+        visibility=visibility,
     )
     _sync_tags(project, tag_names)
     log_action(actor=actor, action="project.create", target=project, request=request)
@@ -481,7 +507,7 @@ def delete_project(*, project: Project, actor, request=None) -> None:
 
 def create_component(
     *, actor, request=None, name, category=None, manufacturer="", part_number="", status=Component.Status.TESTING,
-    summary="", specifications=None, tag_names=None,
+    summary="", specifications=None, tag_names=None, visibility=Visibility.PUBLIC,
 ) -> Component:
     component = Component.objects.create(
         organization=actor.organization,
@@ -493,6 +519,7 @@ def create_component(
         summary=summary,
         specifications=specifications or [],
         created_by=actor,
+        visibility=visibility,
     )
     _sync_tags(component, tag_names)
     log_action(actor=actor, action="component.create", target=component, request=request)
@@ -523,7 +550,7 @@ def delete_component(*, component: Component, actor, request=None) -> None:
 def create_failure(
     *, actor, request=None, title, component=None, project=None, aircraft="", date=None,
     severity=Failure.Severity.MEDIUM, status=Failure.Status.UNDER_INVESTIGATION,
-    summary="", root_cause="", corrective_action="", preventive_action="",
+    summary="", root_cause="", corrective_action="", preventive_action="", visibility=Visibility.PUBLIC,
 ) -> Failure:
     failure = Failure.objects.create(
         organization=actor.organization,
@@ -539,6 +566,7 @@ def create_failure(
         corrective_action=corrective_action,
         preventive_action=preventive_action,
         created_by=actor,
+        visibility=visibility,
     )
     log_action(actor=actor, action="failure.create", target=failure, request=request)
     return failure
@@ -562,7 +590,8 @@ def delete_failure(*, failure: Failure, actor, request=None) -> None:
 
 
 def create_sop(
-    *, actor, request=None, title, category=None, mandatory=False, safety_notes="", content="", tag_names=None
+    *, actor, request=None, title, category=None, mandatory=False, safety_notes="", content="", tag_names=None,
+    visibility=Visibility.PUBLIC,
 ) -> Sop:
     sop = Sop.objects.create(
         organization=actor.organization,
@@ -572,6 +601,7 @@ def create_sop(
         safety_notes=safety_notes,
         content=content,
         created_by=actor,
+        visibility=visibility,
     )
     _sync_tags(sop, tag_names)
     log_action(actor=actor, action="sop.create", target=sop, request=request)
@@ -614,6 +644,7 @@ def create_test(
     pass_fail="",
     conclusion="",
     tag_names=None,
+    visibility=Visibility.PUBLIC,
 ) -> Test:
     test = Test.objects.create(
         organization=actor.organization,
@@ -630,6 +661,7 @@ def create_test(
         pass_fail=pass_fail,
         conclusion=conclusion,
         created_by=actor,
+        visibility=visibility,
     )
     _sync_tags(test, tag_names)
     log_action(actor=actor, action="test.create", target=test, request=request)
@@ -941,6 +973,95 @@ def delete_relation(*, relation: KnowledgeRelation, actor, request=None) -> None
     relation.delete()
 
 
+def add_restricted_access(*, actor, request=None, content_type: str, object_id, user_id) -> RestrictedAccessGrant:
+    """Grants `user_id` (a fellow org member) access to a RESTRICTED item, on
+    top of whoever already qualifies via knowledge.visibility's rules. Only
+    the item's owner/creator or an `<type>.update`-permission holder may
+    manage its grant list - the same edit-rights check relations already
+    use, since "who can attach a relation to this" and "who may grant
+    access to this" are the same kind of decision. The grantee is resolved
+    within actor's own organization, which combined with _resolve_relatable
+    resolving the item the same way is what keeps a grant from ever
+    crossing organizations."""
+    from accounts.models import User
+
+    _, instance = _resolve_relatable(content_type, object_id, actor.organization)
+    if not _can_edit_relatable(actor, content_type, instance):
+        raise PermissionDenied("You can only manage access to content you own (or have edit rights on).")
+    granted_user = User.objects.filter(pk=user_id, organization=actor.organization).first()
+    if granted_user is None:
+        raise ValidationError(f"No user with id {user_id} in your organization.")
+    grant, created = RestrictedAccessGrant.objects.get_or_create(
+        organization=actor.organization,
+        content_type=ContentType.objects.get_for_model(type(instance)),
+        object_id=instance.pk,
+        granted_user=granted_user,
+        defaults={"granted_by": actor},
+    )
+    if created:
+        log_action(
+            actor=actor,
+            action="access_grant.create",
+            target=instance,
+            metadata={"granted_user": str(granted_user.pk)},
+            request=request,
+        )
+    return grant
+
+
+def remove_restricted_access(*, grant: RestrictedAccessGrant, actor, request=None) -> None:
+    if not _can_edit_relatable(actor, grant.content_type.model, grant.target):
+        raise PermissionDenied("You can only manage access to content you own (or have edit rights on).")
+    log_action(
+        actor=actor,
+        action="access_grant.delete",
+        metadata={"grant_id": str(grant.pk), "granted_user": str(grant.granted_user_id)},
+        request=request,
+    )
+    grant.delete()
+
+
+def create_bookmark(*, actor, request=None, content_type: str, object_id) -> Bookmark:
+    """Bookmarking requires actually being able to see the item right now -
+    checked via the same shared visibility rule as everything else, not
+    just "does it exist in my org", so a bookmark attempt can never be used
+    to probe for a RESTRICTED item's existence."""
+    _, instance = _resolve_relatable(content_type, object_id, actor.organization)
+    if not visibility_rules.can_view_instance(actor, content_type, instance):
+        raise PermissionDenied("You can't bookmark content you can't access.")
+    bookmark, created = Bookmark.objects.get_or_create(
+        organization=actor.organization,
+        user=actor,
+        content_type=ContentType.objects.get_for_model(type(instance)),
+        object_id=instance.pk,
+    )
+    if created:
+        log_action(actor=actor, action="bookmark.create", target=instance, request=request)
+    return bookmark
+
+
+def delete_bookmark(*, bookmark: Bookmark, actor, request=None) -> None:
+    log_action(actor=actor, action="bookmark.delete", metadata={"bookmark_id": str(bookmark.pk)}, request=request)
+    bookmark.delete()
+
+
+def bookmarks_for(viewer, content_type_name: str | None = None) -> QuerySet[Bookmark]:
+    """The viewer's own bookmarks, excluding any whose target has since
+    become inaccessible (e.g. it turned RESTRICTED and viewer isn't
+    granted, or it was deleted) - silently dropped rather than shown as a
+    placeholder, the same precedent get_relations_for already follows for a
+    hidden "other side" of a relation."""
+    queryset = Bookmark.objects.filter(user=viewer, organization=viewer.organization).select_related("content_type")
+    if content_type_name:
+        queryset = queryset.filter(content_type__model=content_type_name)
+    visible_ids = [
+        bookmark.id
+        for bookmark in queryset
+        if visibility_rules.can_view_instance(viewer, bookmark.content_type.model, bookmark.target)
+    ]
+    return Bookmark.objects.filter(id__in=visible_ids).order_by("-created_at")
+
+
 def add_article_attachment(*, article: Article, file, actor, request=None) -> ArticleAttachment:
     _require_owner_or_permission(
         actor=actor,
@@ -1011,26 +1132,10 @@ def remove_question_attachment(*, attachment: QuestionAttachment, actor, request
 
 def _relatable_visible_to(actor, content_type, instance) -> bool:
     """Whether `actor` may see `instance` as the *other side* of a relation -
-    mirrors views._visible_article_or_404/_visible_question_or_404's RESTRICTED
-    gate. Project/Component/Failure/Sop have no `visibility` field at all, so
-    they're always visible here (their own x.read permission is the real gate,
-    already enforced by the RelationsView the caller is inside)."""
-    if instance is None:
-        return False
-    if getattr(instance, "visibility", None) != Visibility.RESTRICTED:
-        return True
-    model_name = content_type.model
-    if model_name == "article":
-        return (
-            actor == getattr(instance, "author", None)
-            or actor.has_permission("article.review")
-            or actor.has_permission("article.publish")
-        )
-    if model_name == "question":
-        return actor == getattr(instance, "author", None) or actor.has_permission("question.moderate")
-    if model_name == "document":
-        return actor == getattr(instance, "created_by", None) or actor.has_permission("document.update")
-    return True
+    thin wrapper over the single shared RESTRICTED-visibility rule in
+    knowledge/visibility.py (used to duplicate that rule per content type
+    here directly, before it was consolidated)."""
+    return instance is not None and visibility_rules.can_view_instance(actor, content_type.model, instance)
 
 
 def get_relations_for(model_name: str, object_id, *, actor) -> list[KnowledgeRelation]:

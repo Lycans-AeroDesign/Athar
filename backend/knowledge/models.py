@@ -5,20 +5,23 @@ from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 
+from core.models import OrganizationScopedModel, TimeStampedModel, UUIDPrimaryKeyModel
 from files.models import StoredFile
 
 
 class Visibility(models.TextChoices):
-    """Shared by Article and Question. PUBLIC and ORGANIZATION currently
-    enforce identically (both just mean "anyone with article.read/
-    question access") - there's no unauthenticated-facing view yet for
-    PUBLIC to actually mean "even without login", and no Team model for a
-    TEAM tier to mean anything. Both are real, forward-compatible values;
-    RESTRICTED is the one that changes behavior today (author + reviewer/
-    publisher only, even once published) - see _visible_article_or_404."""
+    """Every relatable content type's visibility field (Article, Question,
+    Document, and the engineering-domain types below). Two states only:
+    PUBLIC means org-wide (there's no unauthenticated or cross-org access
+    path in this app, so "public" and "organization-wide" are the same
+    thing - a prior ORGANIZATION value that duplicated PUBLIC was removed).
+    RESTRICTED means only the owner/creator, an org admin (see
+    knowledge.visibility.ADMIN_BYPASS_PERMISSION), a holder of the type's
+    override permission, or a user with an explicit RestrictedAccessGrant
+    can see it - see knowledge/visibility.py for the single shared
+    implementation of this rule."""
 
     PUBLIC = "PUBLIC", "Public"
-    ORGANIZATION = "ORGANIZATION", "Organization"
     RESTRICTED = "RESTRICTED", "Restricted"
 
 
@@ -286,9 +289,11 @@ class QuestionAttachment(models.Model):
 
 # --- Engineering domain (Projects/Components/Failures/SOPs) ---------------
 #
-# Deliberately no `visibility` field (unlike Article/Question) and no
-# draft/review/publish workflow - anyone holding the entity's `.read`
-# permission sees everything; create/update/delete are the only gates. See
+# No draft/review/publish workflow (unlike Article/Question) - CRUD
+# permissions are still the only gate on create/update/delete. Each does
+# carry a `visibility` field though (see Visibility's docstring above):
+# PUBLIC (default, org-wide) or RESTRICTED (owner/creator, org admin, an
+# `<type>.update` holder, or an explicit RestrictedAccessGrant). See
 # docs/VISION.md #13-16 for the field lists these are drawn from, and
 # KnowledgeRelation's docstring above for how these plug into the existing
 # generic relation graph (services._RELATABLE_MODELS is the only place that
@@ -306,6 +311,7 @@ class Project(models.Model):
     name = models.CharField(max_length=200)
     description = models.TextField(blank=True)  # markdown source
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.ACTIVE)
+    visibility = models.CharField(max_length=20, choices=Visibility.choices, default=Visibility.PUBLIC)
     tags = models.ManyToManyField(Tag, blank=True, related_name="projects")
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="created_projects"
@@ -341,6 +347,7 @@ class Component(models.Model):
     # controller's "Processor"/"Weight" vs a motor's "KV Rating"/"Max
     # Thrust"), so a flexible list beats a fixed set of columns.
     specifications = models.JSONField(default=list, blank=True)
+    visibility = models.CharField(max_length=20, choices=Visibility.choices, default=Visibility.PUBLIC)
     tags = models.ManyToManyField(Tag, blank=True, related_name="components")
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="created_components"
@@ -384,6 +391,7 @@ class Failure(models.Model):
     root_cause = models.TextField(blank=True)
     corrective_action = models.TextField(blank=True)
     preventive_action = models.TextField(blank=True)
+    visibility = models.CharField(max_length=20, choices=Visibility.choices, default=Visibility.PUBLIC)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="created_failures"
     )
@@ -412,6 +420,7 @@ class Sop(models.Model):
     # one markdown body here, same shape as Article.content - reuses
     # MarkdownEditor/Markdown as-is instead of nine separate structured fields.
     content = models.TextField(blank=True)  # markdown source
+    visibility = models.CharField(max_length=20, choices=Visibility.choices, default=Visibility.PUBLIC)
     tags = models.ManyToManyField(Tag, blank=True, related_name="sops")
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="created_sops"
@@ -480,6 +489,7 @@ class Test(models.Model):
     # into one field - same "lessons live inside the record" principle as
     # Failure's own docstring cites from docs/VISION.md #8.4.
     conclusion = models.TextField(blank=True)
+    visibility = models.CharField(max_length=20, choices=Visibility.choices, default=Visibility.PUBLIC)
     tags = models.ManyToManyField(Tag, blank=True, related_name="tests")
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="created_tests"
@@ -633,3 +643,67 @@ class TestAttachment(models.Model):
 
     def __str__(self):
         return f"{self.test_id} <- {self.file_id}"
+
+
+class RestrictedAccessGrant(UUIDPrimaryKeyModel, OrganizationScopedModel, TimeStampedModel):
+    """Names a specific user who may see one RESTRICTED item, on top of its
+    owner/creator and whoever already qualifies via knowledge.visibility's
+    org-admin bypass or per-type override permission. Generic content_type/
+    object_id, same pattern as KnowledgeRelation (and for the same reason:
+    not owned by exactly one side, needs its own organization FK). First
+    knowledge model to use core.models' shared base classes - see
+    CONTRIBUTING.md §3.4; existing models keep hand-rolling their own id/
+    organization/timestamps rather than being retrofitted in this pass."""
+
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, related_name="+")
+    object_id = models.UUIDField()
+    target = GenericForeignKey("content_type", "object_id")
+
+    granted_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="access_grants"
+    )
+    granted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [models.Index(fields=["content_type", "object_id"])]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["content_type", "object_id", "granted_user"],
+                name="unique_restricted_access_grant",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.target} granted to {self.granted_user_id}"
+
+
+class Bookmark(UUIDPrimaryKeyModel, OrganizationScopedModel, TimeStampedModel):
+    """A user's personal "save for later" on any relatable content type.
+    Generic content_type/object_id, same pattern as KnowledgeRelation/
+    RestrictedAccessGrant above. Bookmarking something you can currently see
+    doesn't guarantee you'll always see it - services.bookmarks_for() drops
+    a bookmark from the list once its target becomes inaccessible (e.g. it
+    turns RESTRICTED and the viewer isn't granted), the same "silently omit
+    the now-hidden side" precedent relations already follow."""
+
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, related_name="+")
+    object_id = models.UUIDField()
+    target = GenericForeignKey("content_type", "object_id")
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="bookmarks")
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [models.Index(fields=["content_type", "object_id"])]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "content_type", "object_id"],
+                name="unique_bookmark",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.user_id} bookmarked {self.target}"

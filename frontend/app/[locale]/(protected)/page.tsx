@@ -74,7 +74,7 @@ export default function DashboardPage() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="font-display text-display text-on-surface">
-            {user ? t("welcomeWithName", { name: user.email }) : t("welcome")}
+            {user ? t("welcomeWithName", { name: formatPersonName(user) ?? user.email }) : t("welcome")}
           </h1>
           <p className="font-body-lg text-body-lg text-on-surface-variant mt-2">{t("subtitle")}</p>
         </div>
@@ -137,37 +137,6 @@ export default function DashboardPage() {
 
         <div className="lg:col-span-4 space-y-6">
           <div className="bg-surface-container-low border border-outline-variant rounded-xl p-4 space-y-4">
-            <h2 className="font-headline-md text-headline-md text-on-surface">{t("activityTitle")}</h2>
-
-            {activity === null ? (
-              <p className="font-body-md text-body-md text-on-surface-variant">{t("activityLoading")}</p>
-            ) : activity.length === 0 ? (
-              <p className="font-body-md text-body-md text-on-surface-variant">{t("activityEmptyState")}</p>
-            ) : (
-              <ul className="space-y-4">
-                {activity.map((entry) => {
-                  const actionKey = ACTIVITY_ACTION_KEYS[entry.action];
-                  const actionLabel = actionKey ? t(`activityActions.${actionKey}`) : entry.action;
-                  return (
-                    <li key={entry.id} className="flex gap-2.5">
-                      <span className="mt-1.5 size-1.5 rounded-full bg-primary shrink-0" />
-                      <div className="min-w-0">
-                        <p className="font-body-md text-body-md text-on-surface">
-                          <span className="font-medium">{entry.actor_email ?? t("systemActor")}</span>{" "}
-                          {actionLabel} {entry.target_repr}
-                        </p>
-                        <p className="font-mono-sm text-mono-sm text-on-surface-variant mt-0.5">
-                          {formatRelativeTime(entry.created_at)}
-                        </p>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </div>
-
-          <div className="bg-surface-container-low border border-outline-variant rounded-xl p-4 space-y-4">
             <h2 className="font-headline-md text-headline-md text-on-surface">{t("leaderboardTitle")}</h2>
 
             {leaderboard === null ? (
@@ -197,6 +166,37 @@ export default function DashboardPage() {
             )}
           </div>
         </div>
+      </div>
+
+      <div className="bg-surface-container-low border border-outline-variant rounded-xl p-4 space-y-4">
+        <h2 className="font-headline-md text-headline-md text-on-surface">{t("activityTitle")}</h2>
+
+        {activity === null ? (
+          <p className="font-body-md text-body-md text-on-surface-variant">{t("activityLoading")}</p>
+        ) : activity.length === 0 ? (
+          <p className="font-body-md text-body-md text-on-surface-variant">{t("activityEmptyState")}</p>
+        ) : (
+          <ul className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-x-6 gap-y-4">
+            {activity.map((entry) => {
+              const actionKey = ACTIVITY_ACTION_KEYS[entry.action];
+              const actionLabel = actionKey ? t(`activityActions.${actionKey}`) : entry.action;
+              return (
+                <li key={entry.id} className="flex gap-2.5">
+                  <span className="mt-1.5 size-1.5 rounded-full bg-primary shrink-0" />
+                  <div className="min-w-0">
+                    <p className="font-body-md text-body-md text-on-surface">
+                      <span className="font-medium">{entry.actor_email ?? t("systemActor")}</span>{" "}
+                      {actionLabel} {entry.target_repr}
+                    </p>
+                    <p className="font-mono-sm text-mono-sm text-on-surface-variant mt-0.5">
+                      {formatRelativeTime(entry.created_at)}
+                    </p>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </div>
     </div>
   );

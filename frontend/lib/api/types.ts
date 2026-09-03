@@ -25,6 +25,8 @@ export interface User {
   permissions: string[];
   preferences: UserPreferences;
   date_joined: string;
+  /** Read-only here - toggled only via rbac.setUserActive (requires user.manage), never self-service. */
+  is_active: boolean;
 }
 
 export interface Role {
@@ -134,8 +136,15 @@ export type ArticleStatus = "DRAFT" | "IN_REVIEW" | "PUBLISHED" | "REJECTED" | "
  * tells the list endpoint to skip the status filter (see ArticleListCreateView.get). */
 export type ArticleStatusFilter = ArticleStatus | "ALL";
 
-/** PUBLIC/ORGANIZATION currently enforce identically (see backend/knowledge/models.py's Visibility) - RESTRICTED is the one that changes access today. */
-export type Visibility = "PUBLIC" | "ORGANIZATION" | "RESTRICTED";
+/** PUBLIC = organization-wide (the default); RESTRICTED = only the owner/creator, an org admin, an
+ * override-permission holder, or an explicitly granted user - see backend/knowledge/visibility.py. */
+export type Visibility = "PUBLIC" | "RESTRICTED";
+
+/** One user granted access to a RESTRICTED item, on top of its owner/creator - see AccessGrantSerializer. */
+export interface AccessGrant {
+  grant_id: string;
+  user: KnowledgeAuthor;
+}
 
 export interface ArticleSummary {
   id: string;
@@ -156,6 +165,10 @@ export interface ArticleDetail extends ArticleSummary {
   content: string;
   /** Distinct authors of every create/update to this article - see AuthorSerializer/ContributorsMixin. */
   contributors: KnowledgeAuthor[];
+  /** Who's been explicitly granted access, on top of the author - meaningful only when visibility is RESTRICTED. */
+  restricted_to: AccessGrant[];
+  /** This viewer's own Bookmark id if they've bookmarked this article, else null. */
+  bookmark_id: string | null;
 }
 
 export interface ArticleRevision {
@@ -196,6 +209,8 @@ export interface QuestionDetail extends QuestionSummary {
   body: string;
   answers: Answer[];
   contributors: KnowledgeAuthor[];
+  restricted_to: AccessGrant[];
+  bookmark_id: string | null;
 }
 
 export type RelatableType =
@@ -233,9 +248,9 @@ export interface KnowledgeAttachment {
 }
 
 // --- Engineering domain -----------------------------------------------------
-// No draft/review workflow and no `visibility` field on any of these (see
-// backend/knowledge/models.py's module docstring) - simpler shape than
-// Article/Question throughout.
+// No draft/review workflow on any of these (see backend/knowledge/models.py's
+// module docstring), but each does carry `visibility` (same RESTRICTED rule
+// as Article/Question/Document - see backend/knowledge/visibility.py).
 
 export type ProjectStatus = "ACTIVE" | "ON_HOLD" | "COMPLETED";
 
@@ -243,6 +258,7 @@ export interface ProjectSummary {
   id: string;
   name: string;
   status: ProjectStatus;
+  visibility: Visibility;
   tags: Tag[];
   created_by: KnowledgeAuthor | null;
   created_at: string;
@@ -252,6 +268,8 @@ export interface ProjectSummary {
 export interface ProjectDetail extends ProjectSummary {
   description: string;
   contributors: KnowledgeAuthor[];
+  restricted_to: AccessGrant[];
+  bookmark_id: string | null;
 }
 
 export type ComponentStatus = "CERTIFIED" | "TESTING" | "DEPRECATED";
@@ -269,6 +287,7 @@ export interface ComponentSummary {
   part_number: string;
   status: ComponentStatus;
   specifications: ComponentSpecRow[];
+  visibility: Visibility;
   tags: Tag[];
   created_by: KnowledgeAuthor | null;
   created_at: string;
@@ -278,6 +297,8 @@ export interface ComponentSummary {
 export interface ComponentDetail extends ComponentSummary {
   summary: string;
   contributors: KnowledgeAuthor[];
+  restricted_to: AccessGrant[];
+  bookmark_id: string | null;
 }
 
 export type FailureSeverity = "LOW" | "MEDIUM" | "HIGH";
@@ -292,6 +313,7 @@ export interface FailureSummary {
   date: string | null;
   severity: FailureSeverity;
   status: FailureStatus;
+  visibility: Visibility;
   created_by: KnowledgeAuthor | null;
   created_at: string;
   updated_at: string;
@@ -303,6 +325,8 @@ export interface FailureDetail extends FailureSummary {
   corrective_action: string;
   preventive_action: string;
   contributors: KnowledgeAuthor[];
+  restricted_to: AccessGrant[];
+  bookmark_id: string | null;
 }
 
 export interface SopSummary {
@@ -310,6 +334,7 @@ export interface SopSummary {
   title: string;
   category: Category | null;
   mandatory: boolean;
+  visibility: Visibility;
   tags: Tag[];
   created_by: KnowledgeAuthor | null;
   created_at: string;
@@ -320,6 +345,8 @@ export interface SopDetail extends SopSummary {
   safety_notes: string;
   content: string;
   contributors: KnowledgeAuthor[];
+  restricted_to: AccessGrant[];
+  bookmark_id: string | null;
 }
 
 export type TestType =
@@ -344,6 +371,7 @@ export interface TestSummary {
   project: ProjectSummary | null;
   status: TestRunStatus;
   pass_fail: TestPassFail;
+  visibility: Visibility;
   tags: Tag[];
   created_by: KnowledgeAuthor | null;
   created_at: string;
@@ -357,6 +385,8 @@ export interface TestDetail extends TestSummary {
   results: string;
   conclusion: string;
   contributors: KnowledgeAuthor[];
+  restricted_to: AccessGrant[];
+  bookmark_id: string | null;
 }
 
 export type DocType =
@@ -393,6 +423,18 @@ export interface DocumentSummary {
 export interface DocumentDetail extends DocumentSummary {
   description: string;
   contributors: KnowledgeAuthor[];
+  restricted_to: AccessGrant[];
+  bookmark_id: string | null;
+}
+
+/** One row of GET /knowledge/bookmarks/ - deliberately thin (no full Summary
+ * shape per type) since a bookmarks list only ever needs to link out. */
+export interface BookmarkEntry {
+  id: string;
+  type: RelatableType;
+  object_id: string;
+  title: string | null;
+  created_at: string;
 }
 
 // --- User profile -----------------------------------------------------------

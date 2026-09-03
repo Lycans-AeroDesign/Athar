@@ -7,10 +7,18 @@ import { Button } from "@/components/ui/Button";
 import { Combobox } from "@/components/ui/Combobox";
 import { MarkdownEditor } from "@/components/ui/MarkdownEditor";
 import { TagInput } from "@/components/ui/TagInput";
+import {
+  EMPTY_RESTRICTED_ACCESS_DRAFT,
+  RestrictedAccessPicker,
+  type RestrictedAccessDraft,
+} from "@/components/knowledge/RestrictedAccessPicker";
 import { useRouter } from "@/i18n/navigation";
+import { addAccessGrant, removeAccessGrant } from "@/lib/api/accessGrants";
 import { createSop, updateSop, type SopWritePayload } from "@/lib/api/engineering";
 import { getCategories } from "@/lib/api/knowledge";
-import type { Category, SopDetail } from "@/lib/api/types";
+import type { Category, SopDetail, Visibility } from "@/lib/api/types";
+
+const VISIBILITY_VALUES: Visibility[] = ["PUBLIC", "RESTRICTED"];
 
 interface SopEditorProps {
   sop?: SopDetail;
@@ -35,6 +43,10 @@ export function SopEditor({ sop, onDirtyChange }: SopEditorProps) {
   const [safetyNotes, setSafetyNotes] = useState(sop?.safety_notes ?? "");
   const [content, setContent] = useState(sop?.content ?? "");
   const [tags, setTags] = useState<string[]>(sop?.tags.map((tag) => tag.name) ?? []);
+  const [visibility, setVisibility] = useState<Visibility>(sop?.visibility ?? "PUBLIC");
+  const [restrictedAccessDraft, setRestrictedAccessDraft] = useState<RestrictedAccessDraft>(
+    EMPTY_RESTRICTED_ACCESS_DRAFT,
+  );
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -48,14 +60,34 @@ export function SopEditor({ sop, onDirtyChange }: SopEditorProps) {
     mandatory !== (sop?.mandatory ?? false) ||
     safetyNotes !== (sop?.safety_notes ?? "") ||
     content !== (sop?.content ?? "") ||
-    tags.join(",") !== (sop?.tags.map((tag) => tag.name).join(",") ?? "");
+    tags.join(",") !== (sop?.tags.map((tag) => tag.name).join(",") ?? "") ||
+    visibility !== (sop?.visibility ?? "PUBLIC") ||
+    restrictedAccessDraft.pendingAdd.length > 0 ||
+    restrictedAccessDraft.pendingRemoveGrantIds.length > 0;
 
   useEffect(() => {
     onDirtyChange?.(isDirty);
   }, [isDirty, onDirtyChange]);
 
   function buildPayload(): SopWritePayload {
-    return { title, category_id: categoryId, mandatory, safety_notes: safetyNotes, content, tag_names: tags };
+    return {
+      title,
+      category_id: categoryId,
+      mandatory,
+      safety_notes: safetyNotes,
+      content,
+      visibility,
+      tag_names: tags,
+    };
+  }
+
+  async function syncRestrictedAccess(sopId: string) {
+    for (const grantId of restrictedAccessDraft.pendingRemoveGrantIds) {
+      await removeAccessGrant(grantId);
+    }
+    for (const user of restrictedAccessDraft.pendingAdd) {
+      await addAccessGrant("sop", sopId, user.id);
+    }
   }
 
   async function handleSave() {
@@ -63,6 +95,7 @@ export function SopEditor({ sop, onDirtyChange }: SopEditorProps) {
     setError(null);
     try {
       const saved = sop ? await updateSop(sop.id, buildPayload()) : await createSop(buildPayload());
+      await syncRestrictedAccess(saved.id);
       router.push(`/sops/${saved.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -98,7 +131,22 @@ export function SopEditor({ sop, onDirtyChange }: SopEditorProps) {
             />
             <span className="font-body-md text-body-md text-on-surface">{t("mandatoryLabel")}</span>
           </label>
+          <div className="w-48">
+            <Combobox
+              placeholder={t("visibilityLabel")}
+              options={VISIBILITY_VALUES.map((value) => ({ value, label: t(`visibility${value}`) }))}
+              value={visibility}
+              onChange={(value) => setVisibility(value as Visibility)}
+            />
+          </div>
         </div>
+        {visibility === "RESTRICTED" && (
+          <RestrictedAccessPicker
+            initialGrants={sop?.restricted_to ?? []}
+            value={restrictedAccessDraft}
+            onChange={setRestrictedAccessDraft}
+          />
+        )}
       </div>
 
       <div className="space-y-2">

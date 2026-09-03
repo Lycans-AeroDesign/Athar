@@ -1,8 +1,8 @@
-// Document/Resource - split out from engineering.ts (which is Project/
-// Component/Failure/Sop/Test, none of which have `visibility`) since
-// Document is the one relatable type besides Article/Question that does -
-// same RESTRICTED-aware shape as knowledge.ts's Article/Question wrappers,
-// not the plain engineering-domain CRUD pattern.
+// Document/Resource - split out from engineering.ts historically because it
+// was the one relatable type besides Article/Question with `visibility`;
+// Project/Component/Failure/Sop/Test have it too now (see engineering.ts's
+// own Write payloads), but Document's shape otherwise still differs enough
+// (draft/review-free but with its own file/url handling) to keep this split.
 
 import { apiJson, apiVoid } from "./client";
 import type { DocType, DocumentDetail, DocumentSource, DocumentSummary, Paginated, Visibility } from "./types";

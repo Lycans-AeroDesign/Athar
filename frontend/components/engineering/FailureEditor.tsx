@@ -6,12 +6,26 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Combobox } from "@/components/ui/Combobox";
 import { MarkdownEditor } from "@/components/ui/MarkdownEditor";
+import {
+  EMPTY_RESTRICTED_ACCESS_DRAFT,
+  RestrictedAccessPicker,
+  type RestrictedAccessDraft,
+} from "@/components/knowledge/RestrictedAccessPicker";
 import { useRouter } from "@/i18n/navigation";
+import { addAccessGrant, removeAccessGrant } from "@/lib/api/accessGrants";
 import { createFailure, getComponents, getProjects, updateFailure, type FailureWritePayload } from "@/lib/api/engineering";
-import type { ComponentSummary, FailureDetail, FailureSeverity, FailureStatus, ProjectSummary } from "@/lib/api/types";
+import type {
+  ComponentSummary,
+  FailureDetail,
+  FailureSeverity,
+  FailureStatus,
+  ProjectSummary,
+  Visibility,
+} from "@/lib/api/types";
 
 const SEVERITY_VALUES: FailureSeverity[] = ["LOW", "MEDIUM", "HIGH"];
 const STATUS_VALUES: FailureStatus[] = ["UNDER_INVESTIGATION", "RESOLVED"];
+const VISIBILITY_VALUES: Visibility[] = ["PUBLIC", "RESTRICTED"];
 
 interface FailureEditorProps {
   failure?: FailureDetail;
@@ -43,6 +57,10 @@ export function FailureEditor({ failure, onDirtyChange }: FailureEditorProps) {
   const [rootCause, setRootCause] = useState(failure?.root_cause ?? "");
   const [correctiveAction, setCorrectiveAction] = useState(failure?.corrective_action ?? "");
   const [preventiveAction, setPreventiveAction] = useState(failure?.preventive_action ?? "");
+  const [visibility, setVisibility] = useState<Visibility>(failure?.visibility ?? "PUBLIC");
+  const [restrictedAccessDraft, setRestrictedAccessDraft] = useState<RestrictedAccessDraft>(
+    EMPTY_RESTRICTED_ACCESS_DRAFT,
+  );
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -65,7 +83,10 @@ export function FailureEditor({ failure, onDirtyChange }: FailureEditorProps) {
     summary !== (failure?.summary ?? "") ||
     rootCause !== (failure?.root_cause ?? "") ||
     correctiveAction !== (failure?.corrective_action ?? "") ||
-    preventiveAction !== (failure?.preventive_action ?? "");
+    preventiveAction !== (failure?.preventive_action ?? "") ||
+    visibility !== (failure?.visibility ?? "PUBLIC") ||
+    restrictedAccessDraft.pendingAdd.length > 0 ||
+    restrictedAccessDraft.pendingRemoveGrantIds.length > 0;
 
   useEffect(() => {
     onDirtyChange?.(isDirty);
@@ -84,7 +105,17 @@ export function FailureEditor({ failure, onDirtyChange }: FailureEditorProps) {
       root_cause: rootCause,
       corrective_action: correctiveAction,
       preventive_action: preventiveAction,
+      visibility,
     };
+  }
+
+  async function syncRestrictedAccess(failureId: string) {
+    for (const grantId of restrictedAccessDraft.pendingRemoveGrantIds) {
+      await removeAccessGrant(grantId);
+    }
+    for (const user of restrictedAccessDraft.pendingAdd) {
+      await addAccessGrant("failure", failureId, user.id);
+    }
   }
 
   async function handleSave() {
@@ -92,6 +123,7 @@ export function FailureEditor({ failure, onDirtyChange }: FailureEditorProps) {
     setError(null);
     try {
       const saved = failure ? await updateFailure(failure.id, buildPayload()) : await createFailure(buildPayload());
+      await syncRestrictedAccess(saved.id);
       router.push(`/failures/${saved.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -160,6 +192,21 @@ export function FailureEditor({ failure, onDirtyChange }: FailureEditorProps) {
             onChange={(value) => setStatus(value as FailureStatus)}
           />
         </div>
+        <div className="w-48">
+          <Combobox
+            placeholder={t("visibilityLabel")}
+            options={VISIBILITY_VALUES.map((value) => ({ value, label: t(`visibility${value}`) }))}
+            value={visibility}
+            onChange={(value) => setVisibility(value as Visibility)}
+          />
+        </div>
+        {visibility === "RESTRICTED" && (
+          <RestrictedAccessPicker
+            initialGrants={failure?.restricted_to ?? []}
+            value={restrictedAccessDraft}
+            onChange={setRestrictedAccessDraft}
+          />
+        )}
       </div>
 
       <div className="space-y-2">

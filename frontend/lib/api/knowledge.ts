@@ -8,6 +8,7 @@ import type {
   Category,
   ContributionType,
   KnowledgeAttachment,
+  KnowledgeAuthor,
   KnowledgeRelation,
   LeaderboardEntry,
   Paginated,
@@ -266,6 +267,13 @@ export function createRelation(payload: {
 
 export function deleteRelation(id: string): Promise<void> {
   return apiVoid(`/api/v1/knowledge/relations/${id}/`, { method: "DELETE" });
+}
+
+/** Every user in the caller's own organization, for the RESTRICTED-access people-picker
+ * (see RestrictedAccessPicker.tsx) - deliberately not rbac.getUsers(), which requires
+ * user.manage and most creators of a RESTRICTED item won't hold. */
+export function getOrgMembers(): Promise<KnowledgeAuthor[]> {
+  return apiJson<Paginated<KnowledgeAuthor>>("/api/v1/knowledge/org-members/").then((data) => data.results);
 }
 
 export function getArticleAttachments(articleId: string): Promise<KnowledgeAttachment[]> {

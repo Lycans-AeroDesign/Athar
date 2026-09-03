@@ -21,7 +21,13 @@ class UserSerializer(serializers.ModelSerializer):
             "permissions",
             "preferences",
             "date_joined",
+            "is_active",
         ]
+        # is_active is read-only here on purpose - it's an admin-only action
+        # (see rbac.services.set_user_active / rbac.views.UserActiveView),
+        # never self-service, so MeUpdateSerializer below deliberately never
+        # lists it either.
+        read_only_fields = ["is_active"]
 
     def get_permissions(self, obj: User) -> list[str]:
         return obj.permission_codenames()

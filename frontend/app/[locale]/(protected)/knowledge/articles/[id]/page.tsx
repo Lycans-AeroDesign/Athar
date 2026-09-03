@@ -9,6 +9,7 @@ import { ContributorsRow } from "@/components/knowledge/Contributors";
 import { RelatedContent } from "@/components/knowledge/RelatedContent";
 import { StatusPill } from "@/components/knowledge/StatusPill";
 import { Avatar } from "@/components/ui/Avatar";
+import { BookmarkButton } from "@/components/ui/BookmarkButton";
 import { Button } from "@/components/ui/Button";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Icon } from "@/components/ui/Icon";
@@ -198,6 +199,7 @@ export default function ArticleDetailPage() {
               <span className="font-mono-sm text-mono-sm text-on-surface-variant">{docId}</span>
             </div>
             <div className="flex items-center gap-2">
+              <BookmarkButton key={article.id} type="article" objectId={article.id} bookmarkId={article.bookmark_id} />
               <ShareButton title={article.title} />
               {canEditContent && (
                 <Link href={`/knowledge/articles/${article.id}/edit`}>

@@ -1,3 +1,4 @@
+from django.contrib.contenttypes.models import ContentType
 from rest_framework import serializers
 
 from accounts.models import User
@@ -10,6 +11,7 @@ from .models import (
     Article,
     ArticleAttachment,
     ArticleRevision,
+    Bookmark,
     Category,
     Component,
     ComponentAttachment,
@@ -21,12 +23,20 @@ from .models import (
     ProjectAttachment,
     Question,
     QuestionAttachment,
+    RestrictedAccessGrant,
     Sop,
     SopAttachment,
     Tag,
     Test,
     TestAttachment,
 )
+
+# Every real relatable content type - shared by CreateRelationSerializer,
+# CreateAccessGrantSerializer, and CreateBookmarkSerializer so a new type
+# only ever needs to be added in one place. Was CreateRelationSerializer's
+# own private _RELATABLE_TYPES before access grants/bookmarks needed the
+# same list.
+RELATABLE_TYPE_CHOICES = ["article", "question", "project", "component", "failure", "sop", "test", "document"]
 
 
 class AuthorSerializer(serializers.ModelSerializer):
@@ -83,6 +93,41 @@ class ContributorsMixin:
     def get_contributors(self, obj) -> list:
         model_name = obj.__class__.__name__.lower()
         return AuthorSerializer(services.contributors_for(model_name, obj), many=True).data
+
+
+class RestrictedAccessMixin:
+    """get_restricted_to backing a `restricted_to` SerializerMethodField each
+    *DetailSerializer below declares directly (same DRF-metaclass reason
+    ContributorsMixin's own docstring gives). Lists who's been explicitly
+    granted access to this item on top of its owner/creator - meaningless
+    when the item isn't RESTRICTED, but returned regardless (an empty list)
+    rather than omitted, so the frontend doesn't need a conditional field."""
+
+    def get_restricted_to(self, obj) -> list:
+        grants = RestrictedAccessGrant.objects.filter(
+            content_type=ContentType.objects.get_for_model(type(obj)), object_id=obj.pk
+        ).select_related("granted_user")
+        return [
+            {"grant_id": str(grant.id), "user": AuthorSerializer(grant.granted_user).data} for grant in grants
+        ]
+
+
+class BookmarkMixin:
+    """get_bookmark_id backing a `bookmark_id` SerializerMethodField each
+    *DetailSerializer below declares directly. None when the caller isn't
+    authenticated or hasn't bookmarked this item; otherwise the Bookmark's
+    own id, so the frontend can delete it directly without a lookup."""
+
+    def get_bookmark_id(self, obj) -> str | None:
+        request = self.context.get("request")
+        if request is None or not request.user.is_authenticated:
+            return None
+        bookmark = Bookmark.objects.filter(
+            user=request.user,
+            content_type=ContentType.objects.get_for_model(type(obj)),
+            object_id=obj.pk,
+        ).first()
+        return str(bookmark.id) if bookmark else None
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -145,11 +190,13 @@ class ArticleListSerializer(serializers.ModelSerializer):
         ]
 
 
-class ArticleDetailSerializer(ContributorsMixin, ArticleListSerializer):
+class ArticleDetailSerializer(ContributorsMixin, RestrictedAccessMixin, BookmarkMixin, ArticleListSerializer):
     contributors = serializers.SerializerMethodField()
+    restricted_to = serializers.SerializerMethodField()
+    bookmark_id = serializers.SerializerMethodField()
 
     class Meta(ArticleListSerializer.Meta):
-        fields = [*ArticleListSerializer.Meta.fields, "content", "contributors"]
+        fields = [*ArticleListSerializer.Meta.fields, "content", "contributors", "restricted_to", "bookmark_id"]
 
 
 class ArticleWriteSerializer(serializers.ModelSerializer):
@@ -219,12 +266,21 @@ class QuestionListSerializer(serializers.ModelSerializer):
         return str(obj.promoted_to_article_id) if obj.promoted_to_article_id else None
 
 
-class QuestionDetailSerializer(ContributorsMixin, QuestionListSerializer):
+class QuestionDetailSerializer(ContributorsMixin, RestrictedAccessMixin, BookmarkMixin, QuestionListSerializer):
     answers = serializers.SerializerMethodField()
     contributors = serializers.SerializerMethodField()
+    restricted_to = serializers.SerializerMethodField()
+    bookmark_id = serializers.SerializerMethodField()
 
     class Meta(QuestionListSerializer.Meta):
-        fields = [*QuestionListSerializer.Meta.fields, "body", "answers", "contributors"]
+        fields = [
+            *QuestionListSerializer.Meta.fields,
+            "body",
+            "answers",
+            "contributors",
+            "restricted_to",
+            "bookmark_id",
+        ]
 
     def get_answers(self, obj: Question) -> list:
         # Accepted answer first, then chronological - needs obj.accepted_answer_id,
@@ -330,17 +386,52 @@ class CreateRelationSerializer(serializers.Serializer):
     model name (article/question) rather than a raw ContentType id, so
     clients never need to know ContentType pks."""
 
-    _RELATABLE_TYPES = ["article", "question", "project", "component", "failure", "sop", "test", "document"]
-
-    source_type = serializers.ChoiceField(choices=_RELATABLE_TYPES)
+    source_type = serializers.ChoiceField(choices=RELATABLE_TYPE_CHOICES)
     source_id = serializers.UUIDField()
-    target_type = serializers.ChoiceField(choices=_RELATABLE_TYPES)
+    target_type = serializers.ChoiceField(choices=RELATABLE_TYPE_CHOICES)
     target_id = serializers.UUIDField()
     # Validated against the relationship registry in services.create_relation
     # (not here - that needs source_type/target_type together, which isn't
     # available at the single-field validation stage) rather than a fixed
     # ChoiceField, since which verbs are valid depends on the type pair.
     relation_type = serializers.CharField(default="RELATED")
+
+
+class AccessGrantSerializer(serializers.ModelSerializer):
+    granted_user = AuthorSerializer(read_only=True)
+
+    class Meta:
+        model = RestrictedAccessGrant
+        fields = ["id", "granted_user", "created_at"]
+
+
+class CreateAccessGrantSerializer(serializers.Serializer):
+    content_type = serializers.ChoiceField(choices=RELATABLE_TYPE_CHOICES)
+    object_id = serializers.UUIDField()
+    user_id = serializers.UUIDField()
+
+
+class BookmarkSerializer(serializers.ModelSerializer):
+    type = serializers.SerializerMethodField()
+    title = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Bookmark
+        fields = ["id", "type", "object_id", "title", "created_at"]
+
+    def get_type(self, obj: Bookmark) -> str:
+        return obj.content_type.model
+
+    def get_title(self, obj: Bookmark) -> str | None:
+        target = obj.target
+        if target is None:
+            return None
+        return getattr(target, "title", None) or getattr(target, "name", None)
+
+
+class CreateBookmarkSerializer(serializers.Serializer):
+    content_type = serializers.ChoiceField(choices=RELATABLE_TYPE_CHOICES)
+    object_id = serializers.UUIDField()
 
 
 # --- Engineering domain ----------------------------------------------------
@@ -352,14 +443,22 @@ class ProjectListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Project
-        fields = ["id", "name", "status", "tags", "created_by", "created_at", "updated_at"]
+        fields = ["id", "name", "status", "visibility", "tags", "created_by", "created_at", "updated_at"]
 
 
-class ProjectDetailSerializer(ContributorsMixin, ProjectListSerializer):
+class ProjectDetailSerializer(ContributorsMixin, RestrictedAccessMixin, BookmarkMixin, ProjectListSerializer):
     contributors = serializers.SerializerMethodField()
+    restricted_to = serializers.SerializerMethodField()
+    bookmark_id = serializers.SerializerMethodField()
 
     class Meta(ProjectListSerializer.Meta):
-        fields = [*ProjectListSerializer.Meta.fields, "description", "contributors"]
+        fields = [
+            *ProjectListSerializer.Meta.fields,
+            "description",
+            "contributors",
+            "restricted_to",
+            "bookmark_id",
+        ]
 
 
 class ProjectWriteSerializer(serializers.ModelSerializer):
@@ -367,7 +466,7 @@ class ProjectWriteSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Project
-        fields = ["name", "description", "status", "tag_names"]
+        fields = ["name", "description", "status", "visibility", "tag_names"]
 
 
 class ComponentListSerializer(serializers.ModelSerializer):
@@ -385,6 +484,7 @@ class ComponentListSerializer(serializers.ModelSerializer):
             "part_number",
             "status",
             "specifications",
+            "visibility",
             "tags",
             "created_by",
             "created_at",
@@ -392,11 +492,19 @@ class ComponentListSerializer(serializers.ModelSerializer):
         ]
 
 
-class ComponentDetailSerializer(ContributorsMixin, ComponentListSerializer):
+class ComponentDetailSerializer(ContributorsMixin, RestrictedAccessMixin, BookmarkMixin, ComponentListSerializer):
     contributors = serializers.SerializerMethodField()
+    restricted_to = serializers.SerializerMethodField()
+    bookmark_id = serializers.SerializerMethodField()
 
     class Meta(ComponentListSerializer.Meta):
-        fields = [*ComponentListSerializer.Meta.fields, "summary", "contributors"]
+        fields = [
+            *ComponentListSerializer.Meta.fields,
+            "summary",
+            "contributors",
+            "restricted_to",
+            "bookmark_id",
+        ]
 
 
 class ComponentWriteSerializer(serializers.ModelSerializer):
@@ -415,6 +523,7 @@ class ComponentWriteSerializer(serializers.ModelSerializer):
             "status",
             "summary",
             "specifications",
+            "visibility",
             "tag_names",
         ]
 
@@ -442,14 +551,17 @@ class FailureListSerializer(serializers.ModelSerializer):
             "date",
             "severity",
             "status",
+            "visibility",
             "created_by",
             "created_at",
             "updated_at",
         ]
 
 
-class FailureDetailSerializer(ContributorsMixin, FailureListSerializer):
+class FailureDetailSerializer(ContributorsMixin, RestrictedAccessMixin, BookmarkMixin, FailureListSerializer):
     contributors = serializers.SerializerMethodField()
+    restricted_to = serializers.SerializerMethodField()
+    bookmark_id = serializers.SerializerMethodField()
 
     class Meta(FailureListSerializer.Meta):
         fields = [
@@ -459,6 +571,8 @@ class FailureDetailSerializer(ContributorsMixin, FailureListSerializer):
             "corrective_action",
             "preventive_action",
             "contributors",
+            "restricted_to",
+            "bookmark_id",
         ]
 
 
@@ -484,6 +598,7 @@ class FailureWriteSerializer(serializers.ModelSerializer):
             "root_cause",
             "corrective_action",
             "preventive_action",
+            "visibility",
         ]
 
 
@@ -494,14 +609,23 @@ class SopListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Sop
-        fields = ["id", "title", "category", "mandatory", "tags", "created_by", "created_at", "updated_at"]
+        fields = ["id", "title", "category", "mandatory", "visibility", "tags", "created_by", "created_at", "updated_at"]
 
 
-class SopDetailSerializer(ContributorsMixin, SopListSerializer):
+class SopDetailSerializer(ContributorsMixin, RestrictedAccessMixin, BookmarkMixin, SopListSerializer):
     contributors = serializers.SerializerMethodField()
+    restricted_to = serializers.SerializerMethodField()
+    bookmark_id = serializers.SerializerMethodField()
 
     class Meta(SopListSerializer.Meta):
-        fields = [*SopListSerializer.Meta.fields, "safety_notes", "content", "contributors"]
+        fields = [
+            *SopListSerializer.Meta.fields,
+            "safety_notes",
+            "content",
+            "contributors",
+            "restricted_to",
+            "bookmark_id",
+        ]
 
 
 class SopWriteSerializer(serializers.ModelSerializer):
@@ -512,7 +636,7 @@ class SopWriteSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Sop
-        fields = ["title", "category_id", "mandatory", "safety_notes", "content", "tag_names"]
+        fields = ["title", "category_id", "mandatory", "safety_notes", "content", "visibility", "tag_names"]
 
 
 class TestListSerializer(serializers.ModelSerializer):
@@ -531,6 +655,7 @@ class TestListSerializer(serializers.ModelSerializer):
             "project",
             "status",
             "pass_fail",
+            "visibility",
             "tags",
             "created_by",
             "created_at",
@@ -538,8 +663,10 @@ class TestListSerializer(serializers.ModelSerializer):
         ]
 
 
-class TestDetailSerializer(ContributorsMixin, TestListSerializer):
+class TestDetailSerializer(ContributorsMixin, RestrictedAccessMixin, BookmarkMixin, TestListSerializer):
     contributors = serializers.SerializerMethodField()
+    restricted_to = serializers.SerializerMethodField()
+    bookmark_id = serializers.SerializerMethodField()
 
     class Meta(TestListSerializer.Meta):
         fields = [
@@ -550,6 +677,8 @@ class TestDetailSerializer(ContributorsMixin, TestListSerializer):
             "results",
             "conclusion",
             "contributors",
+            "restricted_to",
+            "bookmark_id",
         ]
 
 
@@ -574,6 +703,7 @@ class TestWriteSerializer(serializers.ModelSerializer):
             "results",
             "pass_fail",
             "conclusion",
+            "visibility",
             "tag_names",
         ]
 
@@ -657,11 +787,19 @@ class DocumentListSerializer(serializers.ModelSerializer):
         ]
 
 
-class DocumentDetailSerializer(ContributorsMixin, DocumentListSerializer):
+class DocumentDetailSerializer(ContributorsMixin, RestrictedAccessMixin, BookmarkMixin, DocumentListSerializer):
     contributors = serializers.SerializerMethodField()
+    restricted_to = serializers.SerializerMethodField()
+    bookmark_id = serializers.SerializerMethodField()
 
     class Meta(DocumentListSerializer.Meta):
-        fields = [*DocumentListSerializer.Meta.fields, "description", "contributors"]
+        fields = [
+            *DocumentListSerializer.Meta.fields,
+            "description",
+            "contributors",
+            "restricted_to",
+            "bookmark_id",
+        ]
 
 
 class DocumentWriteSerializer(serializers.ModelSerializer):

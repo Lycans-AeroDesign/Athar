@@ -58,13 +58,7 @@ export function TopBar({ onOpenMenu }: TopBarProps) {
       </div>
 
       <div className="flex items-center gap-2 sm:gap-4">
-        <button
-          className="hidden sm:inline-flex text-on-surface-variant hover:text-primary opacity-80 hover:opacity-100 transition-opacity"
-          type="button"
-          aria-label={t("notifications")}
-        >
-          <Icon name="notifications" />
-        </button>
+        {/* Notifications button hidden until the feature is implemented - see t("notifications"), kept in messages for when it returns. */}
         <Link
           className="hidden sm:inline-flex text-on-surface-variant hover:text-primary opacity-80 hover:opacity-100 transition-opacity"
           href="/settings"

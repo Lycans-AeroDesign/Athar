@@ -6,6 +6,7 @@ from .views import (
     RoleListCreateView,
     RolePermissionDetailView,
     RolePermissionsView,
+    UserActiveView,
     UserListView,
     UserRoleDetailView,
     UserRolesView,
@@ -22,6 +23,7 @@ urlpatterns = [
     ),
     path("permissions/", PermissionListView.as_view(), name="rbac-permissions"),
     path("users/", UserListView.as_view(), name="rbac-users"),
+    path("users/<uuid:pk>/active/", UserActiveView.as_view(), name="rbac-user-active"),
     path("users/<uuid:pk>/roles/", UserRolesView.as_view(), name="rbac-user-roles"),
     path(
         "users/<uuid:pk>/roles/<uuid:role_id>/",

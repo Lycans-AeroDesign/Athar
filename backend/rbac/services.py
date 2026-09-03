@@ -1,3 +1,5 @@
+from django.core.exceptions import PermissionDenied
+
 from audit.services import log_action
 
 from .catalogue import PERMISSION_CATALOGUE, ROLE_CATALOGUE
@@ -113,3 +115,25 @@ def unassign_role(*, user, role: Role, actor, request=None) -> bool:
             request=request,
         )
     return bool(deleted)
+
+
+def set_user_active(*, user, is_active: bool, actor, request=None):
+    """Blocks/unblocks a user within the actor's own org (view enforces the
+    org scoping - see UserActiveView). `is_active=False` already locks the
+    user out on their very next request (rest_framework_simplejwt's default
+    CHECK_USER_IS_ACTIVE=True rejects both login and every subsequent
+    authenticated call once it's False) - no separate session/token
+    invalidation needed here. An admin can't block their own account: with
+    only one org and no "remove" action, that would risk locking everyone
+    out with nobody left able to unblock anyone."""
+    if user.id == actor.id:
+        raise PermissionDenied("You can't block or unblock your own account.")
+    user.is_active = is_active
+    user.save(update_fields=["is_active"])
+    log_action(
+        actor=actor,
+        action="user.block" if not is_active else "user.unblock",
+        target=user,
+        request=request,
+    )
+    return user

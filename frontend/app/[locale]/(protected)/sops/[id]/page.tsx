@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { Attachments } from "@/components/knowledge/Attachments";
 import { ContributorsRow } from "@/components/knowledge/Contributors";
 import { RelatedContent } from "@/components/knowledge/RelatedContent";
+import { BookmarkButton } from "@/components/ui/BookmarkButton";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Icon } from "@/components/ui/Icon";
 import { IconButton } from "@/components/ui/IconButton";
@@ -73,6 +74,7 @@ export default function SopDetailPage() {
             )}
           </div>
           <div className="flex items-center gap-2">
+            <BookmarkButton key={sop.id} type="sop" objectId={sop.id} bookmarkId={sop.bookmark_id} />
             {canUpdate && (
               <Link href={`/sops/${sop.id}/edit`}>
                 <IconButton icon="edit" variant="secondary" aria-label={t("editButton")} />
@@ -83,7 +85,15 @@ export default function SopDetailPage() {
             )}
           </div>
         </div>
-        <h1 className="font-display text-display text-on-surface">{sop.title}</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="font-display text-display text-on-surface">{sop.title}</h1>
+          {sop.visibility === "RESTRICTED" && (
+            <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-error-container text-on-error-container font-label-caps text-label-caps uppercase">
+              <Icon name="lock" size={12} />
+              {t("visibilityRESTRICTED")}
+            </span>
+          )}
+        </div>
         {sop.tags.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {sop.tags.map((tag) => (

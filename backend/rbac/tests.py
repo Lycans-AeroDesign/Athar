@@ -82,3 +82,99 @@ class PermissionEnforcementTests(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertTrue(AuditLog.objects.filter(action="role.create", actor=admin).exists())
+
+
+class UserBlockUnblockTests(APITestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.organization = create_test_organization()
+        cls.other_organization = create_test_organization(name="Other Org For Block")
+
+    def _login_with_role(self, email, role_name, organization=None):
+        organization = organization or self.organization
+        user = User.objects.create_user(email=email, password="password123", organization=organization)
+        Role.objects.get(organization=organization, name=role_name).user_roles.create(user=user)
+        response = self.client.post(
+            reverse("auth-login"), {"email": email, "password": "password123"}, format="json"
+        )
+        return user, response.data["access"]
+
+    def _auth(self, access_token):
+        return {"HTTP_AUTHORIZATION": f"Bearer {access_token}"}
+
+    def test_admin_blocks_and_unblocks_a_user(self):
+        _, admin_access = self._login_with_role("blockadmin@example.com", "Organization Admin")
+        member, member_access = self._login_with_role("blockmember@example.com", "Member")
+
+        response = self.client.post(
+            reverse("rbac-user-active", args=[member.id]),
+            {"is_active": False},
+            format="json",
+            **self._auth(admin_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(response.data["is_active"])
+        member.refresh_from_db()
+        self.assertFalse(member.is_active)
+
+        # The blocked user's still-live access token is rejected on its very
+        # next request - no separate session/token invalidation needed.
+        response = self.client.get(reverse("rbac-roles"), **self._auth(member_access))
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+        # And they can't log in again either.
+        response = self.client.post(
+            reverse("auth-login"), {"email": "blockmember@example.com", "password": "password123"}, format="json"
+        )
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+        # Unblock restores both.
+        response = self.client.post(
+            reverse("rbac-user-active", args=[member.id]),
+            {"is_active": True},
+            format="json",
+            **self._auth(admin_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data["is_active"])
+        response = self.client.post(
+            reverse("auth-login"), {"email": "blockmember@example.com", "password": "password123"}, format="json"
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_non_privileged_caller_cannot_block(self):
+        _, member_access = self._login_with_role("blockplain@example.com", "Member")
+        other, _ = self._login_with_role("blocktarget@example.com", "Member")
+
+        response = self.client.post(
+            reverse("rbac-user-active", args=[other.id]),
+            {"is_active": False},
+            format="json",
+            **self._auth(member_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_admin_cannot_block_themselves(self):
+        admin, admin_access = self._login_with_role("blockself@example.com", "Organization Admin")
+
+        response = self.client.post(
+            reverse("rbac-user-active", args=[admin.id]),
+            {"is_active": False},
+            format="json",
+            **self._auth(admin_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_admin_cannot_block_a_user_in_another_organization(self):
+        _, admin_access = self._login_with_role("blockcrossadmin@example.com", "Organization Admin")
+        other_org_user, _ = self._login_with_role(
+            "blockcrosstarget@example.com", "Member", self.other_organization
+        )
+
+        response = self.client.post(
+            reverse("rbac-user-active", args=[other_org_user.id]),
+            {"is_active": False},
+            format="json",
+            **self._auth(admin_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)

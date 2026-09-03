@@ -21,7 +21,9 @@
     "resultCount": "{count, plural, =0 {No results} one {# result} other {# results}}",
     "removeFilter": "Remove filter",
     "searchThisList": "Search this list...",
-    "contributorsLabel": "Contributors"
+    "contributorsLabel": "Contributors",
+    "bookmark": "Bookmark",
+    "bookmarked": "Bookmarked"
   },
   "auth": {
     "emailLabel": "Email Address",
@@ -62,6 +64,7 @@
     "tagline": "Engineering Knowledge System",
     "dashboard": "Dashboard",
     "knowledge": "Knowledge",
+    "bookmarks": "Bookmarks",
     "projects": "Projects",
     "components": "Components",
     "sops": "SOPs",
@@ -137,6 +140,7 @@
       "branding": "Branding",
       "categories": "Categories",
       "permissions": "Roles & Permissions",
+      "users": "Users",
       "invitations": "Invitations",
       "audit": "Audit Log"
     },
@@ -206,6 +210,17 @@
       "roleDescriptionLabel": "Description",
       "createRole": "Create Role"
     },
+    "users": {
+      "title": "Users",
+      "description": "Manage who has access to your organization.",
+      "statusActive": "Active",
+      "statusBlocked": "Blocked",
+      "blockAction": "Block",
+      "unblockAction": "Unblock",
+      "selfHint": "This is you",
+      "blockConfirmTitle": "Block this user?",
+      "blockConfirmBody": "{email} will be signed out immediately and won't be able to log back in until unblocked."
+    },
     "invitations": {
       "title": "Invitation Codes",
       "description": "Registration requires a valid code - generate one to invite a new member.",
@@ -245,7 +260,8 @@
     "titleLabel": "Role in Team",
     "titlePlaceholder": "e.g. Lead Systems Integration",
     "rolesLabel": "Roles",
-    "myContributionsTitle": "My Contributions"
+    "myContributionsTitle": "My Contributions",
+    "editProfileTitle": "Edit Profile"
   },
   "about": {
     "title": "About Athar",
@@ -403,7 +419,6 @@
       "tableOfContents": "Contents",
       "visibilityLabel": "Visibility",
       "visibilityPUBLIC": "Public",
-      "visibilityORGANIZATION": "Organization",
       "visibilityRESTRICTED": "Restricted"
     },
     "question": {
@@ -443,7 +458,6 @@
       "viewPromotedArticle": "View Article",
       "visibilityLabel": "Visibility",
       "visibilityPUBLIC": "Public",
-      "visibilityORGANIZATION": "Organization",
       "visibilityRESTRICTED": "Restricted"
     },
     "relations": {
@@ -517,7 +531,10 @@
       "deleteConfirmBody": "This can't be undone.",
       "noDescription": "No description yet.",
       "backToProject": "Back to Project",
-      "editPermissionRequired": "You don't have permission to edit this project."
+      "editPermissionRequired": "You don't have permission to edit this project.",
+      "visibilityLabel": "Visibility",
+      "visibilityPUBLIC": "Public",
+      "visibilityRESTRICTED": "Restricted"
     },
     "projectStatus": {
       "all": "All",
@@ -553,7 +570,10 @@
       "noSummary": "No summary yet.",
       "specificationsTableTitle": "Specifications",
       "backToComponent": "Back to Component",
-      "editPermissionRequired": "You don't have permission to edit this component."
+      "editPermissionRequired": "You don't have permission to edit this component.",
+      "visibilityLabel": "Visibility",
+      "visibilityPUBLIC": "Public",
+      "visibilityRESTRICTED": "Restricted"
     },
     "componentStatus": {
       "all": "All",
@@ -594,7 +614,10 @@
       "deleteConfirmTitle": "Delete this failure report?",
       "deleteConfirmBody": "This can't be undone.",
       "backToFailure": "Back to Failure",
-      "editPermissionRequired": "You don't have permission to edit this failure report."
+      "editPermissionRequired": "You don't have permission to edit this failure report.",
+      "visibilityLabel": "Visibility",
+      "visibilityPUBLIC": "Public",
+      "visibilityRESTRICTED": "Restricted"
     },
     "failureSeverity": {
       "all": "All",
@@ -630,7 +653,10 @@
       "noContent": "No content yet.",
       "badgeLabel": "SOP",
       "backToSop": "Back to SOP",
-      "editPermissionRequired": "You don't have permission to edit this SOP."
+      "editPermissionRequired": "You don't have permission to edit this SOP.",
+      "visibilityLabel": "Visibility",
+      "visibilityPUBLIC": "Public",
+      "visibilityRESTRICTED": "Restricted"
     },
     "test": {
       "titlePlaceholder": "Test/Experiment Title",
@@ -669,7 +695,10 @@
       "deleteConfirmTitle": "Delete this test?",
       "deleteConfirmBody": "This can't be undone.",
       "backToTest": "Back to Test",
-      "editPermissionRequired": "You don't have permission to edit this test."
+      "editPermissionRequired": "You don't have permission to edit this test.",
+      "visibilityLabel": "Visibility",
+      "visibilityPUBLIC": "Public",
+      "visibilityRESTRICTED": "Restricted"
     },
     "testType": {
       "all": "All Types",
@@ -709,7 +738,6 @@
       "tagsPlaceholder": "Type a tag, press Enter (comma-separate for several)",
       "visibilityLabel": "Visibility",
       "visibilityPUBLIC": "Public",
-      "visibilityORGANIZATION": "Organization",
       "visibilityRESTRICTED": "Restricted",
       "uploadFileButton": "Upload File",
       "uploading": "Uploading...",
@@ -752,6 +780,30 @@
       "INTERNAL": "Internal",
       "EXTERNAL": "External"
     }
+  },
+  "restrictedAccess": {
+    "label": "Restricted to",
+    "addPlaceholder": "Add a person",
+    "emptyState": "Only you (and org admins) can see this so far.",
+    "remove": "Remove",
+    "undo": "Undo"
+  },
+  "bookmarksPage": {
+    "title": "Bookmarks",
+    "description": "Knowledge and engineering content you've saved for later.",
+    "tab_all": "All",
+    "tab_article": "Articles",
+    "tab_question": "Questions",
+    "tab_project": "Projects",
+    "tab_component": "Components",
+    "tab_failure": "Failures",
+    "tab_sop": "SOPs",
+    "tab_test": "Tests",
+    "tab_document": "Documents",
+    "loading": "Loading...",
+    "emptyState": "Nothing bookmarked yet.",
+    "untitled": "Untitled",
+    "removeBookmark": "Remove bookmark"
   },
   "modal": {
     "close": "Close",

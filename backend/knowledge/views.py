@@ -15,10 +15,12 @@ from files.models import StoredFile
 from rbac.permissions import require_permission
 
 from . import services
+from . import visibility as visibility_rules
 from .models import (
     Answer,
     Article,
     ArticleAttachment,
+    Bookmark,
     Category,
     Component,
     ComponentAttachment,
@@ -30,15 +32,16 @@ from .models import (
     ProjectAttachment,
     Question,
     QuestionAttachment,
+    RestrictedAccessGrant,
     Sop,
     SopAttachment,
     Tag,
     Test,
     TestAttachment,
-    Visibility,
 )
 from .serializers import (
     AcceptAnswerSerializer,
+    AccessGrantSerializer,
     AddAttachmentSerializer,
     AnswerSerializer,
     AnswerWriteSerializer,
@@ -47,12 +50,16 @@ from .serializers import (
     ArticleListSerializer,
     ArticleRevisionSerializer,
     ArticleWriteSerializer,
+    AuthorSerializer,
+    BookmarkSerializer,
     CategorySerializer,
     CategoryWriteSerializer,
     ComponentAttachmentSerializer,
     ComponentDetailSerializer,
     ComponentListSerializer,
     ComponentWriteSerializer,
+    CreateAccessGrantSerializer,
+    CreateBookmarkSerializer,
     CreateRelationSerializer,
     DocumentDetailSerializer,
     DocumentListSerializer,
@@ -228,9 +235,10 @@ class SearchView(APIView):
         offset = (page - 1) * 20
 
         # Built regardless of `scope` - counts below need the unscoped totals
-        # even when the caller is only viewing one type's results. Engineering-
-        # domain types have no `status`/`visibility` gate (see models.py) - a
-        # matching row is a matching row.
+        # even when the caller is only viewing one type's results. Every type
+        # now carries a `visibility` field (see models.py) - each queryset
+        # below is already narrowed to what request.user may see via the
+        # matching services.visible_*_for helper.
         article_matches = (
             services.visible_articles_for(request.user).filter(
                 Q(title__icontains=query) | Q(excerpt__icontains=query) | Q(content__icontains=query)
@@ -244,14 +252,14 @@ class SearchView(APIView):
             else Question.objects.none()
         )
         project_matches = (
-            Project.objects.filter(organization=request.user.organization).filter(
+            services.visible_projects_for(request.user).filter(
                 Q(name__icontains=query) | Q(description__icontains=query)
             )
             if query
             else Project.objects.none()
         )
         component_matches = (
-            Component.objects.filter(organization=request.user.organization).filter(
+            services.visible_components_for(request.user).filter(
                 Q(name__icontains=query)
                 | Q(summary__icontains=query)
                 | Q(manufacturer__icontains=query)
@@ -261,21 +269,21 @@ class SearchView(APIView):
             else Component.objects.none()
         )
         failure_matches = (
-            Failure.objects.filter(organization=request.user.organization).filter(
+            services.visible_failures_for(request.user).filter(
                 Q(title__icontains=query) | Q(summary__icontains=query) | Q(root_cause__icontains=query)
             )
             if query
             else Failure.objects.none()
         )
         sop_matches = (
-            Sop.objects.filter(organization=request.user.organization).filter(
+            services.visible_sops_for(request.user).filter(
                 Q(title__icontains=query) | Q(content__icontains=query)
             )
             if query
             else Sop.objects.none()
         )
         test_matches = (
-            Test.objects.filter(organization=request.user.organization).filter(
+            services.visible_tests_for(request.user).filter(
                 Q(title__icontains=query)
                 | Q(objective__icontains=query)
                 | Q(results__icontains=query)
@@ -338,7 +346,10 @@ class SearchView(APIView):
 # name -> (queryset, list serializer) - one entry per real contribution type.
 # Answer has no visibility of its own; it's gated through its parent question's
 # visibility instead (services.visible_questions_for), same as everywhere else
-# in this file an Answer's access follows its Question.
+# in this file an Answer's access follows its Question. Every queryset here
+# goes through the matching services.visible_*_for helper (not a bare
+# created_by= filter) so that viewing someone else's profile can't leak their
+# RESTRICTED content the viewer isn't privileged for or granted on.
 def _contribution_handlers(request, user):
     return {
         "article": (services.visible_articles_for(request.user).filter(author=user), ArticleListSerializer),
@@ -347,11 +358,11 @@ def _contribution_handlers(request, user):
             Answer.objects.filter(author=user, question__in=services.visible_questions_for(request.user)),
             AnswerSerializer,
         ),
-        "project": (Project.objects.filter(created_by=user), ProjectListSerializer),
-        "component": (Component.objects.filter(created_by=user), ComponentListSerializer),
-        "failure": (Failure.objects.filter(created_by=user), FailureListSerializer),
-        "sop": (Sop.objects.filter(created_by=user), SopListSerializer),
-        "test": (Test.objects.filter(created_by=user), TestListSerializer),
+        "project": (services.visible_projects_for(request.user).filter(created_by=user), ProjectListSerializer),
+        "component": (services.visible_components_for(request.user).filter(created_by=user), ComponentListSerializer),
+        "failure": (services.visible_failures_for(request.user).filter(created_by=user), FailureListSerializer),
+        "sop": (services.visible_sops_for(request.user).filter(created_by=user), SopListSerializer),
+        "test": (services.visible_tests_for(request.user).filter(created_by=user), TestListSerializer),
         "document": (services.visible_documents_for(request.user).filter(created_by=user), DocumentListSerializer),
     }
 
@@ -421,19 +432,29 @@ class LeaderboardView(APIView):
         return Response(LeaderboardEntrySerializer(entries, many=True).data)
 
 
+def _visible_instance_or_404(request, queryset_or_model, model_name: str, pk):
+    """Shared GET-only lookup for every relatable content type: 404s if it's
+    not in the caller's org, 403s if it exists but RESTRICTED and the caller
+    isn't privileged for it or explicitly granted - see
+    knowledge/visibility.py for the single rule this defers to."""
+    instance = get_object_or_404(queryset_or_model, pk=pk, organization=request.user.organization)
+    if not visibility_rules.can_view_instance(request.user, model_name, instance):
+        raise PermissionDenied(f"This {model_name} isn't accessible to you.")
+    return instance
+
+
 def _visible_article_or_404(request, pk):
     article = get_object_or_404(
         Article.objects.select_related("category", "author"), pk=pk, organization=request.user.organization
     )
-    is_privileged = (
-        request.user == article.author
-        or request.user.has_permission("article.review")
-        or request.user.has_permission("article.publish")
-    )
-    # PUBLISHED + not RESTRICTED is the common "anyone with article.read" case;
-    # everything else (still in DRAFT/IN_REVIEW/etc, or explicitly RESTRICTED
-    # even though published) requires being the author or a reviewer/publisher.
-    if article.status == Article.Status.PUBLISHED and article.visibility != Visibility.RESTRICTED:
+    is_privileged = visibility_rules.is_privileged_for(request.user, "article", article)
+    # PUBLISHED + visible-to-viewer (not RESTRICTED, or RESTRICTED but the
+    # viewer is privileged or explicitly granted) is the common case;
+    # anything still in DRAFT/IN_REVIEW/etc requires being privileged
+    # regardless of visibility - a grant only ever applies to published work.
+    if article.status == Article.Status.PUBLISHED and visibility_rules.can_view_instance(
+        request.user, "article", article
+    ):
         return article
     if is_privileged:
         return article
@@ -441,16 +462,28 @@ def _visible_article_or_404(request, pk):
 
 
 def _visible_question_or_404(request, pk):
-    question = get_object_or_404(
-        Question.objects.select_related("author").prefetch_related("tags", "answers__author"),
-        pk=pk,
-        organization=request.user.organization,
-    )
-    if question.visibility != Visibility.RESTRICTED:
-        return question
-    if request.user == question.author or request.user.has_permission("question.moderate"):
-        return question
-    raise PermissionDenied("This question isn't accessible to you.")
+    queryset = Question.objects.select_related("author").prefetch_related("tags", "answers__author")
+    return _visible_instance_or_404(request, queryset, "question", pk)
+
+
+def _visible_project_or_404(request, pk):
+    return _visible_instance_or_404(request, Project, "project", pk)
+
+
+def _visible_component_or_404(request, pk):
+    return _visible_instance_or_404(request, Component, "component", pk)
+
+
+def _visible_failure_or_404(request, pk):
+    return _visible_instance_or_404(request, Failure, "failure", pk)
+
+
+def _visible_sop_or_404(request, pk):
+    return _visible_instance_or_404(request, Sop, "sop", pk)
+
+
+def _visible_test_or_404(request, pk):
+    return _visible_instance_or_404(request, Test, "test", pk)
 
 
 class ArticleListCreateView(APIView):
@@ -481,10 +514,12 @@ class ArticleListCreateView(APIView):
             # any other status, since those aren't discoverable by anyone else.
             if not can_review:
                 queryset = queryset.filter(Q(status=Article.Status.PUBLISHED) | Q(author=request.user))
+                published = queryset.filter(status=Article.Status.PUBLISHED)
+                accessible_published_ids = visibility_rules.exclude_inaccessible(
+                    published, request.user, Article, "article"
+                ).values_list("id", flat=True)
                 queryset = queryset.exclude(
-                    Q(status=Article.Status.PUBLISHED)
-                    & Q(visibility=Visibility.RESTRICTED)
-                    & ~Q(author=request.user)
+                    Q(status=Article.Status.PUBLISHED) & ~Q(id__in=accessible_published_ids)
                 )
         elif status_param == Article.Status.PUBLISHED:
             queryset = services.visible_articles_for(request.user).select_related(
@@ -524,7 +559,7 @@ class ArticleDetailView(APIView):
     )
     def get(self, request, pk):
         article = _visible_article_or_404(request, pk)
-        return Response(ArticleDetailSerializer(article).data)
+        return Response(ArticleDetailSerializer(article, context={"request": request}).data)
 
     @extend_schema(
         tags=["Knowledge"],
@@ -683,7 +718,7 @@ class QuestionDetailView(APIView):
     )
     def get(self, request, pk):
         question = _visible_question_or_404(request, pk)
-        return Response(QuestionDetailSerializer(question).data)
+        return Response(QuestionDetailSerializer(question, context={"request": request}).data)
 
     @extend_schema(
         tags=["Knowledge"],
@@ -988,10 +1023,12 @@ class QuestionAttachmentDetailView(APIView):
 
 # --- Engineering domain (Project/Component/Failure/Sop) --------------------
 #
-# No visibility field and no draft/review workflow (see models.py) - so
-# unlike Article/Question there's no _visible_x_or_404 helper needed here;
-# get_object_or_404 plus the x.read/x.update/x.delete permission per method
-# is the whole access-control story.
+# No draft/review workflow (see models.py), but each type does carry a
+# `visibility` field - GET endpoints route through the matching
+# _visible_x_or_404 helper (or services.visible_x_for for lists), same
+# RESTRICTED rule as Article/Question/Document. Write endpoints keep the
+# permission-only gating they already had (x.read/x.update/x.delete),
+# unchanged.
 
 
 class ProjectListCreateView(APIView):
@@ -1006,7 +1043,7 @@ class ProjectListCreateView(APIView):
         responses={200: ProjectListSerializer(many=True), **COMMON_ERRORS},
     )
     def get(self, request):
-        queryset = Project.objects.filter(organization=request.user.organization).prefetch_related(
+        queryset = services.visible_projects_for(request.user).prefetch_related(
             "tags"
         ).select_related("created_by")
         status_param = request.query_params.get("status")
@@ -1042,8 +1079,8 @@ class ProjectDetailView(APIView):
         tags=["Engineering"], summary="Get a project", responses={200: ProjectDetailSerializer, 404: NOT_FOUND, **COMMON_ERRORS}
     )
     def get(self, request, pk):
-        project = get_object_or_404(Project, pk=pk, organization=request.user.organization)
-        return Response(ProjectDetailSerializer(project).data)
+        project = _visible_project_or_404(request, pk)
+        return Response(ProjectDetailSerializer(project, context={"request": request}).data)
 
     @extend_schema(
         tags=["Engineering"],
@@ -1078,7 +1115,7 @@ class ProjectRelationsView(APIView):
         responses={200: KnowledgeRelationSerializer(many=True), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def get(self, request, pk):
-        project = get_object_or_404(Project, pk=pk, organization=request.user.organization)
+        project = _visible_project_or_404(request, pk)
         content_type = ContentType.objects.get_for_model(Project)
         relations = services.get_relations_for("project", project.id, actor=request.user)
         return Response(KnowledgeRelationSerializer(relations, many=True, context={"viewer": (content_type, project.id)}).data)
@@ -1092,7 +1129,7 @@ class ProjectAttachmentListView(APIView):
         responses={200: ProjectAttachmentSerializer(many=True), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def get(self, request, pk):
-        project = get_object_or_404(Project, pk=pk, organization=request.user.organization)
+        project = _visible_project_or_404(request, pk)
         return Response(ProjectAttachmentSerializer(project.attachments.select_related("file", "uploaded_by"), many=True).data)
 
     @extend_schema(
@@ -1134,7 +1171,7 @@ class ComponentListCreateView(APIView):
         responses={200: ComponentListSerializer(many=True), **COMMON_ERRORS},
     )
     def get(self, request):
-        queryset = Component.objects.filter(organization=request.user.organization).select_related(
+        queryset = services.visible_components_for(request.user).select_related(
             "category", "created_by"
         ).prefetch_related("tags")
         category_id = request.query_params.get("category")
@@ -1178,8 +1215,8 @@ class ComponentDetailView(APIView):
         tags=["Engineering"], summary="Get a component", responses={200: ComponentDetailSerializer, 404: NOT_FOUND, **COMMON_ERRORS}
     )
     def get(self, request, pk):
-        component = get_object_or_404(Component, pk=pk, organization=request.user.organization)
-        return Response(ComponentDetailSerializer(component).data)
+        component = _visible_component_or_404(request, pk)
+        return Response(ComponentDetailSerializer(component, context={"request": request}).data)
 
     @extend_schema(
         tags=["Engineering"],
@@ -1216,7 +1253,7 @@ class ComponentRelationsView(APIView):
         responses={200: KnowledgeRelationSerializer(many=True), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def get(self, request, pk):
-        component = get_object_or_404(Component, pk=pk, organization=request.user.organization)
+        component = _visible_component_or_404(request, pk)
         content_type = ContentType.objects.get_for_model(Component)
         relations = services.get_relations_for("component", component.id, actor=request.user)
         return Response(
@@ -1232,7 +1269,7 @@ class ComponentAttachmentListView(APIView):
         responses={200: ComponentAttachmentSerializer(many=True), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def get(self, request, pk):
-        component = get_object_or_404(Component, pk=pk, organization=request.user.organization)
+        component = _visible_component_or_404(request, pk)
         return Response(
             ComponentAttachmentSerializer(component.attachments.select_related("file", "uploaded_by"), many=True).data
         )
@@ -1276,7 +1313,7 @@ class FailureListCreateView(APIView):
         responses={200: FailureListSerializer(many=True), **COMMON_ERRORS},
     )
     def get(self, request):
-        queryset = Failure.objects.filter(organization=request.user.organization).select_related(
+        queryset = services.visible_failures_for(request.user).select_related(
             "component", "project", "created_by"
         )
         severity = request.query_params.get("severity")
@@ -1317,8 +1354,8 @@ class FailureDetailView(APIView):
         tags=["Engineering"], summary="Get a failure report", responses={200: FailureDetailSerializer, 404: NOT_FOUND, **COMMON_ERRORS}
     )
     def get(self, request, pk):
-        failure = get_object_or_404(Failure, pk=pk, organization=request.user.organization)
-        return Response(FailureDetailSerializer(failure).data)
+        failure = _visible_failure_or_404(request, pk)
+        return Response(FailureDetailSerializer(failure, context={"request": request}).data)
 
     @extend_schema(
         tags=["Engineering"],
@@ -1353,7 +1390,7 @@ class FailureRelationsView(APIView):
         responses={200: KnowledgeRelationSerializer(many=True), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def get(self, request, pk):
-        failure = get_object_or_404(Failure, pk=pk, organization=request.user.organization)
+        failure = _visible_failure_or_404(request, pk)
         content_type = ContentType.objects.get_for_model(Failure)
         relations = services.get_relations_for("failure", failure.id, actor=request.user)
         return Response(
@@ -1369,7 +1406,7 @@ class FailureAttachmentListView(APIView):
         responses={200: FailureAttachmentSerializer(many=True), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def get(self, request, pk):
-        failure = get_object_or_404(Failure, pk=pk, organization=request.user.organization)
+        failure = _visible_failure_or_404(request, pk)
         return Response(FailureAttachmentSerializer(failure.attachments.select_related("file", "uploaded_by"), many=True).data)
 
     @extend_schema(
@@ -1411,7 +1448,7 @@ class SopListCreateView(APIView):
         responses={200: SopListSerializer(many=True), **COMMON_ERRORS},
     )
     def get(self, request):
-        queryset = Sop.objects.filter(organization=request.user.organization).select_related(
+        queryset = services.visible_sops_for(request.user).select_related(
             "category", "created_by"
         ).prefetch_related("tags")
         category_id = request.query_params.get("category")
@@ -1447,8 +1484,8 @@ class SopDetailView(APIView):
 
     @extend_schema(tags=["Engineering"], summary="Get an SOP", responses={200: SopDetailSerializer, 404: NOT_FOUND, **COMMON_ERRORS})
     def get(self, request, pk):
-        sop = get_object_or_404(Sop, pk=pk, organization=request.user.organization)
-        return Response(SopDetailSerializer(sop).data)
+        sop = _visible_sop_or_404(request, pk)
+        return Response(SopDetailSerializer(sop, context={"request": request}).data)
 
     @extend_schema(
         tags=["Engineering"],
@@ -1483,7 +1520,7 @@ class SopRelationsView(APIView):
         responses={200: KnowledgeRelationSerializer(many=True), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def get(self, request, pk):
-        sop = get_object_or_404(Sop, pk=pk, organization=request.user.organization)
+        sop = _visible_sop_or_404(request, pk)
         content_type = ContentType.objects.get_for_model(Sop)
         relations = services.get_relations_for("sop", sop.id, actor=request.user)
         return Response(KnowledgeRelationSerializer(relations, many=True, context={"viewer": (content_type, sop.id)}).data)
@@ -1497,7 +1534,7 @@ class SopAttachmentListView(APIView):
         responses={200: SopAttachmentSerializer(many=True), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def get(self, request, pk):
-        sop = get_object_or_404(Sop, pk=pk, organization=request.user.organization)
+        sop = _visible_sop_or_404(request, pk)
         return Response(SopAttachmentSerializer(sop.attachments.select_related("file", "uploaded_by"), many=True).data)
 
     @extend_schema(
@@ -1539,7 +1576,7 @@ class TestListCreateView(APIView):
         responses={200: TestListSerializer(many=True), **COMMON_ERRORS},
     )
     def get(self, request):
-        queryset = Test.objects.filter(organization=request.user.organization).select_related(
+        queryset = services.visible_tests_for(request.user).select_related(
             "project", "created_by"
         ).prefetch_related("tags")
         test_type = request.query_params.get("test_type")
@@ -1586,8 +1623,8 @@ class TestDetailView(APIView):
         tags=["Engineering"], summary="Get a test", responses={200: TestDetailSerializer, 404: NOT_FOUND, **COMMON_ERRORS}
     )
     def get(self, request, pk):
-        test = get_object_or_404(Test, pk=pk, organization=request.user.organization)
-        return Response(TestDetailSerializer(test).data)
+        test = _visible_test_or_404(request, pk)
+        return Response(TestDetailSerializer(test, context={"request": request}).data)
 
     @extend_schema(
         tags=["Engineering"],
@@ -1622,7 +1659,7 @@ class TestRelationsView(APIView):
         responses={200: KnowledgeRelationSerializer(many=True), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def get(self, request, pk):
-        test = get_object_or_404(Test, pk=pk, organization=request.user.organization)
+        test = _visible_test_or_404(request, pk)
         content_type = ContentType.objects.get_for_model(Test)
         relations = services.get_relations_for("test", test.id, actor=request.user)
         return Response(KnowledgeRelationSerializer(relations, many=True, context={"viewer": (content_type, test.id)}).data)
@@ -1636,7 +1673,7 @@ class TestAttachmentListView(APIView):
         responses={200: TestAttachmentSerializer(many=True), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def get(self, request, pk):
-        test = get_object_or_404(Test, pk=pk, organization=request.user.organization)
+        test = _visible_test_or_404(request, pk)
         return Response(TestAttachmentSerializer(test.attachments.select_related("file", "uploaded_by"), many=True).data)
 
     @extend_schema(
@@ -1667,16 +1704,8 @@ class TestAttachmentDetailView(APIView):
 
 
 def _visible_document_or_404(request, pk):
-    document = get_object_or_404(
-        Document.objects.select_related("category", "created_by", "file"),
-        pk=pk,
-        organization=request.user.organization,
-    )
-    if document.visibility != Visibility.RESTRICTED:
-        return document
-    if request.user == document.created_by or request.user.has_permission("document.update"):
-        return document
-    raise PermissionDenied("This document isn't accessible to you.")
+    queryset = Document.objects.select_related("category", "created_by", "file")
+    return _visible_instance_or_404(request, queryset, "document", pk)
 
 
 class DocumentListCreateView(APIView):
@@ -1734,7 +1763,7 @@ class DocumentDetailView(APIView):
     )
     def get(self, request, pk):
         document = _visible_document_or_404(request, pk)
-        return Response(DocumentDetailSerializer(document).data)
+        return Response(DocumentDetailSerializer(document, context={"request": request}).data)
 
     @extend_schema(
         tags=["Engineering"],
@@ -1777,3 +1806,100 @@ class DocumentRelationsView(APIView):
         return Response(
             KnowledgeRelationSerializer(relations, many=True, context={"viewer": (content_type, document.id)}).data
         )
+
+
+class AccessGrantListCreateView(APIView):
+    """Grants a specific org member access to one RESTRICTED item. There's
+    no GET-list here - who already has access is read off the item's own
+    Detail endpoint (`restricted_to`, via RestrictedAccessMixin) rather than
+    a second round trip."""
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        tags=["Knowledge"],
+        summary="Grant a specific org member access to a RESTRICTED item (requires edit rights on the item)",
+        request=CreateAccessGrantSerializer,
+        responses={201: AccessGrantSerializer, 400: BAD_REQUEST, **COMMON_ERRORS},
+    )
+    def post(self, request):
+        serializer = CreateAccessGrantSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        grant = services.add_restricted_access(actor=request.user, request=request, **serializer.validated_data)
+        return Response(AccessGrantSerializer(grant).data, status=status.HTTP_201_CREATED)
+
+
+class AccessGrantDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        tags=["Knowledge"],
+        summary="Revoke a previously granted RESTRICTED-item access",
+        responses={204: OpenApiResponse(description="Deleted."), 404: NOT_FOUND, **COMMON_ERRORS},
+    )
+    def delete(self, request, pk):
+        grant = get_object_or_404(RestrictedAccessGrant, pk=pk, organization=request.user.organization)
+        services.remove_restricted_access(grant=grant, actor=request.user, request=request)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class OrgMembersListView(APIView):
+    """Every user in the caller's org, for the RESTRICTED-access people-
+    picker - deliberately IsAuthenticated only (not user.manage, which
+    rbac.UserListView requires), since any Member creating a RESTRICTED
+    item needs to be able to pick grantees for it. Shaped like
+    AuthorSerializer (no roles/permissions) for the same reason
+    AuthorSerializer never exposes those to a plain content viewer."""
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        tags=["Knowledge"],
+        summary="List the caller's organization members (for picking who to grant RESTRICTED access to)",
+        responses={200: AuthorSerializer(many=True), **COMMON_ERRORS},
+    )
+    def get(self, request):
+        members = User.objects.filter(organization=request.user.organization).order_by(
+            "first_name", "last_name", "email"
+        )
+        return paginated_response(request, members, AuthorSerializer)
+
+
+class BookmarkListCreateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        tags=["Knowledge"],
+        summary="List the caller's own bookmarks (optional ?type=<content type>)",
+        responses={200: BookmarkSerializer(many=True), **COMMON_ERRORS},
+    )
+    def get(self, request):
+        content_type_name = request.query_params.get("type")
+        bookmarks = services.bookmarks_for(request.user, content_type_name).select_related("content_type")
+        return paginated_response(request, bookmarks, BookmarkSerializer)
+
+    @extend_schema(
+        tags=["Knowledge"],
+        summary="Bookmark a piece of content",
+        request=CreateBookmarkSerializer,
+        responses={201: BookmarkSerializer, 400: BAD_REQUEST, **COMMON_ERRORS},
+    )
+    def post(self, request):
+        serializer = CreateBookmarkSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        bookmark = services.create_bookmark(actor=request.user, request=request, **serializer.validated_data)
+        return Response(BookmarkSerializer(bookmark).data, status=status.HTTP_201_CREATED)
+
+
+class BookmarkDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        tags=["Knowledge"],
+        summary="Remove one of the caller's own bookmarks",
+        responses={204: OpenApiResponse(description="Deleted."), 404: NOT_FOUND, **COMMON_ERRORS},
+    )
+    def delete(self, request, pk):
+        bookmark = get_object_or_404(Bookmark, pk=pk, user=request.user)
+        services.delete_bookmark(bookmark=bookmark, actor=request.user, request=request)
+        return Response(status=status.HTTP_204_NO_CONTENT)

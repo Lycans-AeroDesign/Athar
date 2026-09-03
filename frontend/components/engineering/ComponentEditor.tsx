@@ -8,12 +8,19 @@ import { Combobox } from "@/components/ui/Combobox";
 import { Icon } from "@/components/ui/Icon";
 import { MarkdownEditor } from "@/components/ui/MarkdownEditor";
 import { TagInput } from "@/components/ui/TagInput";
+import {
+  EMPTY_RESTRICTED_ACCESS_DRAFT,
+  RestrictedAccessPicker,
+  type RestrictedAccessDraft,
+} from "@/components/knowledge/RestrictedAccessPicker";
 import { useRouter } from "@/i18n/navigation";
+import { addAccessGrant, removeAccessGrant } from "@/lib/api/accessGrants";
 import { createComponent, updateComponent, type ComponentWritePayload } from "@/lib/api/engineering";
 import { getCategories } from "@/lib/api/knowledge";
-import type { Category, ComponentDetail, ComponentSpecRow, ComponentStatus } from "@/lib/api/types";
+import type { Category, ComponentDetail, ComponentSpecRow, ComponentStatus, Visibility } from "@/lib/api/types";
 
 const STATUS_VALUES: ComponentStatus[] = ["CERTIFIED", "TESTING", "DEPRECATED"];
+const VISIBILITY_VALUES: Visibility[] = ["PUBLIC", "RESTRICTED"];
 
 interface ComponentEditorProps {
   component?: ComponentDetail;
@@ -40,6 +47,10 @@ export function ComponentEditor({ component, onDirtyChange }: ComponentEditorPro
   const [summary, setSummary] = useState(component?.summary ?? "");
   const [specs, setSpecs] = useState<ComponentSpecRow[]>(component?.specifications ?? []);
   const [tags, setTags] = useState<string[]>(component?.tags.map((tag) => tag.name) ?? []);
+  const [visibility, setVisibility] = useState<Visibility>(component?.visibility ?? "PUBLIC");
+  const [restrictedAccessDraft, setRestrictedAccessDraft] = useState<RestrictedAccessDraft>(
+    EMPTY_RESTRICTED_ACCESS_DRAFT,
+  );
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -55,7 +66,10 @@ export function ComponentEditor({ component, onDirtyChange }: ComponentEditorPro
     status !== (component?.status ?? "TESTING") ||
     summary !== (component?.summary ?? "") ||
     JSON.stringify(specs) !== JSON.stringify(component?.specifications ?? []) ||
-    tags.join(",") !== (component?.tags.map((tag) => tag.name).join(",") ?? "");
+    tags.join(",") !== (component?.tags.map((tag) => tag.name).join(",") ?? "") ||
+    visibility !== (component?.visibility ?? "PUBLIC") ||
+    restrictedAccessDraft.pendingAdd.length > 0 ||
+    restrictedAccessDraft.pendingRemoveGrantIds.length > 0;
 
   useEffect(() => {
     onDirtyChange?.(isDirty);
@@ -78,8 +92,18 @@ export function ComponentEditor({ component, onDirtyChange }: ComponentEditorPro
       status,
       summary,
       specifications: specs.filter((row) => row.label.trim() || row.value.trim()),
+      visibility,
       tag_names: tags,
     };
+  }
+
+  async function syncRestrictedAccess(componentId: string) {
+    for (const grantId of restrictedAccessDraft.pendingRemoveGrantIds) {
+      await removeAccessGrant(grantId);
+    }
+    for (const user of restrictedAccessDraft.pendingAdd) {
+      await addAccessGrant("component", componentId, user.id);
+    }
   }
 
   async function handleSave() {
@@ -89,6 +113,7 @@ export function ComponentEditor({ component, onDirtyChange }: ComponentEditorPro
       const saved = component
         ? await updateComponent(component.id, buildPayload())
         : await createComponent(buildPayload());
+      await syncRestrictedAccess(saved.id);
       router.push(`/components/${saved.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -123,6 +148,14 @@ export function ComponentEditor({ component, onDirtyChange }: ComponentEditorPro
             />
           </div>
           <TagInput value={tags} onChange={setTags} placeholder={t("tagsPlaceholder")} className="flex-1 min-w-[200px]" />
+          <div className="w-48">
+            <Combobox
+              placeholder={t("visibilityLabel")}
+              options={VISIBILITY_VALUES.map((value) => ({ value, label: t(`visibility${value}`) }))}
+              value={visibility}
+              onChange={(value) => setVisibility(value as Visibility)}
+            />
+          </div>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <input
@@ -138,6 +171,13 @@ export function ComponentEditor({ component, onDirtyChange }: ComponentEditorPro
             onChange={(e) => setPartNumber(e.target.value)}
           />
         </div>
+        {visibility === "RESTRICTED" && (
+          <RestrictedAccessPicker
+            initialGrants={component?.restricted_to ?? []}
+            value={restrictedAccessDraft}
+            onChange={setRestrictedAccessDraft}
+          />
+        )}
       </div>
 
       <MarkdownEditor

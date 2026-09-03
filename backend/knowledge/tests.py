@@ -16,6 +16,7 @@ from .models import (
     Article,
     ArticleAttachment,
     ArticleRevision,
+    Bookmark,
     Category,
     Component,
     Document,
@@ -24,6 +25,7 @@ from .models import (
     Project,
     Question,
     QuestionAttachment,
+    RestrictedAccessGrant,
     Sop,
     Tag,
     Test,
@@ -2179,3 +2181,215 @@ class ContributionScoringTests(KnowledgeTestCase):
             reverse("audit-user-activity", args=[target.id]), **self._auth(outsider_login["access"])
         )
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+
+class RestrictedAccessGrantTests(KnowledgeTestCase):
+    """Project stands in for every visibility-bearing type here - the grant
+    logic (services.add_restricted_access/remove_restricted_access) and the
+    can_view_instance/exclude_inaccessible rule it feeds are shared code
+    (knowledge/visibility.py), not per-type, so one representative type is
+    enough to cover the mechanism; Document/Article/Question already have
+    their own RESTRICTED coverage above."""
+
+    def test_owner_can_grant_and_revoke_access(self):
+        _, head_access = self._login_with_role("granthead@example.com", "Team/Subteam Head")
+        project = self.client.post(
+            reverse("knowledge-project-list-create"),
+            {"name": "Restricted Airframe", "visibility": "RESTRICTED"},
+            format="json",
+            **self._auth(head_access),
+        ).data
+
+        grantee, other_access = self._login_with_role("grantee@example.com", "Member")
+
+        # Not visible yet - no grant, no override permission, not the owner.
+        response = self.client.get(reverse("knowledge-project-detail", args=[project["id"]]), **self._auth(other_access))
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        response = self.client.get(reverse("knowledge-project-list-create"), **self._auth(other_access))
+        self.assertNotIn(project["id"], {p["id"] for p in response.data["results"]})
+
+        # A non-owner without project.update can't grant access either.
+        response = self.client.post(
+            reverse("knowledge-access-grant-create"),
+            {"content_type": "project", "object_id": project["id"], "user_id": str(grantee.id)},
+            format="json",
+            **self._auth(other_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        # The owner grants access.
+        response = self.client.post(
+            reverse("knowledge-access-grant-create"),
+            {"content_type": "project", "object_id": project["id"], "user_id": str(grantee.id)},
+            format="json",
+            **self._auth(head_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        grant_id = response.data["id"]
+        self.assertEqual(response.data["granted_user"]["email"], "grantee@example.com")
+
+        response = self.client.get(reverse("knowledge-project-detail", args=[project["id"]]), **self._auth(other_access))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            {g["user"]["email"] for g in response.data["restricted_to"]}, {"grantee@example.com"}
+        )
+        response = self.client.get(reverse("knowledge-project-list-create"), **self._auth(other_access))
+        self.assertIn(project["id"], {p["id"] for p in response.data["results"]})
+
+        # Revoke it - back to inaccessible.
+        response = self.client.delete(reverse("knowledge-access-grant-detail", args=[grant_id]), **self._auth(head_access))
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        response = self.client.get(reverse("knowledge-project-detail", args=[project["id"]]), **self._auth(other_access))
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_org_admin_bypasses_restricted_visibility_without_a_grant(self):
+        _, head_access = self._login_with_role("adminbypasshead@example.com", "Team/Subteam Head")
+        project = self.client.post(
+            reverse("knowledge-project-list-create"),
+            {"name": "Admin Visible Airframe", "visibility": "RESTRICTED"},
+            format="json",
+            **self._auth(head_access),
+        ).data
+
+        _, admin_access = self._login_with_role("adminbypass@example.com", "Organization Admin")
+        response = self.client.get(reverse("knowledge-project-detail", args=[project["id"]]), **self._auth(admin_access))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        response = self.client.get(reverse("knowledge-project-list-create"), **self._auth(admin_access))
+        self.assertIn(project["id"], {p["id"] for p in response.data["results"]})
+        self.assertEqual(RestrictedAccessGrant.objects.count(), 0)  # no grant needed
+
+
+class BookmarkTests(KnowledgeTestCase):
+    def test_bookmark_create_list_and_delete(self):
+        _, head_access = self._login_with_role("bookmarkhead@example.com", "Team/Subteam Head")
+        project = self.client.post(
+            reverse("knowledge-project-list-create"), {"name": "Bookmarked Airframe"}, format="json", **self._auth(head_access)
+        ).data
+
+        _, member_access = self._login_with_role("bookmarkmember@example.com", "Member")
+        response = self.client.post(
+            reverse("knowledge-bookmark-list-create"),
+            {"content_type": "project", "object_id": project["id"]},
+            format="json",
+            **self._auth(member_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        bookmark_id = response.data["id"]
+        self.assertEqual(response.data["type"], "project")
+        self.assertEqual(response.data["title"], "Bookmarked Airframe")
+
+        response = self.client.get(reverse("knowledge-project-detail", args=[project["id"]]), **self._auth(member_access))
+        self.assertEqual(response.data["bookmark_id"], bookmark_id)
+
+        response = self.client.get(reverse("knowledge-bookmark-list-create"), **self._auth(member_access))
+        self.assertEqual([b["id"] for b in response.data["results"]], [bookmark_id])
+
+        response = self.client.delete(reverse("knowledge-bookmark-detail", args=[bookmark_id]), **self._auth(member_access))
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        response = self.client.get(reverse("knowledge-bookmark-list-create"), **self._auth(member_access))
+        self.assertEqual(response.data["results"], [])
+
+    def test_cannot_bookmark_inaccessible_restricted_content(self):
+        _, head_access = self._login_with_role("bookmarkresthead@example.com", "Team/Subteam Head")
+        project = self.client.post(
+            reverse("knowledge-project-list-create"),
+            {"name": "Unbookmarkable Airframe", "visibility": "RESTRICTED"},
+            format="json",
+            **self._auth(head_access),
+        ).data
+
+        _, member_access = self._login_with_role("bookmarkrestmember@example.com", "Member")
+        response = self.client.post(
+            reverse("knowledge-bookmark-list-create"),
+            {"content_type": "project", "object_id": project["id"]},
+            format="json",
+            **self._auth(member_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(Bookmark.objects.count(), 0)
+
+    def test_bookmark_drops_out_of_list_once_target_turns_restricted(self):
+        _, head_access = self._login_with_role("bookmarkdrophead@example.com", "Team/Subteam Head")
+        project = self.client.post(
+            reverse("knowledge-project-list-create"), {"name": "Later Restricted Airframe"}, format="json", **self._auth(head_access)
+        ).data
+
+        _, member_access = self._login_with_role("bookmarkdropmember@example.com", "Member")
+        bookmark_id = self.client.post(
+            reverse("knowledge-bookmark-list-create"),
+            {"content_type": "project", "object_id": project["id"]},
+            format="json",
+            **self._auth(member_access),
+        ).data["id"]
+
+        self.client.patch(
+            reverse("knowledge-project-detail", args=[project["id"]]),
+            {"visibility": "RESTRICTED"},
+            format="json",
+            **self._auth(head_access),
+        )
+
+        response = self.client.get(reverse("knowledge-bookmark-list-create"), **self._auth(member_access))
+        self.assertEqual(response.data["results"], [])
+        # The row itself still exists - just excluded from the list, same
+        # precedent as a relation's hidden "other side".
+        self.assertTrue(Bookmark.objects.filter(id=bookmark_id).exists())
+
+
+class CrossOrgAccessGrantAndBookmarkTests(APITestCase):
+    """Same two-organization shape as MultiTenancyIsolationTests above (not
+    a subclass of it - that would re-run its tests a second time under this
+    class name) for the two new cross-org attack surfaces this feature set
+    adds: a guessed-id grant, and a guessed-id bookmark."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.org_a = create_test_organization(name="Org A Grants")
+        cls.org_b = create_test_organization(name="Org B Grants")
+
+    def _login_with_role(self, email, role_name, organization):
+        user = User.objects.create_user(email=email, password="password123", organization=organization)
+        Role.objects.get(organization=organization, name=role_name).user_roles.create(user=user)
+        response = self.client.post(
+            reverse("auth-login"), {"email": email, "password": "password123"}, format="json"
+        )
+        return user, response.data["access"]
+
+    def _auth(self, access_token):
+        return {"HTTP_AUTHORIZATION": f"Bearer {access_token}"}
+
+    def test_access_grant_cannot_target_a_user_in_another_organization(self):
+        _, a_head_access = self._login_with_role("a-granthead@example.com", "Team/Subteam Head", self.org_a)
+        a_project = self.client.post(
+            reverse("knowledge-project-list-create"),
+            {"name": "Org A Restricted Project", "visibility": "RESTRICTED"},
+            format="json",
+            **self._auth(a_head_access),
+        ).data
+
+        b_user, _ = self._login_with_role("b-granttarget@example.com", "Member", self.org_b)
+
+        response = self.client.post(
+            reverse("knowledge-access-grant-create"),
+            {"content_type": "project", "object_id": a_project["id"], "user_id": str(b_user.id)},
+            format="json",
+            **self._auth(a_head_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(RestrictedAccessGrant.objects.count(), 0)
+
+    def test_cannot_bookmark_content_in_another_organization_by_guessed_id(self):
+        _, a_head_access = self._login_with_role("a-bookmarkhead@example.com", "Team/Subteam Head", self.org_a)
+        a_project = self.client.post(
+            reverse("knowledge-project-list-create"), {"name": "Org A Project To Guess"}, format="json", **self._auth(a_head_access)
+        ).data
+
+        _, b_member_access = self._login_with_role("b-bookmarkmember@example.com", "Member", self.org_b)
+        response = self.client.post(
+            reverse("knowledge-bookmark-list-create"),
+            {"content_type": "project", "object_id": a_project["id"]},
+            format="json",
+            **self._auth(b_member_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(Bookmark.objects.count(), 0)

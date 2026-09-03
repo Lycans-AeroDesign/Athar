@@ -10,6 +10,7 @@ import { Attachments } from "@/components/knowledge/Attachments";
 import { ContributorsRow } from "@/components/knowledge/Contributors";
 import { RelatedContent } from "@/components/knowledge/RelatedContent";
 import { Avatar } from "@/components/ui/Avatar";
+import { BookmarkButton } from "@/components/ui/BookmarkButton";
 import { Button } from "@/components/ui/Button";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Icon } from "@/components/ui/Icon";
@@ -154,6 +155,7 @@ export default function QuestionDetailPage() {
             <span>{formatRelativeTime(question.created_at)}</span>
           </div>
           <div className="flex items-center gap-2">
+            <BookmarkButton key={question.id} type="question" objectId={question.id} bookmarkId={question.bookmark_id} />
             <ShareButton title={question.title} />
             {canManage && (
               <Link href={`/knowledge/questions/${question.id}/edit`}>

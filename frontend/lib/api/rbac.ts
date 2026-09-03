@@ -51,3 +51,13 @@ export function assignRole(userId: string, roleId: string): Promise<void> {
 export function unassignRole(userId: string, roleId: string): Promise<void> {
   return apiVoid(`/api/v1/rbac/users/${userId}/roles/${roleId}/`, { method: "DELETE" });
 }
+
+/** Block (is_active: false) or unblock (true) a user - requires user.manage, and never targets
+ * your own account (see rbac.services.set_user_active) or a user in another organization. */
+export function setUserActive(userId: string, isActive: boolean): Promise<User> {
+  return apiJson<User>(`/api/v1/rbac/users/${userId}/active/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ is_active: isActive }),
+  });
+}

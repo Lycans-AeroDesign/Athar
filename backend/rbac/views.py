@@ -1,6 +1,7 @@
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import status
+from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -26,6 +27,28 @@ class UserListView(APIView):
     def get(self, request):
         queryset = User.objects.filter(organization=request.user.organization).order_by("email")
         return paginated_response(request, queryset, UserSerializer)
+
+
+class UserActiveView(APIView):
+    """Block/unblock a user (toggles is_active) - see
+    rbac.services.set_user_active for the actual enforcement story and why
+    there's no separate "remove from org" action."""
+
+    permission_classes = [require_permission("user.manage")]
+
+    @extend_schema(
+        tags=["RBAC"],
+        summary="Block or unblock a user (body: {\"is_active\": bool})",
+        request={"application/json": {"type": "object", "properties": {"is_active": {"type": "boolean"}}}},
+        responses={200: UserSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
+    )
+    def post(self, request, pk):
+        user = get_object_or_404(User, pk=pk, organization=request.user.organization)
+        is_active = request.data.get("is_active")
+        if not isinstance(is_active, bool):
+            raise ValidationError("is_active must be a boolean.")
+        user = services.set_user_active(user=user, is_active=is_active, actor=request.user, request=request)
+        return Response(UserSerializer(user).data)
 
 
 class RoleListCreateView(APIView):

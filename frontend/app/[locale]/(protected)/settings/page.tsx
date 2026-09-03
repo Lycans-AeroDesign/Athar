@@ -9,15 +9,16 @@ import { CategorySettingsForm } from "@/components/settings/CategorySettingsForm
 import { GeneralSettingsForm } from "@/components/settings/GeneralSettingsForm";
 import { InvitationsSettingsForm } from "@/components/settings/InvitationsSettingsForm";
 import { RolesSettingsForm } from "@/components/settings/RolesSettingsForm";
+import { UsersSettingsForm } from "@/components/settings/UsersSettingsForm";
 import { useHasPermission } from "@/lib/auth/permissions";
 import { useOrganization } from "@/lib/organization/OrganizationProvider";
 
-// Only General, Branding, Categories, Roles & Permissions, Invitations, and
-// Audit Log are implemented - the Stitch reference (ref/athar_general_settings)
-// also shows Authentication/Teams/Visibility/Notifications/Storage tabs, but
-// those aren't wired to a real backend yet, so they're left out rather than
-// shown as non-functional placeholders.
-const ALL_TAB_IDS = ["general", "branding", "categories", "permissions", "invitations", "audit"] as const;
+// Only General, Branding, Categories, Roles & Permissions, Users,
+// Invitations, and Audit Log are implemented - the Stitch reference
+// (ref/athar_general_settings) also shows Authentication/Teams/Visibility/
+// Notifications/Storage tabs, but those aren't wired to a real backend yet,
+// so they're left out rather than shown as non-functional placeholders.
+const ALL_TAB_IDS = ["general", "branding", "categories", "permissions", "users", "invitations", "audit"] as const;
 type TabId = (typeof ALL_TAB_IDS)[number];
 
 export default function SettingsPage() {
@@ -37,6 +38,9 @@ export default function SettingsPage() {
   const canManageRoles = useHasPermission("role.manage");
   // GET /auth/invitations/ itself requires user.manage - same reasoning as roles above.
   const canManageInvitations = useHasPermission("user.manage");
+  // GET /rbac/users/ itself requires user.manage too - same permission the
+  // Users tab's block/unblock action requires, so this is also the read gate.
+  const canManageUsers = canManageInvitations;
   // GET /audit/logs/ itself requires audit.read - same reasoning as roles above.
   const canReadAudit = useHasPermission("audit.read");
 
@@ -44,6 +48,7 @@ export default function SettingsPage() {
     (tabId) =>
       (tabId !== "permissions" || canManageRoles) &&
       (tabId !== "categories" || canManageCategories) &&
+      (tabId !== "users" || canManageUsers) &&
       (tabId !== "invitations" || canManageInvitations) &&
       (tabId !== "audit" || canReadAudit),
   );
@@ -74,6 +79,8 @@ export default function SettingsPage() {
         <RolesSettingsForm />
       ) : activeTab === "categories" ? (
         <CategorySettingsForm />
+      ) : activeTab === "users" ? (
+        <UsersSettingsForm />
       ) : activeTab === "invitations" ? (
         <InvitationsSettingsForm />
       ) : activeTab === "audit" ? (

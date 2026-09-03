@@ -7,11 +7,18 @@ import { Button } from "@/components/ui/Button";
 import { Combobox } from "@/components/ui/Combobox";
 import { MarkdownEditor } from "@/components/ui/MarkdownEditor";
 import { TagInput } from "@/components/ui/TagInput";
+import {
+  EMPTY_RESTRICTED_ACCESS_DRAFT,
+  RestrictedAccessPicker,
+  type RestrictedAccessDraft,
+} from "@/components/knowledge/RestrictedAccessPicker";
 import { useRouter } from "@/i18n/navigation";
+import { addAccessGrant, removeAccessGrant } from "@/lib/api/accessGrants";
 import { createProject, updateProject, type ProjectWritePayload } from "@/lib/api/engineering";
-import type { ProjectDetail, ProjectStatus } from "@/lib/api/types";
+import type { ProjectDetail, ProjectStatus, Visibility } from "@/lib/api/types";
 
 const STATUS_VALUES: ProjectStatus[] = ["ACTIVE", "ON_HOLD", "COMPLETED"];
+const VISIBILITY_VALUES: Visibility[] = ["PUBLIC", "RESTRICTED"];
 
 interface ProjectEditorProps {
   /** Omit to create a new project; pass an existing one to edit it in place. */
@@ -32,6 +39,10 @@ export function ProjectEditor({ project, onDirtyChange }: ProjectEditorProps) {
   const [description, setDescription] = useState(project?.description ?? "");
   const [status, setStatus] = useState<ProjectStatus>(project?.status ?? "ACTIVE");
   const [tags, setTags] = useState<string[]>(project?.tags.map((tag) => tag.name) ?? []);
+  const [visibility, setVisibility] = useState<Visibility>(project?.visibility ?? "PUBLIC");
+  const [restrictedAccessDraft, setRestrictedAccessDraft] = useState<RestrictedAccessDraft>(
+    EMPTY_RESTRICTED_ACCESS_DRAFT,
+  );
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -39,14 +50,26 @@ export function ProjectEditor({ project, onDirtyChange }: ProjectEditorProps) {
     name !== (project?.name ?? "") ||
     description !== (project?.description ?? "") ||
     status !== (project?.status ?? "ACTIVE") ||
-    tags.join(",") !== (project?.tags.map((tag) => tag.name).join(",") ?? "");
+    tags.join(",") !== (project?.tags.map((tag) => tag.name).join(",") ?? "") ||
+    visibility !== (project?.visibility ?? "PUBLIC") ||
+    restrictedAccessDraft.pendingAdd.length > 0 ||
+    restrictedAccessDraft.pendingRemoveGrantIds.length > 0;
 
   useEffect(() => {
     onDirtyChange?.(isDirty);
   }, [isDirty, onDirtyChange]);
 
   function buildPayload(): ProjectWritePayload {
-    return { name, description, status, tag_names: tags };
+    return { name, description, status, visibility, tag_names: tags };
+  }
+
+  async function syncRestrictedAccess(projectId: string) {
+    for (const grantId of restrictedAccessDraft.pendingRemoveGrantIds) {
+      await removeAccessGrant(grantId);
+    }
+    for (const user of restrictedAccessDraft.pendingAdd) {
+      await addAccessGrant("project", projectId, user.id);
+    }
   }
 
   async function handleSave() {
@@ -54,6 +77,7 @@ export function ProjectEditor({ project, onDirtyChange }: ProjectEditorProps) {
     setError(null);
     try {
       const saved = project ? await updateProject(project.id, buildPayload()) : await createProject(buildPayload());
+      await syncRestrictedAccess(saved.id);
       router.push(`/projects/${saved.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -80,7 +104,22 @@ export function ProjectEditor({ project, onDirtyChange }: ProjectEditorProps) {
               onChange={(value) => setStatus(value as ProjectStatus)}
             />
           </div>
+          <div className="w-48">
+            <Combobox
+              placeholder={t("visibilityLabel")}
+              options={VISIBILITY_VALUES.map((value) => ({ value, label: t(`visibility${value}`) }))}
+              value={visibility}
+              onChange={(value) => setVisibility(value as Visibility)}
+            />
+          </div>
         </div>
+        {visibility === "RESTRICTED" && (
+          <RestrictedAccessPicker
+            initialGrants={project?.restricted_to ?? []}
+            value={restrictedAccessDraft}
+            onChange={setRestrictedAccessDraft}
+          />
+        )}
       </div>
 
       <MarkdownEditor

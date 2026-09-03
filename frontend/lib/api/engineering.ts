@@ -28,6 +28,7 @@ import type {
   TestRunStatus,
   TestSummary,
   TestType,
+  Visibility,
 } from "./types";
 
 // --- Projects ---------------------------------------------------------------
@@ -53,6 +54,7 @@ export interface ProjectWritePayload {
   name?: string;
   description?: string;
   status?: ProjectStatus;
+  visibility?: Visibility;
   tag_names?: string[];
 }
 
@@ -121,6 +123,7 @@ export interface ComponentWritePayload {
   status?: ComponentStatus;
   summary?: string;
   specifications?: ComponentSpecRow[];
+  visibility?: Visibility;
   tag_names?: string[];
 }
 
@@ -193,6 +196,7 @@ export interface FailureWritePayload {
   root_cause?: string;
   corrective_action?: string;
   preventive_action?: string;
+  visibility?: Visibility;
 }
 
 export function createFailure(payload: FailureWritePayload): Promise<FailureDetail> {
@@ -258,6 +262,7 @@ export interface SopWritePayload {
   mandatory?: boolean;
   safety_notes?: string;
   content?: string;
+  visibility?: Visibility;
   tag_names?: string[];
 }
 
@@ -333,6 +338,7 @@ export interface TestWritePayload {
   results?: string;
   pass_fail?: TestPassFail;
   conclusion?: string;
+  visibility?: Visibility;
   tag_names?: string[];
 }
 

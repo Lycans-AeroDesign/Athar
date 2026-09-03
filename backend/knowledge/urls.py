@@ -1,6 +1,8 @@
 from django.urls import path
 
 from .views import (
+    AccessGrantDetailView,
+    AccessGrantListCreateView,
     AnswerDetailView,
     AnswerListCreateView,
     ArticleArchiveView,
@@ -14,6 +16,8 @@ from .views import (
     ArticleRevisionListView,
     ArticleSubmitView,
     ArticleUnarchiveView,
+    BookmarkDetailView,
+    BookmarkListCreateView,
     CategoryDetailView,
     CategoryListView,
     ComponentAttachmentDetailView,
@@ -30,6 +34,7 @@ from .views import (
     FailureListCreateView,
     FailureRelationsView,
     LeaderboardView,
+    OrgMembersListView,
     ProjectAttachmentDetailView,
     ProjectAttachmentListView,
     ProjectDetailView,
@@ -112,6 +117,11 @@ urlpatterns = [
     path("answers/<uuid:pk>/", AnswerDetailView.as_view(), name="knowledge-answer-detail"),
     path("relations/", RelationCreateView.as_view(), name="knowledge-relation-create"),
     path("relations/<uuid:pk>/", RelationDetailView.as_view(), name="knowledge-relation-detail"),
+    path("access-grants/", AccessGrantListCreateView.as_view(), name="knowledge-access-grant-create"),
+    path("access-grants/<uuid:pk>/", AccessGrantDetailView.as_view(), name="knowledge-access-grant-detail"),
+    path("org-members/", OrgMembersListView.as_view(), name="knowledge-org-members"),
+    path("bookmarks/", BookmarkListCreateView.as_view(), name="knowledge-bookmark-list-create"),
+    path("bookmarks/<uuid:pk>/", BookmarkDetailView.as_view(), name="knowledge-bookmark-detail"),
     # --- Engineering domain -------------------------------------------------
     path("projects/", ProjectListCreateView.as_view(), name="knowledge-project-list-create"),
     path("projects/<uuid:pk>/", ProjectDetailView.as_view(), name="knowledge-project-detail"),

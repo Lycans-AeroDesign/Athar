@@ -21,7 +21,9 @@
     "resultCount": "{count, plural, =0 {لا توجد نتائج} one {نتيجة واحدة} two {نتيجتان} few {# نتائج} many {# نتيجة} other {# نتيجة}}",
     "removeFilter": "إزالة الفلتر",
     "searchThisList": "ابحث في هذه القائمة...",
-    "contributorsLabel": "المساهمون"
+    "contributorsLabel": "المساهمون",
+    "bookmark": "حفظ",
+    "bookmarked": "محفوظ"
   },
   "auth": {
     "emailLabel": "البريد الإلكتروني",
@@ -62,6 +64,7 @@
     "tagline": "نظام المعرفة الهندسية",
     "dashboard": "لوحة التحكم",
     "knowledge": "المعرفة",
+    "bookmarks": "المحفوظات",
     "projects": "المشاريع",
     "components": "المكونات",
     "sops": "إجراءات التشغيل",
@@ -137,6 +140,7 @@
       "branding": "الهوية البصرية",
       "categories": "الفئات",
       "permissions": "الأدوار والصلاحيات",
+      "users": "المستخدمون",
       "invitations": "الدعوات",
       "audit": "سجل التدقيق"
     },
@@ -206,6 +210,17 @@
       "roleDescriptionLabel": "الوصف",
       "createRole": "إنشاء الدور"
     },
+    "users": {
+      "title": "المستخدمون",
+      "description": "إدارة من يملك حق الوصول إلى مؤسستك.",
+      "statusActive": "نشط",
+      "statusBlocked": "محظور",
+      "blockAction": "حظر",
+      "unblockAction": "إلغاء الحظر",
+      "selfHint": "هذا أنت",
+      "blockConfirmTitle": "حظر هذا المستخدم؟",
+      "blockConfirmBody": "سيتم تسجيل خروج {email} فورًا ولن يتمكن من تسجيل الدخول مجددًا حتى يُلغى الحظر."
+    },
     "invitations": {
       "title": "رموز الدعوة",
       "description": "التسجيل يتطلب رمزًا صالحًا - أنشئ واحدًا لدعوة عضو جديد.",
@@ -245,7 +260,8 @@
     "titleLabel": "الدور في الفريق",
     "titlePlaceholder": "مثال: قيادة تكامل الأنظمة",
     "rolesLabel": "الأدوار",
-    "myContributionsTitle": "مساهماتي"
+    "myContributionsTitle": "مساهماتي",
+    "editProfileTitle": "تعديل الملف الشخصي"
   },
   "about": {
     "title": "عن أثر",
@@ -403,7 +419,6 @@
       "tableOfContents": "المحتويات",
       "visibilityLabel": "مستوى الظهور",
       "visibilityPUBLIC": "عام",
-      "visibilityORGANIZATION": "المؤسسة",
       "visibilityRESTRICTED": "مقيّد"
     },
     "question": {
@@ -443,7 +458,6 @@
       "viewPromotedArticle": "عرض المقالة",
       "visibilityLabel": "مستوى الظهور",
       "visibilityPUBLIC": "عام",
-      "visibilityORGANIZATION": "المؤسسة",
       "visibilityRESTRICTED": "مقيّد"
     },
     "relations": {
@@ -517,7 +531,10 @@
       "deleteConfirmBody": "لا يمكن التراجع عن هذا الإجراء.",
       "noDescription": "لا يوجد وصف بعد.",
       "backToProject": "العودة إلى المشروع",
-      "editPermissionRequired": "لا تملك صلاحية تعديل هذا المشروع."
+      "editPermissionRequired": "لا تملك صلاحية تعديل هذا المشروع.",
+      "visibilityLabel": "مستوى الظهور",
+      "visibilityPUBLIC": "عام",
+      "visibilityRESTRICTED": "مقيّد"
     },
     "projectStatus": {
       "all": "الكل",
@@ -553,7 +570,10 @@
       "noSummary": "لا يوجد ملخص بعد.",
       "specificationsTableTitle": "المواصفات",
       "backToComponent": "العودة إلى المكوّن",
-      "editPermissionRequired": "لا تملك صلاحية تعديل هذا المكوّن."
+      "editPermissionRequired": "لا تملك صلاحية تعديل هذا المكوّن.",
+      "visibilityLabel": "مستوى الظهور",
+      "visibilityPUBLIC": "عام",
+      "visibilityRESTRICTED": "مقيّد"
     },
     "componentStatus": {
       "all": "الكل",
@@ -594,7 +614,10 @@
       "deleteConfirmTitle": "حذف تقرير العطل هذا؟",
       "deleteConfirmBody": "لا يمكن التراجع عن هذا الإجراء.",
       "backToFailure": "العودة إلى العطل",
-      "editPermissionRequired": "لا تملك صلاحية تعديل تقرير العطل هذا."
+      "editPermissionRequired": "لا تملك صلاحية تعديل تقرير العطل هذا.",
+      "visibilityLabel": "مستوى الظهور",
+      "visibilityPUBLIC": "عام",
+      "visibilityRESTRICTED": "مقيّد"
     },
     "failureSeverity": {
       "all": "الكل",
@@ -630,7 +653,10 @@
       "noContent": "لا يوجد محتوى بعد.",
       "badgeLabel": "إجراء تشغيلي",
       "backToSop": "العودة إلى الإجراء",
-      "editPermissionRequired": "لا تملك صلاحية تعديل هذا الإجراء."
+      "editPermissionRequired": "لا تملك صلاحية تعديل هذا الإجراء.",
+      "visibilityLabel": "مستوى الظهور",
+      "visibilityPUBLIC": "عام",
+      "visibilityRESTRICTED": "مقيّد"
     },
     "test": {
       "titlePlaceholder": "عنوان الاختبار/التجربة",
@@ -669,7 +695,10 @@
       "deleteConfirmTitle": "حذف هذا الاختبار؟",
       "deleteConfirmBody": "لا يمكن التراجع عن هذا الإجراء.",
       "backToTest": "العودة إلى الاختبار",
-      "editPermissionRequired": "لا تملك صلاحية تعديل هذا الاختبار."
+      "editPermissionRequired": "لا تملك صلاحية تعديل هذا الاختبار.",
+      "visibilityLabel": "مستوى الظهور",
+      "visibilityPUBLIC": "عام",
+      "visibilityRESTRICTED": "مقيّد"
     },
     "testType": {
       "all": "كل الأنواع",
@@ -709,7 +738,6 @@
       "tagsPlaceholder": "اكتب وسمًا واضغط Enter (افصل بفواصل لعدة وسوم)",
       "visibilityLabel": "الظهور",
       "visibilityPUBLIC": "عام",
-      "visibilityORGANIZATION": "المنظمة",
       "visibilityRESTRICTED": "مقيّد",
       "uploadFileButton": "رفع ملف",
       "uploading": "جارٍ الرفع...",
@@ -752,6 +780,30 @@
       "INTERNAL": "داخلي",
       "EXTERNAL": "خارجي"
     }
+  },
+  "restrictedAccess": {
+    "label": "مقيّد لـ",
+    "addPlaceholder": "إضافة شخص",
+    "emptyState": "أنت فقط (ومديرو المؤسسة) يمكنكم رؤية هذا حتى الآن.",
+    "remove": "إزالة",
+    "undo": "تراجع"
+  },
+  "bookmarksPage": {
+    "title": "المحفوظات",
+    "description": "المعرفة والمحتوى الهندسي الذي حفظته لوقت لاحق.",
+    "tab_all": "الكل",
+    "tab_article": "المقالات",
+    "tab_question": "الأسئلة",
+    "tab_project": "المشاريع",
+    "tab_component": "المكونات",
+    "tab_failure": "الأعطال",
+    "tab_sop": "إجراءات التشغيل",
+    "tab_test": "الاختبارات",
+    "tab_document": "المستندات",
+    "loading": "جارٍ التحميل...",
+    "emptyState": "لا يوجد شيء محفوظ بعد.",
+    "untitled": "بلا عنوان",
+    "removeBookmark": "إزالة من المحفوظات"
   },
   "modal": {
     "close": "إغلاق",

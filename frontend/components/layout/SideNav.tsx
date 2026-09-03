@@ -14,7 +14,15 @@ import { useOrganization } from "@/lib/organization/OrganizationProvider";
 // `permission` is optional: omit it for anything every authenticated user can
 // see; set it once a route enforces a real permission on its backing
 // endpoint(s), and this list stops showing it to users who'd just hit a 403.
-const NAV_ITEMS: ReadonlyArray<{ href: string; labelKey: string; icon: string; permission?: string }> = [
+// `separatorBefore` draws a divider above that item - used for Bookmarks,
+// which is a personal feature set apart from the shared content sections above it.
+const NAV_ITEMS: ReadonlyArray<{
+  href: string;
+  labelKey: string;
+  icon: string;
+  permission?: string;
+  separatorBefore?: boolean;
+}> = [
   { href: "/", labelKey: "dashboard", icon: "dashboard" },
   { href: "/knowledge", labelKey: "knowledge", icon: "menu_book" },
   { href: "/projects", labelKey: "projects", icon: "architecture", permission: "project.read" },
@@ -23,6 +31,7 @@ const NAV_ITEMS: ReadonlyArray<{ href: string; labelKey: string; icon: string; p
   { href: "/failures", labelKey: "failures", icon: "report_problem", permission: "failure.read" },
   { href: "/tests", labelKey: "tests", icon: "science", permission: "test.read" },
   { href: "/documents", labelKey: "documents", icon: "folder", permission: "document.read" },
+  { href: "/bookmarks", labelKey: "bookmarks", icon: "bookmark", separatorBefore: true },
 ];
 
 interface SideNavProps {
@@ -89,17 +98,22 @@ export function SideNav({ open, onClose }: SideNavProps) {
             const isActive = pathname === item.href;
             return (
               <Can key={item.href} permission={item.permission}>
-                <Link
-                  className={
-                    isActive
-                      ? "flex items-center gap-4 px-4 py-2 bg-primary-container text-on-primary-container font-bold rounded-xl transition-colors"
-                      : "flex items-center gap-4 px-4 py-2 text-on-surface-variant hover:bg-surface-variant transition-colors duration-150 rounded-xl"
-                  }
-                  href={item.href}
-                >
-                  <Icon name={item.icon} />
-                  {t(item.labelKey)}
-                </Link>
+                <>
+                  {item.separatorBefore && (
+                    <div className="h-px bg-outline-variant my-2 mx-2" aria-hidden="true" />
+                  )}
+                  <Link
+                    className={
+                      isActive
+                        ? "flex items-center gap-4 px-4 py-2 bg-primary-container text-on-primary-container font-bold rounded-xl transition-colors"
+                        : "flex items-center gap-4 px-4 py-2 text-on-surface-variant hover:bg-surface-variant transition-colors duration-150 rounded-xl"
+                    }
+                    href={item.href}
+                  >
+                    <Icon name={item.icon} />
+                    {t(item.labelKey)}
+                  </Link>
+                </>
               </Can>
             );
           })}
