@@ -1,8 +1,9 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
+import { AuthenticatedImage } from "@/components/ui/AuthenticatedImage";
 import { Button } from "@/components/ui/Button";
 import { Combobox } from "@/components/ui/Combobox";
 import { Icon } from "@/components/ui/Icon";
@@ -16,8 +17,16 @@ import {
 import { useRouter } from "@/i18n/navigation";
 import { addAccessGrant, removeAccessGrant } from "@/lib/api/accessGrants";
 import { createComponent, updateComponent, type ComponentWritePayload } from "@/lib/api/engineering";
+import { uploadFile } from "@/lib/api/files";
 import { getCategories } from "@/lib/api/knowledge";
-import type { Category, ComponentDetail, ComponentSpecRow, ComponentStatus, Visibility } from "@/lib/api/types";
+import type {
+  Category,
+  ComponentDetail,
+  ComponentSpecRow,
+  ComponentStatus,
+  StoredFileRef,
+  Visibility,
+} from "@/lib/api/types";
 
 const STATUS_VALUES: ComponentStatus[] = ["CERTIFIED", "TESTING", "DEPRECATED"];
 const VISIBILITY_VALUES: Visibility[] = ["PUBLIC", "RESTRICTED"];
@@ -41,8 +50,14 @@ export function ComponentEditor({ component, onDirtyChange }: ComponentEditorPro
   const [categories, setCategories] = useState<Category[]>([]);
   const [name, setName] = useState(component?.name ?? "");
   const [categoryId, setCategoryId] = useState<string | null>(component?.category?.id ?? null);
+  const [photo, setPhoto] = useState<StoredFileRef | null>(component?.photo ?? null);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
   const [manufacturer, setManufacturer] = useState(component?.manufacturer ?? "");
   const [partNumber, setPartNumber] = useState(component?.part_number ?? "");
+  const [link, setLink] = useState(component?.link ?? "");
+  const [quantityAvailable, setQuantityAvailable] = useState(component?.quantity_available ?? 0);
   const [status, setStatus] = useState<ComponentStatus>(component?.status ?? "TESTING");
   const [summary, setSummary] = useState(component?.summary ?? "");
   const [specs, setSpecs] = useState<ComponentSpecRow[]>(component?.specifications ?? []);
@@ -58,11 +73,26 @@ export function ComponentEditor({ component, onDirtyChange }: ComponentEditorPro
     getCategories().then(setCategories);
   }, []);
 
+  async function handlePhotoSelected(file: File) {
+    setIsUploadingPhoto(true);
+    setPhotoError(null);
+    try {
+      setPhoto(await uploadFile(file));
+    } catch (err) {
+      setPhotoError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  }
+
   const isDirty =
     name !== (component?.name ?? "") ||
     categoryId !== (component?.category?.id ?? null) ||
+    (photo?.id ?? null) !== (component?.photo?.id ?? null) ||
     manufacturer !== (component?.manufacturer ?? "") ||
     partNumber !== (component?.part_number ?? "") ||
+    link !== (component?.link ?? "") ||
+    quantityAvailable !== (component?.quantity_available ?? 0) ||
     status !== (component?.status ?? "TESTING") ||
     summary !== (component?.summary ?? "") ||
     JSON.stringify(specs) !== JSON.stringify(component?.specifications ?? []) ||
@@ -87,8 +117,11 @@ export function ComponentEditor({ component, onDirtyChange }: ComponentEditorPro
     return {
       name,
       category_id: categoryId,
+      photo_id: photo?.id ?? null,
       manufacturer,
       part_number: partNumber,
+      link,
+      quantity_available: quantityAvailable,
       status,
       summary,
       specifications: specs.filter((row) => row.label.trim() || row.value.trim()),
@@ -130,6 +163,40 @@ export function ComponentEditor({ component, onDirtyChange }: ComponentEditorPro
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
+        <div className="flex items-center gap-3">
+          <div className="h-16 w-16 rounded-lg border border-outline-variant bg-surface-container-low flex items-center justify-center overflow-hidden shrink-0">
+            {photo ? (
+              <AuthenticatedImage src={photo.download_url} alt={t("photoLabel")} className="h-full w-full object-cover" />
+            ) : (
+              <Icon name="image" size={24} className="text-on-surface-variant" />
+            )}
+          </div>
+          <input
+            ref={photoInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handlePhotoSelected(file);
+              e.target.value = "";
+            }}
+          />
+          <Button variant="secondary" disabled={isUploadingPhoto} onClick={() => photoInputRef.current?.click()}>
+            <Icon name="upload" size={16} />
+            {isUploadingPhoto ? commonT("working") : t("uploadPhotoButton")}
+          </Button>
+          {photo && (
+            <Button variant="ghost" disabled={isUploadingPhoto} onClick={() => setPhoto(null)}>
+              {t("removePhotoButton")}
+            </Button>
+          )}
+        </div>
+        {photoError && (
+          <p className="font-body-md text-body-md text-error" role="alert">
+            {photoError}
+          </p>
+        )}
         <div className="flex flex-wrap gap-3 items-center">
           <div className="w-56">
             <Combobox
@@ -170,6 +237,25 @@ export function ComponentEditor({ component, onDirtyChange }: ComponentEditorPro
             value={partNumber}
             onChange={(e) => setPartNumber(e.target.value)}
           />
+          <input
+            type="url"
+            className="block w-full px-4 py-2 font-body-md text-body-md text-on-surface bg-surface-container border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
+            placeholder={t("linkPlaceholder")}
+            value={link}
+            onChange={(e) => setLink(e.target.value)}
+          />
+          <div className="flex items-center gap-3">
+            <label className="font-body-md text-body-md text-on-surface-variant shrink-0">
+              {t("quantityAvailableLabel")}
+            </label>
+            <input
+              type="number"
+              min={0}
+              className="block w-full px-4 py-2 font-body-md text-body-md text-on-surface bg-surface-container border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
+              value={quantityAvailable}
+              onChange={(e) => setQuantityAvailable(Math.max(0, Number(e.target.value) || 0))}
+            />
+          </div>
         </div>
         {visibility === "RESTRICTED" && (
           <RestrictedAccessPicker

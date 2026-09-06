@@ -338,8 +338,19 @@ class Component(models.Model):
     category = models.ForeignKey(
         Category, null=True, blank=True, on_delete=models.SET_NULL, related_name="components"
     )
+    # One representative image (a card thumbnail/hero shot), distinct from
+    # ComponentAttachment's own file gallery below - same single-FK,
+    # SET_NULL, upload-then-attach pattern as accounts.User.profile_picture.
+    photo = models.ForeignKey(StoredFile, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
     manufacturer = models.CharField(max_length=150, blank=True)
     part_number = models.CharField(max_length=100, blank=True)
+    # External reference - a datasheet, vendor/purchase page, etc.
+    link = models.URLField(blank=True)
+    # Workshop inventory count on hand - deliberately a plain int, not a
+    # ledger of individual check-in/check-out events (no consumption
+    # tracking exists yet); whoever edits the component just updates this
+    # number directly.
+    quantity_available = models.PositiveIntegerField(default=0)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.TESTING)
     summary = models.TextField(blank=True)  # markdown source
     # Ordered [{"label": "Processor", "value": "STM32H753..."}, ...] - a

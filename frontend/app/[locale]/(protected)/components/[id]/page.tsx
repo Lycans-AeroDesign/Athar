@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { Attachments } from "@/components/knowledge/Attachments";
 import { ContributorsRow } from "@/components/knowledge/Contributors";
 import { RelatedContent } from "@/components/knowledge/RelatedContent";
+import { AuthenticatedImage } from "@/components/ui/AuthenticatedImage";
 import { BookmarkButton } from "@/components/ui/BookmarkButton";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Icon } from "@/components/ui/Icon";
@@ -97,20 +98,53 @@ export default function ComponentDetailPage() {
             )}
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <h1 className="font-display text-display text-on-surface">{component.name}</h1>
-          {component.visibility === "RESTRICTED" && (
-            <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-error-container text-on-error-container font-label-caps text-label-caps uppercase">
-              <Icon name="lock" size={12} />
-              {t("visibilityRESTRICTED")}
-            </span>
+        <div className="flex items-start gap-4">
+          {component.photo && (
+            <div className="h-20 w-20 rounded-lg border border-outline-variant overflow-hidden shrink-0">
+              <AuthenticatedImage
+                src={component.photo.download_url}
+                alt={component.name}
+                className="h-full w-full object-cover"
+              />
+            </div>
           )}
+          <div className="min-w-0 space-y-1">
+            <div className="flex items-center gap-3">
+              <h1 className="font-display text-display text-on-surface">{component.name}</h1>
+              {component.visibility === "RESTRICTED" && (
+                <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-error-container text-on-error-container font-label-caps text-label-caps uppercase">
+                  <Icon name="lock" size={12} />
+                  {t("visibilityRESTRICTED")}
+                </span>
+              )}
+            </div>
+            {(component.manufacturer || component.part_number) && (
+              <p className="font-body-md text-body-md text-on-surface-variant">
+                {[component.manufacturer, component.part_number].filter(Boolean).join(" · ")}
+              </p>
+            )}
+            <div className="flex flex-wrap items-center gap-3">
+              <span
+                className={`font-mono-sm text-mono-sm ${
+                  component.quantity_available > 0 ? "text-on-surface-variant" : "text-error"
+                }`}
+              >
+                {t("quantityInStock", { count: component.quantity_available })}
+              </span>
+              {component.link && (
+                <a
+                  href={component.link}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-1 font-label-caps text-label-caps uppercase text-primary hover:underline"
+                >
+                  <Icon name="link" size={14} />
+                  {t("viewLinkButton")}
+                </a>
+              )}
+            </div>
+          </div>
         </div>
-        {(component.manufacturer || component.part_number) && (
-          <p className="font-body-md text-body-md text-on-surface-variant">
-            {[component.manufacturer, component.part_number].filter(Boolean).join(" · ")}
-          </p>
-        )}
         {component.tags.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {component.tags.map((tag) => (

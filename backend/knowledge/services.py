@@ -506,15 +506,19 @@ def delete_project(*, project: Project, actor, request=None) -> None:
 
 
 def create_component(
-    *, actor, request=None, name, category=None, manufacturer="", part_number="", status=Component.Status.TESTING,
-    summary="", specifications=None, tag_names=None, visibility=Visibility.PUBLIC,
+    *, actor, request=None, name, category=None, photo=None, manufacturer="", part_number="", link="",
+    quantity_available=0, status=Component.Status.TESTING, summary="", specifications=None, tag_names=None,
+    visibility=Visibility.PUBLIC,
 ) -> Component:
     component = Component.objects.create(
         organization=actor.organization,
         name=name,
         category=category,
+        photo=photo,
         manufacturer=manufacturer,
         part_number=part_number,
+        link=link,
+        quantity_available=quantity_available,
         status=status,
         summary=summary,
         specifications=specifications or [],
@@ -1282,3 +1286,30 @@ def contributors_for(model_name: str, obj) -> list:
         .distinct()
     )
     return list(User.objects.filter(pk__in=actor_ids))
+
+
+def component_csv_rows(components):
+    """Header row + one row per component, for views.ComponentExportView.
+    Lives here (not utils.py) since each row reads related objects off the
+    component (category name, tag names) - a DB-touching operation, not a
+    pure formatting helper. Caller is expected to have already
+    select_related("category")/prefetch_related("tags") for this to avoid
+    N+1 queries."""
+    yield [
+        "Name", "Category", "Manufacturer", "Part Number", "Status", "Quantity Available", "Link", "Tags",
+        "Created By", "Created At", "Updated At",
+    ]
+    for component in components:
+        yield [
+            component.name,
+            component.category.name if component.category else "",
+            component.manufacturer,
+            component.part_number,
+            component.get_status_display(),
+            component.quantity_available,
+            component.link,
+            ", ".join(tag.name for tag in component.tags.all()),
+            component.created_by.email if component.created_by else "",
+            component.created_at.isoformat(),
+            component.updated_at.isoformat(),
+        ]

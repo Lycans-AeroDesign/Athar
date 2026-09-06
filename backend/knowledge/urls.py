@@ -23,6 +23,7 @@ from .views import (
     ComponentAttachmentDetailView,
     ComponentAttachmentListView,
     ComponentDetailView,
+    ComponentExportView,
     ComponentListCreateView,
     ComponentRelationsView,
     DocumentDetailView,
@@ -137,6 +138,7 @@ urlpatterns = [
         name="knowledge-project-attachment-detail",
     ),
     path("components/", ComponentListCreateView.as_view(), name="knowledge-component-list-create"),
+    path("components/export/", ComponentExportView.as_view(), name="knowledge-component-export"),
     path("components/<uuid:pk>/", ComponentDetailView.as_view(), name="knowledge-component-detail"),
     path("components/<uuid:pk>/relations/", ComponentRelationsView.as_view(), name="knowledge-component-relations"),
     path(

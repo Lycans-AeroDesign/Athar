@@ -5,12 +5,13 @@ import { useEffect, useState } from "react";
 
 import { Can } from "@/components/auth/Can";
 import { ActiveFilterChip } from "@/components/ui/ActiveFilterChip";
+import { AuthenticatedImage } from "@/components/ui/AuthenticatedImage";
 import { Button } from "@/components/ui/Button";
 import { Combobox } from "@/components/ui/Combobox";
 import { Icon } from "@/components/ui/Icon";
 import { Pagination } from "@/components/ui/Pagination";
 import { Link } from "@/i18n/navigation";
-import { getComponents } from "@/lib/api/engineering";
+import { exportComponentsCsv, getComponents } from "@/lib/api/engineering";
 import { getCategories } from "@/lib/api/knowledge";
 import type { Category, ComponentStatus, ComponentSummary } from "@/lib/api/types";
 import { useEngineeringListFiltersEnabled } from "@/lib/auth/permissions";
@@ -35,6 +36,8 @@ export default function ComponentsPage() {
   const [searchInput, setSearchInput] = useState("");
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
   useEffect(() => {
     const handle = setTimeout(() => {
       setQuery(searchInput.trim());
@@ -86,6 +89,24 @@ export default function ComponentsPage() {
     setPage(1);
   }
 
+  // Exports whatever the current filters show, not always the whole
+  // library - see backend ComponentExportView's own docstring.
+  async function handleExport() {
+    setIsExporting(true);
+    setExportError(null);
+    try {
+      await exportComponentsCsv({
+        category: categoryFilter ?? undefined,
+        status: statusFilter ?? undefined,
+        q: query || undefined,
+      });
+    } catch (err) {
+      setExportError(t("exportError", { message: err instanceof Error ? err.message : String(err) }));
+    } finally {
+      setIsExporting(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -123,6 +144,12 @@ export default function ComponentsPage() {
               onChange={(value) => updateStatusFilter((value || null) as ComponentStatus | null)}
             />
           </div>
+          <Can permission="component.read">
+            <Button variant="secondary" disabled={isExporting} onClick={handleExport}>
+              <Icon name="download" size={18} />
+              {isExporting ? commonT("working") : t("exportCsvButton")}
+            </Button>
+          </Can>
           <Can permission="component.create">
             <Link href="/components/new">
               <Button>
@@ -133,6 +160,12 @@ export default function ComponentsPage() {
           </Can>
         </div>
       </div>
+
+      {exportError && (
+        <p className="font-body-md text-body-md text-error" role="alert">
+          {exportError}
+        </p>
+      )}
 
       {filtersEnabled && query && (
         <div className="flex items-center gap-2">
@@ -173,10 +206,30 @@ export default function ComponentsPage() {
                   {statusT(component.status)}
                 </span>
               </div>
-              <h3 className="font-headline-md text-headline-md text-on-surface mb-1">{component.name}</h3>
-              {component.part_number && (
-                <p className="font-mono-sm text-mono-sm text-on-surface-variant mb-3">{component.part_number}</p>
-              )}
+              <div className="flex items-center gap-3 mb-1">
+                {component.photo && (
+                  <div className="h-10 w-10 rounded-lg border border-outline-variant overflow-hidden shrink-0">
+                    <AuthenticatedImage
+                      src={component.photo.download_url}
+                      alt={component.name}
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                )}
+                <h3 className="font-headline-md text-headline-md text-on-surface truncate">{component.name}</h3>
+              </div>
+              <div className="flex items-center justify-between gap-2 mb-3">
+                {component.part_number && (
+                  <p className="font-mono-sm text-mono-sm text-on-surface-variant truncate">{component.part_number}</p>
+                )}
+                <span
+                  className={`font-mono-sm text-mono-sm shrink-0 ms-auto ${
+                    component.quantity_available > 0 ? "text-on-surface-variant" : "text-error"
+                  }`}
+                >
+                  {t("quantityInStock", { count: component.quantity_available })}
+                </span>
+              </div>
               {component.specifications.length > 0 && (
                 <div className="mt-auto grid grid-cols-2 gap-2 border-t border-outline-variant pt-2">
                   {component.specifications.slice(0, 2).map((row, i) => (

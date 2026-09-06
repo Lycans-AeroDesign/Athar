@@ -495,6 +495,7 @@ class ComponentListSerializer(serializers.ModelSerializer):
     category = CategorySerializer(read_only=True)
     tags = TagSerializer(many=True, read_only=True)
     created_by = AuthorSerializer(read_only=True)
+    photo = StoredFileSerializer(read_only=True)
 
     class Meta:
         model = Component
@@ -502,8 +503,11 @@ class ComponentListSerializer(serializers.ModelSerializer):
             "id",
             "name",
             "category",
+            "photo",
             "manufacturer",
             "part_number",
+            "link",
+            "quantity_available",
             "status",
             "specifications",
             "visibility",
@@ -533,6 +537,12 @@ class ComponentWriteSerializer(serializers.ModelSerializer):
     category_id = serializers.PrimaryKeyRelatedField(
         source="category", queryset=Category.objects.all(), allow_null=True, required=False
     )
+    # Same two-phase "upload via files.upload, then attach by id" flow as
+    # accounts.MeUpdateSerializer.profile_picture_id - see
+    # validate_photo_id below for the matching org-ownership check.
+    photo_id = serializers.PrimaryKeyRelatedField(
+        source="photo", queryset=StoredFile.objects.all(), allow_null=True, required=False
+    )
     tag_names = serializers.ListField(child=serializers.CharField(), required=False)
 
     class Meta:
@@ -540,8 +550,11 @@ class ComponentWriteSerializer(serializers.ModelSerializer):
         fields = [
             "name",
             "category_id",
+            "photo_id",
             "manufacturer",
             "part_number",
+            "link",
+            "quantity_available",
             "status",
             "summary",
             "specifications",
@@ -554,6 +567,11 @@ class ComponentWriteSerializer(serializers.ModelSerializer):
             isinstance(row, dict) and {"label", "value"} <= row.keys() for row in value
         ):
             raise serializers.ValidationError("specifications must be a list of {label, value} objects.")
+        return value
+
+    def validate_photo_id(self, value):
+        if value is not None and value.organization_id != self.context["request"].user.organization_id:
+            raise serializers.ValidationError("That file doesn't belong to your organization.")
         return value
 
 

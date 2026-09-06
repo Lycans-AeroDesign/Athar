@@ -1,5 +1,8 @@
+import csv
+
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Count, Q
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import status
@@ -1196,10 +1199,44 @@ class ComponentListCreateView(APIView):
         responses={201: ComponentDetailSerializer, 400: BAD_REQUEST, **COMMON_ERRORS},
     )
     def post(self, request):
-        serializer = ComponentWriteSerializer(data=request.data)
+        serializer = ComponentWriteSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         component = services.create_component(actor=request.user, request=request, **serializer.validated_data)
         return Response(ComponentDetailSerializer(component).data, status=status.HTTP_201_CREATED)
+
+
+class ComponentExportView(APIView):
+    """CSV export for the Components list page - same ?category=/?status=/?q=
+    filters as ComponentListCreateView.get, so "export" means "export what
+    I'm currently looking at", not always the whole org's inventory."""
+
+    permission_classes = [require_permission("component.read")]
+
+    @extend_schema(
+        tags=["Engineering"],
+        summary="Export visible components as CSV (optional ?category=<id>, ?status=, ?q=, same as the list endpoint)",
+        responses={200: OpenApiResponse(description="CSV file (text/csv)."), **COMMON_ERRORS},
+    )
+    def get(self, request):
+        queryset = services.visible_components_for(request.user).select_related(
+            "category", "created_by"
+        ).prefetch_related("tags")
+        category_id = request.query_params.get("category")
+        if category_id:
+            queryset = queryset.filter(category_id=category_id)
+        status_param = request.query_params.get("status")
+        if status_param:
+            queryset = queryset.filter(status=status_param)
+        query = request.query_params.get("q", "").strip()
+        if query:
+            queryset = search.search_filter(queryset, query, "component")
+
+        response = HttpResponse(content_type="text/csv")
+        response["Content-Disposition"] = 'attachment; filename="components.csv"'
+        writer = csv.writer(response)
+        for row in services.component_csv_rows(queryset):
+            writer.writerow(row)
+        return response
 
 
 class ComponentDetailView(APIView):
@@ -1225,7 +1262,7 @@ class ComponentDetailView(APIView):
     )
     def patch(self, request, pk):
         component = get_object_or_404(Component, pk=pk, organization=request.user.organization)
-        serializer = ComponentWriteSerializer(component, data=request.data, partial=True)
+        serializer = ComponentWriteSerializer(component, data=request.data, partial=True, context={"request": request})
         serializer.is_valid(raise_exception=True)
         component = services.update_component(
             component=component, actor=request.user, request=request, **serializer.validated_data

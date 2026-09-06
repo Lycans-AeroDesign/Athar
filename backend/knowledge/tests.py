@@ -1460,6 +1460,89 @@ class EngineeringDomainTests(KnowledgeTestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
+    def test_component_inventory_fields_and_photo_upload(self):
+        member, member_access = self._login_with_role("compinventory@example.com", "Member")
+        photo = StoredFile.objects.create(
+            organization=member.organization,
+            file=SimpleUploadedFile("part.png", b"fake-png-bytes", content_type="image/png"),
+            original_filename="part.png",
+            content_type="image/png",
+            size=14,
+        )
+        response = self.client.post(
+            reverse("knowledge-component-list-create"),
+            {
+                "name": "M3508 Motor",
+                "quantity_available": 12,
+                "link": "https://example.com/datasheet.pdf",
+                "photo_id": str(photo.pk),
+            },
+            format="json",
+            **self._auth(member_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        component = response.data
+        self.assertEqual(component["quantity_available"], 12)
+        self.assertEqual(component["link"], "https://example.com/datasheet.pdf")
+        self.assertEqual(component["photo"]["id"], str(photo.pk))
+
+        # Also visible from the list endpoint, not just create's own response.
+        response = self.client.get(reverse("knowledge-component-list-create"), **self._auth(member_access))
+        self.assertEqual(response.data["results"][0]["quantity_available"], 12)
+        self.assertEqual(response.data["results"][0]["photo"]["id"], str(photo.pk))
+
+    def test_component_rejects_photo_from_another_organization(self):
+        _, member_access = self._login_with_role("compphotocross@example.com", "Member")
+        other_organization = create_test_organization(name="Someone Else's Workshop")
+        other_photo = StoredFile.objects.create(
+            organization=other_organization,
+            file=SimpleUploadedFile("part.png", b"fake-png-bytes", content_type="image/png"),
+            original_filename="part.png",
+            content_type="image/png",
+            size=14,
+        )
+        response = self.client.post(
+            reverse("knowledge-component-list-create"),
+            {"name": "Cross-Org Photo Attempt", "photo_id": str(other_photo.pk)},
+            format="json",
+            **self._auth(member_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_component_export_csv_respects_filters_and_visible_components(self):
+        _, member_access = self._login_with_role("compexport@example.com", "Member")
+        self.client.post(
+            reverse("knowledge-component-list-create"),
+            {"name": "Certified Widget", "status": "CERTIFIED", "quantity_available": 5},
+            format="json",
+            **self._auth(member_access),
+        )
+        self.client.post(
+            reverse("knowledge-component-list-create"),
+            {"name": "Testing Widget", "status": "TESTING", "quantity_available": 3},
+            format="json",
+            **self._auth(member_access),
+        )
+
+        response = self.client.get(reverse("knowledge-component-export"), **self._auth(member_access))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response["Content-Type"], "text/csv")
+        body = response.getvalue().decode()
+        self.assertIn("Certified Widget", body)
+        self.assertIn("Testing Widget", body)
+
+        response = self.client.get(
+            reverse("knowledge-component-export") + "?status=CERTIFIED", **self._auth(member_access)
+        )
+        body = response.getvalue().decode()
+        self.assertIn("Certified Widget", body)
+        self.assertNotIn("Testing Widget", body)
+
+    def test_component_export_requires_component_read(self):
+        _, guest_access = self._login_with_role("compexportguest@example.com", "Guest")
+        response = self.client.get(reverse("knowledge-component-export"), **self._auth(guest_access))
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
     def test_failure_crud_and_permission_gating(self):
         _, member_access = self._login_with_role("failmember@example.com", "Member")
         response = self.client.post(

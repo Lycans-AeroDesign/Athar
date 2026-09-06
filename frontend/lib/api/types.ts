@@ -321,8 +321,13 @@ export interface ComponentSummary {
   id: string;
   name: string;
   category: Category | null;
+  photo: StoredFileRef | null;
   manufacturer: string;
   part_number: string;
+  /** External reference - a datasheet, vendor/purchase page, etc. */
+  link: string;
+  /** Workshop inventory count on hand. */
+  quantity_available: number;
   status: ComponentStatus;
   specifications: ComponentSpecRow[];
   visibility: Visibility;

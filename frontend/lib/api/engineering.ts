@@ -6,7 +6,7 @@
 // payloads use `..._id`/`tag_names` field names matching the backend's
 // WriteSerializers.
 
-import { apiJson, apiVoid } from "./client";
+import { apiFetch, apiJson, apiVoid } from "./client";
 import type {
   ComponentDetail,
   ComponentStatus,
@@ -118,8 +118,11 @@ export function getComponent(id: string): Promise<ComponentDetail> {
 export interface ComponentWritePayload {
   name?: string;
   category_id?: string | null;
+  photo_id?: string | null;
   manufacturer?: string;
   part_number?: string;
+  link?: string;
+  quantity_available?: number;
   status?: ComponentStatus;
   summary?: string;
   specifications?: ComponentSpecRow[];
@@ -161,6 +164,29 @@ export function addComponentAttachment(componentId: string, fileId: string): Pro
 
 export function removeComponentAttachment(componentId: string, attachmentId: string): Promise<void> {
   return apiVoid(`/api/v1/knowledge/components/${componentId}/attachments/${attachmentId}/`, { method: "DELETE" });
+}
+
+/** Downloads the (optionally filtered) Components list as CSV through the
+ * auth-gated endpoint (see backend/knowledge/views.py's ComponentExportView) -
+ * same blob: URL approach as lib/api/backups.ts's downloadBackupJob, since a
+ * plain <a href> can't carry the Bearer header. */
+export async function exportComponentsCsv(filters?: { category?: string; status?: ComponentStatus; q?: string }): Promise<void> {
+  const params = new URLSearchParams();
+  if (filters?.category) params.set("category", filters.category);
+  if (filters?.status) params.set("status", filters.status);
+  if (filters?.q) params.set("q", filters.q);
+  const query = params.toString() ? `?${params.toString()}` : "";
+  const res = await apiFetch(`/api/v1/knowledge/components/export/${query}`);
+  if (!res.ok) throw new Error(`Failed to export components (${res.status})`);
+  const blob = await res.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = objectUrl;
+  anchor.download = "components.csv";
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(objectUrl);
 }
 
 // --- Failures ---------------------------------------------------------------
