@@ -56,12 +56,16 @@ class UserProfileSerializer(serializers.ModelSerializer):
     """Public-safe profile shape for a user's contributions page - same
     minimal fields as AuthorSerializer above (never roles/permissions) plus
     date_joined, the aggregate contribution counts, and the weighted
-    leaderboard score (see scoring.py) - all computed by the view and passed
-    in via context, no model field backing either."""
+    leaderboard score/rank per time window (see scoring.py and
+    services.period_since) - all computed by the view and passed in via
+    context, no model field backing either."""
 
     profile_picture = StoredFileSerializer(read_only=True)
     stats = serializers.SerializerMethodField()
-    score = serializers.SerializerMethodField()
+    # {"month": {"score": int, "rank": int|None}, "year": {...}, "all": {...}} -
+    # see UserProfileView.get.
+    periods = serializers.SerializerMethodField()
+    total_members = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -75,14 +79,18 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "profile_picture",
             "date_joined",
             "stats",
-            "score",
+            "periods",
+            "total_members",
         ]
 
     def get_stats(self, obj: User) -> dict:
         return self.context["stats"]
 
-    def get_score(self, obj: User) -> int:
-        return self.context["score"]
+    def get_periods(self, obj: User) -> dict:
+        return self.context["periods"]
+
+    def get_total_members(self, obj: User) -> int:
+        return self.context["total_members"]
 
 
 class LeaderboardEntrySerializer(serializers.Serializer):

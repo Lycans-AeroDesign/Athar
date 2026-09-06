@@ -10,13 +10,21 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 import { runProductTour } from "@/lib/onboarding/tour";
 import { useOrganization } from "@/lib/organization/OrganizationProvider";
 
+interface ProductTourAutostartProps {
+  /** Opens/closes the off-canvas SideNav drawer - see (protected)/layout.tsx.
+   * Threaded through so the tour can spotlight sidebar items on a mobile
+   * viewport, where that drawer is off-screen unless explicitly opened. */
+  openMobileNav: () => void;
+  closeMobileNav: () => void;
+}
+
 /** Mounted once in the protected layout - renders nothing, just watches for
  * "this org has the tour on, and this viewer hasn't seen it yet" and starts
  * it automatically. TopBar.tsx's "Take a tour" menu item calls
  * runProductTour() directly for a manual replay, bypassing this component
  * entirely (it doesn't re-check has_completed_tour, since replaying is an
  * explicit request). */
-export function ProductTourAutostart() {
+export function ProductTourAutostart({ openMobileNav, closeMobileNav }: ProductTourAutostartProps) {
   const t = useTranslations("tour");
   const { user, updateUser } = useAuth();
   const { settings } = useOrganization();
@@ -37,13 +45,17 @@ export function ProductTourAutostart() {
     const timeout = setTimeout(() => {
       if (hasStarted.current) return;
       hasStarted.current = true;
-      runProductTour(t, () => {
-        updateMe({ preferences: { ...user.preferences, has_completed_tour: true } }).then(updateUser);
-      });
+      runProductTour(
+        t,
+        () => {
+          updateMe({ preferences: { ...user.preferences, has_completed_tour: true } }).then(updateUser);
+        },
+        { openMobileNav, closeMobileNav },
+      );
     }, 500);
 
     return () => clearTimeout(timeout);
-  }, [settings?.product_tour_enabled, user, updateUser, t]);
+  }, [settings?.product_tour_enabled, user, updateUser, t, openMobileNav, closeMobileNav]);
 
   return null;
 }

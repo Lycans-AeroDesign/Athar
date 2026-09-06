@@ -16,6 +16,7 @@ import type {
   ArticleSummary,
   AuditLogEntry,
   ComponentSummary,
+  ContributionPeriod,
   ContributionType,
   DocumentSummary,
   FailureSummary,
@@ -121,6 +122,16 @@ const TAB_LABEL_KEYS: Record<ContributionType, string> = {
   document: "tabDocument",
 };
 
+// Order matches the score card's tab row - most-recent window first, same
+// convention as the leaderboard widget on the Dashboard (page.tsx).
+const PERIODS: ContributionPeriod[] = ["month", "year", "all"];
+
+const PERIOD_LABEL_KEYS: Record<ContributionPeriod, string> = {
+  month: "periodMonth",
+  year: "periodYear",
+  all: "periodAll",
+};
+
 const TAB_ICONS: Record<ContributionType, string> = {
   article: "menu_book",
   question: "forum",
@@ -179,6 +190,8 @@ export function ContributionsPanel({ profile }: ContributionsPanelProps) {
   const t = useTranslations("userProfile");
   const [tab, setTab] = useState<ContributionType>("article");
   const [page, setPage] = useState(1);
+  const [scorePeriod, setScorePeriod] = useState<ContributionPeriod>("all");
+  const periodStat = profile.periods[scorePeriod];
 
   // Keyed by profile+tab+page - same "avoid a plain setResult(null) reset in
   // the effect body" pattern used throughout this app's list pages. Keying
@@ -203,12 +216,35 @@ export function ContributionsPanel({ profile }: ContributionsPanelProps) {
 
   return (
     <div className="space-y-6">
-      <div className="bg-primary-container rounded-xl border border-outline-variant p-6 flex items-center justify-between gap-4">
-        <div>
-          <p className="font-label-caps text-label-caps text-on-primary-container uppercase">{t("scoreLabel")}</p>
-          <p className="font-display text-display text-on-primary-container mt-1">{profile.score}</p>
+      <div className="bg-primary-container rounded-xl border border-outline-variant p-6 space-y-4">
+        <div className="flex items-center gap-1">
+          {PERIODS.map((period) => (
+            <button
+              key={period}
+              type="button"
+              onClick={() => setScorePeriod(period)}
+              className={`px-3 py-1 rounded-lg font-label-caps text-label-caps uppercase transition-colors ${
+                scorePeriod === period
+                  ? "bg-surface-container-lowest text-primary"
+                  : "text-on-primary-container/70 hover:text-on-primary-container"
+              }`}
+            >
+              {t(PERIOD_LABEL_KEYS[period])}
+            </button>
+          ))}
         </div>
-        <Icon name="trophy" size={40} className="text-on-primary-container opacity-70 shrink-0" />
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="font-label-caps text-label-caps text-on-primary-container uppercase">{t("scoreLabel")}</p>
+            <p className="font-display text-display text-on-primary-container mt-1">{periodStat.score}</p>
+            <p className="font-body-md text-body-md text-on-primary-container/80 mt-1">
+              {periodStat.rank !== null
+                ? t("standingLabel", { rank: periodStat.rank, total: profile.total_members })
+                : t("standingNone")}
+            </p>
+          </div>
+          <Icon name="trophy" size={40} className="text-on-primary-container opacity-70 shrink-0" />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

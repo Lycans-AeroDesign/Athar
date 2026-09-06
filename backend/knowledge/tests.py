@@ -1752,7 +1752,12 @@ class UserProfileTests(KnowledgeTestCase):
             {"article": 1, "project": 1, "question": 1},
         )
         # article.create(3) + article.publish(5) + project.create(2) + question.create(1) - see scoring.py.
-        self.assertEqual(response.data["score"], 11)
+        # All contributions just happened, so "month"/"year"/"all" agree - and having just
+        # scored the org's only points this period, the owner ranks #1 of 2 members in each.
+        for period in ("month", "year", "all"):
+            self.assertEqual(response.data["periods"][period]["score"], 11)
+            self.assertEqual(response.data["periods"][period]["rank"], 1)
+        self.assertEqual(response.data["total_members"], 2)
 
         # The viewer's own profile shows their answer, and that it was accepted.
         response = self.client.get(reverse("knowledge-user-profile", args=[viewer.id]), **self._auth(viewer_access))
@@ -1760,7 +1765,10 @@ class UserProfileTests(KnowledgeTestCase):
         self.assertEqual(response.data["stats"]["accepted_answers"], 1)
         # question.answer(2) + accepted-answer credit(5), attributed to the
         # answer's own author (viewer), not the owner who clicked accept.
-        self.assertEqual(response.data["score"], 7)
+        # The viewer trails the owner's 11 points, so they rank #2 of 2 in every window.
+        for period in ("month", "year", "all"):
+            self.assertEqual(response.data["periods"][period]["score"], 7)
+            self.assertEqual(response.data["periods"][period]["rank"], 2)
 
     def test_profile_404s_for_unknown_user(self):
         _, access = self._login_with_role("profile404@example.com", "Member")
@@ -2133,6 +2141,31 @@ class ContributionScoringTests(KnowledgeTestCase):
         self.assertEqual(entry_by_email["scorequiet@example.com"], 1)
         scores_in_order = [entry["score"] for entry in response.data]
         self.assertEqual(scores_in_order, sorted(scores_in_order, reverse=True))
+
+    def test_leaderboard_period_param_filters_by_window_and_rejects_unknown_values(self):
+        contributor, contributor_access = self._login_with_role("scoreperiod@example.com", "Member")
+        self.client.post(
+            reverse("knowledge-question-list-create"),
+            {"title": "Just asked", "body": "..."},
+            format="json",
+            **self._auth(contributor_access),
+        )
+
+        for period in ("month", "year", "all"):
+            response = self.client.get(
+                reverse("knowledge-leaderboard") + f"?period={period}", **self._auth(contributor_access)
+            )
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            entry_by_email = {entry["user"]["email"]: entry["score"] for entry in response.data}
+            # A contribution made moments ago always falls inside every window,
+            # including "month"/"year" - it's the exclusion of older activity
+            # (not covered here) that those windows exist for.
+            self.assertEqual(entry_by_email["scoreperiod@example.com"], 1)
+
+        response = self.client.get(
+            reverse("knowledge-leaderboard") + "?period=decade", **self._auth(contributor_access)
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_contributors_field_lists_distinct_editors(self):
         author, author_access = self._login_with_role("scorearticleauthor@example.com", "Member")

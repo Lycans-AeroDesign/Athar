@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { SideNav } from "@/components/layout/SideNav";
 import { TopBar } from "@/components/layout/TopBar";
@@ -14,6 +14,12 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
   const router = useRouter();
   const pathname = usePathname();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  // Stable references (setMobileNavOpen itself never changes) rather than
+  // inline closures - ProductTourAutostart depends on these in a useEffect,
+  // and a fresh closure every render would re-run that effect (and reset its
+  // one-shot start timer) on every unrelated re-render of this layout.
+  const openMobileNav = useCallback(() => setMobileNavOpen(true), []);
+  const closeMobileNav = useCallback(() => setMobileNavOpen(false), []);
   // Below lg, SideNav is an off-canvas drawer (see SideNav.tsx) - close it on
   // every navigation so it doesn't stay open over the new page. Reset during
   // render (React's documented pattern for "adjust state when a prop
@@ -39,10 +45,10 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="bg-background text-on-background flex h-screen overflow-hidden">
-      <ProductTourAutostart />
-      <SideNav open={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
+      <ProductTourAutostart openMobileNav={openMobileNav} closeMobileNav={closeMobileNav} />
+      <SideNav open={mobileNavOpen} onClose={closeMobileNav} />
       <div className="flex-1 flex flex-col lg:ms-64 overflow-hidden bg-background">
-        <TopBar onOpenMenu={() => setMobileNavOpen(true)} />
+        <TopBar onOpenMenu={openMobileNav} onCloseMenu={closeMobileNav} />
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-10 bg-background">
           <div className="max-w-[1200px] mx-auto space-y-8">{children}</div>
         </main>

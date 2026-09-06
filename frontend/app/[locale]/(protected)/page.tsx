@@ -13,7 +13,7 @@ import { StatCard } from "@/components/ui/StatCard";
 import { Link } from "@/i18n/navigation";
 import { getKnowledgeActivity } from "@/lib/api/audit";
 import { getArticleCount, getArticles, getLeaderboard, getOpenQuestionCount, getQuestions } from "@/lib/api/knowledge";
-import type { ArticleSummary, AuditLogEntry, LeaderboardEntry, QuestionSummary } from "@/lib/api/types";
+import type { ArticleSummary, AuditLogEntry, ContributionPeriod, LeaderboardEntry, QuestionSummary } from "@/lib/api/types";
 import { formatRelativeTime } from "@/lib/datetime";
 import { formatPersonName } from "@/lib/format";
 import { useAuth } from "@/lib/auth/AuthProvider";
@@ -34,6 +34,14 @@ const ACTIVITY_ACTION_KEYS: Record<string, string> = {
 
 const RECENT_ITEMS_LIMIT = 4;
 
+const LEADERBOARD_PERIODS: ContributionPeriod[] = ["month", "year", "all"];
+
+const LEADERBOARD_PERIOD_LABEL_KEYS: Record<ContributionPeriod, string> = {
+  month: "periodMonth",
+  year: "periodYear",
+  all: "periodAll",
+};
+
 export default function DashboardPage() {
   const { user } = useAuth();
   const t = useTranslations("dashboard");
@@ -43,7 +51,15 @@ export default function DashboardPage() {
   const [articles, setArticles] = useState<ArticleSummary[] | null>(null);
   const [questions, setQuestions] = useState<QuestionSummary[] | null>(null);
   const [activity, setActivity] = useState<AuditLogEntry[] | null>(null);
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[] | null>(null);
+  const [leaderboardPeriod, setLeaderboardPeriod] = useState<ContributionPeriod>("all");
+  // Keyed by period - same "avoid a plain setState(null) reset in the effect
+  // body" pattern ContributionsPanel/RecentActivity use, so switching tabs
+  // never shows a stale list from the previous period while the new one loads.
+  const [leaderboardResult, setLeaderboardResult] = useState<{
+    period: ContributionPeriod;
+    entries: LeaderboardEntry[];
+  } | null>(null);
+  const leaderboard = leaderboardResult?.period === leaderboardPeriod ? leaderboardResult.entries : null;
   // One shared banner for any of the six independent fetches below - each
   // still resolves/renders on its own (a failed activity feed shouldn't block
   // the stat cards), but a silent failure previously meant "Loading..."
@@ -57,8 +73,15 @@ export default function DashboardPage() {
     getArticles().then(setArticles, onError);
     getQuestions().then(setQuestions, onError);
     getKnowledgeActivity().then((data) => setActivity(data.results), onError);
-    getLeaderboard().then(setLeaderboard, onError);
   }, []);
+
+  useEffect(() => {
+    const onError = (err: unknown) => setLoadError(err instanceof Error ? err.message : String(err));
+    getLeaderboard(leaderboardPeriod).then(
+      (entries) => setLeaderboardResult({ period: leaderboardPeriod, entries }),
+      onError,
+    );
+  }, [leaderboardPeriod]);
 
   const recentItems = useMemo(() => {
     if (!articles || !questions) return null;
@@ -137,7 +160,25 @@ export default function DashboardPage() {
 
         <div className="lg:col-span-4 space-y-6">
           <div className="bg-surface-container-low border border-outline-variant rounded-xl p-4 space-y-4">
-            <h2 className="font-headline-md text-headline-md text-on-surface">{t("leaderboardTitle")}</h2>
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <h2 className="font-headline-md text-headline-md text-on-surface">{t("leaderboardTitle")}</h2>
+              <div className="flex items-center gap-1">
+                {LEADERBOARD_PERIODS.map((period) => (
+                  <button
+                    key={period}
+                    type="button"
+                    onClick={() => setLeaderboardPeriod(period)}
+                    className={`px-2.5 py-1 rounded-lg font-label-caps text-label-caps uppercase transition-colors ${
+                      leaderboardPeriod === period
+                        ? "bg-primary-container text-on-primary-container"
+                        : "text-on-surface-variant hover:bg-surface-variant"
+                    }`}
+                  >
+                    {t(LEADERBOARD_PERIOD_LABEL_KEYS[period])}
+                  </button>
+                ))}
+              </div>
+            </div>
 
             {leaderboard === null ? (
               <p className="font-body-md text-body-md text-on-surface-variant">{t("activityLoading")}</p>

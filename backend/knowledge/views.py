@@ -373,11 +373,23 @@ class UserProfileView(APIView):
         stats["accepted_answers"] = services.visible_questions_for(request.user).filter(
             accepted_answer__author=user
         ).count()
-        # Same weighted score the leaderboard sorts by (see scoring.py) - 0
-        # for a user with no scored actions yet, not absent, so the profile
-        # page/ContributionsPanel can always render a number.
-        score = services.compute_contribution_scores_for(request.user.organization).get(user.id, 0)
-        return Response(UserProfileSerializer(user, context={"stats": stats, "score": score}).data)
+        # One {score, rank} pair per window - "month"/"year" are calendar
+        # to-date (see services.period_since), "all" is lifetime, the same
+        # weighted score the leaderboard sorts by (see scoring.py). 0/None
+        # for a user with no scored actions in that window yet, not absent,
+        # so the profile page/ContributionsPanel can always render a number.
+        periods = {}
+        for period in ("month", "year", "all"):
+            scores = services.compute_contribution_scores_for(
+                request.user.organization, since=services.period_since(period)
+            )
+            periods[period] = {"score": scores.get(user.id, 0), "rank": services.rank_for(scores, user.id)}
+        total_members = User.objects.filter(organization=request.user.organization).count()
+        return Response(
+            UserProfileSerializer(
+                user, context={"stats": stats, "periods": periods, "total_members": total_members}
+            ).data
+        )
 
 
 class UserContributionsView(APIView):
@@ -409,13 +421,18 @@ class LeaderboardView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    VALID_PERIODS = {"month", "year", "all"}
+
     @extend_schema(
         tags=["Knowledge"],
-        summary="Top contributors leaderboard for the caller's organization",
-        responses={200: LeaderboardEntrySerializer(many=True), **COMMON_ERRORS},
+        summary="Top contributors leaderboard for the caller's organization (?period=month|year|all, default all)",
+        responses={200: LeaderboardEntrySerializer(many=True), 400: BAD_REQUEST, **COMMON_ERRORS},
     )
     def get(self, request):
-        entries = services.leaderboard_for(request.user.organization)
+        period = request.query_params.get("period", "all")
+        if period not in self.VALID_PERIODS:
+            raise ValidationError(f"period must be one of {', '.join(sorted(self.VALID_PERIODS))}.")
+        entries = services.leaderboard_for(request.user.organization, since=services.period_since(period))
         return Response(LeaderboardEntrySerializer(entries, many=True).data)
 
 

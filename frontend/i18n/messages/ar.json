@@ -153,6 +153,9 @@
     "leaderboardTitle": "أبرز المساهمين",
     "leaderboardEmptyState": "لا توجد مساهمات بعد.",
     "leaderboardPoints": "{count, plural, =0 {0 نقطة} one {نقطة واحدة} two {نقطتان} few {# نقاط} many {# نقطة} other {# نقطة}}",
+    "periodMonth": "هذا الشهر",
+    "periodYear": "هذا العام",
+    "periodAll": "كل الأوقات",
     "activityActions": {
       "articlePublish": "نشر",
       "articleSubmit": "أرسل للمراجعة",
@@ -347,6 +350,11 @@
     "notFound": "هذا المستخدم غير موجود.",
     "joinedLabel": "انضم في {date}",
     "scoreLabel": "نقاط المساهمة",
+    "periodMonth": "هذا الشهر",
+    "periodYear": "هذا العام",
+    "periodAll": "طوال الوقت",
+    "standingLabel": "المركز {rank} من {total}",
+    "standingNone": "لا توجد مساهمات مصنّفة بعد",
     "groupKnowledgeTitle": "المعرفة",
     "groupEngineeringTitle": "الهندسة",
     "groupResourcesTitle": "الموارد",
@@ -568,7 +576,12 @@
       "uploadingFile": "جارٍ رفع {filename}…",
       "uploadError": "تعذّر رفع {filename}: {message}",
       "mentionSearching": "جارٍ البحث...",
-      "relationError": "تم ربط \"{title}\" في النص، لكن تعذّرت إضافته إلى المعرفة ذات الصلة: {message}"
+      "relationError": "تم ربط \"{title}\" في النص، لكن تعذّرت إضافته إلى المعرفة ذات الصلة: {message}",
+      "helpTooltip": "نصائح التنسيق",
+      "helpTitle": "نصائح التنسيق",
+      "helpMention": "اكتب @ لربط أو الإشارة إلى مقالة أو سؤال أو مشروع أو مكوّن أو عطل أو إجراء تشغيل قياسي أو اختبار أو مستند آخر.",
+      "helpUpload": "الصق أو اسحب وأفلت صورًا أو ملفات لرفعها وتضمينها.",
+      "helpMermaid": "ضع صيغة Mermaid داخل كتلة كود ```mermaid لعرضها كمخطط."
     }
   },
   "engineering": {

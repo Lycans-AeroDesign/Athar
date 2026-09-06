@@ -6,6 +6,7 @@ import type {
   ArticleSummary,
   Answer,
   Category,
+  ContributionPeriod,
   ContributionType,
   KnowledgeAttachment,
   KnowledgeAuthor,
@@ -329,6 +330,6 @@ export function getUserContributions<T>(
 /** Org-scoped "Top Contributors" leaderboard, sorted descending, capped at
  * the backend's own top-20 - see knowledge/scoring.py's CONTRIBUTION_POINTS
  * table. Powers the Dashboard's "Top Contributors" card. */
-export function getLeaderboard(): Promise<LeaderboardEntry[]> {
-  return apiJson<LeaderboardEntry[]>("/api/v1/knowledge/leaderboard/");
+export function getLeaderboard(period: ContributionPeriod = "all"): Promise<LeaderboardEntry[]> {
+  return apiJson<LeaderboardEntry[]>(`/api/v1/knowledge/leaderboard/?period=${period}`);
 }

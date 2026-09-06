@@ -12,6 +12,8 @@ export interface UserPreferences {
   engineering_list_filters?: boolean;
   /** Whether this user has finished (or skipped) the first-run interactive product tour - see lib/onboarding/tour.ts. Defaults to off (not yet seen). */
   has_completed_tour?: boolean;
+  /** Whether this user has seen the MarkdownEditor's "Formatting tips" popover at least once - see components/ui/MarkdownEditor.tsx. Defaults to off (not yet seen), which auto-opens it once. */
+  has_seen_markdown_help?: boolean;
 }
 
 export interface User {
@@ -492,6 +494,19 @@ export interface LeaderboardEntry {
   score: number;
 }
 
+/** Query param for both GET /knowledge/leaderboard/ and the per-window
+ * breakdown in UserProfile.periods below - "month"/"year" are calendar
+ * to-date, "all" is lifetime (see backend knowledge/services.py's
+ * period_since). */
+export type ContributionPeriod = "month" | "year" | "all";
+
+export interface ContributionPeriodStat {
+  /** The same weighted score the leaderboard sorts by - see knowledge/scoring.py's CONTRIBUTION_POINTS table. */
+  score: number;
+  /** 1-indexed standing among total_members for this window, or null if this user has no scored activity in it yet. */
+  rank: number | null;
+}
+
 export interface UserProfile {
   id: string;
   first_name: string;
@@ -503,6 +518,7 @@ export interface UserProfile {
   date_joined: string;
   /** One count per ContributionType, plus accepted_answers (a subset of "answer", not a separate contribution type of its own). */
   stats: Record<ContributionType, number> & { accepted_answers: number };
-  /** The same weighted score the leaderboard sorts by - see knowledge/scoring.py's CONTRIBUTION_POINTS table. */
-  score: number;
+  periods: Record<ContributionPeriod, ContributionPeriodStat>;
+  /** Org member count - the denominator for periods[x].rank's "#N of total_members" display. */
+  total_members: number;
 }

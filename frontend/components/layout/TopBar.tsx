@@ -20,9 +20,12 @@ import type { ThemePreference } from "@/lib/theme/theme";
 interface TopBarProps {
   /** Opens the off-canvas SideNav drawer below the `lg` breakpoint (see the (protected) layout). */
   onOpenMenu: () => void;
+  /** Closes that same drawer - needed here too so a manual tour replay (below) can
+   * close it again once the tour walks past the sidebar steps. */
+  onCloseMenu: () => void;
 }
 
-export function TopBar({ onOpenMenu }: TopBarProps) {
+export function TopBar({ onOpenMenu, onCloseMenu }: TopBarProps) {
   const { user, logout, updateUser } = useAuth();
   const { theme, setTheme } = useTheme();
   const { settings } = useOrganization();
@@ -40,9 +43,13 @@ export function TopBar({ onOpenMenu }: TopBarProps) {
 
   function handleStartTour() {
     if (!user) return;
-    runProductTour(tourT, () => {
-      updateMe({ preferences: { ...user.preferences, has_completed_tour: true } }).then(updateUser);
-    });
+    runProductTour(
+      tourT,
+      () => {
+        updateMe({ preferences: { ...user.preferences, has_completed_tour: true } }).then(updateUser);
+      },
+      { openMobileNav: onOpenMenu, closeMobileNav: onCloseMenu },
+    );
   }
 
   const displayName = formatPersonName(user) ?? "";

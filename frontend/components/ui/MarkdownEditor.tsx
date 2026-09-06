@@ -1,13 +1,16 @@
 "use client";
 
+import * as Popover from "@radix-ui/react-popover";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 
 import { Icon } from "./Icon";
 import { Markdown } from "./Markdown";
+import { updateMe } from "@/lib/api/accounts";
 import { createRelation, searchKnowledge } from "@/lib/api/knowledge";
 import { uploadFile } from "@/lib/api/files";
 import type { RelatableType, SearchResult } from "@/lib/api/types";
+import { useAuth } from "@/lib/auth/AuthProvider";
 import { RELATABLE_ICON, RELATABLE_ROUTE_PREFIX } from "@/lib/knowledgeTypes";
 
 interface MarkdownEditorProps {
@@ -100,6 +103,25 @@ export function MarkdownEditor({ value, onChange, placeholder, relateFrom }: Mar
   const [tab, setTab] = useState<"edit" | "preview">("edit");
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [relationError, setRelationError] = useState<string | null>(null);
+
+  // Formatting tips popover: opens itself once per user (like the product
+  // tour's has_completed_tour - see lib/onboarding/tour.ts) rather than
+  // requiring a click to discover it exists at all, then stays a normal
+  // click-to-open/close popover from then on. The lazy initializer (not an
+  // effect-driven setState, which react-hooks flags as a cascading-render
+  // anti-pattern) reads has_seen_markdown_help once at mount - safe because
+  // every route that can render this component is gated behind the
+  // protected layout's `!user` loading check, so `user` is always already
+  // resolved by the time this component exists.
+  const { user, updateUser } = useAuth();
+  const [helpOpen, setHelpOpen] = useState(() => Boolean(user && !user.preferences.has_seen_markdown_help));
+  const hasMarkedHelpSeen = useRef(false);
+  useEffect(() => {
+    if (hasMarkedHelpSeen.current) return;
+    if (!user || user.preferences.has_seen_markdown_help) return;
+    hasMarkedHelpSeen.current = true;
+    updateMe({ preferences: { ...user.preferences, has_seen_markdown_help: true } }).then(updateUser);
+  }, [user, updateUser]);
 
   // "@"-mention picker: typing "@query" opens a dropdown searching across
   // every relatable type (searchKnowledge already covers all of them);
@@ -461,6 +483,42 @@ export function MarkdownEditor({ value, onChange, placeholder, relateFrom }: Mar
           >
             <Icon name="table_chart" size={18} />
           </button>
+          <div className="w-px h-5 bg-outline-variant mx-1" aria-hidden="true" />
+          <Popover.Root open={helpOpen} onOpenChange={setHelpOpen}>
+            <Popover.Trigger asChild>
+              <button
+                type="button"
+                aria-label={t("helpTooltip")}
+                title={t("helpTooltip")}
+                className={buttonClass}
+              >
+                <Icon name="help" size={18} />
+              </button>
+            </Popover.Trigger>
+            <Popover.Portal>
+              <Popover.Content
+                align="start"
+                sideOffset={8}
+                className="max-w-xs bg-surface-container-lowest border border-outline-variant rounded-xl p-4 shadow-[0_4px_16px_0_rgba(0,0,0,0.12)] z-50 space-y-3"
+              >
+                <p className="font-label-caps text-label-caps text-on-surface-variant uppercase">{t("helpTitle")}</p>
+                <ul className="space-y-2.5">
+                  <li className="flex items-start gap-2">
+                    <Icon name="alternate_email" size={16} className="text-primary shrink-0 mt-0.5" />
+                    <span className="font-body-md text-body-md text-on-surface">{t("helpMention")}</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Icon name="upload" size={16} className="text-primary shrink-0 mt-0.5" />
+                    <span className="font-body-md text-body-md text-on-surface">{t("helpUpload")}</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Icon name="diagram" size={16} className="text-primary shrink-0 mt-0.5" />
+                    <span className="font-body-md text-body-md text-on-surface">{t("helpMermaid")}</span>
+                  </li>
+                </ul>
+              </Popover.Content>
+            </Popover.Portal>
+          </Popover.Root>
         </div>
         <div className="flex items-center gap-1 px-2">
           <button

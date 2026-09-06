@@ -1173,10 +1173,42 @@ def get_relations_for(model_name: str, object_id, *, actor) -> list[KnowledgeRel
     return visible
 
 
-def compute_contribution_scores_for(organization) -> dict:
+def period_since(period: str):
+    """Start-of-period cutoff (UTC - see settings.TIME_ZONE) for a leaderboard/
+    profile score window, or `None` for "all" (no filter at all - lifetime -
+    rather than "since the Unix epoch", so it still counts AuditLog entries
+    from before this feature existed)."""
+    from django.utils import timezone
+
+    if period == "all":
+        return None
+    now = timezone.now()
+    if period == "month":
+        return now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    if period == "year":
+        return now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+    raise ValueError(f"Unknown period: {period!r}")
+
+
+def rank_for(scores: dict, user_id) -> "int | None":
+    """1-indexed leaderboard position of user_id within `scores`, or None if
+    they have no scored activity in this window - an absent rank (rather
+    than e.g. "last place") is what lets the profile card render its own
+    "not ranked yet" empty state instead of a misleading position."""
+    if user_id not in scores:
+        return None
+    ranked_ids = sorted(scores, key=lambda uid: scores[uid], reverse=True)
+    return ranked_ids.index(user_id) + 1
+
+
+def compute_contribution_scores_for(organization, *, since=None) -> dict:
     """user_id -> total score, for the org's leaderboard - see scoring.py's
     own docstring for why this is creation-weighted (not a flat count) and
     computed on demand from AuditLog rather than a denormalized column.
+
+    `since` restricts to AuditLog entries created on/after that instant (for
+    the This Month/This Year score windows) - omitted (the default) means
+    lifetime, matching the leaderboard's original all-time behavior.
 
     `question.accept_answer` is deliberately excluded from the generic
     CONTRIBUTION_POINTS lookup and handled as its own pass below: the log
@@ -1187,13 +1219,15 @@ def compute_contribution_scores_for(organization) -> dict:
 
     scores: dict = {}
     generic_actions = [action for action in CONTRIBUTION_POINTS if action != ACCEPTED_ANSWER_ACTION]
-    generic_logs = AuditLog.objects.filter(
-        organization=organization, action__in=generic_actions, actor__isnull=False
-    ).values_list("actor_id", "action")
-    for actor_id, action in generic_logs:
+    generic_logs = AuditLog.objects.filter(organization=organization, action__in=generic_actions, actor__isnull=False)
+    if since is not None:
+        generic_logs = generic_logs.filter(created_at__gte=since)
+    for actor_id, action in generic_logs.values_list("actor_id", "action"):
         scores[actor_id] = scores.get(actor_id, 0) + CONTRIBUTION_POINTS[action]
 
     accept_logs = AuditLog.objects.filter(organization=organization, action=ACCEPTED_ANSWER_ACTION)
+    if since is not None:
+        accept_logs = accept_logs.filter(created_at__gte=since)
     answer_ids = [
         log.metadata.get("answer_id") for log in accept_logs if log.metadata.get("answer_id")
     ]
@@ -1209,13 +1243,15 @@ def compute_contribution_scores_for(organization) -> dict:
     return scores
 
 
-def leaderboard_for(organization, *, limit: int = 20) -> list[dict]:
+def leaderboard_for(organization, *, limit: int = 20, since=None) -> list[dict]:
     """Top contributors for the org's Dashboard card, sorted descending by
-    score. `user` objects are attached (not just ids) so the caller's
-    serializer can render avatar/name without a second query per row."""
+    score over the `since` window (None = lifetime, see
+    compute_contribution_scores_for). `user` objects are attached (not just
+    ids) so the caller's serializer can render avatar/name without a second
+    query per row."""
     from accounts.models import User
 
-    scores = compute_contribution_scores_for(organization)
+    scores = compute_contribution_scores_for(organization, since=since)
     top_user_ids = sorted(scores, key=lambda user_id: scores[user_id], reverse=True)[:limit]
     users_by_id = {user.id: user for user in User.objects.filter(pk__in=top_user_ids)}
     return [
