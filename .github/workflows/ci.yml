@@ -52,6 +52,16 @@ jobs:
         uses: astral-sh/setup-uv@v5
         with:
           version: latest
+          # `enable-cache` already defaults to "auto" (on for GitHub-hosted
+          # runners on ordinary push/pull_request triggers, which is all this
+          # workflow uses) - set explicitly so it's not implicit, and doesn't
+          # silently turn off if a riskier trigger (pull_request_target,
+          # release, ...) is ever added to this workflow. `cache-python`
+          # additionally caches the downloaded interpreter itself, which
+          # `enable-cache` alone does not cover - `uv python install` below
+          # would otherwise re-download Python every run regardless.
+          enable-cache: true
+          cache-python: true
 
       - name: Set up Python
         run: uv python install
@@ -82,6 +92,22 @@ jobs:
           node-version: 24
           cache: npm
           cache-dependency-path: frontend/package-lock.json
+
+      # setup-node's `cache: npm` above only caches npm's own package cache
+      # (~/.npm), not Next.js's own build cache (.next/cache) - without this,
+      # `npm run build` below is a fully cold build on every single run,
+      # which is the actual slow part, not `npm ci`. Per Next.js's own
+      # documented CI-caching guidance (docs/.../ci-build-caching.mdx):
+      # key on the lockfile + every source file so a dependency bump or any
+      # source change invalidates it, falling back to a lockfile-only match
+      # (source changed, deps didn't) rather than a fully cold cache.
+      - name: Cache Next.js build
+        uses: actions/cache@v4
+        with:
+          path: frontend/.next/cache
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('frontend/package-lock.json') }}-${{ hashFiles('frontend/**/*.js', 'frontend/**/*.jsx', 'frontend/**/*.ts', 'frontend/**/*.tsx') }}
+          restore-keys: |
+            ${{ runner.os }}-nextjs-${{ hashFiles('frontend/package-lock.json') }}-
 
       - name: Install dependencies
         run: npm ci
