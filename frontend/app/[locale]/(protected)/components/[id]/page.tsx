@@ -13,6 +13,7 @@ import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Icon } from "@/components/ui/Icon";
 import { IconButton } from "@/components/ui/IconButton";
 import { Markdown } from "@/components/ui/Markdown";
+import { TagChip } from "@/components/ui/TagChip";
 import { Link, useRouter } from "@/i18n/navigation";
 import { deleteComponent, getComponent } from "@/lib/api/engineering";
 import type { ComponentDetail, ComponentStatus } from "@/lib/api/types";
@@ -148,12 +149,7 @@ export default function ComponentDetailPage() {
         {component.tags.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {component.tags.map((tag) => (
-              <span
-                key={tag.id}
-                className="px-2.5 py-1 rounded-full bg-surface-container-low text-on-surface-variant font-label-caps text-label-caps uppercase border border-outline-variant"
-              >
-                {tag.name}
-              </span>
+              <TagChip key={tag.id} tag={tag} />
             ))}
           </div>
         )}

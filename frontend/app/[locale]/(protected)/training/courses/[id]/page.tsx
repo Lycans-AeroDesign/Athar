@@ -10,6 +10,7 @@ import { DifficultyPill } from "@/components/training/DifficultyPill";
 import { AuthenticatedImage } from "@/components/ui/AuthenticatedImage";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
+import { CategoryBadge } from "@/components/ui/CategoryBadge";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Icon } from "@/components/ui/Icon";
 import { IconButton } from "@/components/ui/IconButton";
@@ -229,11 +230,7 @@ export default function CourseDetailPage() {
         <div className="flex flex-wrap items-center gap-2">
           <CourseStatusPill status={course.status} />
           <DifficultyPill difficulty={course.difficulty} />
-          {course.category && (
-            <span className="inline-flex font-label-caps text-label-caps uppercase border border-outline-variant rounded-full px-2.5 py-1 text-on-surface-variant">
-              {course.category.name}
-            </span>
-          )}
+          {course.category && <CategoryBadge name={course.category.name} />}
         </div>
 
         {/* Tier 2: quantitative facts - icon + text, quieter than the pills above. */}

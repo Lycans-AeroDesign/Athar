@@ -92,8 +92,18 @@ export function SideNav({ open, onClose }: SideNavProps) {
       )}
 
       <nav
+        // The "hidden below lg" classes are deliberately max-lg-scoped, not
+        // just unprefixed - Tailwind's rtl variant compiles to a :where(...)
+        // -based selector (zero added specificity, same as a plain class),
+        // and in the compiled stylesheet the rtl-scoped hide rule happens to
+        // land after the lg-scoped show rule. On an equal-specificity tie the
+        // later rule wins regardless of the media query it's in, so the
+        // unscoped rtl hide rule was overriding the lg show rule at desktop
+        // widths in Arabic, pushing the whole sidebar off-screen. Scoping
+        // both hide classes to max-lg means they simply don't exist as
+        // applicable rules at lg+, so there's no rule left to win a tie.
         className={`bg-surface-container-low text-primary font-body-md text-body-md h-screen w-64 border-e border-outline-variant flex flex-col fixed start-0 top-0 z-40 transition-transform duration-200 lg:translate-x-0 ${
-          open ? "translate-x-0" : "-translate-x-full rtl:translate-x-full"
+          open ? "translate-x-0" : "max-lg:-translate-x-full max-lg:rtl:translate-x-full"
         }`}
       >
         <div className="p-6 border-b border-outline-variant">

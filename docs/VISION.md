@@ -311,6 +311,8 @@ Search filters include:
 
 Search results should provide contextual information and links to related knowledge.
 
+**Tag filtering status: implemented, as a dedicated browse page rather than a checkbox inside the main search UI** — clicking any tag chip (on an article, question, project, component, or SOP) opens `/knowledge/tags/[id]`, showing everything with that exact tag across every taggable type, reusing the same backend search endpoint (`?tag=<id>` alongside its existing `?q=`), the same per-type visibility rules, and the same results/pagination UI as a text search. Category/tag-*name* matching as free-text search terms (typing "propulsion" and having it also surface items merely tagged "propulsion") is a distinct, still-unimplemented idea — see `backend/knowledge/views.py`'s `SearchView` docstring for the standing note on this.
+
 ---
 
 ## 10. Main UI Navigation
@@ -580,15 +582,17 @@ This allows useful questions to become permanent documentation.
 
 Training is integrated into the KMS.
 
+**Status: implemented (V1 scope), added beyond the original roadmap** — see [`README.md`](../README.md#roadmap). A `training` Django app, structurally separate from Knowledge (lessons *reference* existing Knowledge content instead of duplicating it, respecting Knowledge's own RESTRICTED-visibility rules rather than a second authorization system), mirroring Article's DRAFT → IN_REVIEW → PUBLISHED → REJECTED → ARCHIVED workflow for courses.
+
 Features:
 
-* Learning paths
-* Courses
-* Lessons
-* Assessments
-* Practical tasks
-* Training progress
-* Completion status
+* Learning paths — done, as Course → Module → Lesson (not a separate "path" concept spanning multiple courses)
+* Courses — done, with category/difficulty/estimated-duration and the same draft/review/publish workflow as Article
+* Lessons — done, five types (text, video, document, external link, exercise); a lesson's primary video/document resource is either an external URL (e.g. a Google Drive share link, embedded via a narrowly-scoped iframe for Drive links specifically) or an Athar-hosted file, never a second file-storage mechanism
+* Assessments — **not started** (quizzes/scored assessments remain future scope, per the spec's own "don't overbuild V1" guidance)
+* Practical tasks — partially done, as the `EXERCISE` lesson type (presented + a manual "mark complete", no submission/grading workflow yet)
+* Training progress — done, per-lesson completion tracking, with automatic course completion once every *required* lesson is done (optional lessons don't block it)
+* Completion status — done, `CourseEnrollment.status` (`IN_PROGRESS`/`COMPLETED`), with "not started" represented as the absence of an enrollment row rather than a third stored state
 
 Example:
 
@@ -1265,7 +1269,16 @@ This is where the connected knowledge model becomes extremely valuable.
 * Full-text search — done (Postgres full-text search + ranking, with a trigram fallback; see §33)
 * Filters — done, both cross-type (the global search bar/results page) and per-type (each engineering list page's own search box)
 * Related knowledge — done, as the generic `KnowledgeRelation` graph (§34)
+* Browse by tag — done, a dedicated per-tag page reusing the same search endpoint/UI (see §9)
 * Mention detection — not started; the closest thing today is an explicit `@`-mention picker that inserts a link and creates a real relation when you deliberately pick a result — not automatic scanning of prose
+
+### Training *(done, V1 scope — added beyond the original roadmap; see §19)*
+
+* Courses, modules, lessons — done, mirroring Article's draft/review/publish workflow
+* Five lesson types (text, video, document, external link, exercise) — done
+* Enrollment and per-lesson progress tracking — done
+* Lessons reference existing Knowledge content rather than duplicating it — done
+* Assessments/quizzes, assignment submission and grading — not started, deliberately deferred (see §19)
 
 ### V1.0 — Open Source Release
 

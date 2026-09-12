@@ -930,6 +930,114 @@ class SearchTests(KnowledgeTestCase):
         response = self.client.get(reverse("knowledge-search") + "?q=sponsor+budget", **self._auth(head_access))
         self.assertIn(article["id"], {r["id"] for r in response.data["results"]})
 
+    def test_tag_filter_returns_items_across_taggable_types(self):
+        """?tag=<id> (no ?q=) browses everything with that tag, across every
+        taggable type at once - including Failure in the response, whose
+        queryset has no `tags` field at all (see SearchView._TAGGABLE_TYPES);
+        if that guard were missing this would 500, not just under-count."""
+        _, head_access = self._login_with_role("searchtaghead@example.com", "Subteam Head")
+        article = self.client.post(
+            reverse("knowledge-article-list-create"),
+            {"title": "Battery Notes", "content": "...", "tag_names": ["propulsion"]},
+            format="json",
+            **self._auth(head_access),
+        ).data
+        self.client.post(reverse("knowledge-article-publish", args=[article["id"]]), **self._auth(head_access))
+        project = self.client.post(
+            reverse("knowledge-project-list-create"),
+            {"name": "Falcon Propulsion", "tag_names": ["propulsion"]},
+            format="json",
+            **self._auth(head_access),
+        ).data
+        self.client.post(
+            reverse("knowledge-failure-list-create"),
+            {"title": "Unrelated failure", "component_id": None, "project_id": None},
+            format="json",
+            **self._auth(head_access),
+        )
+        tags = self.client.get(reverse("knowledge-tag-list"), **self._auth(head_access)).data["results"]
+        tag_id = next(t["id"] for t in tags if t["name"] == "propulsion")
+
+        response = self.client.get(reverse("knowledge-search") + f"?tag={tag_id}", **self._auth(head_access))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["tag"]["name"], "propulsion")
+        result_ids = {r["id"] for r in response.data["results"]}
+        self.assertIn(article["id"], result_ids)
+        self.assertIn(project["id"], result_ids)
+        self.assertEqual(response.data["counts"]["failure"], 0)
+
+    def test_tag_filter_scoped_by_type_but_counts_stay_unscoped(self):
+        _, head_access = self._login_with_role("searchtagscopehead@example.com", "Subteam Head")
+        article = self.client.post(
+            reverse("knowledge-article-list-create"),
+            {"title": "Wiring Guide", "content": "...", "tag_names": ["avionics"]},
+            format="json",
+            **self._auth(head_access),
+        ).data
+        self.client.post(reverse("knowledge-article-publish", args=[article["id"]]), **self._auth(head_access))
+        tags = self.client.get(reverse("knowledge-tag-list"), **self._auth(head_access)).data["results"]
+        tag_id = next(t["id"] for t in tags if t["name"] == "avionics")
+
+        response = self.client.get(
+            reverse("knowledge-search") + f"?tag={tag_id}&type=project", **self._auth(head_access)
+        )
+        self.assertEqual(response.data["results"], [])
+        self.assertEqual(response.data["counts"]["article"], 1)
+
+    def test_tag_filter_rejects_unknown_or_malformed_tag_id(self):
+        _, head_access = self._login_with_role("searchtagbadhead@example.com", "Subteam Head")
+        response = self.client.get(
+            reverse("knowledge-search") + "?tag=00000000-0000-0000-0000-000000000000", **self._auth(head_access)
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        response = self.client.get(reverse("knowledge-search") + "?tag=not-a-uuid", **self._auth(head_access))
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_tag_filter_respects_restricted_visibility(self):
+        author, author_access = self._login_with_role("searchtagresta@example.com", "Member")
+        article = self.client.post(
+            reverse("knowledge-article-list-create"),
+            {"title": "Internal Notes", "content": "...", "visibility": "RESTRICTED", "tag_names": ["internal"]},
+            format="json",
+            **self._auth(author_access),
+        ).data
+        _, head_access = self._login_with_role("searchtagresthead@example.com", "Subteam Head")
+        self.client.post(reverse("knowledge-article-submit", args=[article["id"]]), **self._auth(author_access))
+        self.client.post(reverse("knowledge-article-publish", args=[article["id"]]), **self._auth(head_access))
+        tags = self.client.get(reverse("knowledge-tag-list"), **self._auth(head_access)).data["results"]
+        tag_id = next(t["id"] for t in tags if t["name"] == "internal")
+
+        _, other_access = self._login_with_role("searchtagrestother@example.com", "Member")
+        response = self.client.get(reverse("knowledge-search") + f"?tag={tag_id}", **self._auth(other_access))
+        self.assertNotIn(article["id"], {r["id"] for r in response.data["results"]})
+
+        response = self.client.get(reverse("knowledge-search") + f"?tag={tag_id}", **self._auth(author_access))
+        self.assertIn(article["id"], {r["id"] for r in response.data["results"]})
+
+    def test_tag_filter_cross_org_id_not_found(self):
+        other_org = create_test_organization(name="Search Tag Other Org")
+        other_head = User.objects.create_user(
+            email="searchtagotherorghead@example.com", password="password123", organization=other_org
+        )
+        Role.objects.get(organization=other_org, name="Subteam Head").user_roles.create(user=other_head)
+        other_head_access = self.client.post(
+            reverse("auth-login"), {"email": other_head.email, "password": "password123"}, format="json"
+        ).data["access"]
+        other_article = self.client.post(
+            reverse("knowledge-article-list-create"),
+            {"title": "Other Org Article", "content": "...", "tag_names": ["shared-name"]},
+            format="json",
+            **self._auth(other_head_access),
+        ).data
+        self.client.post(reverse("knowledge-article-publish", args=[other_article["id"]]), **self._auth(other_head_access))
+        other_tags = self.client.get(reverse("knowledge-tag-list"), **self._auth(other_head_access)).data["results"]
+        other_tag_id = next(t["id"] for t in other_tags if t["name"] == "shared-name")
+
+        _, head_access = self._login_with_role("searchtagcrossorghead@example.com", "Subteam Head")
+        response = self.client.get(reverse("knowledge-search") + f"?tag={other_tag_id}", **self._auth(head_access))
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
 
 class VisibilityTests(KnowledgeTestCase):
     def test_restricted_article_hidden_from_non_privileged_even_when_published(self):

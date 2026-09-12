@@ -4,6 +4,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { GlobalSearch } from "@/components/layout/GlobalSearch";
+import { Avatar } from "@/components/ui/Avatar";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Icon } from "@/components/ui/Icon";
 import { Menu } from "@/components/ui/Menu";
@@ -57,7 +58,6 @@ export function TopBar({ onOpenMenu, onCloseMenu }: TopBarProps) {
   // subtitle when the user has set one; RBAC role names are the fallback so
   // this line isn't empty for accounts that haven't.
   const subtitle = user?.title || (user?.roles?.length ? user.roles.join(", ") : "");
-  const initial = user?.email?.[0]?.toUpperCase() ?? "?";
 
   return (
     <header className="bg-surface text-primary font-label-caps text-label-caps border-b border-outline-variant flex items-center justify-between gap-2 px-4 sm:px-6 h-16 z-10">
@@ -103,9 +103,7 @@ export function TopBar({ onOpenMenu, onCloseMenu }: TopBarProps) {
                   </span>
                 )}
               </span>
-              <span className="h-8 w-8 shrink-0 rounded-full border border-outline-variant bg-primary text-on-primary flex items-center justify-center font-label-caps text-label-caps">
-                {initial}
-              </span>
+              <Avatar person={user} size="sm" />
             </button>
           }
           header={user?.email}

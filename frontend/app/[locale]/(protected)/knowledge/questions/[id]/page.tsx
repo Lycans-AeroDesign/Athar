@@ -18,6 +18,7 @@ import { IconButton } from "@/components/ui/IconButton";
 import { Markdown } from "@/components/ui/Markdown";
 import { MarkdownEditor } from "@/components/ui/MarkdownEditor";
 import { ShareButton } from "@/components/ui/ShareButton";
+import { TagChip } from "@/components/ui/TagChip";
 import { Link, useRouter } from "@/i18n/navigation";
 import { formatRelativeTime } from "@/lib/datetime";
 import { formatPersonName } from "@/lib/format";
@@ -184,12 +185,7 @@ export default function QuestionDetailPage() {
         </div>
         <div className="flex flex-wrap gap-2">
           {question.tags.map((tag) => (
-            <span
-              key={tag.id}
-              className="px-2.5 py-1 rounded-full bg-surface-container-low text-on-surface-variant font-label-caps text-label-caps uppercase border border-outline-variant"
-            >
-              {tag.name}
-            </span>
+            <TagChip key={tag.id} tag={tag} />
           ))}
         </div>
         <ContributorsRow contributors={question.contributors} />

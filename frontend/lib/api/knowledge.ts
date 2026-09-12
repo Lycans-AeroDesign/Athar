@@ -79,6 +79,12 @@ export interface SearchPage {
   counts: SearchCounts;
 }
 
+function runSearch(params: URLSearchParams): Promise<SearchPage & { tag: Tag | null }> {
+  return apiJson<{ tag: Tag | null; results: SearchResult[]; has_more: boolean; counts: SearchCounts }>(
+    `/api/v1/knowledge/search/?${params.toString()}`,
+  ).then((data) => ({ tag: data.tag, results: data.results, hasMore: data.has_more, counts: data.counts }));
+}
+
 export function searchKnowledge(
   query: string,
   type?: RelatableType,
@@ -87,9 +93,24 @@ export function searchKnowledge(
 ): Promise<SearchPage> {
   const params = new URLSearchParams({ q: query, page: String(page), sort });
   if (type) params.set("type", type);
-  return apiJson<{ results: SearchResult[]; has_more: boolean; counts: SearchCounts }>(
-    `/api/v1/knowledge/search/?${params.toString()}`,
-  ).then((data) => ({ results: data.results, hasMore: data.has_more, counts: data.counts }));
+  return runSearch(params);
+}
+
+/** Everything tagged with `tagId`, across every taggable type at once -
+ * same endpoint/pagination/visibility rules as searchKnowledge, just keyed
+ * by tag instead of a text query (see backend/knowledge/views.py's
+ * SearchView, which doubles as this "browse by tag" endpoint). `sort`
+ * defaults to "newest" here since there's no relevance score to rank a
+ * tag-only request by. */
+export function getItemsByTag(
+  tagId: string,
+  type?: RelatableType,
+  page = 1,
+  sort: SearchSort = "newest",
+): Promise<SearchPage & { tag: Tag | null }> {
+  const params = new URLSearchParams({ tag: tagId, page: String(page), sort });
+  if (type) params.set("type", type);
+  return runSearch(params);
 }
 
 export function getArticles(status?: ArticleStatusFilter): Promise<ArticleSummary[]> {

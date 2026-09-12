@@ -1,6 +1,6 @@
 import { DirectionProvider } from "@radix-ui/react-direction";
 import type { Metadata } from "next";
-import { Inter, JetBrains_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { NextIntlClientProvider } from "next-intl";
@@ -13,14 +13,24 @@ import { isThemePreference, THEME_COOKIE_NAME } from "@/lib/theme/theme";
 import { localeDirections, locales, type Locale } from "@/i18n/request";
 import "./globals.css";
 
-const inter = Inter({
+// Self-hosted variable-font files (see frontend/app/fonts/) instead of
+// next/font/google - that mechanism needs a live fetch to
+// fonts.googleapis.com at compile time, which silently falls back to a
+// system font (different letterforms/metrics, not just a missing weight)
+// wherever that host isn't reachable - sandboxed CI/build environments
+// included. Local files have no such dependency. Same --font-inter/
+// --font-jetbrains-mono variable names and weight ranges as before, so
+// nothing downstream (globals.css, every Tailwind font-* class) changes.
+const inter = localFont({
+  src: "../fonts/Inter-VariableFont_opsz_wght.ttf",
   variable: "--font-inter",
-  subsets: ["latin"],
+  weight: "100 900",
 });
 
-const jetbrainsMono = JetBrains_Mono({
+const jetbrainsMono = localFont({
+  src: "../fonts/JetBrainsMono-VariableFont_wght.ttf",
   variable: "--font-jetbrains-mono",
-  subsets: ["latin"],
+  weight: "100 800",
 });
 
 export function generateStaticParams() {

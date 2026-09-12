@@ -35,6 +35,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # ubuntu-latest's default apt repos only ship postgresql-client-16, but
+      # the `postgres` service above runs 18 (matching docker-compose's own
+      # db image) - pg_dump refuses to dump from a newer major server version
+      # ("aborting because of server version mismatch"), which broke
+      # core.tests.FullInstanceBackupRestoreTests. Installs matching client
+      # tools from the official PGDG apt repo instead of pinning the service
+      # down to 16.
+      - name: Install PostgreSQL 18 client tools (matching the postgres:18 service)
+        run: |
+          sudo apt-get install -y postgresql-common
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y postgresql-client-18
+
       - name: Install uv
         uses: astral-sh/setup-uv@v5
         with:

@@ -437,6 +437,12 @@
       "badgeTest": "اختبار",
       "badgeDocument": "مستند"
     },
+    "tagPage": {
+      "eyebrow": "موسوم بـ",
+      "loading": "جارٍ التحميل...",
+      "notFound": "هذا الوسم غير موجود.",
+      "emptyState": "لا يوجد شيء موسوم بـ \"{name}\" بعد."
+    },
     "status": {
       "all": "الكل",
       "draft": "مسودة",

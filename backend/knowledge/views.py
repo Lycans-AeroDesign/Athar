@@ -1,7 +1,8 @@
 import csv
+import uuid
 
 from django.contrib.contenttypes.models import ContentType
-from django.db.models import Count, Q
+from django.db.models import Count, Q, QuerySet
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import OpenApiResponse, extend_schema
@@ -194,12 +195,27 @@ class TagDetailView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+# Every relatable type that actually carries a `tags` M2M (see models.py) -
+# Failure is deliberately excluded, it has no tags field. Used by SearchView
+# below to reject/no-op a ?tag= filter against a type that can't have one,
+# rather than letting `.filter(tags=...)` raise a FieldError.
+_TAGGABLE_TYPES = {"article", "question", "project", "component", "sop", "test", "document"}
+
+
 class SearchView(APIView):
     """Postgres full-text search (with trigram-similarity fallback for mid-
     word/typo matches) across every relatable content type, ranked by
     relevance - see knowledge/search.py for the shared implementation.
     Category/tag-name matching isn't included yet (see docs/VISION.md #12's
-    fuller sketch)."""
+    fuller sketch).
+
+    Also doubles as the "browse everything with this tag" endpoint (?tag=
+    instead of/alongside ?q=) - the same per-type visibility filtering,
+    counts, scoping, and pagination apply either way, so the frontend's tag
+    page reuses this endpoint (and its own search-results rendering) rather
+    than a separate one. A tag-only request (no ?q=) has no relevance score
+    to rank by, so `sort=relevance` (the default) silently falls back to
+    `newest` when there's no query - see the `order` computation below."""
 
     permission_classes = [IsAuthenticated]
 
@@ -207,23 +223,32 @@ class SearchView(APIView):
         tags=["Knowledge"],
         summary=(
             "Search across articles, questions, projects, components, failures, SOPs, tests, and documents "
-            "(?q=; optional ?type=<one of those> to scope to one section; ?sort=relevance|newest|oldest, "
-            "default relevance; ?page= for 20-per-type pages within that scope)"
+            "(?q= and/or ?tag=<tag id>, at least one required; optional ?type=<one of those> to scope to one "
+            "section; ?sort=relevance|newest|oldest, default relevance (falls back to newest for a tag-only, "
+            "no-?q= request); ?page= for 20-per-type pages within that scope)"
         ),
         responses={
             200: OpenApiResponse(
                 description=(
-                    "{'results': [{type, id, title, excerpt}, ...], 'has_more': bool, "
+                    "{'tag': {id, name} | null, 'results': [{type, id, title, excerpt}, ...], 'has_more': bool, "
                     "'counts': {article, question, project, component, failure, sop, test, document: int}} - counts "
-                    "reflect the query across every type regardless of ?type=, so the UI can show "
+                    "reflect the query/tag across every type regardless of ?type=, so the UI can show "
                     "per-type totals for a filter list."
                 )
             ),
+            400: BAD_REQUEST,
             **COMMON_ERRORS,
         },
     )
     def get(self, request):
         query = request.query_params.get("q", "").strip()
+        tag_id = request.query_params.get("tag") or None
+        tag = None
+        if tag_id:
+            try:
+                tag = Tag.objects.get(pk=uuid.UUID(tag_id), organization=request.user.organization)
+            except (ValueError, Tag.DoesNotExist):
+                raise ValidationError("No tag with that id in your organization.")
         scope = request.query_params.get("type") or None
         valid_types = ("article", "question", "project", "component", "failure", "sop", "test", "document")
         if scope not in (None, *valid_types):
@@ -235,8 +260,10 @@ class SearchView(APIView):
             order = ("-updated_at",)
         elif sort_param == "oldest":
             order = ("updated_at",)
-        else:
+        elif query:
             order = ("-rank", "-similarity", "-updated_at")
+        else:
+            order = ("-updated_at",)  # "relevance" with no ?q= (tag-only) has no rank to sort by.
         try:
             page = max(1, int(request.query_params.get("page", 1)))
         except ValueError:
@@ -247,48 +274,28 @@ class SearchView(APIView):
         # even when the caller is only viewing one type's results. Every type
         # now carries a `visibility` field (see models.py) - each queryset
         # below is already narrowed to what request.user may see via the
-        # matching services.visible_*_for helper, then further filtered/
-        # ranked by knowledge.search.search_filter.
-        article_matches = (
-            search.search_filter(services.visible_articles_for(request.user), query, "article")
-            if query
-            else Article.objects.none()
-        )
-        question_matches = (
-            search.search_filter(services.visible_questions_for(request.user), query, "question")
-            if query
-            else Question.objects.none()
-        )
-        project_matches = (
-            search.search_filter(services.visible_projects_for(request.user), query, "project")
-            if query
-            else Project.objects.none()
-        )
-        component_matches = (
-            search.search_filter(services.visible_components_for(request.user), query, "component")
-            if query
-            else Component.objects.none()
-        )
-        failure_matches = (
-            search.search_filter(services.visible_failures_for(request.user), query, "failure")
-            if query
-            else Failure.objects.none()
-        )
-        sop_matches = (
-            search.search_filter(services.visible_sops_for(request.user), query, "sop")
-            if query
-            else Sop.objects.none()
-        )
-        test_matches = (
-            search.search_filter(services.visible_tests_for(request.user), query, "test")
-            if query
-            else Test.objects.none()
-        )
-        document_matches = (
-            search.search_filter(services.visible_documents_for(request.user), query, "document")
-            if query
-            else Document.objects.none()
-        )
+        # matching services.visible_*_for helper, then further filtered by
+        # tag and/or ranked by knowledge.search.search_filter.
+        def matches_for(type_name: str, visible_queryset: QuerySet) -> QuerySet:
+            if not (query or tag):
+                return visible_queryset.none()
+            queryset = visible_queryset
+            if tag:
+                if type_name not in _TAGGABLE_TYPES:
+                    return visible_queryset.none()
+                queryset = queryset.filter(tags=tag)
+            if query:
+                queryset = search.search_filter(queryset, query, type_name)
+            return queryset
+
+        article_matches = matches_for("article", services.visible_articles_for(request.user))
+        question_matches = matches_for("question", services.visible_questions_for(request.user))
+        project_matches = matches_for("project", services.visible_projects_for(request.user))
+        component_matches = matches_for("component", services.visible_components_for(request.user))
+        failure_matches = matches_for("failure", services.visible_failures_for(request.user))
+        sop_matches = matches_for("sop", services.visible_sops_for(request.user))
+        test_matches = matches_for("test", services.visible_tests_for(request.user))
+        document_matches = matches_for("document", services.visible_documents_for(request.user))
         counts = {
             "article": article_matches.count(),
             "question": question_matches.count(),
@@ -310,7 +317,7 @@ class SearchView(APIView):
 
         def collect(type_name: str, matches, title_field: str, excerpt_source) -> None:
             nonlocal has_more
-            if not (query and scope in (None, type_name)):
+            if not ((query or tag) and scope in (None, type_name)):
                 return
             page_qs = matches.order_by(*order)
             rows = page_qs[offset : offset + 20]
@@ -330,7 +337,9 @@ class SearchView(APIView):
         collect("test", test_matches, "title", lambda t: t.results or t.objective)
         collect("document", document_matches, "title", "description")
 
-        return Response({"results": results, "has_more": has_more, "counts": counts})
+        return Response(
+            {"tag": TagSerializer(tag).data if tag else None, "results": results, "has_more": has_more, "counts": counts}
+        )
 
 
 # name -> (queryset, list serializer) - one entry per real contribution type.

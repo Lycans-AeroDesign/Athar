@@ -437,6 +437,12 @@
       "badgeTest": "Test",
       "badgeDocument": "Document"
     },
+    "tagPage": {
+      "eyebrow": "Tagged",
+      "loading": "Loading...",
+      "notFound": "That tag doesn't exist.",
+      "emptyState": "Nothing is tagged \"{name}\" yet."
+    },
     "status": {
       "all": "All",
       "draft": "Draft",

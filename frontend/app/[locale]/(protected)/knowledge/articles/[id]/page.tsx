@@ -11,12 +11,14 @@ import { StatusPill } from "@/components/knowledge/StatusPill";
 import { Avatar } from "@/components/ui/Avatar";
 import { BookmarkButton } from "@/components/ui/BookmarkButton";
 import { Button } from "@/components/ui/Button";
+import { CategoryBadge } from "@/components/ui/CategoryBadge";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Icon } from "@/components/ui/Icon";
 import { IconButton } from "@/components/ui/IconButton";
 import { Markdown } from "@/components/ui/Markdown";
 import { Modal } from "@/components/ui/Modal";
 import { ShareButton } from "@/components/ui/ShareButton";
+import { TagChip } from "@/components/ui/TagChip";
 import { Link, useRouter } from "@/i18n/navigation";
 import { formatDateTime } from "@/lib/datetime";
 import { formatPersonName } from "@/lib/format";
@@ -226,8 +228,15 @@ export default function ArticleDetailPage() {
             </div>
           </div>
           <h1 className="font-display text-display text-on-surface">{article.title}</h1>
-          <div className="flex flex-wrap items-center gap-3 font-mono-sm text-mono-sm text-on-surface-variant">
+          {/* Tier 1: status + category - the two things worth a glance,
+              both solid/colored pills. Tier 2 (tags) gets its own lighter
+              row below instead of sharing this one, so a single category
+              doesn't read as just another tag in a flat list. */}
+          <div className="flex flex-wrap items-center gap-2">
             <StatusPill status={article.status} />
+            {article.category && <CategoryBadge name={article.category.name} />}
+          </div>
+          <div className="flex flex-wrap items-center gap-3 font-mono-sm text-mono-sm text-on-surface-variant">
             {article.visibility === "RESTRICTED" && (
               <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-error-container text-on-error-container font-label-caps text-label-caps uppercase">
                 <Icon name="lock" size={12} />
@@ -241,21 +250,13 @@ export default function ArticleDetailPage() {
             )}
             <span>{formatDateTime(article.updated_at)}</span>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {article.category && (
-              <span className="font-label-caps text-label-caps uppercase border border-outline-variant rounded-full px-2.5 py-1 text-on-surface-variant">
-                {article.category.name}
-              </span>
-            )}
-            {article.tags.map((tag) => (
-              <span
-                key={tag.id}
-                className="px-2.5 py-1 rounded-full bg-surface-container-low text-on-surface-variant font-label-caps text-label-caps uppercase border border-outline-variant"
-              >
-                {tag.name}
-              </span>
-            ))}
-          </div>
+          {article.tags.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {article.tags.map((tag) => (
+                <TagChip key={tag.id} tag={tag} />
+              ))}
+            </div>
+          )}
           <ContributorsRow contributors={article.contributors} />
         </div>
 
