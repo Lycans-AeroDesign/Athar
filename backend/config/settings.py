@@ -67,6 +67,7 @@ INSTALLED_APPS = [
     "files",
     "organization",
     "knowledge",
+    "training",
     "backups",
 ]
 

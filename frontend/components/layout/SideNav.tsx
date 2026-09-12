@@ -58,6 +58,13 @@ const NAV_ITEMS: ReadonlyArray<{
     permission: "document.read",
     tourId: "nav-documents",
   },
+  {
+    href: "/training",
+    labelKey: "training",
+    icon: "school",
+    permission: "training.read",
+    tourId: "nav-training",
+  },
   { href: "/bookmarks", labelKey: "bookmarks", icon: "bookmark", separatorBefore: true, tourId: "nav-bookmarks" },
 ];
 

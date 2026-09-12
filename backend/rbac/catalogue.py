@@ -66,6 +66,14 @@ PERMISSION_CATALOGUE = [
     ("file.upload", "Upload files"),
     ("file.read", "Download/view files"),
     ("file.delete", "Delete files"),
+    ("training.read", "View published courses, enroll, view lessons, track own progress"),
+    ("training.create", "Create courses; edit/submit own course drafts"),
+    ("training.update", "Edit any course/module/lesson/resource/knowledge reference regardless of ownership"),
+    ("training.review", "Reject an in-review course back to its author"),
+    ("training.publish", "Publish a draft or in-review course"),
+    ("training.archive", "Archive/unarchive a published course"),
+    ("training.delete", "Delete any course (own-draft deletion needs no permission)"),
+    ("training.manage", "Manage course categories; view training statistics/admin dashboard"),
 ]
 
 # name -> (description, is_system, [codenames])
@@ -86,6 +94,7 @@ MEMBER_PERMISSIONS = [
     "test.create",
     "document.read",
     "document.create",
+    "training.read",
 ]
 MENTOR_PERMISSIONS = MEMBER_PERMISSIONS + [
     "article.review",
@@ -100,6 +109,9 @@ MENTOR_PERMISSIONS = MEMBER_PERMISSIONS + [
     "sop.update",
     "test.update",
     "document.update",
+    "training.create",
+    "training.update",
+    "training.review",
 ]
 SUBTEAM_HEAD_PERMISSIONS = MENTOR_PERMISSIONS + [
     "article.publish",
@@ -110,6 +122,8 @@ SUBTEAM_HEAD_PERMISSIONS = MENTOR_PERMISSIONS + [
     "component.delete",
     "sop.delete",
     "test.delete",
+    "training.publish",
+    "training.archive",
 ]
 
 ROLE_CATALOGUE = {

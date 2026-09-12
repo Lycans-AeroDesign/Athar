@@ -527,3 +527,157 @@ export interface UserProfile {
   /** Org member count - the denominator for periods[x].rank's "#N of total_members" display. */
   total_members: number;
 }
+
+// --- Training -----------------------------------------------------------
+// See backend/training/models.py - Course mirrors Article's 5-state
+// workflow exactly (REJECTED included), but has no `visibility` field:
+// gating is status-based only (see training/views.py's _ensure_course_visible).
+
+export type CourseStatus = "DRAFT" | "IN_REVIEW" | "PUBLISHED" | "REJECTED" | "ARCHIVED";
+export type CourseStatusFilter = CourseStatus | "ALL";
+export type CourseDifficulty = "BEGINNER" | "INTERMEDIATE" | "ADVANCED";
+export type LessonType = "TEXT" | "VIDEO" | "DOCUMENT" | "EXTERNAL" | "EXERCISE";
+export type CourseResourceType = "EXTERNAL_LINK" | "STORED_FILE";
+export type CourseResourceProvider = "GOOGLE_DRIVE" | "YOUTUBE" | "VIMEO" | "GITHUB" | "WEBSITE" | "OTHER" | "";
+
+export interface CourseCategory {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  course_count: number;
+}
+
+export interface CourseSummary {
+  id: string;
+  title: string;
+  slug: string;
+  short_description: string;
+  cover_image: StoredFileRef | null;
+  category: CourseCategory | null;
+  difficulty: CourseDifficulty;
+  estimated_minutes: number;
+  status: CourseStatus;
+  author: KnowledgeAuthor | null;
+  module_count: number;
+  lesson_count: number;
+  enrollment_count: number;
+  created_at: string;
+  updated_at: string;
+  published_at: string | null;
+}
+
+export interface LessonSummary {
+  id: string;
+  title: string;
+  short_description: string;
+  lesson_type: LessonType;
+  order: number;
+  estimated_minutes: number;
+  is_required: boolean;
+}
+
+export interface CourseModule {
+  id: string;
+  title: string;
+  description: string;
+  order: number;
+  estimated_minutes: number;
+  lessons: LessonSummary[];
+}
+
+export interface CourseDetail extends CourseSummary {
+  description: string;
+  modules: CourseModule[];
+}
+
+export interface LearningObjective {
+  id: string;
+  text: string;
+  order: number;
+}
+
+export interface CourseResource {
+  id: string;
+  title: string;
+  description: string;
+  resource_type: CourseResourceType;
+  provider: CourseResourceProvider;
+  url: string;
+  stored_file: StoredFile | null;
+  is_primary: boolean;
+  order: number;
+  created_by: KnowledgeAuthor | null;
+  created_at: string;
+}
+
+/** A lesson's pointer to an existing Knowledge object (not a RelatableType-
+ * shaped generic relation - see backend/training/models.py's
+ * LessonKnowledgeReference docstring for why this is its own mechanism). */
+export type KnowledgeReferenceType = RelatableType;
+
+export interface LessonKnowledgeReferenceEntry {
+  id: string;
+  content_type_name: KnowledgeReferenceType;
+  object_id: string;
+  title: string | null;
+  note: string;
+  order: number;
+  created_by: KnowledgeAuthor | null;
+  created_at: string;
+}
+
+export interface LessonDetail {
+  id: string;
+  module_id: string;
+  course_id: string;
+  title: string;
+  short_description: string;
+  lesson_type: LessonType;
+  content: string;
+  order: number;
+  estimated_minutes: number;
+  is_required: boolean;
+  objectives: LearningObjective[];
+  resources: CourseResource[];
+  knowledge_references: LessonKnowledgeReferenceEntry[];
+  created_at: string;
+  updated_at: string;
+}
+
+export type CourseEnrollmentStatus = "IN_PROGRESS" | "COMPLETED";
+
+export interface CourseEnrollment {
+  id: string;
+  course: CourseSummary;
+  status: CourseEnrollmentStatus;
+  enrolled_at: string;
+  completed_at: string | null;
+}
+
+export interface CourseProgress {
+  enrolled: boolean;
+  status: CourseEnrollmentStatus | null;
+  percent: number;
+  completed_lessons: number;
+  total_lessons: number;
+  completed_required_lessons: number;
+  total_required_lessons: number;
+  next_lesson_id: string | null;
+  completed_lesson_ids: string[];
+}
+
+export interface CourseStats {
+  total_enrolled: number;
+  active: number;
+  completed: number;
+  completion_rate: number;
+}
+
+export interface TrainingStats {
+  courses_by_status: Record<CourseStatus, number>;
+  total_learners: number;
+  active_learners: number;
+  completed_learners: number;
+  most_popular_courses: Array<{ id: string; title: string; enrolled: number }>;
+}
