@@ -47,8 +47,8 @@ Athar is a set of modules that build on each other — Knowledge is the foundati
 ## Quickstart (Docker)
 
 ```bash
-git clone https://github.com/Lycans-AeroDesign/Lycans_KMS.git
-cd Lycans_KMS
+git clone https://github.com/Lycans-AeroDesign/Athar.git
+cd Athar
 python scripts/generate_env.py   # generates .env / backend/.env / frontend/.env with real secrets
 docker compose up
 ```
