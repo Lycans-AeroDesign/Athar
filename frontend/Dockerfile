@@ -7,7 +7,11 @@ WORKDIR /app
 # ---- dependency layer ----
 FROM base AS deps
 COPY package.json package-lock.json ./
-RUN npm ci
+# Cache mount, not a layer - persists npm's package cache across builds
+# independent of layer invalidation, so a package-lock.json edit doesn't
+# force every package to be re-downloaded from the registry.
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci
 
 # ---- dev: next dev (Turbopack), source mounted at runtime ----
 FROM deps AS dev
@@ -22,7 +26,12 @@ FROM deps AS builder
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 COPY . .
-RUN npm run build
+# Same cache-mount idea for Turbopack's own filesystem cache (see
+# next.config.ts's turbopackFileSystemCacheForBuild) - without this mount,
+# .next/cache would just be discarded at the end of this stage's layer like
+# any other build output, never actually persisting across builds.
+RUN --mount=type=cache,target=/app/.next/cache \
+    npm run build
 
 # ---- prod: minimal runtime image, only the standalone server output ----
 FROM base AS prod

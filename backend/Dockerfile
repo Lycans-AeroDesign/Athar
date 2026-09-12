@@ -31,23 +31,30 @@ ENTRYPOINT ["/entrypoint.sh"]
 
 # ---- shared dependency layer (needs build tools to compile psycopg) ----
 FROM base AS deps
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends build-essential libpq-dev \
-    && rm -rf /var/lib/apt/lists/*
+# Cache mount, not a layer - persists uv/apt's downloaded packages across
+# builds independent of layer invalidation, so editing pyproject.toml/
+# uv.lock doesn't force every wheel to be re-downloaded from scratch.
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
+    apt-get update \
+    && apt-get install -y --no-install-recommends build-essential libpq-dev
 COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-install-project
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-install-project
 
 # ---- dev: runserver + full dependency set, source mounted at runtime ----
 FROM deps AS dev
 COPY . .
-RUN uv sync --frozen
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen
 EXPOSE 8000
 CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
 
 # ---- builder: prod dependency set + source, no dev tooling in final image ----
 FROM deps AS builder
 COPY . .
-RUN uv sync --frozen --no-dev
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev
 
 # ---- prod: gunicorn behind whitenoise-served static files ----
 # Runs as root at container start (entrypoint needs it to fix volume
