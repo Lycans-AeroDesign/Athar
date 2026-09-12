@@ -449,7 +449,7 @@ Overview
 Specifications
 Datasheet
 Files
-Inventory
+Inventory  (done: on-hand quantity, photo, external link, plus a filtered CSV export from the Components list)
 Projects Used In
 Related Components
 Failures
@@ -956,7 +956,7 @@ The application itself remains generic.
 * React
 * TypeScript
 * Tailwind CSS
-* shadcn/ui
+* A custom Radix/cmdk-based UI kit (`frontend/components/ui/`) — shadcn/ui is under evaluation against it, not yet adopted
 
 ### Backend
 
@@ -971,8 +971,8 @@ The application itself remains generic.
 
 ### Caching / Background Work
 
-* Redis
-* Celery
+* Redis — done
+* Celery — done; currently powers the org-scoped backup/restore background job (see §41 V1.0)
 
 ### File Storage
 
@@ -982,8 +982,8 @@ Development:
 
 Production:
 
-* S3-compatible storage
-* MinIO as a self-hosted option
+* S3-compatible storage — done, opt-in via env vars (`AWS_STORAGE_BUCKET_NAME` and friends); local filesystem remains the default when unset
+* MinIO as a self-hosted option — untested against this app specifically, but any S3-compatible endpoint should work through the same env vars
 
 ### Deployment
 
@@ -1001,10 +1001,10 @@ Production:
 
 ### Testing
 
-* pytest
-* Django/DRF tests
-* Vitest/React Testing Library
-* Playwright
+* Django/DRF `APITestCase` suite, run via `manage.py test` — done (backend)
+* pytest — planned, possible future migration off `manage.py test`
+* Vitest/React Testing Library — done (frontend), a starting suite covering pure `lib/` helpers and a first component test
+* Playwright — not started
 
 ---
 
@@ -1012,7 +1012,7 @@ Production:
 
 ### V1
 
-PostgreSQL full-text search.
+**Status: implemented.** PostgreSQL full-text search (`SearchVector`/`SearchRank`), with a trigram-similarity fallback for substring/typo matches, ranked by relevance.
 
 No need to introduce Elasticsearch/OpenSearch initially.
 
@@ -1229,7 +1229,7 @@ This is where the connected knowledge model becomes extremely valuable.
 * Multi-tenancy — done, beyond what this section originally scoped: a real `Organization` model, every tenant-owned row scoped to it, self-service org creation alongside invitation-based joining, and adversarial cross-org isolation tests. See §2's status update.
 * Nginx reverse proxy (rate limiting, security headers, a `/api/v1/health/` liveness check) in front of the backend, in both the dev and prod Docker Compose stacks — not part of the original spec, added for basic production-readiness.
 
-### V0.2 — Knowledge *(mostly done — search below is still a plain query, not full-text)*
+### V0.2 — Knowledge *(mostly done)*
 
 * Wiki
 * Articles
@@ -1262,7 +1262,7 @@ This is where the connected knowledge model becomes extremely valuable.
 
 ### V0.5 — Search *(partially done)*
 
-* Full-text search — not started (search is still a plain `icontains` query, see §33)
+* Full-text search — done (Postgres full-text search + ranking, with a trigram fallback; see §33)
 * Filters — done, both cross-type (the global search bar/results page) and per-type (each engineering list page's own search box)
 * Related knowledge — done, as the generic `KnowledgeRelation` graph (§34)
 * Mention detection — not started; the closest thing today is an explicit `@`-mention picker that inserts a link and creates a real relation when you deliberately pick a result — not automatic scanning of prose
@@ -1271,7 +1271,7 @@ This is where the connected knowledge model becomes extremely valuable.
 
 * Production deployment
 * Security hardening
-* Backups
+* Backups — done (org-scoped self-service export/restore via a background job; a whole-instance CLI-only `pg_dump`/`pg_restore` pair for operators)
 * Documentation
 * Self-hosting guide
 * CI/CD

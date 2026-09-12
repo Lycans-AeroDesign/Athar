@@ -10,7 +10,11 @@ import { driver, type DriveStep } from "driver.js";
  * belongs in that section, not just "here's the nav item" - that's the
  * point of the tour for a new member who doesn't yet know the difference
  * between e.g. a Failure report and a SOP. */
-const TOUR_STEP_IDS = [
+// Exported so a test can assert every "nav-*" id here has a matching
+// `tourId` on SideNav.tsx's NAV_ITEMS - see lib/onboarding/tour.test.ts. The
+// two lists have no shared source of truth, so nothing else catches one
+// drifting from the other.
+export const TOUR_STEP_IDS = [
   "nav-dashboard",
   "nav-knowledge",
   "nav-projects",

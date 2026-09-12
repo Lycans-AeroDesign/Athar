@@ -124,6 +124,7 @@ Follow the [Angular commit message conventions](https://github.com/angular/angul
 - **npm** with `package-lock.json` — avoid introducing yarn/pnpm lockfiles.
 - New code must type-check: run `npm run build` before merging.
 - Run `npm run lint` and fix new violations in files you touch.
+- Run `npm test` (Vitest) and fix/add tests for files you touch — see §4.8.
 
 ### 4.2 Project structure and routing
 
@@ -168,6 +169,20 @@ The backend is the only real access-control boundary — see §6. This section i
 - **Read-only-for-everyone vs gated-read**: if an endpoint is genuinely public to read and only writes are gated (e.g. organization general/branding settings), keep rendering the view and gate just the edit controls via a `canEdit` boolean prop passed down from the page (see `GeneralSettingsForm`/`BrandingSettingsForm`). If the *read* itself requires a permission (e.g. `role.manage` on `GET /rbac/roles/`), gate the whole section/tab instead — there's nothing to show without it.
 - **Adding a new permission codename**: add it to `PERMISSION_CATALOGUE` (and to a `ROLE_CATALOGUE` entry, if a default role should grant it) in `backend/rbac/management/commands/seed_rbac.py`, then re-run `uv run manage.py seed_rbac`. Enforce it on the view with `rbac.permissions.require_permission("your.codename")` — don't build a parallel authorization mechanism per app.
 
+### 4.8 Testing
+
+The frontend's test suite is new and deliberately small (see `docs/VISION.md` §32 "Testing") — this section is the starting strategy, not a mature convention yet.
+
+- **Stack**: [Vitest](https://vitest.dev) + [React Testing Library](https://testing-library.com/react), configured in `frontend/vitest.config.ts` (jsdom environment, `@vitejs/plugin-react`, `@testing-library/jest-dom` matchers loaded via `vitest.setup.ts`). Chosen over Jest for ESM-native config that doesn't fight the project's `moduleResolution: "bundler"` TypeScript setup. Tests deliberately skip the React Compiler Babel transform — it's a build-time optimization, irrelevant to whether the logic under test is correct.
+- **Run with**: `npm test` (single run, what CI should use) or `npm run test:watch` (watch mode during development).
+- **What to prioritize, in order**:
+  1. Pure functions in `lib/` with no React/network dependency (e.g. `lib/format.ts`, `lib/slug.ts`, `lib/toc.ts`) — cheapest to test, easiest to keep passing.
+  2. Small, clearly-scoped logic that only needs one hook or module mocked (e.g. `lib/auth/permissions.ts`'s `useHasPermission`, mocking `useAuth`; `lib/api/client.ts`'s `extractApiError`, constructing a fake `Response`-shaped object rather than a real fetch).
+  3. Small presentational components with a clear prop surface (e.g. `components/ui/Avatar.tsx`) — mock child components that do their own data fetching (see `Avatar.test.tsx` mocking `AuthenticatedImage`) rather than pulling `apiFetch` into a component test.
+  4. Anything that calls `apiFetch` directly, full pages, or components with heavy `next-intl`/routing dependencies — not yet attempted; don't reach for a network-mocking library (e.g. MSW) until a test actually needs one, per the "don't add infrastructure ahead of a real need" principle elsewhere in this doc.
+- **Co-locate tests** with the code they cover (`format.ts` → `format.test.ts` next to it), matching this project's existing "keep related things together" pattern rather than a parallel `__tests__/` tree.
+- Not yet covered by any test, deliberately deferred rather than an oversight to fix immediately: component tests for anything hitting `apiFetch`, page-level tests, and end-to-end/browser tests (Playwright is listed as a future addition in `docs/VISION.md` §32, not started).
+
 ---
 
 ## 5. Backend/frontend contract
@@ -201,7 +216,7 @@ The backend is the only real access-control boundary — see §6. This section i
 - [ ] **Migrations**: new model changes have a matching migration; no edits to already-applied migrations; hand-written ones follow the `NNNN_manual_...` naming convention.
 - [ ] **Utils vs services**: helpers in `utils.py`, business logic in `services.py`; no duplicated logic.
 - [ ] **Reuse**: existing utils/services/serializers/components used instead of parallel implementations.
-- [ ] **Frontend**: `npm run lint` and `npm run build` pass; dark mode works; no secrets in `NEXT_PUBLIC_*`.
+- [ ] **Frontend**: `npm run lint`, `npm run build`, and `npm test` pass; dark mode works; no secrets in `NEXT_PUBLIC_*`.
 - [ ] **i18n**: no hardcoded UI text — every string goes through `useTranslations`/`getTranslations`; new keys added to `en.json` (and kept in sync, even if untranslated, in every other locale file).
 - [ ] **Security**: no new endpoint relies on frontend-only access control; no secrets committed or logged.
 - [ ] **Permission gating** (§4.7): new gated UI uses `useHasPermission`/`<Can>` rather than ad hoc `user.permissions.includes(...)`; any new codename is added to `seed_rbac.py`'s catalogue and enforced server-side with `require_permission`.
