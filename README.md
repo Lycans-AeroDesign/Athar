@@ -1,5 +1,7 @@
 # Athar (أثر)
 
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+
 Open-source, self-hosted **Knowledge Management System** for student AeroDesign teams — built and self-hosted by [Lycans AeroDesign](https://github.com/Lycans-AeroDesign) as its reference deployment.
 
 > **Status: early development.** Authentication, RBAC, organization settings, and i18n are built. The Knowledge module (articles, Q&A, categories/tags, attachments, cross-linking, ranked full-text search, bookmarks, activity feed, dashboard) is a working first slice, and the engineering domain — projects, components, failures, SOPs, plus test/experiment records and a document/resource library — is built alongside it on the same relation/attachment/tag infrastructure. A Training Center (courses made of modules and lessons — text, video, document, external-link, or exercise — with enrollment and per-lesson progress tracking) is also built, referencing existing Knowledge content in its lessons rather than duplicating it. Every content type supports a public/restricted visibility model, where a restricted item's creator can grant access to specific individuals and organization admins always have access. The backend is also multi-tenant: every deployment can host one self-hosted organization (the default/primary use case) or several independent organizations with full data isolation, via either invitation-based joining or self-service org creation; organization admins can also block/unblock member accounts. A weighted contribution-scoring/leaderboard system (with monthly/yearly/lifetime standings) sits on top of all of it, and organization admins can export their own organization's data and files as a downloadable backup (see [Backups](#backups)). Users have profile pictures shown wherever they're credited system-wide, first-run users get a guided product tour of the app, and `manage.py seed_demo_content` can spin up a realistic demo organization for evaluation. See [Roadmap](#roadmap) below.
@@ -151,4 +153,4 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for commit conventions, backend/fronten
 
 ## License
 
-TBD — a license will be finalized before the V1.0 open-source release.
+[Apache License 2.0](LICENSE) © 2026 Lycans AeroDesign Team.
