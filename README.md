@@ -4,8 +4,6 @@
 
 Open-source, self-hosted **Knowledge Management System** for student AeroDesign teams — built and self-hosted by [Lycans AeroDesign](https://github.com/Lycans-AeroDesign) as its reference deployment.
 
-> **Status: early development.** Authentication, RBAC, organization settings, and i18n are built. The Knowledge module (articles, Q&A, categories/tags, attachments, cross-linking, ranked full-text search, bookmarks, activity feed, dashboard) is a working first slice, and the engineering domain — projects, components, failures, SOPs, plus test/experiment records and a document/resource library — is built alongside it on the same relation/attachment/tag infrastructure. A Training Center (courses made of modules and lessons — text, video, document, external-link, or exercise — with enrollment and per-lesson progress tracking) is also built, referencing existing Knowledge content in its lessons rather than duplicating it. Every content type supports a public/restricted visibility model, where a restricted item's creator can grant access to specific individuals and organization admins always have access. The backend is also multi-tenant: every deployment can host one self-hosted organization (the default/primary use case) or several independent organizations with full data isolation, via either invitation-based joining or self-service org creation; organization admins can also block/unblock member accounts. A weighted contribution-scoring/leaderboard system (with monthly/yearly/lifetime standings) sits on top of all of it, and organization admins can export their own organization's data and files as a downloadable backup (see [Backups](#backups)). Users have profile pictures shown wherever they're credited system-wide, first-run users get a guided product tour of the app, and `manage.py seed_demo_content` can spin up a realistic demo organization for evaluation. See [Roadmap](#roadmap) below.
-
 ## Why
 
 Student engineering teams accumulate a huge amount of knowledge — designs, failures, SOPs, flight history, decisions, lessons learned — that mostly lives in people's heads and disappears when they graduate. Athar exists so a new member can search the system and understand not just **what** the team does, but **why**.
@@ -134,22 +132,13 @@ docker compose exec backend python manage.py create_full_backup
 docker compose exec backend python manage.py restore_full_backup backup_archives/athar-db-<timestamp>.dump --media-archive-path backup_archives/athar-media-<timestamp>.tar.gz --yes
 ```
 
-## Roadmap
-
-Condensed from [`docs/VISION.md` §41](docs/VISION.md#41-development-roadmap):
-
-- **V0.1 — Foundation**: Django, PostgreSQL, Next.js, Docker, auth, RBAC, org configuration *(done — plus multi-tenancy and an nginx reverse proxy, both added beyond the original scope of this milestone; see [`docs/VISION.md` §2](docs/VISION.md#2-open-source-philosophy))*
-- **V0.2 — Knowledge**: wiki, articles, categories, tags, attachments, revisions, relationships *(in progress — articles, Q&A, categories/tags, attachments, revisions, cross-linking, bookmarks, and a per-item restricted-access grant system all built)*
-- **V0.3 — Engineering**: projects, components, failures, SOPs, flight logs, design decisions, lessons learned *(partially in progress — projects, components, failures, and SOPs are built with full CRUD, tags/categories where applicable, attachments, cross-linking, and the same visibility/restricted-access model as Knowledge; test/experiment records and a document/resource library are also built, beyond this milestone's original list; Components additionally gained inventory tracking (on-hand quantity, photo, external link) plus a filtered CSV export; flight logs' relationship to the new test-record type is unresolved, see VISION §41; design decisions and lessons learned haven't started)*
-- **V0.4 — Collaboration**: Q&A ✅, comments, notifications, reviews ✅, activity ✅, contribution scoring/leaderboard ✅ (This Month / This Year / Lifetime standings, each with its own rank)
-- **V0.5 — Search**: full-text search ✅ (Postgres, ranked, with trigram fallback), filters ✅, related knowledge ✅, browse-by-tag ✅, mention detection
-- **Training** *(done, V1 scope — added beyond the original roadmap; see [`docs/VISION.md` §19](docs/VISION.md#19-training))*: courses ✅ (draft → review → publish, mirroring Article's workflow), modules/lessons ✅ (text/video/document/external-link/exercise types), enrollment ✅, per-lesson progress tracking ✅, lessons reference existing Knowledge content instead of duplicating it ✅; quizzes/assessments and assignment submission are future scope
-- **V1.0 — Open source release**: production hardening, backups ✅ (org-scoped, in-app; whole-instance, CLI - see [Backups](#backups)), self-hosting guide, versioned Docker images
-- **V2+ — AI**: embeddings, vector search, permission-aware RAG assistant over the knowledge graph
-
 ## Contributing
 
 See [`CONTRIBUTING.md`](CONTRIBUTING.md) for commit conventions, backend/frontend conventions, and the PR checklist.
+
+## Security
+
+See [`SECURITY.md`](SECURITY.md) to report a vulnerability.
 
 ## License
 
