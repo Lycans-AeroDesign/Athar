@@ -41,6 +41,13 @@ DEBUG = env.bool("DEBUG", default=True)
 
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=[])
 
+# Trust nginx's X-Forwarded-Proto for request.is_secure() - this app always
+# sits behind nginx (see nginx/templates/), which sets this header itself
+# from its own $scheme (see nginx/templates/locations.inc.template); Django
+# never sees a client-supplied value directly, so this is safe to trust
+# unconditionally.
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
 
 # Application definition
 

@@ -51,8 +51,11 @@ services:
     volumes:
       - backend_media:/app/media
       - backend_backups:/app/backup_archives
-    ports:
-      - "${BACKEND_PORT:-8000}:8000"
+    # No `ports:` - only nginx is reachable from outside the compose
+    # network; the backend is reached by other containers via its service
+    # name (see nginx/nginx.conf's `upstream backend`).
+    expose:
+      - "8000"
     depends_on:
       db:
         condition: service_healthy
@@ -97,26 +100,54 @@ services:
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?NEXT_PUBLIC_API_URL must be set}
     restart: unless-stopped
-    ports:
-      - "${FRONTEND_PORT:-3000}:3000"
+    # No `ports:` - only nginx is reachable from outside the compose
+    # network; see the matching comment on the backend service above.
+    expose:
+      - "3000"
     depends_on:
       - backend
 
-  # Same nginx.conf as docker-compose.yml - see that file's own comment and
-  # nginx/nginx.conf's header for what's proxied (backend API only, frontend
-  # keeps its own port). To actually put this on a real domain: set
-  # server_name/enable the commented HTTPS + redirect blocks at the bottom of
-  # nginx/nginx.conf, and mount real certs (see the commented ssl_certificate
-  # paths there) instead of relying on the plain HTTP block below.
+  # Terminates real HTTPS via Let's Encrypt (see nginx/templates/prod.conf.template
+  # and the certbot service below) - this is the only service with a
+  # host-published port in this file; backend/frontend are reachable only
+  # through here. First deploy needs a one-time manual step before this can
+  # actually start with a real cert - see DEPLOYMENT.md /
+  # scripts/init_letsencrypt.sh.
   nginx:
     image: nginx:1.27-alpine
     restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN:?DOMAIN must be set (your real public domain)}
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      # Mounted as default.conf.template so its rendered output overwrites
+      # the image's own stock conf.d/default.conf - see the matching comment
+      # in docker-compose.yml.
+      - ./nginx/templates/prod.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - ./nginx/templates/locations.inc.template:/etc/nginx/templates/locations.inc.template:ro
+      - certbot_conf:/etc/letsencrypt:ro
+      - certbot_www:/var/www/certbot:ro
     ports:
       - "${NGINX_PORT:-80}:80"
+      - "${NGINX_SSL_PORT:-443}:443"
     depends_on:
       - backend
+      - frontend
+
+  # Renews the Let's Encrypt certificate nginx uses (see above) - checks
+  # twice a day, which is certbot's own recommended cadence; renew() itself
+  # only actually re-issues when a cert is within 30 days of expiring, so
+  # this is cheap to run this often. Does NOT issue the first certificate -
+  # that's the one-time scripts/init_letsencrypt.sh step (see DEPLOYMENT.md),
+  # since the very first issuance needs to happen before nginx can even
+  # start (it refuses to start with ssl_certificate pointing at a file that
+  # doesn't exist yet).
+  certbot:
+    image: certbot/certbot
+    restart: unless-stopped
+    volumes:
+      - certbot_conf:/etc/letsencrypt
+      - certbot_www:/var/www/certbot
+    entrypoint: sh -c "trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot --quiet; sleep 12h & wait $$!; done"
 
 volumes:
   postgres_data:
@@ -127,3 +158,9 @@ volumes:
   # the operator can retrieve backup archives (docker compose cp/volume
   # inspect) independent of the live media directory.
   backend_backups:
+  # Let's Encrypt account/certificate state (certbot_conf) and the ACME
+  # HTTP-01 challenge webroot (certbot_www) - shared between nginx (reads
+  # the cert, serves the challenge) and certbot (writes the cert, renews
+  # it). See scripts/init_letsencrypt.sh.
+  certbot_conf:
+  certbot_www:

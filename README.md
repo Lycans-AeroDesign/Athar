@@ -40,7 +40,7 @@ Athar is a set of modules that build on each other — Knowledge is the foundati
 | Database | PostgreSQL 18 (via Docker), no SQLite fallback; search uses Postgres full-text search (`SearchVector`/`SearchRank`) with a trigram-similarity fallback for substring/typo matches, ranked by relevance |
 | Background work | Redis + Celery (currently just the org-scoped backup export - see [Backups](#backups) below) |
 | File storage | Local filesystem by default; set `AWS_STORAGE_BUCKET_NAME` to switch to any S3-compatible object storage instead (AWS S3, Cloudflare R2, Backblaze B2, self-hosted MinIO, ...) — see `backend/.env.example` |
-| Deployment | Docker, Docker Compose, nginx reverse proxy (rate limiting, security headers, health check - see `nginx/nginx.conf`) |
+| Deployment | Docker, Docker Compose, nginx reverse proxy in front of both the API and the frontend (rate limiting, security headers, health check, real HTTPS via Let's Encrypt/certbot in production - see `nginx/templates/` and [`DEPLOYMENT.md`](DEPLOYMENT.md)) |
 | CI/CD | GitHub Actions (backend + frontend CI, PR checks, manual release/publish) |
 | Testing | Backend: DRF `APITestCase` suite (`backend/*/tests.py`), run via `manage.py test` |
 
@@ -55,7 +55,7 @@ docker compose up
 
 - Frontend: http://localhost:3000
 - Backend: http://localhost:8000
-- Nginx (reverse proxy in front of the backend only - see `nginx/nginx.conf`): http://localhost:80
+- Nginx (reverse proxy in front of both the backend and frontend - see `nginx/templates/`): http://localhost:80
 
 For a production-shaped build (gunicorn, standalone Next.js server, no bind mounts):
 
@@ -63,7 +63,7 @@ For a production-shaped build (gunicorn, standalone Next.js server, no bind moun
 docker compose -f docker-compose.prod.yml up --build
 ```
 
-`docker-compose.prod.yml` requires `SECRET_KEY`, `ALLOWED_HOSTS`, `CORS_ALLOWED_ORIGINS`, and `NEXT_PUBLIC_API_URL` to be set explicitly (no dev fallbacks).
+`docker-compose.prod.yml` requires `SECRET_KEY`, `ALLOWED_HOSTS`, `CORS_ALLOWED_ORIGINS`, `NEXT_PUBLIC_API_URL`, and `DOMAIN` to be set explicitly (no dev fallbacks). See [`DEPLOYMENT.md`](DEPLOYMENT.md) for the full checklist of what to change when deploying to a real server.
 
 ## Manual setup (without Docker)
 
@@ -91,7 +91,9 @@ Copy `backend/.env.example` → `backend/.env` and `frontend/.env.example` → `
 ```text
 backend/            Django project (config/, manage.py, pyproject.toml)
 frontend/            Next.js app (app/, package.json)
-nginx/nginx.conf              reverse proxy config (backend only - see the Quickstart section)
+nginx/templates/              reverse proxy config templates (dev vs. prod+HTTPS), see DEPLOYMENT.md
+scripts/init_letsencrypt.sh   one-time HTTPS bootstrap for a fresh deploy
+DEPLOYMENT.md                 checklist for deploying to a real server
 docker-compose.yml           dev stack (hot reload, Postgres, nginx)
 docker-compose.prod.yml      prod-shaped stack (gunicorn, standalone Next.js, nginx)
 scripts/generate_env.py      generates local .env files with real secrets

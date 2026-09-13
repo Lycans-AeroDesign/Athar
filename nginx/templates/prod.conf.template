@@ -1,0 +1,72 @@
+# ====================================================
+# PROD nginx config - real HTTPS via Let's Encrypt/certbot, no CDN in
+# front. Used by docker-compose.prod.yml. See DEPLOYMENT.md for the
+# one-time bootstrap (scripts/init_letsencrypt.sh) this depends on, and
+# dev.conf.template for the plain-HTTP dev equivalent. Both share
+# locations.inc.template for the actual proxy/security behavior.
+#
+# Templated via envsubst (nginx:1.27-alpine runs this automatically over
+# every *.template file under /etc/nginx/templates/ at container start) -
+# DOMAIN is the only variable, required (no default) by
+# docker-compose.prod.yml.
+# ====================================================
+
+server_tokens off;
+
+resolver 127.0.0.11 valid=10s ipv6=off;
+
+limit_req_zone $binary_remote_addr zone=api_limit:10m rate=20r/s;
+limit_req_zone $binary_remote_addr zone=web_limit:10m rate=20r/s;
+limit_req_zone $binary_remote_addr zone=health_limit:1m rate=30r/m;
+
+upstream backend {
+    zone backend 64k;
+    least_conn;
+    server backend:8000 resolve max_fails=3 fail_timeout=30s;
+}
+
+upstream frontend {
+    zone frontend 64k;
+    least_conn;
+    server frontend:3000 resolve max_fails=3 fail_timeout=30s;
+}
+
+# HTTP: only exists to answer the ACME HTTP-01 challenge (certbot needs
+# this reachable on port 80, unencrypted, to prove domain ownership - both
+# for the very first certificate and every renewal) and to send browsers
+# that land on plain HTTP over to HTTPS. Never proxies application traffic
+# itself.
+server {
+    listen 80;
+    server_name ${DOMAIN};
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name ${DOMAIN};
+
+    client_max_body_size 20m;
+
+    # Populated by scripts/init_letsencrypt.sh (first run) and kept current
+    # by the certbot service's renewal loop after that - see
+    # docker-compose.prod.yml and DEPLOYMENT.md. nginx does not reload
+    # automatically when certbot renews; the certbot service's renewal loop
+    # handles that too (see its command in docker-compose.prod.yml).
+    ssl_certificate     /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+
+    # Enable once HTTPS is confirmed working reliably end-to-end.
+    # add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
+
+    include /etc/nginx/conf.d/locations.inc;
+}

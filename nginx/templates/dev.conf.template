@@ -1,0 +1,45 @@
+# ====================================================
+# DEV nginx config - plain HTTP only, used by docker-compose.yml. Prod uses
+# prod.conf.template instead (HTTP redirect + real HTTPS via Let's Encrypt)
+# - see DEPLOYMENT.md. Both share locations.inc.template for the actual
+# proxy/security behavior, so that part never drifts between the two.
+#
+# Templated via envsubst (nginx:1.27-alpine runs this automatically over
+# every *.template file under /etc/nginx/templates/ at container start) -
+# DOMAIN is the only variable, set by docker-compose.yml (defaults to
+# "localhost").
+# ====================================================
+
+server_tokens off;
+
+# Docker's embedded DNS - lets the upstreams below re-resolve `backend`/
+# `frontend` if their container IP changes (a restart, a rebuild), rather
+# than caching the IP nginx saw at startup forever.
+resolver 127.0.0.11 valid=10s ipv6=off;
+
+limit_req_zone $binary_remote_addr zone=api_limit:10m rate=20r/s;
+limit_req_zone $binary_remote_addr zone=web_limit:10m rate=20r/s;
+# Health endpoint (public): stricter than general API traffic.
+limit_req_zone $binary_remote_addr zone=health_limit:1m rate=30r/m;
+
+upstream backend {
+    zone backend 64k;
+    least_conn;
+    server backend:8000 resolve max_fails=3 fail_timeout=30s;
+}
+
+upstream frontend {
+    zone frontend 64k;
+    least_conn;
+    server frontend:3000 resolve max_fails=3 fail_timeout=30s;
+}
+
+server {
+    listen 80;
+    server_name ${DOMAIN};
+
+    # Allow large request body size. Default is 1m.
+    client_max_body_size 20m;
+
+    include /etc/nginx/conf.d/locations.inc;
+}

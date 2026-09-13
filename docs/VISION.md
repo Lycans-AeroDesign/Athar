@@ -993,7 +993,7 @@ Production:
 
 * Docker
 * Docker Compose
-* nginx (reverse proxy in front of the backend - rate limiting, security headers, `/api/v1/health/` liveness check; see `nginx/nginx.conf`) - done, not originally listed here
+* nginx (reverse proxy in front of both the backend and frontend - rate limiting, security headers, `/api/v1/health/` liveness check; see `nginx/nginx.conf.template`) - done, not originally listed here
 * Linux
 
 ### CI/CD
@@ -1097,8 +1097,10 @@ PostgreSQL
 Redis
 Celery
 MinIO
-Nginx      (done - reverse proxy in front of the backend, both dev and prod
-            Compose stacks; see docs/VISION.md §32 and nginx/nginx.conf)
+Nginx      (done - reverse proxy in front of both the backend and frontend,
+            both dev and prod Compose stacks; prod terminates real HTTPS via
+            Let's Encrypt/certbot, domain templated via a DOMAIN env var; see
+            docs/VISION.md §32, nginx/templates/, and DEPLOYMENT.md)
 ```
 
 The exact production architecture can be finalized later.
