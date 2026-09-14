@@ -19,10 +19,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 FORCE = "--force" in sys.argv[1:]
 
-# No `$` - Docker Compose interpolates `.env` values itself, so a `$` here
-# gets read as a (usually undefined) variable reference and silently mangles
-# the key.
-DJANGO_SECRET_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789!@#%^&*(-_=+)"
+# No `$`, backtick, backslash, or `"` - scripts/init_letsencrypt.sh does
+# `source .env`, and those four stay special even inside the double quotes
+# write_env() wraps every value in below (unlike `(`, `)`, `&`, `*`, `!`,
+# `#`, which double quotes neutralize fine).
+DJANGO_SECRET_CHARS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#%^&*(-_=+)"
 PASSWORD_CHARS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
 
@@ -54,7 +55,12 @@ def write_env(directory: Path, replacements: dict[str, str]) -> None:
     for key, value in replacements.items():
         pattern = re.compile(rf"^{re.escape(key)}=.*$", re.MULTILINE)
         if pattern.search(content):
-            content = pattern.sub(f"{key}={value}", content)
+            # Quoted so shell-special characters in the generated value
+            # (see DJANGO_SECRET_CHARS above) are inert wherever this file
+            # gets read - `source .env`, Docker Compose, etc. A lambda
+            # replacement (not a plain string) avoids re.sub treating a
+            # stray `\` in the value as a backreference.
+            content = pattern.sub(lambda _m: f'{key}="{value}"', content)
 
     env_path.write_text(content, encoding="utf-8")
     print(f"created {label}")
