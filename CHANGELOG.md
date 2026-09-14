@@ -1,3 +1,9 @@
+## [1.0.1](https://github.com/Lycans-AeroDesign/Athar/compare/v1.0.0...v1.0.1) (2026-09-14)
+
+### Bug Fixes
+
+* resolve public-org branding bug, back up Training content, default theme light ([94aa53a](https://github.com/Lycans-AeroDesign/Athar/commit/94aa53a5b17c23b5e92354753969fd5e6327cc27))
+
 ## 1.0.0 (2026-09-14)
 
 ### Features
