@@ -57,13 +57,14 @@ docker compose up
 - Backend: http://localhost:8000
 - Nginx (reverse proxy in front of both the backend and frontend - see `nginx/templates/`): http://localhost:80
 
-For a production-shaped build (gunicorn, standalone Next.js server, no bind mounts):
+For a production-shaped stack (gunicorn, standalone Next.js server, no bind mounts), pulling prebuilt images published by CI rather than building locally:
 
 ```bash
-docker compose -f docker-compose.prod.yml up --build
+docker compose -f docker-compose.prod.yml pull
+docker compose -f docker-compose.prod.yml up -d
 ```
 
-`docker-compose.prod.yml` requires `SECRET_KEY`, `ALLOWED_HOSTS`, `CORS_ALLOWED_ORIGINS`, `NEXT_PUBLIC_API_URL`, and `DOMAIN` to be set explicitly (no dev fallbacks). See [`DEPLOYMENT.md`](DEPLOYMENT.md) for the full checklist of what to change when deploying to a real server.
+`docker-compose.prod.yml` requires `SECRET_KEY`, `ALLOWED_HOSTS`, `CORS_ALLOWED_ORIGINS`, and `DOMAIN` to be set explicitly (no dev fallbacks). See [`DEPLOYMENT.md`](DEPLOYMENT.md) for the full checklist of what to change when deploying to a real server.
 
 ## Manual setup (without Docker)
 

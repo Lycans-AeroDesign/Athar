@@ -19,7 +19,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 FORCE = "--force" in sys.argv[1:]
 
-DJANGO_SECRET_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)"
+# No `$` - Docker Compose interpolates `.env` values itself, so a `$` here
+# gets read as a (usually undefined) variable reference and silently mangles
+# the key.
+DJANGO_SECRET_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789!@#%^&*(-_=+)"
 PASSWORD_CHARS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
 

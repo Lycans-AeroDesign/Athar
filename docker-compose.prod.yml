@@ -1,6 +1,11 @@
 # Prod-shaped stack: gunicorn backend + standalone Next.js server, no bind mounts.
+# Pulls prebuilt backend/frontend images from GHCR (published by
+# .github/workflows/docker-publish.yml on each `vX.Y.Z` tag push) rather than
+# building locally - see DEPLOYMENT.md. Set IMAGE_TAG in .env to pin a
+# specific version; defaults to `latest`.
 # Copy .env.example to .env at the repo root first, then:
-#   docker compose -f docker-compose.prod.yml up --build
+#   docker compose -f docker-compose.prod.yml pull
+#   docker compose -f docker-compose.prod.yml up -d
 
 services:
   db:
@@ -19,9 +24,7 @@ services:
       retries: 5
 
   backend:
-    build:
-      context: ./backend
-      target: prod
+    image: ghcr.io/lycans-aerodesign/athar-backend:${IMAGE_TAG:-latest}
     restart: unless-stopped
     environment: &backend_env
       SECRET_KEY: ${SECRET_KEY:?SECRET_KEY must be set}
@@ -66,9 +69,7 @@ services:
   # > Backups) - same image/env as backend, just a different container
   # command.
   celery-worker:
-    build:
-      context: ./backend
-      target: prod
+    image: ghcr.io/lycans-aerodesign/athar-backend:${IMAGE_TAG:-latest}
     restart: unless-stopped
     command: ["celery", "-A", "config", "worker", "-l", "info"]
     environment: *backend_env
@@ -92,13 +93,12 @@ services:
       retries: 5
 
   frontend:
-    build:
-      context: ./frontend
-      target: prod
-      # NEXT_PUBLIC_* vars are inlined at build time, so this must be passed
-      # as a build arg, not just a runtime environment variable.
-      args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?NEXT_PUBLIC_API_URL must be set}
+    # NEXT_PUBLIC_* vars are inlined at build time, not read at runtime - the
+    # published image already has NEXT_PUBLIC_API_URL baked in from the
+    # "NEXT_PUBLIC_API_URL" GitHub repo variable used by docker-publish.yml.
+    # Setting it here in .env would have no effect; it must match at
+    # publish time instead.
+    image: ghcr.io/lycans-aerodesign/athar-frontend:${IMAGE_TAG:-latest}
     restart: unless-stopped
     # No `ports:` - only nginx is reachable from outside the compose
     # network; see the matching comment on the backend service above.
