@@ -169,7 +169,7 @@ class OrganizationSettingsTests(APITestCase):
         )
         Role.objects.get(organization=self.organization, name="Organization Admin").user_roles.create(user=admin)
         response = self.client.patch(
-            reverse("organization-branding-update"),
+            reverse("organization-general-update"),
             {"name": "Real Org"},
             format="json",
             **self._auth(
