@@ -52,6 +52,17 @@ from knowledge.models import (
 )
 from organization.models import OrganizationSettings
 from rbac.models import Role, RolePermission, UserRole
+from training.models import (
+    Course,
+    CourseCategory,
+    CourseEnrollment,
+    CourseModule,
+    CourseResource,
+    LearningObjective,
+    Lesson,
+    LessonKnowledgeReference,
+    LessonProgress,
+)
 
 from .models import BackupJob
 
@@ -463,6 +474,146 @@ def _export_specs(organization):
                 ("metadata", lambda o: _s(o.metadata)),
                 ("ip_address", lambda o: _s(o.ip_address)),
                 ("created_at", lambda o: _s(o.created_at)),
+            ],
+        ),
+        (
+            CourseCategory.objects.filter(organization=organization),
+            "course_categories.csv",
+            [
+                ("id", lambda o: _s(o.id)),
+                ("name", lambda o: o.name),
+                ("slug", lambda o: o.slug),
+                ("description", lambda o: o.description),
+            ],
+        ),
+        (
+            Course.objects.filter(organization=organization).select_related("category", "author", "cover_image"),
+            "courses.csv",
+            [
+                ("id", lambda o: _s(o.id)),
+                ("title", lambda o: o.title),
+                ("slug", lambda o: o.slug),
+                ("short_description", lambda o: o.short_description),
+                ("description", lambda o: o.description),
+                ("cover_image_id", lambda o: _s(o.cover_image_id)),
+                ("category_id", lambda o: _s(o.category_id)),
+                ("category", lambda o: _s(o.category and o.category.name)),
+                ("difficulty", lambda o: o.difficulty),
+                ("estimated_minutes", lambda o: _s(o.estimated_minutes)),
+                ("status", lambda o: o.status),
+                ("author_id", lambda o: _s(o.author_id)),
+                ("author_email", lambda o: _s(o.author and o.author.email)),
+                ("published_at", lambda o: _s(o.published_at)),
+                ("created_at", lambda o: _s(o.created_at)),
+                ("updated_at", lambda o: _s(o.updated_at)),
+            ],
+        ),
+        (
+            CourseModule.objects.filter(course__organization=organization).select_related("course"),
+            "course_modules.csv",
+            [
+                ("id", lambda o: _s(o.id)),
+                ("course_id", lambda o: _s(o.course_id)),
+                ("title", lambda o: o.title),
+                ("description", lambda o: o.description),
+                ("order", lambda o: _s(o.order)),
+                ("estimated_minutes", lambda o: _s(o.estimated_minutes)),
+                ("created_at", lambda o: _s(o.created_at)),
+                ("updated_at", lambda o: _s(o.updated_at)),
+            ],
+        ),
+        (
+            Lesson.objects.filter(module__course__organization=organization).select_related("module"),
+            "lessons.csv",
+            [
+                ("id", lambda o: _s(o.id)),
+                ("module_id", lambda o: _s(o.module_id)),
+                ("title", lambda o: o.title),
+                ("short_description", lambda o: o.short_description),
+                ("lesson_type", lambda o: o.lesson_type),
+                ("content", lambda o: o.content),
+                ("order", lambda o: _s(o.order)),
+                ("estimated_minutes", lambda o: _s(o.estimated_minutes)),
+                ("is_required", lambda o: _s(o.is_required)),
+                ("created_at", lambda o: _s(o.created_at)),
+                ("updated_at", lambda o: _s(o.updated_at)),
+            ],
+        ),
+        (
+            LearningObjective.objects.filter(lesson__module__course__organization=organization).select_related(
+                "lesson"
+            ),
+            "learning_objectives.csv",
+            [
+                ("id", lambda o: _s(o.id)),
+                ("lesson_id", lambda o: _s(o.lesson_id)),
+                ("text", lambda o: o.text),
+                ("order", lambda o: _s(o.order)),
+            ],
+        ),
+        (
+            CourseResource.objects.filter(lesson__module__course__organization=organization).select_related(
+                "lesson", "stored_file", "created_by"
+            ),
+            "course_resources.csv",
+            [
+                ("id", lambda o: _s(o.id)),
+                ("lesson_id", lambda o: _s(o.lesson_id)),
+                ("title", lambda o: o.title),
+                ("description", lambda o: o.description),
+                ("resource_type", lambda o: o.resource_type),
+                ("provider", lambda o: o.provider),
+                ("url", lambda o: o.url),
+                ("stored_file_id", lambda o: _s(o.stored_file_id)),
+                ("is_primary", lambda o: _s(o.is_primary)),
+                ("order", lambda o: _s(o.order)),
+                ("created_by_id", lambda o: _s(o.created_by_id)),
+                ("created_by_email", lambda o: _s(o.created_by and o.created_by.email)),
+                ("created_at", lambda o: _s(o.created_at)),
+                ("updated_at", lambda o: _s(o.updated_at)),
+            ],
+        ),
+        (
+            LessonKnowledgeReference.objects.filter(
+                lesson__module__course__organization=organization
+            ).select_related("lesson", "content_type", "created_by"),
+            "lesson_knowledge_references.csv",
+            [
+                ("id", lambda o: _s(o.id)),
+                ("lesson_id", lambda o: _s(o.lesson_id)),
+                ("content_type", _content_type_name),
+                ("object_id", lambda o: _s(o.object_id)),
+                ("note", lambda o: o.note),
+                ("order", lambda o: _s(o.order)),
+                ("created_by_id", lambda o: _s(o.created_by_id)),
+                ("created_by_email", lambda o: _s(o.created_by and o.created_by.email)),
+                ("created_at", lambda o: _s(o.created_at)),
+                ("updated_at", lambda o: _s(o.updated_at)),
+            ],
+        ),
+        (
+            CourseEnrollment.objects.filter(organization=organization).select_related("course", "user"),
+            "course_enrollments.csv",
+            [
+                ("id", lambda o: _s(o.id)),
+                ("course_id", lambda o: _s(o.course_id)),
+                ("user_id", lambda o: _s(o.user_id)),
+                ("user_email", lambda o: o.user.email),
+                ("status", lambda o: o.status),
+                ("enrolled_at", lambda o: _s(o.enrolled_at)),
+                ("completed_at", lambda o: _s(o.completed_at)),
+            ],
+        ),
+        (
+            LessonProgress.objects.filter(enrollment__organization=organization).select_related(
+                "enrollment", "lesson"
+            ),
+            "lesson_progress.csv",
+            [
+                ("id", lambda o: _s(o.id)),
+                ("enrollment_id", lambda o: _s(o.enrollment_id)),
+                ("lesson_id", lambda o: _s(o.lesson_id)),
+                ("completed_at", lambda o: _s(o.completed_at)),
             ],
         ),
     ]

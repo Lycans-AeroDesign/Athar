@@ -105,14 +105,15 @@ class OrganizationSettingsTests(APITestCase):
         self.assertEqual(OrganizationSettings.load(self.organization).primary_color, "#ff0000")
 
     def test_logo_endpoint_is_public_and_streams_the_image(self):
-        # _public_organization()'s anonymous fallback resolves to the
-        # *oldest* Organization (no subdomain routing yet - see its own
-        # docstring) - a bootstrap Organization already exists from the
-        # knowledge/document seed migrations by the time any test runs, and
-        # it's always older than self.organization, so it (not
-        # self.organization) is what an anonymous request actually sees.
-        # This test exercises that real, documented behavior explicitly
-        # rather than assuming the anonymous fallback is "your own org."
+        # _public_organization()'s anonymous fallback prefers the oldest
+        # Organization that has a user (see its own docstring) - a bootstrap
+        # Organization already exists from a data migration by the time any
+        # test runs, with no user in it yet, so once we create one there it
+        # becomes "the oldest org with a user" and is what an anonymous
+        # request actually sees - not self.organization, which also has no
+        # user at this point. This test exercises that real, documented
+        # behavior explicitly rather than assuming the anonymous fallback is
+        # "your own org."
         public_organization = Organization.objects.order_by("created_at").first()
 
         # No logo set yet - 404.
@@ -147,6 +148,45 @@ class OrganizationSettingsTests(APITestCase):
         logo_response = self.client.get(reverse("organization-logo"))
         self.assertEqual(logo_response.status_code, status.HTTP_200_OK)
         self.assertEqual(b"".join(logo_response.streaming_content), b"fake-png-bytes")
+
+    def test_public_endpoints_prefer_a_populated_org_over_an_empty_older_one(self):
+        # Regression test for a real deployment bug: a single-org self-hosted
+        # install's bootstrap Organization (oldest by construction, see
+        # organization/migrations/0002_seed_bootstrap_organization.py) never
+        # gets a user if the operator instead registers via self-service org
+        # creation - plain oldest-first then permanently serves the empty
+        # bootstrap org's blank branding to every anonymous/pre-login
+        # request, never the operator's actual (younger, but populated) org.
+        bootstrap_organization = Organization.objects.order_by("created_at").first()
+        self.assertEqual(
+            User.objects.filter(organization=bootstrap_organization).count(),
+            0,
+            "bootstrap org must still be unused for this test to be meaningful",
+        )
+
+        admin = User.objects.create_user(
+            email="realadmin@example.com", password="password123", organization=self.organization
+        )
+        Role.objects.get(organization=self.organization, name="Organization Admin").user_roles.create(user=admin)
+        response = self.client.patch(
+            reverse("organization-branding-update"),
+            {"name": "Real Org"},
+            format="json",
+            **self._auth(
+                self.client.post(
+                    reverse("auth-login"),
+                    {"email": "realadmin@example.com", "password": "password123"},
+                    format="json",
+                ).data["access"]
+            ),
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # Anonymous - must resolve to self.organization (has a user), not the
+        # older-but-empty bootstrap org.
+        public_response = self.client.get(reverse("organization-settings"))
+        self.assertEqual(public_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(public_response.data["name"], "Real Org")
 
 
 class OrganizationCreateTests(APITestCase):

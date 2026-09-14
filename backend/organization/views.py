@@ -1,3 +1,4 @@
+from django.db.models import Count
 from django.http import FileResponse, Http404
 from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import status
@@ -24,14 +25,35 @@ def _public_organization(request) -> Organization | None:
 
     There is no subdomain/host-based routing yet (see Organization.slug's
     own docstring), so an anonymous visitor's organization genuinely can't
-    be determined - falling back to the oldest organization is a deliberate,
-    documented limitation (every tenant's pre-login screen currently shows
-    the *first* org's branding, not their own), not a real per-tenant
-    resolution. Once authenticated, every other view in this file uses
+    be determined in the general multi-tenant case - falling back to a
+    heuristic is a deliberate, documented limitation (a deployment hosting
+    several *populated* organizations has no correct answer here yet), not
+    a real per-tenant resolution.
+
+    The heuristic prefers the oldest organization that actually has a user
+    over one that doesn't, rather than plain oldest-first: every install
+    gets a bootstrap "Default Organization" from a data migration (see
+    organization/migrations/0002_seed_bootstrap_organization.py), which is
+    always the single oldest row - if an operator instead used self-service
+    org creation (organization.services.create_organization) and never put
+    a real user in the bootstrap org, plain oldest-first would permanently
+    serve that empty placeholder's (blank) branding instead of the org
+    anyone is actually using, for every single-org deployment, which is
+    this project's primary use case. Falls back to genuinely oldest only
+    when no organization has a user yet (a fresh install before anyone has
+    registered at all).
+
+    Once authenticated, every other view in this file uses
     request.user.organization instead, which is always correct."""
     if request.user.is_authenticated:
         return request.user.organization
-    return Organization.objects.order_by("created_at").first()
+    return (
+        Organization.objects.annotate(user_count=Count("users"))
+        .filter(user_count__gt=0)
+        .order_by("created_at")
+        .first()
+        or Organization.objects.order_by("created_at").first()
+    )
 
 
 class OrganizationSettingsView(APIView):

@@ -11,6 +11,17 @@ from accounts.models import User
 from rbac.models import Role
 
 from knowledge.models import Article, Bookmark, KnowledgeRelation, Project, Tag
+from training.models import (
+    Course,
+    CourseCategory,
+    CourseEnrollment,
+    CourseModule,
+    CourseResource,
+    LearningObjective,
+    Lesson,
+    LessonKnowledgeReference,
+    LessonProgress,
+)
 
 from .models import BackupJob, RestoreJob
 
@@ -227,6 +238,85 @@ class RestoreJobTests(BackupJobTestCase):
         self.assertTrue(
             KnowledgeRelation.objects.filter(source_object_id=project_id, target_object_id=article_id).exists()
         )
+
+    def test_restore_round_trips_training_content_enrollment_and_progress(self):
+        author, _ = self._login_with_role("courseauthor@example.com", "Subteam Head")
+        learner, _ = self._login_with_role("courselearner@example.com", "Member")
+        _, admin_access = self._login_with_role("courseadmin@example.com", "Organization Admin")
+
+        _, article, _ = self._seed_content(author)
+
+        category = CourseCategory.objects.create(organization=self.organization, name="Avionics", slug="avionics")
+        course = Course.objects.create(
+            organization=self.organization,
+            title="Intro to Avionics",
+            slug="intro-to-avionics",
+            category=category,
+            status="PUBLISHED",
+            author=author,
+        )
+        module = CourseModule.objects.create(course=course, title="Basics", order=1)
+        lesson = Lesson.objects.create(module=module, title="Wiring", order=1)
+        LearningObjective.objects.create(lesson=lesson, text="Identify wire gauges", order=1)
+        CourseResource.objects.create(
+            lesson=lesson,
+            title="Reference sheet",
+            resource_type=CourseResource.ResourceType.EXTERNAL_LINK,
+            provider=CourseResource.Provider.WEBSITE,
+            url="https://example.com/wiring",
+            created_by=author,
+        )
+        LessonKnowledgeReference.objects.create(
+            lesson=lesson,
+            content_type=ContentType.objects.get_for_model(Article),
+            object_id=article.id,
+            created_by=author,
+        )
+        enrollment = CourseEnrollment.objects.create(course=course, user=learner, organization=self.organization)
+        LessonProgress.objects.create(enrollment=enrollment, lesson=lesson)
+
+        course_id, module_id, lesson_id = course.id, module.id, lesson.id
+        enrollment_id = enrollment.id
+
+        backup_job = self._run_backup(admin_access)
+
+        # Wipe the originals so restore isn't a no-op check.
+        Course.objects.get(pk=course_id).delete()
+
+        response = self.client.post(
+            reverse("backups-restore-list-create"),
+            {"backup_job_id": str(backup_job.id)},
+            format="json",
+            **self._auth(admin_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        restore_job_id = response.data["id"]
+
+        response = self.client.get(reverse("backups-restore-detail", args=[restore_job_id]), **self._auth(admin_access))
+        self.assertEqual(response.data["status"], "DONE")
+        self.assertEqual(response.data["summary"]["created"]["courses"], 1)
+        self.assertEqual(response.data["summary"]["created"]["lessons"], 1)
+        self.assertEqual(response.data["summary"]["created"]["course_enrollments"], 1)
+        self.assertEqual(response.data["summary"]["created"]["lesson_progress"], 1)
+
+        restored_course = Course.objects.get(pk=course_id)
+        self.assertEqual(restored_course.title, "Intro to Avionics")
+        self.assertEqual(restored_course.category_id, category.id)
+        self.assertEqual(restored_course.author_id, author.id)
+
+        restored_lesson = Lesson.objects.get(pk=lesson_id)
+        self.assertEqual(restored_lesson.module_id, module_id)
+        self.assertEqual(restored_lesson.objectives.count(), 1)
+        self.assertEqual(restored_lesson.resources.count(), 1)
+
+        restored_reference = LessonKnowledgeReference.objects.get(lesson_id=lesson_id)
+        self.assertEqual(restored_reference.content_type, ContentType.objects.get_for_model(Article))
+        self.assertEqual(restored_reference.object_id, article.id)
+
+        restored_enrollment = CourseEnrollment.objects.get(pk=enrollment_id)
+        self.assertEqual(restored_enrollment.user_id, learner.id)
+        self.assertEqual(restored_enrollment.course_id, course_id)
+        self.assertTrue(LessonProgress.objects.filter(enrollment_id=enrollment_id, lesson_id=lesson_id).exists())
 
     def test_restore_nulls_out_references_to_deleted_users(self):
         author, _ = self._login_with_role("orphanauthor@example.com", "Subteam Head")

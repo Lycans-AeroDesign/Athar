@@ -59,7 +59,10 @@ export default async function LocaleLayout({
 
   const cookieStore = await cookies();
   const cookieValue = cookieStore.get(THEME_COOKIE_NAME)?.value;
-  const theme = isThemePreference(cookieValue) ? cookieValue : "system";
+  // Default to light, not "system" - a visitor who has never set a
+  // preference (no cookie yet) gets light regardless of OS/browser
+  // preference, rather than silently following prefers-color-scheme.
+  const theme = isThemePreference(cookieValue) ? cookieValue : "light";
   // Setting data-theme server-side (from the cookie) means the first paint
   // already has the right theme - no client-side flash-of-wrong-theme fix needed.
   const dataTheme = theme === "system" ? undefined : theme;

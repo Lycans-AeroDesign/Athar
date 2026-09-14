@@ -3,7 +3,9 @@
 
 Scope, deliberately: this restores *content* only - Category, Tag, every
 knowledge/engineering type, relations, restricted-access grants, bookmarks,
-attachments, and the underlying files. It does **not** touch Users, Roles,
+attachments, the underlying files, and every Training Center model (courses,
+modules, lessons, objectives, resources, knowledge references, enrollments,
+progress). It does **not** touch Users, Roles,
 UserRole/RolePermission, InvitationCode, AuditLog, or OrganizationSettings.
 Two reasons, not one corner cut for convenience:
 
@@ -74,9 +76,33 @@ from knowledge.models import (
     Test,
     TestAttachment,
 )
+from training.models import (
+    Course,
+    CourseCategory,
+    CourseEnrollment,
+    CourseModule,
+    CourseResource,
+    LearningObjective,
+    Lesson,
+    LessonKnowledgeReference,
+    LessonProgress,
+)
 
 # Reverse-dependency order (leaves first) - see this module's own docstring.
+# Training is its own independent tree (LessonKnowledgeReference points INTO
+# knowledge content via a plain generic FK, no DB constraint - see that
+# model's own docstring on why - so it's fine deleted in either order
+# relative to the knowledge block below).
 _DELETE_SPECS = [
+    (LessonProgress, "enrollment__organization"),
+    (CourseEnrollment, "organization"),
+    (LessonKnowledgeReference, "lesson__module__course__organization"),
+    (CourseResource, "lesson__module__course__organization"),
+    (LearningObjective, "lesson__module__course__organization"),
+    (Lesson, "module__course__organization"),
+    (CourseModule, "course__organization"),
+    (Course, "organization"),
+    (CourseCategory, "organization"),
     (ArticleAttachment, "article__organization"),
     (QuestionAttachment, "question__organization"),
     (ProjectAttachment, "project__organization"),
@@ -477,6 +503,176 @@ def _restore_bookmarks(ctx, zf) -> None:
     ctx.summary.created["bookmarks"] = count
 
 
+def _restore_course_categories(ctx: _RestoreContext, zf: zipfile.ZipFile) -> dict[uuid.UUID, CourseCategory]:
+    categories_by_id = {}
+    for row in _read_csv_rows(zf, "course_categories.csv"):
+        category = CourseCategory.objects.create(
+            id=_uuid_or_none(row["id"]),
+            organization=ctx.organization,
+            name=row["name"],
+            slug=row["slug"],
+            description=row["description"],
+        )
+        categories_by_id[category.id] = category
+    ctx.summary.created["course_categories"] = len(categories_by_id)
+    return categories_by_id
+
+
+def _restore_courses(ctx, zf, course_categories_by_id, files_by_id) -> dict[uuid.UUID, Course]:
+    courses_by_id = {}
+    for row in _read_csv_rows(zf, "courses.csv"):
+        course = Course.objects.create(
+            id=_uuid_or_none(row["id"]),
+            organization=ctx.organization,
+            title=row["title"],
+            slug=row["slug"],
+            short_description=row["short_description"],
+            description=row["description"],
+            cover_image=files_by_id.get(_uuid_or_none(row["cover_image_id"])),
+            category=course_categories_by_id.get(_uuid_or_none(row["category_id"])),
+            difficulty=row["difficulty"],
+            estimated_minutes=_int_or_default(row["estimated_minutes"]),
+            status=row["status"],
+            author_id=ctx.user_id(row["author_id"]),
+            published_at=row["published_at"] or None,
+        )
+        courses_by_id[course.id] = course
+    ctx.summary.created["courses"] = len(courses_by_id)
+    return courses_by_id
+
+
+def _restore_course_modules(ctx, zf, courses_by_id) -> dict[uuid.UUID, CourseModule]:
+    modules_by_id = {}
+    for row in _read_csv_rows(zf, "course_modules.csv"):
+        course = courses_by_id.get(_uuid_or_none(row["course_id"]))
+        if course is None:
+            continue
+        module = CourseModule.objects.create(
+            id=_uuid_or_none(row["id"]),
+            course=course,
+            title=row["title"],
+            description=row["description"],
+            order=_int_or_default(row["order"]),
+            estimated_minutes=_int_or_default(row["estimated_minutes"]),
+        )
+        modules_by_id[module.id] = module
+    ctx.summary.created["course_modules"] = len(modules_by_id)
+    return modules_by_id
+
+
+def _restore_lessons(ctx, zf, modules_by_id) -> dict[uuid.UUID, Lesson]:
+    lessons_by_id = {}
+    for row in _read_csv_rows(zf, "lessons.csv"):
+        module = modules_by_id.get(_uuid_or_none(row["module_id"]))
+        if module is None:
+            continue
+        lesson = Lesson.objects.create(
+            id=_uuid_or_none(row["id"]),
+            module=module,
+            title=row["title"],
+            short_description=row["short_description"],
+            lesson_type=row["lesson_type"],
+            content=row["content"],
+            order=_int_or_default(row["order"]),
+            estimated_minutes=_int_or_default(row["estimated_minutes"]),
+            is_required=_bool(row["is_required"]),
+        )
+        lessons_by_id[lesson.id] = lesson
+    ctx.summary.created["lessons"] = len(lessons_by_id)
+    return lessons_by_id
+
+
+def _restore_learning_objectives(ctx, zf, lessons_by_id) -> None:
+    count = 0
+    for row in _read_csv_rows(zf, "learning_objectives.csv"):
+        lesson = lessons_by_id.get(_uuid_or_none(row["lesson_id"]))
+        if lesson is None:
+            continue
+        LearningObjective.objects.create(
+            id=_uuid_or_none(row["id"]), lesson=lesson, text=row["text"], order=_int_or_default(row["order"])
+        )
+        count += 1
+    ctx.summary.created["learning_objectives"] = count
+
+
+def _restore_course_resources(ctx, zf, lessons_by_id, files_by_id) -> None:
+    count = 0
+    for row in _read_csv_rows(zf, "course_resources.csv"):
+        lesson = lessons_by_id.get(_uuid_or_none(row["lesson_id"]))
+        if lesson is None:
+            continue
+        CourseResource.objects.create(
+            id=_uuid_or_none(row["id"]),
+            lesson=lesson,
+            title=row["title"],
+            description=row["description"],
+            resource_type=row["resource_type"],
+            provider=row["provider"],
+            url=row["url"],
+            stored_file=files_by_id.get(_uuid_or_none(row["stored_file_id"])),
+            is_primary=_bool(row["is_primary"]),
+            order=_int_or_default(row["order"]),
+            created_by_id=ctx.user_id(row["created_by_id"]),
+        )
+        count += 1
+    ctx.summary.created["course_resources"] = count
+
+
+def _restore_lesson_knowledge_references(ctx, zf, lessons_by_id) -> None:
+    count = 0
+    for row in _read_csv_rows(zf, "lesson_knowledge_references.csv"):
+        lesson = lessons_by_id.get(_uuid_or_none(row["lesson_id"]))
+        if lesson is None:
+            continue
+        LessonKnowledgeReference.objects.create(
+            id=_uuid_or_none(row["id"]),
+            lesson=lesson,
+            content_type=ctx.content_type_for(row["content_type"]),
+            object_id=_uuid_or_none(row["object_id"]),
+            note=row["note"],
+            order=_int_or_default(row["order"]),
+            created_by_id=ctx.user_id(row["created_by_id"]),
+        )
+        count += 1
+    ctx.summary.created["lesson_knowledge_references"] = count
+
+
+def _restore_course_enrollments(ctx, zf, courses_by_id) -> dict[uuid.UUID, CourseEnrollment]:
+    enrollments_by_id = {}
+    for row in _read_csv_rows(zf, "course_enrollments.csv"):
+        course = courses_by_id.get(_uuid_or_none(row["course_id"]))
+        # CourseEnrollment.user is NOT NULL (unlike an author/creator FK) -
+        # an enrollment naming nobody can't be created at all, same
+        # reasoning _restore_grants/_restore_bookmarks skip on a missing
+        # required user.
+        user_id = ctx.user_id(row["user_id"])
+        if course is None or user_id is None:
+            continue
+        enrollment = CourseEnrollment.objects.create(
+            id=_uuid_or_none(row["id"]),
+            organization=ctx.organization,
+            course=course,
+            user_id=user_id,
+            status=row["status"],
+            completed_at=row["completed_at"] or None,
+        )
+        enrollments_by_id[enrollment.id] = enrollment
+    ctx.summary.created["course_enrollments"] = len(enrollments_by_id)
+    return enrollments_by_id
+
+
+def _restore_lesson_progress(ctx, zf, enrollments_by_id, lessons_by_id) -> None:
+    count = 0
+    for row in _read_csv_rows(zf, "lesson_progress.csv"):
+        enrollment = enrollments_by_id.get(_uuid_or_none(row["enrollment_id"]))
+        lesson = lessons_by_id.get(_uuid_or_none(row["lesson_id"]))
+        if enrollment is None or lesson is None:
+            continue
+        LessonProgress.objects.create(id=_uuid_or_none(row["id"]), enrollment=enrollment, lesson=lesson)
+        count += 1
+    ctx.summary.created["lesson_progress"] = count
+
+
 def _restore_attachments(ctx, zf, model, filename: str, parent_field: str, files_by_id) -> None:
     count = 0
     for row in _read_csv_rows(zf, filename):
@@ -522,6 +718,15 @@ def restore_org_backup_archive(organization, archive_file) -> RestoreSummary:
         _restore_tests(ctx, zf, projects_by_id, tags_by_id)
         files_by_id = _restore_files(ctx, zf)
         _restore_documents(ctx, zf, categories_by_id, tags_by_id, files_by_id)
+        course_categories_by_id = _restore_course_categories(ctx, zf)
+        courses_by_id = _restore_courses(ctx, zf, course_categories_by_id, files_by_id)
+        modules_by_id = _restore_course_modules(ctx, zf, courses_by_id)
+        lessons_by_id = _restore_lessons(ctx, zf, modules_by_id)
+        _restore_learning_objectives(ctx, zf, lessons_by_id)
+        _restore_course_resources(ctx, zf, lessons_by_id, files_by_id)
+        _restore_lesson_knowledge_references(ctx, zf, lessons_by_id)
+        enrollments_by_id = _restore_course_enrollments(ctx, zf, courses_by_id)
+        _restore_lesson_progress(ctx, zf, enrollments_by_id, lessons_by_id)
         _restore_articles(ctx, zf, categories_by_id, tags_by_id)
         _restore_article_revisions(ctx, zf)
         _restore_questions(ctx, zf, tags_by_id)

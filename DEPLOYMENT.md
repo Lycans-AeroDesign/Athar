@@ -6,18 +6,28 @@ nginx terminates HTTPS itself using a free certificate from [Let's Encrypt](http
 
 ## 1. Prerequisites
 
-- A domain name with its DNS `A` (and `AAAA`, if using IPv6) record pointed at your server's public IP.
+- A **static** public IP for your server, with a DNS `A` (and `AAAA`, if using IPv6) record pointed at it. On Google Cloud specifically: a fresh GCE instance's IP is ephemeral by default and can change on restart — reserve it as static first (**VPC network → IP addresses** → find the VM's IP → **Convert to static address**) before pointing DNS at it.
 - Docker + the Docker Compose plugin installed on the server.
-- Inbound TCP ports **80 and 443** open in both the instance's cloud-side firewall and its OS-level firewall. On Oracle Cloud specifically: open them in the instance's **Security List/Network Security Group**, *and* in the OS firewall (`iptables`/`firewalld`) — Oracle's images typically block these at the OS level even after the cloud-side security list allows them.
+- Inbound TCP ports **80 and 443** open in both the instance's cloud-side firewall and its OS-level firewall.
+  - **Oracle Cloud**: open them in the instance's **Security List/Network Security Group**, *and* in the OS firewall (`iptables`/`firewalld`) — Oracle's images typically block these at the OS level even after the cloud-side security list allows them.
+  - **Google Cloud (GCE)**: create a firewall rule under **VPC network → Firewall** (ingress, allow, `tcp:80,443`, source `0.0.0.0/0`) targeted at your VM via a network tag — then add that *same* tag to the VM itself (VM details → **Edit** → **Networking → Network tags**), and make sure you scroll down and click **Save** on the edit page, not just add the tag chip. A rule with no matching tag on the VM silently does nothing.
 - Port 80 has to stay reachable permanently, not just during setup — Let's Encrypt re-verifies domain ownership on every renewal (roughly every 60 days) the same way it does on first issuance.
+- At least ~2GB RAM is recommended. This setup pulls prebuilt images (step 2) rather than building on the server, but Postgres + Redis + Django + Celery + Next.js + nginx + certbot running together can still get tight on a 1GB instance (e.g. GCP's free-tier `e2-micro`). If you're stuck on 1GB, add swap as a safety net so memory pressure slows things down instead of freezing the instance/killing SSH:
+  ```bash
+  sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile
+  echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+  ```
+  Swap only softens the failure mode (slower instead of the kernel SIGKILL-ing processes) - a 1GB instance is genuinely tight for this full stack (gunicorn's 3 workers, each a full Django process, plus Postgres/Redis/Celery/Next.js/nginx/certbot), and can still see workers OOM-killed mid-request under real usage, not just during a build. If that happens, resizing the instance up is the real fix, not further tuning.
 
 ## 2. Publish the images (once, before first deploy)
 
 `docker-compose.prod.yml` pulls prebuilt images from GHCR rather than building on the server - important on small/free-tier VMs, where building the frontend and backend locally can exhaust RAM. Publish them from GitHub instead:
 
 1. Repo → **Settings → Secrets and variables → Actions → Variables** tab → add a repository variable named `NEXT_PUBLIC_API_URL` set to your real origin + `/api`, e.g. `https://athar.example.com/api`. (Variable, not Secret - this value ends up in the public frontend JS bundle regardless, so there's nothing to protect.)
-2. Tag a release and push it: `git tag v1.0.0 && git push origin v1.0.0`. This triggers `.github/workflows/docker-publish.yml`, which builds both images on GitHub's runners and pushes them to `ghcr.io/<owner>/<repo>-backend` and `-frontend`, tagged both `v1.0.0` and `latest`. (You can also trigger it manually from the Actions tab for a one-off build.)
-3. Make the packages pullable: repo/org → **Packages** tab → open each of `<repo>-backend` and `<repo>-frontend` → package settings → **Change visibility → Public** (simplest if your repo is already public - otherwise the server needs `docker login ghcr.io` with a PAT instead).
+2. Tag a release and push it: `git tag v1.0.0 && git push origin v1.0.0`. This triggers `.github/workflows/docker-publish.yml`, which builds both images on GitHub's runners and pushes them to `ghcr.io/<owner>/<repo>-backend` and `-frontend`, tagged both `v1.0.0` and `latest`. (You can also trigger it manually from the Actions tab for a one-off build.) **Note:** if `release.yml`'s semantic-release creates the tag for you instead of a manual `git tag`, this auto-trigger only fires once a `RELEASE_TOKEN` secret is configured (see the comment at the top of `release.yml`) — GitHub doesn't let the default `GITHUB_TOKEN` trigger other workflows. Until then, trigger `docker-publish.yml` manually from the Actions tab after each release.
+3. Decide whether the images stay public or private:
+   - **Public** (simplest if the repo is already public): repo/org → **Packages** tab → open each of `<repo>-backend` and `<repo>-frontend` → package settings → **Change visibility → Public**.
+   - **Private**: on the server, log in once before pulling: `echo <PAT> | docker login ghcr.io -u <github-username> --password-stdin`, using a PAT scoped to just `read:packages`. Persists in `~/.docker/config.json`, so this is a one-time step per server (until the PAT expires).
 
 Repeat step 2 (a new tag) whenever you want to ship a new version - see [Every deploy after the first](#6-every-deploy-after-the-first) below.
 
@@ -74,6 +84,11 @@ Check `docker compose -f docker-compose.prod.yml logs -f` for startup issues, an
 
 - Create your first organization/admin account through the app itself (registration flow, or `docker compose -f docker-compose.prod.yml exec backend python manage.py createsuperuser` for a break-glass Django admin account — see [`README.md`](README.md#backups) for what admin access is/isn't used for).
 - Set up periodic `manage.py create_full_backup` runs (cron, or your own scheduler) if you want off-server backups — see [Backups](README.md#backups).
+
+## Troubleshooting
+
+- **`nano`/`dig`: command not found** — minimal cloud VM images (e.g. GCE's `ubuntu-minimal` family) often ship without either. Use `vi` in place of `nano`, and in place of `dig` for checking DNS propagation: `getent hosts <your-domain>`, or `curl -s "https://dns.google/resolve?name=<your-domain>&type=A"` if you want to bypass the server's own resolver cache.
+- **`docker compose` hangs, then SSH stops responding entirely** — almost always the out-of-memory case described in Prerequisites above, not an actual hang. Check the VM's serial console output (cloud console → Logs → serial port, doesn't need SSH) for `Under memory pressure` / OOM-killer messages. Recovery is a hard reset of the instance (safe — nothing on disk is lost) followed by adding swap before retrying.
 
 ## Not using this exact setup?
 
