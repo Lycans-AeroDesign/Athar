@@ -23,13 +23,14 @@ nginx terminates HTTPS itself using a free certificate from [Let's Encrypt](http
 
 `docker-compose.prod.yml` pulls prebuilt images from GHCR rather than building on the server - important on small/free-tier VMs, where building the frontend and backend locally can exhaust RAM. Publish them from GitHub instead:
 
-1. Repo → **Settings → Secrets and variables → Actions → Variables** tab → add a repository variable named `NEXT_PUBLIC_API_URL` set to your real origin + `/api`, e.g. `https://athar.example.com/api`. (Variable, not Secret - this value ends up in the public frontend JS bundle regardless, so there's nothing to protect.)
-2. Tag a release and push it: `git tag v1.0.0 && git push origin v1.0.0`. This triggers `.github/workflows/docker-publish.yml`, which builds both images on GitHub's runners and pushes them to `ghcr.io/<owner>/<repo>-backend` and `-frontend`, tagged both `v1.0.0` and `latest`. (You can also trigger it manually from the Actions tab for a one-off build.) **Note:** if `release.yml`'s semantic-release creates the tag for you instead of a manual `git tag`, this auto-trigger only fires once a `RELEASE_TOKEN` secret is configured (see the comment at the top of `release.yml`) — GitHub doesn't let the default `GITHUB_TOKEN` trigger other workflows. Until then, trigger `docker-publish.yml` manually from the Actions tab after each release.
-3. Decide whether the images stay public or private:
+1. Tag a release and push it: `git tag v1.0.0 && git push origin v1.0.0`. This triggers `.github/workflows/docker-publish.yml`, which builds both images on GitHub's runners and pushes them to `ghcr.io/<owner>/<repo>-backend` and `-frontend`, tagged both `v1.0.0` and `latest`. (You can also trigger it manually from the Actions tab for a one-off build.) **Note:** if `release.yml`'s semantic-release creates the tag for you instead of a manual `git tag`, this auto-trigger only fires once a `RELEASE_TOKEN` secret is configured (see the comment at the top of `release.yml`) — GitHub doesn't let the default `GITHUB_TOKEN` trigger other workflows. Until then, trigger `docker-publish.yml` manually from the Actions tab after each release.
+2. Decide whether the images stay public or private:
    - **Public** (simplest if the repo is already public): repo/org → **Packages** tab → open each of `<repo>-backend` and `<repo>-frontend` → package settings → **Change visibility → Public**.
    - **Private**: on the server, log in once before pulling: `echo <PAT> | docker login ghcr.io -u <github-username> --password-stdin`, using a PAT scoped to just `read:packages`. Persists in `~/.docker/config.json`, so this is a one-time step per server (until the PAT expires).
 
-Repeat step 2 (a new tag) whenever you want to ship a new version - see [Every deploy after the first](#6-every-deploy-after-the-first) below.
+No `NEXT_PUBLIC_API_URL` setup needed - the published frontend image ships with no domain baked in at all, since `docker-compose.prod.yml`'s bundled nginx already proxies both it and the backend under whichever `DOMAIN` you set in step 4 below (see that section's note). This is also why anyone can reuse `ghcr.io/lycans-aerodesign/athar-frontend` directly behind their own domain without publishing their own build - only rebuild it yourself (via `docker-publish.yml`'s `workflow_dispatch` input) if you need the API reachable at a *different* origin than the one serving the frontend.
+
+Repeat step 1 (a new tag) whenever you want to ship a new version - see [Every deploy after the first](#6-every-deploy-after-the-first) below.
 
 ## 3. Clone and generate secrets
 
@@ -49,11 +50,11 @@ This creates a root `.env` with a random `SECRET_KEY` and `POSTGRES_PASSWORD` al
 | `LETSENCRYPT_EMAIL` | an email you actually check | Let's Encrypt sends expiry/renewal-problem notices here — required |
 | `ALLOWED_HOSTS` | same domain, e.g. `athar.example.com` | Django rejects requests for any host not listed here — required |
 | `CORS_ALLOWED_ORIGINS` | `https://athar.example.com` | required |
-| `IMAGE_TAG` | a published tag, e.g. `v1.0.0`, or `latest` | which GHCR image build to pull — see step 2 |
+| `IMAGE_TAG` | a published tag, e.g. `v1.0.0`, or `latest` | which GHCR image build to pull — see step 1 |
 | `ENABLE_REGISTRATION` | `True` or `False` | your call — whether public self-signup should be open |
 | `AWS_STORAGE_BUCKET_NAME` + the 4 `AWS_*` vars below it | only if using S3/R2/B2/MinIO | optional — leave blank to keep local-disk storage |
 
-`NEXT_PUBLIC_API_URL` in this file is **not** used in production — it's baked into the frontend image at publish time from the `NEXT_PUBLIC_API_URL` GitHub repo variable instead (step 2). Everything else in `.env` (`POSTGRES_*`, `JWT_*`, `NGINX_PORT`/`NGINX_SSL_PORT`, `SECRET_KEY`) is already either generated for you or fine to leave at its default.
+`NEXT_PUBLIC_API_URL` in this file is **not** used in production at all — the published frontend image ships with it empty (see [Publish the images](#2-publish-the-images-once-before-first-deploy) above), relying on `DOMAIN` (and the bundled nginx) instead. Everything else in `.env` (`POSTGRES_*`, `JWT_*`, `NGINX_PORT`/`NGINX_SSL_PORT`, `SECRET_KEY`) is already either generated for you or fine to leave at its default.
 
 ## 5. First deploy — one-time certificate bootstrap
 

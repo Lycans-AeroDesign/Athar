@@ -4,12 +4,15 @@
 # release path: `git tag v1.2.3 && git push origin v1.2.3`. Can also be run
 # manually from the Actions tab for a one-off/test build.
 #
-# NEXT_PUBLIC_API_URL is read from the "NEXT_PUBLIC_API_URL" repository
-# variable (Settings > Secrets and variables > Actions > Variables) by
-# default - it's not sensitive (it ends up in the public frontend JS bundle
-# either way), so it doesn't belong in Secrets. A manual run can override it
-# via the workflow_dispatch input instead, e.g. to test against a different
-# domain without touching the repo variable.
+# NEXT_PUBLIC_API_URL is left empty by default - docker-compose.prod.yml's
+# bundled nginx already proxies both the frontend and `/api/` under one
+# external domain (see nginx/templates/locations.inc.template), so the built
+# image needs no domain baked in and works behind *any* team's own domain
+# unmodified. Only set the workflow_dispatch input if you're publishing a
+# build meant to reach the API at a different origin than the one serving
+# the frontend (i.e. not using the bundled nginx) - it's not sensitive (it
+# ends up in the public frontend JS bundle either way), so a repo Variable
+# would be fine too, but isn't needed for the common case.
 
 name: Publish Docker Images
 
@@ -24,7 +27,7 @@ on:
         required: false
         default: "manual"
       next_public_api_url:
-        description: "Override the NEXT_PUBLIC_API_URL repo variable for this build"
+        description: "Bake in an absolute NEXT_PUBLIC_API_URL for this build (leave blank for the normal same-origin/bundled-nginx setup)"
         required: false
         default: ""
 
@@ -79,7 +82,7 @@ jobs:
           target: prod
           push: true
           build-args: |
-            NEXT_PUBLIC_API_URL=${{ github.event.inputs.next_public_api_url || vars.NEXT_PUBLIC_API_URL }}
+            NEXT_PUBLIC_API_URL=${{ github.event.inputs.next_public_api_url }}
           tags: |
             ghcr.io/${{ steps.repo.outputs.name }}-frontend:${{ steps.version.outputs.tag }}
             ghcr.io/${{ steps.repo.outputs.name }}-frontend:latest

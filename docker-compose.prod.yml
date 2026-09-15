@@ -93,11 +93,13 @@ services:
       retries: 5
 
   frontend:
-    # NEXT_PUBLIC_* vars are inlined at build time, not read at runtime - the
-    # published image already has NEXT_PUBLIC_API_URL baked in from the
-    # "NEXT_PUBLIC_API_URL" GitHub repo variable used by docker-publish.yml.
-    # Setting it here in .env would have no effect; it must match at
-    # publish time instead.
+    # NEXT_PUBLIC_* vars are inlined at build time, not read at runtime - but
+    # the published image ships with NEXT_PUBLIC_API_URL empty (see
+    # docker-publish.yml), so this needs no setting here at all: nginx below
+    # already proxies both this service and the backend under one external
+    # domain, so the frontend's own relative /api/... calls just resolve to
+    # it. Setting NEXT_PUBLIC_API_URL in .env would have no effect either way
+    # - it's a build-time value, not a runtime one.
     image: ghcr.io/lycans-aerodesign/athar-frontend:${IMAGE_TAG:-latest}
     restart: unless-stopped
     # No `ports:` - only nginx is reachable from outside the compose

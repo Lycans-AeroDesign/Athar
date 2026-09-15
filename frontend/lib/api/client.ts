@@ -2,7 +2,17 @@ import { refreshRequest } from "@/lib/api/auth";
 import { redirectToLogin } from "@/lib/auth/redirect";
 import { tokenStore } from "@/lib/auth/token-store";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+// Empty by default (not just in dev) - the published prod image ships with
+// no domain baked in at all, since docker-compose.prod.yml's bundled nginx
+// (see nginx/templates/locations.inc.template) already proxies both `/api/`
+// and `/` under the one external domain the frontend itself is served from,
+// so a schemeless/hostless path here already resolves to the right place.
+// Only set NEXT_PUBLIC_API_URL to an absolute origin (scheme+host, no /api
+// suffix - the paths below already include it) when the frontend is reached
+// through something other than that bundled nginx, e.g. bare `npm run dev`
+// against a differently-hosted backend (see frontend/.env.example) - the
+// docker-compose.yml dev default of http://localhost:8000 is exactly that.
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 /** Absolute URL for a public, unauthenticated backend path (e.g. the org
  * logo/favicon) - for plain <img src>, which apiFetch's token attachment
