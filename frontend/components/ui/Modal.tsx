@@ -55,7 +55,7 @@ function ModalBase({
       <Dialog.Root open={open} onOpenChange={handleOpenChange}>
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 bg-inverse-surface/40 z-40" />
-          <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md bg-surface-container-lowest border border-outline-variant rounded-xl p-6 shadow-[0_4px_16px_0_rgba(0,0,0,0.12)] focus:outline-none">
+          <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[calc(100%-2rem)] max-w-md max-h-[85vh] overflow-y-auto bg-surface-container-lowest border border-outline-variant rounded-xl p-6 shadow-[0_4px_16px_0_rgba(0,0,0,0.12)] focus:outline-none">
             <div className="flex items-start justify-between gap-4 mb-4">
               <div>
                 <Dialog.Title className="font-headline-md text-headline-md text-on-surface">

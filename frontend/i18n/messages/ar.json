@@ -52,6 +52,7 @@
       "lastNameLabel": "اسم العائلة",
       "usernameLabel": "اسم المستخدم (اختياري)",
       "invitationCodeLabel": "رمز الدعوة",
+      "invitationCodePrefilled": "تمت تعبئته تلقائيًا من رابط الدعوة الخاص بك.",
       "submit": "إنشاء الحساب",
       "submitOrganization": "إنشاء المنظمة",
       "submitting": "جارٍ إنشاء الحساب...",
@@ -127,6 +128,8 @@
     "nav-testsDescription": "سجّل نتائج الاختبارات والتجارب - اختبارات المنضدة أو اختبارات الطيران، أيًا كان ما أجريته - مع الإعداد والإجراء والنتائج والنجاح أو الفشل.",
     "nav-documentsTitle": "المستندات",
     "nav-documentsDescription": "ارفع الموارد الخارجية هنا - قواعد المنافسة وأوراق البيانات والأوراق المرجعية - أي شيء لم يكتبه فريقك بنفسه، على عكس مقالات المعرفة.",
+    "nav-trainingTitle": "مركز التدريب",
+    "nav-trainingDescription": "دورات منظّمة لتأهيل الأعضاء الجدد وتطوير مهاراتهم - تصفّح الدورات المنشورة، وتابع تقدّمك، أو أنشئ دورة إذا كنت مسؤولًا عن محتوى التدريب.",
     "nav-bookmarksTitle": "الإشارات المرجعية",
     "nav-bookmarksDescription": "احفظ أي شيء تريد العودة إليه بسرعة - سيظهر هنا.",
     "global-searchTitle": "ابحث عن أي شيء",
@@ -220,7 +223,8 @@
       "emptyState": "لا توجد فئات بعد.",
       "articleCount": "{count, plural, =0 {لا مقالات} one {مقالة واحدة} two {مقالتان} few {# مقالات} many {# مقالة} other {# مقالة}}",
       "deleteConfirmTitle": "حذف \"{name}\"؟",
-      "deleteConfirmBody": "ستصبح المقالات ضمن هذه الفئة بلا تصنيف. لا يمكن التراجع عن هذا الإجراء."
+      "deleteConfirmBody": "ستصبح المقالات ضمن هذه الفئة بلا تصنيف. لا يمكن التراجع عن هذا الإجراء.",
+      "courseCategoriesDescription": "فئات لتنظيم دورات التدريب - منفصلة عن فئات المعرفة أعلاه، فلا تظهر في مُنتقي فئة المقالة والعكس صحيح."
     },
     "permissions": {
       "title": "الأدوار",
@@ -1065,6 +1069,7 @@
       "optionalLabel": "اختياري",
       "estimatedMinutesLabel": "الدقائق المقدّرة",
       "categoriesTitle": "فئات الدورات",
+      "noCourseCategories": "لا توجد فئات دورات بعد.",
       "addCategoryButton": "إضافة فئة",
       "categoryNamePlaceholder": "اسم الفئة",
       "deleteCategoryConfirmTitle": "حذف هذه الفئة؟",

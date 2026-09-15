@@ -4,22 +4,15 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 import { Can } from "@/components/auth/Can";
+import { CourseCategoryManager } from "@/components/training/CourseCategoryManager";
 import { COURSE_STATUS_LABEL_KEYS, CourseStatusPill } from "@/components/training/CourseStatusPill";
 import { Button } from "@/components/ui/Button";
 import { Combobox } from "@/components/ui/Combobox";
-import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Icon } from "@/components/ui/Icon";
-import { IconButton } from "@/components/ui/IconButton";
 import { StatCard } from "@/components/ui/StatCard";
 import { Link } from "@/i18n/navigation";
-import {
-  createCourseCategory,
-  deleteCourseCategory,
-  getTrainingStats,
-  listCourseCategories,
-  listCourses,
-} from "@/lib/api/training";
-import type { CourseCategory, CourseStatus, CourseStatusFilter, CourseSummary, TrainingStats } from "@/lib/api/types";
+import { getTrainingStats, listCourses } from "@/lib/api/training";
+import type { CourseStatus, CourseStatusFilter, CourseSummary, TrainingStats } from "@/lib/api/types";
 import { useHasPermission } from "@/lib/auth/permissions";
 
 const STATUS_FILTERS: CourseStatusFilter[] = ["ALL", "DRAFT", "IN_REVIEW", "PUBLISHED", "REJECTED", "ARCHIVED"];
@@ -32,37 +25,15 @@ export default function TrainingManageDashboardPage() {
   const [stats, setStats] = useState<TrainingStats | null>(null);
   const [courses, setCourses] = useState<CourseSummary[] | null>(null);
   const [statusFilter, setStatusFilter] = useState<CourseStatusFilter>("ALL");
-  const [categories, setCategories] = useState<CourseCategory[]>([]);
-  const [newCategoryName, setNewCategoryName] = useState("");
-  const [deleteCategoryId, setDeleteCategoryId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (canManage) getTrainingStats().then(setStats, (err) => setError(err instanceof Error ? err.message : String(err)));
-    listCourseCategories().then(setCategories);
   }, [canManage]);
 
   useEffect(() => {
     listCourses({ status: statusFilter }).then(setCourses, (err) => setError(err instanceof Error ? err.message : String(err)));
   }, [statusFilter]);
-
-  async function handleAddCategory() {
-    if (!newCategoryName.trim()) return;
-    try {
-      const category = await createCourseCategory({ name: newCategoryName.trim() });
-      setCategories((prev) => [...prev, category]);
-      setNewCategoryName("");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    }
-  }
-
-  async function handleDeleteCategory() {
-    if (!deleteCategoryId) return;
-    await deleteCourseCategory(deleteCategoryId);
-    setCategories((prev) => prev.filter((category) => category.id !== deleteCategoryId));
-    setDeleteCategoryId(null);
-  }
 
   return (
     <div className="space-y-8">
@@ -167,46 +138,9 @@ export default function TrainingManageDashboardPage() {
       <Can permission="training.manage">
         <div className="space-y-3">
           <h2 className="font-headline-md text-headline-md text-on-surface">{t("categoriesTitle")}</h2>
-          <div className="flex flex-wrap gap-2">
-            {categories.map((category) => (
-              <span
-                key={category.id}
-                className="flex items-center gap-1.5 pl-3 pr-1 py-1 rounded-full bg-surface-container-low border border-outline-variant font-body-md text-body-md text-on-surface"
-              >
-                {category.name}
-                <IconButton
-                  icon="close"
-                  variant="ghost"
-                  size={14}
-                  aria-label={t("deleteCategoryConfirmTitle")}
-                  onClick={() => setDeleteCategoryId(category.id)}
-                />
-              </span>
-            ))}
-          </div>
-          <div className="flex items-center gap-2 max-w-sm">
-            <input
-              className="flex-1 px-4 py-2 font-body-md text-body-md text-on-surface bg-surface border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
-              placeholder={t("categoryNamePlaceholder")}
-              value={newCategoryName}
-              onChange={(e) => setNewCategoryName(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleAddCategory()}
-            />
-            <Button variant="secondary" onClick={handleAddCategory} disabled={!newCategoryName.trim()}>
-              {t("addCategoryButton")}
-            </Button>
-          </div>
+          <CourseCategoryManager />
         </div>
       </Can>
-
-      <ConfirmModal
-        open={deleteCategoryId !== null}
-        onOpenChange={(open) => !open && setDeleteCategoryId(null)}
-        title={t("deleteCategoryConfirmTitle")}
-        description={t("deleteCategoryConfirmBody")}
-        danger
-        onConfirm={handleDeleteCategory}
-      />
     </div>
   );
 }

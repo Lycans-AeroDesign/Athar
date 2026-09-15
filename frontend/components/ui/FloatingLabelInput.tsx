@@ -12,6 +12,9 @@ interface FloatingLabelInputProps extends InputHTMLAttributes<HTMLInputElement> 
    * the browser's native validation bubble (see `noValidate` on the forms
    * that use this) - pass the caller's own validation message here. */
   error?: string;
+  /** Non-error helper text shown in the same reserved slot as `error` (which
+   * always wins if both are set) - e.g. "prefilled from your invite link". */
+  hint?: string;
 }
 
 // Text input whose label sits inside the field (like a placeholder) and
@@ -20,7 +23,7 @@ interface FloatingLabelInputProps extends InputHTMLAttributes<HTMLInputElement> 
 // correctly with browser autofill too, not just React-tracked focus state.
 // type="password" automatically gets a show/hide toggle.
 export const FloatingLabelInput = forwardRef<HTMLInputElement, FloatingLabelInputProps>(
-  function FloatingLabelInput({ label, icon, error, id, className, type, ...props }, ref) {
+  function FloatingLabelInput({ label, icon, error, hint, id, className, type, ...props }, ref) {
     const t = useTranslations("auth");
     const [showPassword, setShowPassword] = useState(false);
     const isPassword = type === "password";
@@ -71,10 +74,10 @@ export const FloatingLabelInput = forwardRef<HTMLInputElement, FloatingLabelInpu
             reserved height - callers space fields via a tight space-y-1
             wrapper, since this slot supplies the rest of that gap. */}
         <p
-          className={`min-h-[1.25rem] font-body-md text-body-md text-error ${error ? "" : "invisible"}`}
+          className={`min-h-[1.25rem] font-body-md text-body-md ${error ? "text-error" : hint ? "text-primary" : "text-error invisible"}`}
           role={error ? "alert" : undefined}
         >
-          {error || " "}
+          {error || hint || " "}
         </p>
       </div>
     );

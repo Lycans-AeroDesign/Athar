@@ -52,6 +52,7 @@
       "lastNameLabel": "Last Name",
       "usernameLabel": "Username (optional)",
       "invitationCodeLabel": "Invitation Code",
+      "invitationCodePrefilled": "Pre-filled from your invite link.",
       "submit": "Create Account",
       "submitOrganization": "Create Organization",
       "submitting": "Creating account...",
@@ -127,6 +128,8 @@
     "nav-testsDescription": "Record test and experiment results - bench tests, flight tests, whatever you ran - with configuration, procedure, results, and pass/fail.",
     "nav-documentsTitle": "Documents",
     "nav-documentsDescription": "Upload external resources here - competition rules, datasheets, reference papers - anything your team didn't write itself, unlike Knowledge articles.",
+    "nav-trainingTitle": "Training Center",
+    "nav-trainingDescription": "Structured courses to onboard new members and build skills - browse what's published, track your progress, or author a course if you manage training content.",
     "nav-bookmarksTitle": "Bookmarks",
     "nav-bookmarksDescription": "Save anything you want to find again quickly - it'll show up here.",
     "global-searchTitle": "Search everything",
@@ -220,7 +223,8 @@
       "emptyState": "No categories yet.",
       "articleCount": "{count, plural, =0 {No articles} one {# article} other {# articles}}",
       "deleteConfirmTitle": "Delete \"{name}\"?",
-      "deleteConfirmBody": "Articles in this category will become uncategorized. This can't be undone."
+      "deleteConfirmBody": "Articles in this category will become uncategorized. This can't be undone.",
+      "courseCategoriesDescription": "Categories for organizing Training courses - kept separate from the Knowledge categories above, so they won't show up in an article's category picker or vice versa."
     },
     "permissions": {
       "title": "Roles",
@@ -1065,6 +1069,7 @@
       "optionalLabel": "Optional",
       "estimatedMinutesLabel": "Est. minutes",
       "categoriesTitle": "Course Categories",
+      "noCourseCategories": "No course categories yet.",
       "addCategoryButton": "Add Category",
       "categoryNamePlaceholder": "Category name",
       "deleteCategoryConfirmTitle": "Delete this category?",

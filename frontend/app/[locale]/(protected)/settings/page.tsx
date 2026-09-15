@@ -11,6 +11,7 @@ import { GeneralSettingsForm } from "@/components/settings/GeneralSettingsForm";
 import { InvitationsSettingsForm } from "@/components/settings/InvitationsSettingsForm";
 import { RolesSettingsForm } from "@/components/settings/RolesSettingsForm";
 import { UsersSettingsForm } from "@/components/settings/UsersSettingsForm";
+import { CourseCategoryManager } from "@/components/training/CourseCategoryManager";
 import { useHasPermission } from "@/lib/auth/permissions";
 import { useOrganization } from "@/lib/organization/OrganizationProvider";
 
@@ -36,6 +37,7 @@ export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<TabId>("general");
   const t = useTranslations("settings");
   const commonT = useTranslations("common");
+  const trainingManageT = useTranslations("training.manage");
 
   const canEditGeneral = useHasPermission("organization.manage");
   const canEditBranding = useHasPermission("branding.manage");
@@ -43,6 +45,11 @@ export default function SettingsPage() {
   // do (see CategorySettingsForm's own top comment) - without category.manage
   // the tab would only ever show a read-only list, so it's hidden instead.
   const canManageCategories = useHasPermission("category.manage");
+  // Training's own CourseCategory is a separate model from Knowledge's
+  // Category (see CourseCategoryManager's top comment) - gated on the same
+  // training.manage permission that guards its create/delete endpoints and
+  // its other management UI at /training/manage.
+  const canManageTrainingCategories = useHasPermission("training.manage");
   // GET /rbac/roles/ itself requires role.manage, so without it there is
   // nothing this tab could show - see RolesSettingsForm's own top comment.
   const canManageRoles = useHasPermission("role.manage");
@@ -60,8 +67,9 @@ export default function SettingsPage() {
 
   const visibleTabs = ALL_TAB_IDS.filter(
     (tabId) =>
+      (tabId !== "branding" || canEditBranding) &&
       (tabId !== "permissions" || canManageRoles) &&
-      (tabId !== "categories" || canManageCategories) &&
+      (tabId !== "categories" || canManageCategories || canManageTrainingCategories) &&
       (tabId !== "users" || canManageUsers) &&
       (tabId !== "invitations" || canManageInvitations) &&
       (tabId !== "audit" || canReadAudit) &&
@@ -73,13 +81,13 @@ export default function SettingsPage() {
       <h1 className="font-display text-display text-on-surface">{t("title")}</h1>
       <p className="font-body-lg text-body-lg text-on-surface-variant mt-2">{t("description")}</p>
 
-      <div className="flex gap-6 border-b border-outline-variant mt-6 mb-6">
+      <div className="flex gap-6 overflow-x-auto border-b border-outline-variant mt-6 mb-6">
         {visibleTabs.map((tabId) => (
           <button
             key={tabId}
             type="button"
             onClick={() => setActiveTab(tabId)}
-            className={`pb-3 font-label-caps text-label-caps uppercase border-b-2 transition-colors -mb-px ${
+            className={`shrink-0 pb-3 font-label-caps text-label-caps uppercase border-b-2 transition-colors -mb-px ${
               activeTab === tabId
                 ? "border-primary text-primary"
                 : "border-transparent text-on-surface-variant hover:text-on-surface"
@@ -93,7 +101,22 @@ export default function SettingsPage() {
       {activeTab === "permissions" ? (
         <RolesSettingsForm />
       ) : activeTab === "categories" ? (
-        <CategorySettingsForm />
+        <div className="space-y-8">
+          {canManageCategories && <CategorySettingsForm />}
+          {canManageTrainingCategories && (
+            <div className="bg-surface rounded-xl border border-outline-variant p-6 space-y-4 max-w-2xl">
+              <div>
+                <h2 className="font-headline-md text-headline-md text-on-surface">
+                  {trainingManageT("categoriesTitle")}
+                </h2>
+                <p className="font-body-md text-body-md text-on-surface-variant mt-1">
+                  {t("categories.courseCategoriesDescription")}
+                </p>
+              </div>
+              <CourseCategoryManager />
+            </div>
+          )}
+        </div>
       ) : activeTab === "users" ? (
         <UsersSettingsForm />
       ) : activeTab === "invitations" ? (

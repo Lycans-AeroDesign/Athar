@@ -23,6 +23,7 @@ export const TOUR_STEP_IDS = [
   "nav-failures",
   "nav-tests",
   "nav-documents",
+  "nav-training",
   "nav-bookmarks",
   "global-search",
   "account-menu",

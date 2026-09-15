@@ -54,6 +54,10 @@ function RegisterForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [invitationCode, setInvitationCode] = useState(searchParams.get("code") ?? "");
+  // True only while the code still matches what the invite link handed us -
+  // clears as soon as the visitor edits it, so the highlight always means
+  // "this came from your link", never "this happens to look prefilled".
+  const [codeAutoFilled, setCodeAutoFilled] = useState(() => Boolean(searchParams.get("code")));
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -254,7 +258,9 @@ function RegisterForm() {
               {mode === "invite" && (
                 <FloatingLabelInput
                   autoComplete="off"
+                  className={codeAutoFilled ? "ring-2 ring-primary/60 border-primary" : undefined}
                   error={fieldErrors.invitationCode}
+                  hint={codeAutoFilled ? t("register.invitationCodePrefilled") : undefined}
                   icon="label"
                   id="invitationCode"
                   label={t("register.invitationCodeLabel")}
@@ -262,6 +268,7 @@ function RegisterForm() {
                   value={invitationCode}
                   onChange={(e) => {
                     setInvitationCode(e.target.value);
+                    setCodeAutoFilled(false);
                     setFieldErrors((prev) => ({ ...prev, invitationCode: undefined }));
                   }}
                 />
