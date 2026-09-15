@@ -1,3 +1,11 @@
+## [1.0.2](https://github.com/Lycans-AeroDesign/Athar/compare/v1.0.1...v1.0.2) (2026-09-15)
+
+### Bug Fixes
+
+* **docker:** stop baking a team's domain into published frontend images ([b592b2c](https://github.com/Lycans-AeroDesign/Athar/commit/b592b2cf65c5d478c2e4881d00d6a8622898c6aa))
+* fix the org-fallback test's endpoint ([c93a13d](https://github.com/Lycans-AeroDesign/Athar/commit/c93a13de6120d26c734a9febd635becf22409fc5))
+* **frontend:** fix invite highlight, onboarding tour, branding tab, mobile settings, course categories ([9e67690](https://github.com/Lycans-AeroDesign/Athar/commit/9e6769025a70b6f06f1acd3435d0b2c5a1b67044))
+
 ## [1.0.1](https://github.com/Lycans-AeroDesign/Athar/compare/v1.0.0...v1.0.1) (2026-09-14)
 
 ### Bug Fixes
