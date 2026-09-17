@@ -1,15 +1,23 @@
-import { apiFetch, apiJson } from "./client";
+import { apiFetch, apiUpload } from "./client";
 import type { StoredFileRef } from "./types";
 
-export function uploadFile(file: File, requiredPermission = "file.read"): Promise<StoredFileRef> {
+interface UploadFileOptions {
+  requiredPermission?: string;
+  /** Reports upload progress as a 0-1 fraction, from the browser's actual
+   * XHR upload.onprogress events - not a simulated/fake bar. */
+  onProgress?: (fraction: number) => void;
+}
+
+export function uploadFile(file: File, options: UploadFileOptions = {}): Promise<StoredFileRef> {
+  const { requiredPermission = "file.read", onProgress } = options;
   const formData = new FormData();
   formData.append("file", file);
   formData.append("required_permission", requiredPermission);
   // No Content-Type header - the browser sets the multipart boundary itself.
-  // apiJson's error handling already covers DRF's {"file": ["message"]}
+  // apiUpload's error handling already covers DRF's {"file": ["message"]}
   // shape (see files/serializers.py's validate_file, e.g. the size-limit
   // check), so no need to duplicate that extraction here.
-  return apiJson<StoredFileRef>("/api/v1/files/upload/", { method: "POST", body: formData });
+  return apiUpload<StoredFileRef>("/api/v1/files/upload/", formData, onProgress);
 }
 
 /** Downloads a file through the auth-gated endpoint (see backend/files/views.py) and

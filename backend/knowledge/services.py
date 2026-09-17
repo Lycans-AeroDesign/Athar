@@ -6,6 +6,7 @@ from django.utils.text import slugify
 from rest_framework.exceptions import ValidationError
 
 from audit.services import log_action
+from files.services import confirm_stored_files, confirm_stored_files_in_text
 
 from . import relationships
 from . import visibility as visibility_rules
@@ -192,6 +193,7 @@ def create_article(
     )
     _sync_tags(article, tag_names)
     ArticleRevision.objects.create(article=article, title=article.title, content=article.content, edited_by=actor)
+    confirm_stored_files_in_text(content, organization=actor.organization)
     log_action(actor=actor, action="article.create", target=article, request=request)
     return article
 
@@ -218,6 +220,8 @@ def update_article(*, article: Article, actor, request=None, **fields) -> Articl
 
     if content_changed:
         ArticleRevision.objects.create(article=article, title=article.title, content=article.content, edited_by=actor)
+    if "content" in fields:
+        confirm_stored_files_in_text(fields["content"], organization=article.organization)
 
     log_action(actor=actor, action="article.update", target=article, request=request)
     return article
@@ -292,6 +296,7 @@ def create_question(*, actor, request=None, title, body="", tag_names=None, visi
         organization=actor.organization, title=title, body=body, author=actor, visibility=visibility
     )
     _sync_tags(question, tag_names)
+    confirm_stored_files_in_text(body, organization=actor.organization)
     log_action(actor=actor, action="question.create", target=question, request=request)
     return question
 
@@ -305,6 +310,8 @@ def update_question(*, question: Question, actor, request=None, **fields) -> Que
         setattr(question, field, value)
     question.save(update_fields=[*fields.keys(), "updated_at"])
     _sync_tags(question, tag_names)
+    if "body" in fields:
+        confirm_stored_files_in_text(fields["body"], organization=question.organization)
     log_action(actor=actor, action="question.update", target=question, request=request)
     return question
 
@@ -344,6 +351,7 @@ def create_answer(*, question: Question, actor, request=None, body) -> Answer:
     if question.status == Question.Status.OPEN:
         question.status = Question.Status.ANSWERED
         question.save(update_fields=["status", "updated_at"])
+    confirm_stored_files_in_text(body, organization=actor.organization)
     # Audit action string, coincidentally spelled like the "question.answer"
     # RBAC codename - a separate namespace (see audit.services.log_action),
     # not a permission check.
@@ -357,6 +365,7 @@ def update_answer(*, answer: Answer, actor, request=None, body) -> Answer:
     )
     answer.body = body
     answer.save(update_fields=["body", "updated_at"])
+    confirm_stored_files_in_text(body, organization=answer.question.organization)
     log_action(actor=actor, action="answer.update", target=answer, request=request)
     return answer
 
@@ -482,6 +491,7 @@ def create_project(
         visibility=visibility,
     )
     _sync_tags(project, tag_names)
+    confirm_stored_files_in_text(description, organization=actor.organization)
     log_action(actor=actor, action="project.create", target=project, request=request)
     return project
 
@@ -494,6 +504,8 @@ def update_project(*, project: Project, actor, request=None, **fields) -> Projec
         setattr(project, field, value)
     project.save(update_fields=[*fields.keys(), "updated_at"])
     _sync_tags(project, tag_names)
+    if "description" in fields:
+        confirm_stored_files_in_text(fields["description"], organization=project.organization)
     log_action(actor=actor, action="project.update", target=project, request=request)
     return project
 
@@ -526,6 +538,8 @@ def create_component(
         visibility=visibility,
     )
     _sync_tags(component, tag_names)
+    confirm_stored_files(photo)
+    confirm_stored_files_in_text(summary, organization=actor.organization)
     log_action(actor=actor, action="component.create", target=component, request=request)
     return component
 
@@ -538,6 +552,9 @@ def update_component(*, component: Component, actor, request=None, **fields) -> 
         setattr(component, field, value)
     component.save(update_fields=[*fields.keys(), "updated_at"])
     _sync_tags(component, tag_names)
+    confirm_stored_files(fields.get("photo"))
+    if "summary" in fields:
+        confirm_stored_files_in_text(fields["summary"], organization=component.organization)
     log_action(actor=actor, action="component.update", target=component, request=request)
     return component
 
@@ -572,6 +589,7 @@ def create_failure(
         created_by=actor,
         visibility=visibility,
     )
+    confirm_stored_files_in_text(summary, root_cause, corrective_action, preventive_action, organization=actor.organization)
     log_action(actor=actor, action="failure.create", target=failure, request=request)
     return failure
 
@@ -582,6 +600,10 @@ def update_failure(*, failure: Failure, actor, request=None, **fields) -> Failur
     for field, value in fields.items():
         setattr(failure, field, value)
     failure.save(update_fields=[*fields.keys(), "updated_at"])
+    confirm_stored_files_in_text(
+        *(fields[f] for f in ("summary", "root_cause", "corrective_action", "preventive_action") if f in fields),
+        organization=failure.organization,
+    )
     log_action(actor=actor, action="failure.update", target=failure, request=request)
     return failure
 
@@ -608,6 +630,7 @@ def create_sop(
         visibility=visibility,
     )
     _sync_tags(sop, tag_names)
+    confirm_stored_files_in_text(content, organization=actor.organization)
     log_action(actor=actor, action="sop.create", target=sop, request=request)
     return sop
 
@@ -620,6 +643,8 @@ def update_sop(*, sop: Sop, actor, request=None, **fields) -> Sop:
         setattr(sop, field, value)
     sop.save(update_fields=[*fields.keys(), "updated_at"])
     _sync_tags(sop, tag_names)
+    if "content" in fields:
+        confirm_stored_files_in_text(fields["content"], organization=sop.organization)
     log_action(actor=actor, action="sop.update", target=sop, request=request)
     return sop
 
@@ -668,6 +693,7 @@ def create_test(
         visibility=visibility,
     )
     _sync_tags(test, tag_names)
+    confirm_stored_files_in_text(objective, configuration, procedure, results, conclusion, organization=actor.organization)
     log_action(actor=actor, action="test.create", target=test, request=request)
     return test
 
@@ -680,6 +706,10 @@ def update_test(*, test: Test, actor, request=None, **fields) -> Test:
         setattr(test, field, value)
     test.save(update_fields=[*fields.keys(), "updated_at"])
     _sync_tags(test, tag_names)
+    confirm_stored_files_in_text(
+        *(fields[f] for f in ("objective", "configuration", "procedure", "results", "conclusion") if f in fields),
+        organization=test.organization,
+    )
     log_action(actor=actor, action="test.update", target=test, request=request)
     return test
 
@@ -724,6 +754,8 @@ def create_document(
         visibility=visibility,
     )
     _sync_tags(document, tag_names)
+    confirm_stored_files(file)
+    confirm_stored_files_in_text(description, organization=actor.organization)
     log_action(actor=actor, action="document.create", target=document, request=request)
     return document
 
@@ -741,6 +773,9 @@ def update_document(*, document: Document, actor, request=None, **fields) -> Doc
         setattr(document, field, value)
     document.save(update_fields=[*fields.keys(), "updated_at"])
     _sync_tags(document, tag_names)
+    confirm_stored_files(fields.get("file"))
+    if "description" in fields:
+        confirm_stored_files_in_text(fields["description"], organization=document.organization)
     log_action(actor=actor, action="document.update", target=document, request=request)
     return document
 
@@ -760,6 +795,7 @@ def delete_document(*, document: Document, actor, request=None) -> None:
 
 def _add_engineering_attachment(*, owner, attachment_model, owner_field: str, file, actor, request, action: str):
     attachment = attachment_model.objects.create(**{owner_field: owner}, file=file, uploaded_by=actor)
+    confirm_stored_files(file)
     log_action(
         actor=actor, action=action, target=owner, metadata={"file_id": str(file.pk), "filename": file.original_filename}, request=request
     )
@@ -1074,6 +1110,7 @@ def add_article_attachment(*, article: Article, file, actor, request=None) -> Ar
         message="You can only attach files to your own article.",
     )
     attachment = ArticleAttachment.objects.create(article=article, file=file, uploaded_by=actor)
+    confirm_stored_files(file)
     log_action(
         actor=actor,
         action="attachment.add",
@@ -1108,6 +1145,7 @@ def add_question_attachment(*, question: Question, file, actor, request=None) ->
         message="You can only attach files to your own question.",
     )
     attachment = QuestionAttachment.objects.create(question=question, file=file, uploaded_by=actor)
+    confirm_stored_files(file)
     log_action(
         actor=actor,
         action="attachment.add",

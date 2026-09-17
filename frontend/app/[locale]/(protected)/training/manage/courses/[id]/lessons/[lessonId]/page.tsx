@@ -2,11 +2,12 @@
 
 import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { RelatedKnowledgePanel } from "@/components/training/RelatedKnowledgePanel";
 import { Button } from "@/components/ui/Button";
 import { Combobox } from "@/components/ui/Combobox";
+import { FileDropzone } from "@/components/ui/FileDropzone";
 import { Icon } from "@/components/ui/Icon";
 import { IconButton } from "@/components/ui/IconButton";
 import { MarkdownEditor } from "@/components/ui/MarkdownEditor";
@@ -50,8 +51,7 @@ export default function LessonEditorPage() {
   const [newResourceProvider, setNewResourceProvider] = useState<CourseResourceProvider>("WEBSITE");
   const [newResourceUrl, setNewResourceUrl] = useState("");
   const [newResourceIsPrimary, setNewResourceIsPrimary] = useState(false);
-  const [isUploadingResourceFile, setIsUploadingResourceFile] = useState(false);
-  const resourceFileInputRef = useRef<HTMLInputElement>(null);
+  const [resourceFileUploadProgress, setResourceFileUploadProgress] = useState<number | null>(null);
 
   function loadLesson() {
     return getLesson(lessonId).then((data) => {
@@ -145,10 +145,10 @@ export default function LessonEditorPage() {
   }
 
   async function handleAddFileResource(file: File) {
-    setIsUploadingResourceFile(true);
+    setResourceFileUploadProgress(0);
     setError(null);
     try {
-      const uploaded = await uploadFile(file);
+      const uploaded = await uploadFile(file, { onProgress: setResourceFileUploadProgress });
       await createResource(lesson!.id, {
         title: newResourceTitle.trim() || file.name,
         resource_type: "STORED_FILE",
@@ -161,7 +161,7 @@ export default function LessonEditorPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
-      setIsUploadingResourceFile(false);
+      setResourceFileUploadProgress(null);
     }
   }
 
@@ -314,16 +314,12 @@ export default function LessonEditorPage() {
           </div>
           <div className="flex items-center gap-2 pt-1">
             <span className="font-body-md text-body-md text-on-surface-variant">or</span>
-            <input
-              ref={resourceFileInputRef}
-              type="file"
-              className="hidden"
-              onChange={(e) => e.target.files?.[0] && handleAddFileResource(e.target.files[0])}
+            <FileDropzone
+              onFileSelected={handleAddFileResource}
+              progress={resourceFileUploadProgress}
+              label={resourceT("uploadButton")}
+              className="flex-1 max-w-sm"
             />
-            <Button variant="ghost" disabled={isUploadingResourceFile} onClick={() => resourceFileInputRef.current?.click()}>
-              <Icon name="upload_file" size={18} />
-              {isUploadingResourceFile ? resourceT("uploading") : resourceT("uploadButton")}
-            </Button>
           </div>
         </div>
       </div>

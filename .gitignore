@@ -36,6 +36,10 @@ media/
 # NOT backups/, which is the real `backups` Django app's source directory.
 backend/backup_archives/
 
+# celery beat's local persistent schedule DB (PersistentScheduler, see
+# docker-compose.yml's celery-beat service) - runtime state, not source.
+backend/celerybeat-schedule*
+
 # ------------------------------------------------------------
 # Environment variables / secrets
 # ------------------------------------------------------------

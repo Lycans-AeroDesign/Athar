@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
+import { ChangedIndicator } from "@/components/ui/ChangedIndicator";
 import { Combobox } from "@/components/ui/Combobox";
 import { MarkdownEditor } from "@/components/ui/MarkdownEditor";
 import { TagInput } from "@/components/ui/TagInput";
@@ -54,16 +55,19 @@ export function SopEditor({ sop, onDirtyChange }: SopEditorProps) {
     getCategories().then(setCategories);
   }, []);
 
-  const isDirty =
-    title !== (sop?.title ?? "") ||
-    categoryId !== (sop?.category?.id ?? null) ||
-    mandatory !== (sop?.mandatory ?? false) ||
-    safetyNotes !== (sop?.safety_notes ?? "") ||
-    content !== (sop?.content ?? "") ||
-    tags.join(",") !== (sop?.tags.map((tag) => tag.name).join(",") ?? "") ||
-    visibility !== (sop?.visibility ?? "PUBLIC") ||
-    restrictedAccessDraft.pendingAdd.length > 0 ||
-    restrictedAccessDraft.pendingRemoveGrantIds.length > 0;
+  const fieldChanged = {
+    title: title !== (sop?.title ?? ""),
+    category: categoryId !== (sop?.category?.id ?? null),
+    mandatory: mandatory !== (sop?.mandatory ?? false),
+    safetyNotes: safetyNotes !== (sop?.safety_notes ?? ""),
+    content: content !== (sop?.content ?? ""),
+    tags: tags.join(",") !== (sop?.tags.map((tag) => tag.name).join(",") ?? ""),
+    visibility: visibility !== (sop?.visibility ?? "PUBLIC"),
+    restrictedAccess:
+      restrictedAccessDraft.pendingAdd.length > 0 || restrictedAccessDraft.pendingRemoveGrantIds.length > 0,
+  };
+
+  const isDirty = Object.values(fieldChanged).some(Boolean);
 
   useEffect(() => {
     onDirtyChange?.(isDirty);
@@ -106,46 +110,54 @@ export function SopEditor({ sop, onDirtyChange }: SopEditorProps) {
   return (
     <div className="space-y-4 max-w-[800px] mx-auto">
       <div className="space-y-4 border-b border-outline-variant pb-4">
-        <input
-          className="w-full font-headline-lg text-headline-lg font-bold border-none bg-transparent placeholder:text-on-surface-variant/50 focus:ring-0 p-0 text-on-surface outline-none"
-          placeholder={t("titlePlaceholder")}
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-        />
+        <ChangedIndicator changed={fieldChanged.title}>
+          <input
+            className="w-full font-headline-lg text-headline-lg font-bold border-none bg-transparent placeholder:text-on-surface-variant/50 focus:ring-0 p-0 text-on-surface outline-none"
+            placeholder={t("titlePlaceholder")}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
+        </ChangedIndicator>
         <div className="flex flex-wrap gap-3 items-center">
-          <div className="w-56">
+          <ChangedIndicator changed={fieldChanged.category} className="w-56">
             <Combobox
               placeholder={t("categoryPlaceholder")}
               options={categories.map((category) => ({ value: category.id, label: category.name }))}
               value={categoryId}
               onChange={setCategoryId}
             />
-          </div>
-          <TagInput value={tags} onChange={setTags} placeholder={t("tagsPlaceholder")} className="flex-1 min-w-[200px]" />
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={mandatory}
-              onChange={(e) => setMandatory(e.target.checked)}
-              className="rounded border-outline-variant text-primary focus:ring-primary w-4 h-4"
-            />
-            <span className="font-body-md text-body-md text-on-surface">{t("mandatoryLabel")}</span>
-          </label>
-          <div className="w-48">
+          </ChangedIndicator>
+          <ChangedIndicator changed={fieldChanged.tags} className="flex-1 min-w-[200px]">
+            <TagInput value={tags} onChange={setTags} placeholder={t("tagsPlaceholder")} className="w-full" />
+          </ChangedIndicator>
+          <ChangedIndicator changed={fieldChanged.mandatory} className="inline-block">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={mandatory}
+                onChange={(e) => setMandatory(e.target.checked)}
+                className="rounded border-outline-variant text-primary focus:ring-primary w-4 h-4"
+              />
+              <span className="font-body-md text-body-md text-on-surface">{t("mandatoryLabel")}</span>
+            </label>
+          </ChangedIndicator>
+          <ChangedIndicator changed={fieldChanged.visibility} className="w-48">
             <Combobox
               placeholder={t("visibilityLabel")}
               options={VISIBILITY_VALUES.map((value) => ({ value, label: t(`visibility${value}`) }))}
               value={visibility}
               onChange={(value) => setVisibility(value as Visibility)}
             />
-          </div>
+          </ChangedIndicator>
         </div>
         {visibility === "RESTRICTED" && (
-          <RestrictedAccessPicker
-            initialGrants={sop?.restricted_to ?? []}
-            value={restrictedAccessDraft}
-            onChange={setRestrictedAccessDraft}
-          />
+          <ChangedIndicator changed={fieldChanged.restrictedAccess}>
+            <RestrictedAccessPicker
+              initialGrants={sop?.restricted_to ?? []}
+              value={restrictedAccessDraft}
+              onChange={setRestrictedAccessDraft}
+            />
+          </ChangedIndicator>
         )}
       </div>
 
@@ -153,20 +165,24 @@ export function SopEditor({ sop, onDirtyChange }: SopEditorProps) {
         <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase">
           {t("safetyNotesLabel")}
         </label>
-        <textarea
-          className="block w-full min-h-[80px] px-4 py-2 font-body-md text-body-md text-on-surface bg-surface-container border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
-          placeholder={t("safetyNotesPlaceholder")}
-          value={safetyNotes}
-          onChange={(e) => setSafetyNotes(e.target.value)}
-        />
+        <ChangedIndicator changed={fieldChanged.safetyNotes}>
+          <textarea
+            className="block w-full min-h-[80px] px-4 py-2 font-body-md text-body-md text-on-surface bg-surface-container border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
+            placeholder={t("safetyNotesPlaceholder")}
+            value={safetyNotes}
+            onChange={(e) => setSafetyNotes(e.target.value)}
+          />
+        </ChangedIndicator>
       </div>
 
-      <MarkdownEditor
-        value={content}
-        onChange={setContent}
-        placeholder={t("contentPlaceholder")}
-        relateFrom={sop ? { type: "sop", id: sop.id } : undefined}
-      />
+      <ChangedIndicator changed={fieldChanged.content}>
+        <MarkdownEditor
+          value={content}
+          onChange={setContent}
+          placeholder={t("contentPlaceholder")}
+          relateFrom={sop ? { type: "sop", id: sop.id } : undefined}
+        />
+      </ChangedIndicator>
 
       {error && (
         <p className="font-body-md text-body-md text-error" role="alert">

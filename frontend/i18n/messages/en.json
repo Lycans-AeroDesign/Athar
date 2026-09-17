@@ -23,7 +23,13 @@
     "searchThisList": "Search this list...",
     "contributorsLabel": "Contributors",
     "bookmark": "Bookmark",
-    "bookmarked": "Bookmarked"
+    "bookmarked": "Bookmarked",
+    "dragDropImageHint": "Click to upload, or drag and drop an image",
+    "dragDropFileHint": "Click to upload, or drag and drop a file",
+    "changePhoto": "Change",
+    "removePhoto": "Remove photo",
+    "removeFile": "Remove file",
+    "unsupportedImageType": "That file isn't a supported image type - try a PNG, JPG, GIF, or WebP."
   },
   "auth": {
     "emailLabel": "Email Address",
@@ -583,8 +589,8 @@
       "italicPlaceholder": "italic text",
       "linkTextPlaceholder": "link text",
       "imageAltPlaceholder": "alt text",
-      "uploadingImage": "Uploading {filename}…",
-      "uploadingFile": "Uploading {filename}…",
+      "uploadingImage": "Uploading {filename}… {percent}%",
+      "uploadingFile": "Uploading {filename}… {percent}%",
       "uploadError": "Couldn't upload {filename}: {message}",
       "mentionSearching": "Searching...",
       "relationError": "Linked \"{title}\" in the text, but couldn't add it to Related Knowledge: {message}",
@@ -851,6 +857,7 @@
       "deleteConfirmTitle": "Delete this document?",
       "deleteConfirmBody": "This can't be undone.",
       "openLinkButton": "Open Link",
+      "downloadButton": "Download",
       "backToDocument": "Back to Document",
       "editPermissionRequired": "You don't have permission to edit this document."
     },
@@ -902,6 +909,11 @@
     "discardTitle": "Discard unsaved changes?",
     "discardDescription": "You have unsaved changes. Closing now will lose them.",
     "keepEditing": "Keep editing"
+  },
+  "filePreview": {
+    "downloadButton": "Download",
+    "loading": "Loading preview...",
+    "noPreview": "No preview available for this file type - download it to view."
   },
   "notFound": {
     "title": "Page not found",

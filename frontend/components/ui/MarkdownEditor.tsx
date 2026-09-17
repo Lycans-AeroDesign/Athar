@@ -249,16 +249,18 @@ export function MarkdownEditor({ value, onChange, placeholder, relateFrom }: Mar
     });
   }
 
-  // Inserts an "Uploading…" placeholder at insertPos immediately, then
+  // Inserts an "Uploading… N%" placeholder at insertPos immediately, then
   // swaps it for the real markdown reference once uploadFile() resolves (or
   // removes it and surfaces uploadError on failure) - the placeholder text
   // itself is the only thing identifying which upload owns which spot in
   // the content, so its "uploading:<id>" fake URL just needs to be unique
-  // per call, not meaningful.
+  // per call, not meaningful. The percent is live (from uploadFile's real
+  // XHR progress events, not simulated), rewritten in place as it changes.
   async function uploadAndInsert(file: File, insertPos: number, isImage: boolean): Promise<number> {
-    const label = t(isImage ? "uploadingImage" : "uploadingFile", { filename: file.name });
     const uploadId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    const placeholderText = `${isImage ? "!" : ""}[${label}](uploading:${uploadId})`;
+    const placeholderFor = (percent: number) =>
+      `${isImage ? "!" : ""}[${t(isImage ? "uploadingImage" : "uploadingFile", { filename: file.name, percent })}](uploading:${uploadId})`;
+    let placeholderText = placeholderFor(0);
 
     const withPlaceholder =
       valueRef.current.slice(0, insertPos) + placeholderText + valueRef.current.slice(insertPos);
@@ -267,8 +269,22 @@ export function MarkdownEditor({ value, onChange, placeholder, relateFrom }: Mar
     const cursor = insertPos + placeholderText.length;
     focusSelection(cursor, cursor);
 
+    let lastPercent = 0;
+    function handleProgress(fraction: number) {
+      const percent = Math.round(fraction * 100);
+      if (percent === lastPercent) return;
+      lastPercent = percent;
+      const nextPlaceholder = placeholderFor(percent);
+      if (valueRef.current.includes(placeholderText)) {
+        const next = valueRef.current.replace(placeholderText, nextPlaceholder);
+        valueRef.current = next;
+        onChange(next);
+      }
+      placeholderText = nextPlaceholder;
+    }
+
     try {
-      const uploaded = await uploadFile(file);
+      const uploaded = await uploadFile(file, { onProgress: handleProgress });
       const finalText = `${isImage ? "!" : ""}[${file.name}](${uploaded.download_url})`;
       const current = valueRef.current;
       const next = current.includes(placeholderText)

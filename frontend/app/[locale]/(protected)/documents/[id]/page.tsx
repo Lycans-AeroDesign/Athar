@@ -8,6 +8,7 @@ import { ContributorsRow } from "@/components/knowledge/Contributors";
 import { RelatedContent } from "@/components/knowledge/RelatedContent";
 import { BookmarkButton } from "@/components/ui/BookmarkButton";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { FilePreviewModal } from "@/components/ui/FilePreviewModal";
 import { Icon } from "@/components/ui/Icon";
 import { IconButton } from "@/components/ui/IconButton";
 import { Markdown } from "@/components/ui/Markdown";
@@ -37,6 +38,7 @@ export default function DocumentDetailPage() {
   const [document, setDocument] = useState<DocumentDetail | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -137,14 +139,24 @@ export default function DocumentDetailPage() {
       {(document.file || document.url) && (
         <div className="flex flex-wrap items-center gap-3">
           {document.file && (
-            <button
-              type="button"
-              onClick={handleDownload}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-surface-container-low border border-outline-variant font-body-md text-body-md text-primary hover:bg-surface-variant transition-colors"
-            >
-              <Icon name="download" size={16} />
-              {document.file.original_filename}
-            </button>
+            <div className="inline-flex items-center rounded-lg bg-surface-container-low border border-outline-variant overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setPreviewOpen(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 font-body-md text-body-md text-primary hover:bg-surface-variant transition-colors"
+              >
+                <Icon name="visibility" size={16} />
+                {document.file.original_filename}
+              </button>
+              <button
+                type="button"
+                onClick={handleDownload}
+                aria-label={t("downloadButton")}
+                className="p-2 text-on-surface-variant hover:text-primary hover:bg-surface-variant transition-colors border-s border-outline-variant"
+              >
+                <Icon name="download" size={16} />
+              </button>
+            </div>
           )}
           {document.url && (
             <a
@@ -178,6 +190,8 @@ export default function DocumentDetailPage() {
         danger
         onConfirm={handleDelete}
       />
+
+      {document.file && <FilePreviewModal open={previewOpen} onOpenChange={setPreviewOpen} file={document.file} />}
     </div>
 
     <RelatedContent type="document" id={document.id} canEdit={canEdit} />

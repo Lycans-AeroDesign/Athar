@@ -26,6 +26,18 @@ class StoredFile(models.Model):
     # Swappable for a real object-level visibility model later without migrating this away.
     required_permission = models.CharField(max_length=100, default="file.read")
     created_at = models.DateTimeField(auto_now_add=True)
+    # Null until something durable actually references this file (an owning
+    # model's FK, an attachment row, or a markdown body's embedded download
+    # link - see services.confirm_stored_files/confirm_stored_files_in_text,
+    # called from every create/update path that can receive one). Uploading
+    # only stages the file for preview - the two-phase "upload, then save the
+    # form that references it" pattern every editor uses (see e.g.
+    # ComponentEditor.tsx) means a browser tab closed mid-edit, or an upload
+    # the user discards before saving, would otherwise leak forever. The
+    # `delete_unconfirmed_files` periodic task (files/tasks.py) reclaims any
+    # row still null past a grace period - this field is that staging flag,
+    # not a moderation/visibility concept.
+    confirmed_at = models.DateTimeField(null=True, blank=True, db_index=True)
 
     class Meta:
         ordering = ["-created_at"]

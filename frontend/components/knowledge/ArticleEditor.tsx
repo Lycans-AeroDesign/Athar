@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
+import { ChangedIndicator } from "@/components/ui/ChangedIndicator";
 import { Combobox } from "@/components/ui/Combobox";
 import { MarkdownEditor } from "@/components/ui/MarkdownEditor";
 import { TagInput } from "@/components/ui/TagInput";
@@ -60,15 +61,18 @@ export function ArticleEditor({ article, onDirtyChange }: ArticleEditorProps) {
     getCategories().then(setCategories);
   }, []);
 
-  const isDirty =
-    title !== (article?.title ?? "") ||
-    excerpt !== (article?.excerpt ?? "") ||
-    content !== (article?.content ?? "") ||
-    categoryId !== (article?.category?.id ?? null) ||
-    tags.join(",") !== (article?.tags.map((tag) => tag.name).join(",") ?? "") ||
-    visibility !== (article?.visibility ?? "PUBLIC") ||
-    restrictedAccessDraft.pendingAdd.length > 0 ||
-    restrictedAccessDraft.pendingRemoveGrantIds.length > 0;
+  const fieldChanged = {
+    title: title !== (article?.title ?? ""),
+    excerpt: excerpt !== (article?.excerpt ?? ""),
+    content: content !== (article?.content ?? ""),
+    category: categoryId !== (article?.category?.id ?? null),
+    tags: tags.join(",") !== (article?.tags.map((tag) => tag.name).join(",") ?? ""),
+    visibility: visibility !== (article?.visibility ?? "PUBLIC"),
+    restrictedAccess:
+      restrictedAccessDraft.pendingAdd.length > 0 || restrictedAccessDraft.pendingRemoveGrantIds.length > 0,
+  };
+
+  const isDirty = Object.values(fieldChanged).some(Boolean);
 
   useEffect(() => {
     onDirtyChange?.(isDirty);
@@ -127,23 +131,27 @@ export function ArticleEditor({ article, onDirtyChange }: ArticleEditorProps) {
   return (
     <div className="space-y-4 max-w-[800px] mx-auto">
       <div className="space-y-4 border-b border-outline-variant pb-4">
-        <input
-          className="w-full font-headline-lg text-headline-lg font-bold border-none bg-transparent placeholder:text-on-surface-variant/50 focus:ring-0 p-0 text-on-surface outline-none"
-          placeholder={t("titlePlaceholder")}
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-        />
+        <ChangedIndicator changed={fieldChanged.title}>
+          <input
+            className="w-full font-headline-lg text-headline-lg font-bold border-none bg-transparent placeholder:text-on-surface-variant/50 focus:ring-0 p-0 text-on-surface outline-none"
+            placeholder={t("titlePlaceholder")}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
+        </ChangedIndicator>
         <div className="flex flex-wrap gap-3 items-center">
-          <div className="w-56">
+          <ChangedIndicator changed={fieldChanged.category} className="w-56">
             <Combobox
               placeholder={t("categoryPlaceholder")}
               options={categories.map((category) => ({ value: category.id, label: category.name }))}
               value={categoryId}
               onChange={setCategoryId}
             />
-          </div>
-          <TagInput value={tags} onChange={setTags} placeholder={t("tagsPlaceholder")} className="flex-1 min-w-[200px]" />
-          <div className="w-48">
+          </ChangedIndicator>
+          <ChangedIndicator changed={fieldChanged.tags} className="flex-1 min-w-[200px]">
+            <TagInput value={tags} onChange={setTags} placeholder={t("tagsPlaceholder")} className="w-full" />
+          </ChangedIndicator>
+          <ChangedIndicator changed={fieldChanged.visibility} className="w-48">
             <Combobox
               placeholder={t("visibilityLabel")}
               options={(["PUBLIC", "RESTRICTED"] as Visibility[]).map((value) => ({
@@ -153,29 +161,35 @@ export function ArticleEditor({ article, onDirtyChange }: ArticleEditorProps) {
               value={visibility}
               onChange={(value) => setVisibility(value as Visibility)}
             />
-          </div>
+          </ChangedIndicator>
         </div>
-        <input
-          className="w-full bg-transparent border-none font-body-md text-body-md text-on-surface-variant placeholder:text-on-surface-variant/50 focus:ring-0 p-0 outline-none"
-          placeholder={t("excerptPlaceholder")}
-          value={excerpt}
-          onChange={(e) => setExcerpt(e.target.value)}
-        />
-        {visibility === "RESTRICTED" && (
-          <RestrictedAccessPicker
-            initialGrants={article?.restricted_to ?? []}
-            value={restrictedAccessDraft}
-            onChange={setRestrictedAccessDraft}
+        <ChangedIndicator changed={fieldChanged.excerpt}>
+          <input
+            className="w-full bg-transparent border-none font-body-md text-body-md text-on-surface-variant placeholder:text-on-surface-variant/50 focus:ring-0 p-0 outline-none"
+            placeholder={t("excerptPlaceholder")}
+            value={excerpt}
+            onChange={(e) => setExcerpt(e.target.value)}
           />
+        </ChangedIndicator>
+        {visibility === "RESTRICTED" && (
+          <ChangedIndicator changed={fieldChanged.restrictedAccess}>
+            <RestrictedAccessPicker
+              initialGrants={article?.restricted_to ?? []}
+              value={restrictedAccessDraft}
+              onChange={setRestrictedAccessDraft}
+            />
+          </ChangedIndicator>
         )}
       </div>
 
-      <MarkdownEditor
-        value={content}
-        onChange={setContent}
-        placeholder={t("contentPlaceholder")}
-        relateFrom={article ? { type: "article", id: article.id } : undefined}
-      />
+      <ChangedIndicator changed={fieldChanged.content}>
+        <MarkdownEditor
+          value={content}
+          onChange={setContent}
+          placeholder={t("contentPlaceholder")}
+          relateFrom={article ? { type: "article", id: article.id } : undefined}
+        />
+      </ChangedIndicator>
 
       {error && (
         <p className="font-body-md text-body-md text-error" role="alert">

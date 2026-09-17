@@ -4,10 +4,10 @@ import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 
 import { ContributionsPanel } from "@/components/knowledge/ContributionsPanel";
-import { AuthenticatedImage } from "@/components/ui/AuthenticatedImage";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
+import { PhotoDropzone } from "@/components/ui/PhotoDropzone";
 import { ApiError } from "@/lib/api/client";
 import { updateMe } from "@/lib/api/accounts";
 import { uploadFile } from "@/lib/api/files";
@@ -40,9 +40,8 @@ export default function AccountPage() {
   // removed; StoredFileRef = a newly uploaded file staged but not yet saved -
   // same three-state pattern as BrandingSettingsForm.tsx's pendingLogo.
   const [pendingPicture, setPendingPicture] = useState<StoredFileRef | null | undefined>(undefined);
-  const [isUploadingPicture, setIsUploadingPicture] = useState(false);
+  const [pictureUploadProgress, setPictureUploadProgress] = useState<number | null>(null);
   const [pictureError, setPictureError] = useState<string | null>(null);
-  const pictureInputRef = useRef<HTMLInputElement>(null);
   const editSectionRef = useRef<HTMLDivElement>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
@@ -60,18 +59,18 @@ export default function AccountPage() {
   if (!user) return null;
 
   async function handlePictureSelected(file: File) {
-    setIsUploadingPicture(true);
+    setPictureUploadProgress(0);
     setPictureError(null);
     try {
       // Uploading stages the file (and lets us preview it) - it isn't
       // attached to the account until Save is clicked, same as
       // BrandingSettingsForm.tsx's logo/favicon flow.
-      const uploaded = await uploadFile(file);
+      const uploaded = await uploadFile(file, { onProgress: setPictureUploadProgress });
       setPendingPicture(uploaded);
     } catch (err) {
       setPictureError(err instanceof Error ? err.message : String(err));
     } finally {
-      setIsUploadingPicture(false);
+      setPictureUploadProgress(null);
     }
   }
 
@@ -177,50 +176,22 @@ export default function AccountPage() {
                 <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase">
                   {t("profilePictureLabel")}
                 </label>
-                <div className="flex items-center gap-4">
-                  <div className="h-16 w-16 rounded-full border border-outline-variant bg-surface-container-low flex items-center justify-center overflow-hidden shrink-0">
-                    {displayedPicture ? (
-                      <AuthenticatedImage
-                        src={displayedPicture.download_url}
-                        alt={t("profilePictureLabel")}
-                        className="h-full w-full object-cover"
-                        fallback={
-                          <span className="font-label-caps text-label-caps text-on-surface-variant">
-                            {getInitials(user)}
-                          </span>
-                        }
-                      />
-                    ) : (
-                      <span className="font-label-caps text-label-caps text-on-surface-variant">
-                        {getInitials(user)}
-                      </span>
-                    )}
-                  </div>
-                  <input
-                    ref={pictureInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) handlePictureSelected(file);
-                      e.target.value = "";
-                    }}
-                  />
-                  <Button
-                    variant="secondary"
-                    disabled={isUploadingPicture}
-                    onClick={() => pictureInputRef.current?.click()}
-                  >
-                    <Icon name="upload" size={16} />
-                    {isUploadingPicture ? commonT("working") : t("uploadPictureButton")}
-                  </Button>
-                  {displayedPicture && (
-                    <Button variant="ghost" disabled={isUploadingPicture} onClick={() => setPendingPicture(null)}>
-                      {t("removePictureButton")}
-                    </Button>
-                  )}
-                </div>
+                <PhotoDropzone
+                  value={displayedPicture}
+                  onFileSelected={handlePictureSelected}
+                  onUnsupportedFile={() => setPictureError(commonT("unsupportedImageType"))}
+                  onRemove={() => setPendingPicture(null)}
+                  removeLabel={t("removePictureButton")}
+                  progress={pictureUploadProgress}
+                  alt={t("profilePictureLabel")}
+                  fallback={
+                    <span className="flex h-full w-full items-center justify-center font-label-caps text-label-caps text-on-surface-variant">
+                      {getInitials(user)}
+                    </span>
+                  }
+                  shape="circle"
+                  className="h-32 w-32"
+                />
                 <p className="font-body-md text-body-md text-on-surface-variant">
                   {t("profilePictureHint", { maxSize: MAX_UPLOAD_SIZE_MB })}
                 </p>

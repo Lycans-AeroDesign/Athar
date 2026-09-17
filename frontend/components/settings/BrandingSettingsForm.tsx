@@ -1,11 +1,11 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useRef, useState } from "react";
+import { useState } from "react";
 
-import { AuthenticatedImage } from "@/components/ui/AuthenticatedImage";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
+import { PhotoDropzone } from "@/components/ui/PhotoDropzone";
 import { uploadFile } from "@/lib/api/files";
 import { updateBrandingSettings } from "@/lib/api/organization";
 import type { OrganizationSettings, StoredFileRef } from "@/lib/api/types";
@@ -34,12 +34,10 @@ export function BrandingSettingsForm({ settings, onUpdate, canEdit }: BrandingSe
   const [pendingLogo, setPendingLogo] = useState<StoredFileRef | null | undefined>(undefined);
   const [pendingFavicon, setPendingFavicon] = useState<StoredFileRef | null | undefined>(undefined);
   const [isSaving, setIsSaving] = useState(false);
-  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
-  const [isUploadingFavicon, setIsUploadingFavicon] = useState(false);
+  const [logoUploadProgress, setLogoUploadProgress] = useState<number | null>(null);
+  const [faviconUploadProgress, setFaviconUploadProgress] = useState<number | null>(null);
   const [logoError, setLogoError] = useState<string | null>(null);
   const [faviconError, setFaviconError] = useState<string | null>(null);
-  const logoInputRef = useRef<HTMLInputElement>(null);
-  const faviconInputRef = useRef<HTMLInputElement>(null);
 
   const isDirty =
     primaryColor !== settings.primary_color ||
@@ -53,30 +51,30 @@ export function BrandingSettingsForm({ settings, onUpdate, canEdit }: BrandingSe
   const displayedFavicon = pendingFavicon !== undefined ? pendingFavicon : settings.favicon;
 
   async function handleLogoSelected(file: File) {
-    setIsUploadingLogo(true);
+    setLogoUploadProgress(0);
     setLogoError(null);
     try {
       // Uploading stages the file (and lets us preview it) - it isn't
       // assigned as the org's logo until Save Changes is clicked.
-      const uploaded = await uploadFile(file);
+      const uploaded = await uploadFile(file, { onProgress: setLogoUploadProgress });
       setPendingLogo(uploaded);
     } catch (err) {
       setLogoError(err instanceof Error ? err.message : String(err));
     } finally {
-      setIsUploadingLogo(false);
+      setLogoUploadProgress(null);
     }
   }
 
   async function handleFaviconSelected(file: File) {
-    setIsUploadingFavicon(true);
+    setFaviconUploadProgress(0);
     setFaviconError(null);
     try {
-      const uploaded = await uploadFile(file);
+      const uploaded = await uploadFile(file, { onProgress: setFaviconUploadProgress });
       setPendingFavicon(uploaded);
     } catch (err) {
       setFaviconError(err instanceof Error ? err.message : String(err));
     } finally {
-      setIsUploadingFavicon(false);
+      setFaviconUploadProgress(null);
     }
   }
 
@@ -117,38 +115,16 @@ export function BrandingSettingsForm({ settings, onUpdate, canEdit }: BrandingSe
             {t("logoDescription", { maxSize: MAX_UPLOAD_SIZE_MB })}
           </p>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="h-24 w-24 rounded-lg border border-dashed border-outline-variant bg-surface-container-low flex items-center justify-center overflow-hidden shrink-0">
-            {displayedLogo ? (
-              <AuthenticatedImage
-                src={displayedLogo.download_url}
-                alt={t("logoTitle")}
-                className="h-full w-full object-contain"
-              />
-            ) : (
-              <Icon name="image" className="text-outline" size={28} />
-            )}
-          </div>
-          <input
-            ref={logoInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) handleLogoSelected(file);
-              e.target.value = "";
-            }}
-          />
-          <Button
-            variant="secondary"
-            disabled={!canEdit || isUploadingLogo}
-            onClick={() => logoInputRef.current?.click()}
-          >
-            <Icon name="upload" size={16} />
-            {isUploadingLogo ? t("uploading") : t("uploadLogo")}
-          </Button>
-        </div>
+        <PhotoDropzone
+          value={displayedLogo}
+          onFileSelected={handleLogoSelected}
+          onUnsupportedFile={() => setLogoError(commonT("unsupportedImageType"))}
+          disabled={!canEdit}
+          progress={logoUploadProgress}
+          alt={t("logoTitle")}
+          fit="contain"
+          className="h-36 w-36"
+        />
         {logoError && (
           <p className="font-body-md text-body-md text-error" role="alert">
             {logoError}
@@ -163,37 +139,16 @@ export function BrandingSettingsForm({ settings, onUpdate, canEdit }: BrandingSe
             {t("faviconDescription")}
           </p>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="h-12 w-12 rounded-lg border border-outline-variant bg-surface-container-low flex items-center justify-center overflow-hidden shrink-0">
-            {displayedFavicon ? (
-              <AuthenticatedImage
-                src={displayedFavicon.download_url}
-                alt={t("faviconTitle")}
-                className="h-full w-full object-contain"
-              />
-            ) : (
-              <Icon name="language" className="text-outline" size={20} />
-            )}
-          </div>
-          <input
-            ref={faviconInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) handleFaviconSelected(file);
-              e.target.value = "";
-            }}
-          />
-          <Button
-            variant="secondary"
-            disabled={!canEdit || isUploadingFavicon}
-            onClick={() => faviconInputRef.current?.click()}
-          >
-            {isUploadingFavicon ? t("uploading") : t("uploadFavicon")}
-          </Button>
-        </div>
+        <PhotoDropzone
+          value={displayedFavicon}
+          onFileSelected={handleFaviconSelected}
+          onUnsupportedFile={() => setFaviconError(commonT("unsupportedImageType"))}
+          disabled={!canEdit}
+          progress={faviconUploadProgress}
+          alt={t("faviconTitle")}
+          fit="contain"
+          className="h-28 w-28"
+        />
         {faviconError && (
           <p className="font-body-md text-body-md text-error" role="alert">
             {faviconError}

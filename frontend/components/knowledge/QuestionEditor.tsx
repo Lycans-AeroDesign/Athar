@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
+import { ChangedIndicator } from "@/components/ui/ChangedIndicator";
 import { Combobox } from "@/components/ui/Combobox";
 import { MarkdownEditor } from "@/components/ui/MarkdownEditor";
 import { TagInput } from "@/components/ui/TagInput";
@@ -40,15 +41,20 @@ export function QuestionEditor({ question, onDirtyChange }: QuestionEditorProps)
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const isDirty =
-    (question
-      ? title !== question.title ||
-        body !== question.body ||
-        tags.join(",") !== question.tags.map((tag) => tag.name).join(",") ||
-        visibility !== question.visibility
-      : title.length > 0 || body.length > 0 || tags.length > 0 || visibility !== "PUBLIC") ||
-    restrictedAccessDraft.pendingAdd.length > 0 ||
-    restrictedAccessDraft.pendingRemoveGrantIds.length > 0;
+  // Same per-field comparisons as the ternary this replaced (question ? ... :
+  // title.length > 0 || ...) - `?? ""`/`?? "PUBLIC"` against an unset
+  // question is equivalent to the empty-state branch, but named per-field so
+  // each drives its own ChangedIndicator dot below.
+  const fieldChanged = {
+    title: title !== (question?.title ?? ""),
+    body: body !== (question?.body ?? ""),
+    tags: tags.join(",") !== (question?.tags.map((tag) => tag.name).join(",") ?? ""),
+    visibility: visibility !== (question?.visibility ?? "PUBLIC"),
+    restrictedAccess:
+      restrictedAccessDraft.pendingAdd.length > 0 || restrictedAccessDraft.pendingRemoveGrantIds.length > 0,
+  };
+
+  const isDirty = Object.values(fieldChanged).some(Boolean);
 
   useEffect(() => {
     onDirtyChange?.(isDirty);
@@ -81,15 +87,19 @@ export function QuestionEditor({ question, onDirtyChange }: QuestionEditorProps)
   return (
     <div className="space-y-4 max-w-[800px] mx-auto">
       <div className="space-y-4 border-b border-outline-variant pb-4">
-        <input
-          className="w-full font-headline-lg text-headline-lg font-bold border-none bg-transparent placeholder:text-on-surface-variant/50 focus:ring-0 p-0 text-on-surface outline-none"
-          placeholder={t("titlePlaceholder")}
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-        />
+        <ChangedIndicator changed={fieldChanged.title}>
+          <input
+            className="w-full font-headline-lg text-headline-lg font-bold border-none bg-transparent placeholder:text-on-surface-variant/50 focus:ring-0 p-0 text-on-surface outline-none"
+            placeholder={t("titlePlaceholder")}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
+        </ChangedIndicator>
         <div className="flex flex-wrap gap-3 items-center">
-          <TagInput value={tags} onChange={setTags} placeholder={t("tagsPlaceholder")} className="flex-1 min-w-[200px]" />
-          <div className="w-48">
+          <ChangedIndicator changed={fieldChanged.tags} className="flex-1 min-w-[200px]">
+            <TagInput value={tags} onChange={setTags} placeholder={t("tagsPlaceholder")} className="w-full" />
+          </ChangedIndicator>
+          <ChangedIndicator changed={fieldChanged.visibility} className="w-48">
             <Combobox
               placeholder={t("visibilityLabel")}
               options={(["PUBLIC", "RESTRICTED"] as Visibility[]).map((value) => ({
@@ -99,23 +109,27 @@ export function QuestionEditor({ question, onDirtyChange }: QuestionEditorProps)
               value={visibility}
               onChange={(value) => setVisibility(value as Visibility)}
             />
-          </div>
+          </ChangedIndicator>
         </div>
         {visibility === "RESTRICTED" && (
-          <RestrictedAccessPicker
-            initialGrants={question?.restricted_to ?? []}
-            value={restrictedAccessDraft}
-            onChange={setRestrictedAccessDraft}
-          />
+          <ChangedIndicator changed={fieldChanged.restrictedAccess}>
+            <RestrictedAccessPicker
+              initialGrants={question?.restricted_to ?? []}
+              value={restrictedAccessDraft}
+              onChange={setRestrictedAccessDraft}
+            />
+          </ChangedIndicator>
         )}
       </div>
 
-      <MarkdownEditor
-        value={body}
-        onChange={setBody}
-        placeholder={t("bodyPlaceholder")}
-        relateFrom={question ? { type: "question", id: question.id } : undefined}
-      />
+      <ChangedIndicator changed={fieldChanged.body}>
+        <MarkdownEditor
+          value={body}
+          onChange={setBody}
+          placeholder={t("bodyPlaceholder")}
+          relateFrom={question ? { type: "question", id: question.id } : undefined}
+        />
+      </ChangedIndicator>
 
       {error && (
         <p className="font-body-md text-body-md text-error" role="alert">

@@ -2,16 +2,16 @@
 
 import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { CourseStatusPill } from "@/components/training/CourseStatusPill";
-import { AuthenticatedImage } from "@/components/ui/AuthenticatedImage";
 import { Button } from "@/components/ui/Button";
 import { Combobox } from "@/components/ui/Combobox";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Icon } from "@/components/ui/Icon";
 import { IconButton } from "@/components/ui/IconButton";
 import { Modal } from "@/components/ui/Modal";
+import { PhotoDropzone } from "@/components/ui/PhotoDropzone";
 import { Link, useRouter } from "@/i18n/navigation";
 import { uploadFile } from "@/lib/api/files";
 import {
@@ -42,6 +42,7 @@ const LESSON_TYPES: LessonType[] = ["TEXT", "VIDEO", "DOCUMENT", "EXTERNAL", "EX
 export default function CourseEditorPage() {
   const { id } = useParams<{ id: string }>();
   const t = useTranslations("training.manage");
+  const commonT = useTranslations("common");
   const workflowT = useTranslations("training.workflow");
   const difficultyT = useTranslations("training.difficulty");
   const lessonTypeT = useTranslations("training.lessonType");
@@ -67,8 +68,7 @@ export default function CourseEditorPage() {
   const [description, setDescription] = useState("");
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [difficulty, setDifficulty] = useState<CourseDifficulty>("BEGINNER");
-  const [isUploadingCover, setIsUploadingCover] = useState(false);
-  const coverInputRef = useRef<HTMLInputElement>(null);
+  const [coverUploadProgress, setCoverUploadProgress] = useState<number | null>(null);
 
   const [newModuleTitle, setNewModuleTitle] = useState("");
   const [addingLessonToModuleId, setAddingLessonToModuleId] = useState<string | null>(null);
@@ -142,15 +142,15 @@ export default function CourseEditorPage() {
   }
 
   async function handleCoverUpload(file: File) {
-    setIsUploadingCover(true);
+    setCoverUploadProgress(0);
     setError(null);
     try {
-      const uploaded = await uploadFile(file);
+      const uploaded = await uploadFile(file, { onProgress: setCoverUploadProgress });
       setCourse(await updateCourse(course!.id, { cover_image_id: uploaded.id }));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
-      setIsUploadingCover(false);
+      setCoverUploadProgress(null);
     }
   }
 
@@ -309,30 +309,15 @@ export default function CourseEditorPage() {
 
         {/* Its own block row (not a bare inline-flex Button sibling) so it
             never ends up sharing a line with the Save button below. */}
-        <div className="flex items-center gap-3">
-          {course.cover_image && (
-            <AuthenticatedImage
-              src={course.cover_image.download_url}
-              alt=""
-              className="h-12 w-20 rounded-lg object-cover border border-outline-variant shrink-0"
-            />
-          )}
-          <input
-            ref={coverInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => e.target.files?.[0] && handleCoverUpload(e.target.files[0])}
-          />
-          <Button variant="secondary" disabled={isUploadingCover} onClick={() => coverInputRef.current?.click()}>
-            <Icon name="image" size={18} />
-            {isUploadingCover
-              ? t("uploadingCover")
-              : course.cover_image
-                ? t("changeCoverButton")
-                : t("addCoverButton")}
-          </Button>
-        </div>
+        <PhotoDropzone
+          value={course.cover_image}
+          onFileSelected={handleCoverUpload}
+          onUnsupportedFile={() => setError(commonT("unsupportedImageType"))}
+          progress={coverUploadProgress}
+          alt={course.cover_image ? t("changeCoverButton") : t("addCoverButton")}
+          shape="wide"
+          className="h-36 w-72"
+        />
 
         {canEdit && (
           <div className="pt-2 border-t border-outline-variant">

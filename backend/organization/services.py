@@ -3,6 +3,7 @@ from django.utils.text import slugify
 from rest_framework.exceptions import ValidationError
 
 from audit.services import log_action
+from files.services import confirm_stored_files
 from rbac.services import seed_rbac_for_organization
 
 from .models import Organization, OrganizationSettings
@@ -80,5 +81,6 @@ def update_branding(*, settings: OrganizationSettings, actor, request=None, **fi
     for field, value in fields.items():
         setattr(settings, field, value)
     settings.save(update_fields=[*fields.keys(), "updated_at"])
+    confirm_stored_files(*fields.values())
     log_action(actor=actor, action="branding.update", target=settings, request=request)
     return settings

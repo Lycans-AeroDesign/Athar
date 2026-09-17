@@ -7,6 +7,7 @@ from django.utils.text import slugify
 from rest_framework.exceptions import ValidationError
 
 from audit.services import log_action
+from files.services import confirm_stored_files, confirm_stored_files_in_text
 from knowledge import visibility as visibility_rules
 from knowledge.models import Article, Component, Document, Failure, Project, Question, Sop, Test
 
@@ -130,6 +131,7 @@ def create_course(
         cover_image=cover_image,
         author=actor,
     )
+    confirm_stored_files(cover_image)
     log_action(actor=actor, action="course.create", target=course, request=request)
     return course
 
@@ -147,6 +149,7 @@ def update_course(*, course: Course, actor, request=None, **fields) -> Course:
     for field, value in fields.items():
         setattr(course, field, value)
     course.save(update_fields=[*fields.keys(), "updated_at"])
+    confirm_stored_files(*fields.values())
     log_action(actor=actor, action="course.update", target=course, request=request)
     return course
 
@@ -261,6 +264,7 @@ def create_lesson(
         module=module, title=title, short_description=short_description, lesson_type=lesson_type,
         content=content, order=module.lessons.count(), estimated_minutes=estimated_minutes, is_required=is_required,
     )
+    confirm_stored_files_in_text(content, organization=module.course.organization)
     log_action(actor=actor, action="lesson.create", target=lesson, request=request)
     _recompute_course_duration(module.course)
     return lesson
@@ -271,6 +275,8 @@ def update_lesson(*, lesson: Lesson, actor, request=None, **fields) -> Lesson:
     for field, value in fields.items():
         setattr(lesson, field, value)
     lesson.save(update_fields=[*fields.keys(), "updated_at"])
+    if "content" in fields:
+        confirm_stored_files_in_text(fields["content"], organization=lesson.module.course.organization)
     log_action(actor=actor, action="lesson.update", target=lesson, request=request)
     _recompute_course_duration(lesson.module.course)
     return lesson
@@ -352,6 +358,7 @@ def create_resource(
         provider=provider, url=url, stored_file=stored_file, is_primary=is_primary,
         order=lesson.resources.count(), created_by=actor,
     )
+    confirm_stored_files(stored_file)
     log_action(
         actor=actor, action="resource.create", target=lesson, metadata={"resource_id": str(resource.pk)}, request=request
     )
@@ -372,6 +379,7 @@ def update_resource(*, resource: CourseResource, actor, request=None, **fields) 
     for field, value in fields.items():
         setattr(resource, field, value)
     resource.save(update_fields=[*fields.keys()])
+    confirm_stored_files(*fields.values())
     log_action(
         actor=actor, action="resource.update", target=resource.lesson, metadata={"resource_id": str(resource.pk)}, request=request
     )

@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
+import { ChangedIndicator } from "@/components/ui/ChangedIndicator";
 import { Combobox } from "@/components/ui/Combobox";
 import { MarkdownEditor } from "@/components/ui/MarkdownEditor";
 import {
@@ -74,22 +75,25 @@ export function TestEditor({ test, onDirtyChange }: TestEditorProps) {
     getProjects().then((data) => setProjects(data.results));
   }, []);
 
-  const isDirty =
-    title !== (test?.title ?? "") ||
-    testType !== (test?.test_type ?? "OTHER") ||
-    projectId !== (test?.project?.id ?? null) ||
-    location !== (test?.location ?? "") ||
-    date !== (test?.date ?? null) ||
-    status !== (test?.status ?? "PLANNED") ||
-    passFail !== (test?.pass_fail ?? "") ||
-    objective !== (test?.objective ?? "") ||
-    configuration !== (test?.configuration ?? "") ||
-    procedure !== (test?.procedure ?? "") ||
-    results !== (test?.results ?? "") ||
-    conclusion !== (test?.conclusion ?? "") ||
-    visibility !== (test?.visibility ?? "PUBLIC") ||
-    restrictedAccessDraft.pendingAdd.length > 0 ||
-    restrictedAccessDraft.pendingRemoveGrantIds.length > 0;
+  const fieldChanged = {
+    title: title !== (test?.title ?? ""),
+    testType: testType !== (test?.test_type ?? "OTHER"),
+    project: projectId !== (test?.project?.id ?? null),
+    location: location !== (test?.location ?? ""),
+    date: date !== (test?.date ?? null),
+    status: status !== (test?.status ?? "PLANNED"),
+    passFail: passFail !== (test?.pass_fail ?? ""),
+    objective: objective !== (test?.objective ?? ""),
+    configuration: configuration !== (test?.configuration ?? ""),
+    procedure: procedure !== (test?.procedure ?? ""),
+    results: results !== (test?.results ?? ""),
+    conclusion: conclusion !== (test?.conclusion ?? ""),
+    visibility: visibility !== (test?.visibility ?? "PUBLIC"),
+    restrictedAccess:
+      restrictedAccessDraft.pendingAdd.length > 0 || restrictedAccessDraft.pendingRemoveGrantIds.length > 0,
+  };
+
+  const isDirty = Object.values(fieldChanged).some(Boolean);
 
   useEffect(() => {
     onDirtyChange?.(isDirty);
@@ -138,37 +142,45 @@ export function TestEditor({ test, onDirtyChange }: TestEditorProps) {
   return (
     <div className="space-y-4 max-w-[800px] mx-auto">
       <div className="space-y-4 border-b border-outline-variant pb-4">
-        <input
-          className="w-full font-headline-lg text-headline-lg font-bold border-none bg-transparent placeholder:text-on-surface-variant/50 focus:ring-0 p-0 text-on-surface outline-none"
-          placeholder={t("titlePlaceholder")}
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-        />
+        <ChangedIndicator changed={fieldChanged.title}>
+          <input
+            className="w-full font-headline-lg text-headline-lg font-bold border-none bg-transparent placeholder:text-on-surface-variant/50 focus:ring-0 p-0 text-on-surface outline-none"
+            placeholder={t("titlePlaceholder")}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
+        </ChangedIndicator>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Combobox
-            label={t("testTypeLabel")}
-            options={TEST_TYPE_VALUES.map((value) => ({ value, label: testTypeT(value) }))}
-            value={testType}
-            onChange={(value) => setTestType(value as TestType)}
-          />
-          <Combobox
-            label={t("projectLabel")}
-            options={projects.map((p) => ({ value: p.id, label: p.name }))}
-            value={projectId}
-            onChange={setProjectId}
-          />
+          <ChangedIndicator changed={fieldChanged.testType}>
+            <Combobox
+              label={t("testTypeLabel")}
+              options={TEST_TYPE_VALUES.map((value) => ({ value, label: testTypeT(value) }))}
+              value={testType}
+              onChange={(value) => setTestType(value as TestType)}
+            />
+          </ChangedIndicator>
+          <ChangedIndicator changed={fieldChanged.project}>
+            <Combobox
+              label={t("projectLabel")}
+              options={projects.map((p) => ({ value: p.id, label: p.name }))}
+              value={projectId}
+              onChange={setProjectId}
+            />
+          </ChangedIndicator>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <input
-            className="block w-full px-4 py-2 font-body-md text-body-md text-on-surface bg-surface-container border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
-            placeholder={t("locationPlaceholder")}
-            value={location}
-            onChange={(e) => setLocation(e.target.value)}
-          />
+          <ChangedIndicator changed={fieldChanged.location}>
+            <input
+              className="block w-full px-4 py-2 font-body-md text-body-md text-on-surface bg-surface-container border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
+              placeholder={t("locationPlaceholder")}
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+            />
+          </ChangedIndicator>
           {/* Native date input, not DatePicker - Test.date is a plain
               "YYYY-MM-DD" calendar date (Django DateField), same as
               Failure.date - see FailureEditor.tsx's matching comment. */}
-          <div className="space-y-2">
+          <ChangedIndicator changed={fieldChanged.date} className="space-y-2">
             <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase">
               {t("dateLabel")}
             </label>
@@ -178,86 +190,102 @@ export function TestEditor({ test, onDirtyChange }: TestEditorProps) {
               value={date ?? ""}
               onChange={(e) => setDate(e.target.value || null)}
             />
-          </div>
+          </ChangedIndicator>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Combobox
-            label={t("statusLabel")}
-            options={STATUS_VALUES.map((value) => ({ value, label: statusT(value) }))}
-            value={status}
-            onChange={(value) => setStatus(value as TestRunStatus)}
-          />
-          <Combobox
-            label={t("passFailLabel")}
-            options={[
-              { value: "", label: passFailT("notSet") },
-              ...PASS_FAIL_VALUES.map((value) => ({ value, label: passFailT(value) })),
-            ]}
-            value={passFail}
-            onChange={(value) => setPassFail((value || "") as TestPassFail)}
-          />
+          <ChangedIndicator changed={fieldChanged.status}>
+            <Combobox
+              label={t("statusLabel")}
+              options={STATUS_VALUES.map((value) => ({ value, label: statusT(value) }))}
+              value={status}
+              onChange={(value) => setStatus(value as TestRunStatus)}
+            />
+          </ChangedIndicator>
+          <ChangedIndicator changed={fieldChanged.passFail}>
+            <Combobox
+              label={t("passFailLabel")}
+              options={[
+                { value: "", label: passFailT("notSet") },
+                ...PASS_FAIL_VALUES.map((value) => ({ value, label: passFailT(value) })),
+              ]}
+              value={passFail}
+              onChange={(value) => setPassFail((value || "") as TestPassFail)}
+            />
+          </ChangedIndicator>
         </div>
-        <div className="w-48">
+        <ChangedIndicator changed={fieldChanged.visibility} className="w-48">
           <Combobox
             placeholder={t("visibilityLabel")}
             options={VISIBILITY_VALUES.map((value) => ({ value, label: t(`visibility${value}`) }))}
             value={visibility}
             onChange={(value) => setVisibility(value as Visibility)}
           />
-        </div>
+        </ChangedIndicator>
         {visibility === "RESTRICTED" && (
-          <RestrictedAccessPicker
-            initialGrants={test?.restricted_to ?? []}
-            value={restrictedAccessDraft}
-            onChange={setRestrictedAccessDraft}
-          />
+          <ChangedIndicator changed={fieldChanged.restrictedAccess}>
+            <RestrictedAccessPicker
+              initialGrants={test?.restricted_to ?? []}
+              value={restrictedAccessDraft}
+              onChange={setRestrictedAccessDraft}
+            />
+          </ChangedIndicator>
         )}
       </div>
 
       <div className="space-y-2">
         <h3 className="font-label-caps text-label-caps text-on-surface-variant uppercase">{t("objectiveLabel")}</h3>
-        <MarkdownEditor
-          value={objective}
-          onChange={setObjective}
-          placeholder={t("objectivePlaceholder")}
-          relateFrom={test ? { type: "test", id: test.id } : undefined}
-        />
+        <ChangedIndicator changed={fieldChanged.objective}>
+          <MarkdownEditor
+            value={objective}
+            onChange={setObjective}
+            placeholder={t("objectivePlaceholder")}
+            relateFrom={test ? { type: "test", id: test.id } : undefined}
+          />
+        </ChangedIndicator>
       </div>
       <div className="space-y-2">
         <h3 className="font-label-caps text-label-caps text-on-surface-variant uppercase">{t("configurationLabel")}</h3>
-        <MarkdownEditor
-          value={configuration}
-          onChange={setConfiguration}
-          placeholder={t("configurationPlaceholder")}
-          relateFrom={test ? { type: "test", id: test.id } : undefined}
-        />
+        <ChangedIndicator changed={fieldChanged.configuration}>
+          <MarkdownEditor
+            value={configuration}
+            onChange={setConfiguration}
+            placeholder={t("configurationPlaceholder")}
+            relateFrom={test ? { type: "test", id: test.id } : undefined}
+          />
+        </ChangedIndicator>
       </div>
       <div className="space-y-2">
         <h3 className="font-label-caps text-label-caps text-on-surface-variant uppercase">{t("procedureLabel")}</h3>
-        <MarkdownEditor
-          value={procedure}
-          onChange={setProcedure}
-          placeholder={t("procedurePlaceholder")}
-          relateFrom={test ? { type: "test", id: test.id } : undefined}
-        />
+        <ChangedIndicator changed={fieldChanged.procedure}>
+          <MarkdownEditor
+            value={procedure}
+            onChange={setProcedure}
+            placeholder={t("procedurePlaceholder")}
+            relateFrom={test ? { type: "test", id: test.id } : undefined}
+          />
+        </ChangedIndicator>
       </div>
       <div className="space-y-2">
         <h3 className="font-label-caps text-label-caps text-on-surface-variant uppercase">{t("resultsLabel")}</h3>
-        <MarkdownEditor
-          value={results}
-          onChange={setResults}
-          placeholder={t("resultsPlaceholder")}
-          relateFrom={test ? { type: "test", id: test.id } : undefined}
-        />
+        <ChangedIndicator changed={fieldChanged.results}>
+          <MarkdownEditor
+            value={results}
+            onChange={setResults}
+            placeholder={t("resultsPlaceholder")}
+            relateFrom={test ? { type: "test", id: test.id } : undefined}
+          />
+        </ChangedIndicator>
       </div>
       <div className="space-y-2">
         <h3 className="font-label-caps text-label-caps text-on-surface-variant uppercase">{t("conclusionLabel")}</h3>
-        <MarkdownEditor
-          value={conclusion}
-          onChange={setConclusion}
-          placeholder={t("conclusionPlaceholder")}
-          relateFrom={test ? { type: "test", id: test.id } : undefined}
-        />
+        <ChangedIndicator changed={fieldChanged.conclusion}>
+          <MarkdownEditor
+            value={conclusion}
+            onChange={setConclusion}
+            placeholder={t("conclusionPlaceholder")}
+            relateFrom={test ? { type: "test", id: test.id } : undefined}
+          />
+        </ChangedIndicator>
       </div>
 
       {error && (

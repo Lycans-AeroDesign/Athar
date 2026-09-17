@@ -81,6 +81,22 @@ services:
       redis:
         condition: service_healthy
 
+  # Fires CELERY_BEAT_SCHEDULE (config/settings.py) - currently just
+  # files.tasks.delete_unconfirmed_files, hourly. Same image/env as
+  # celery-worker, which is the process that actually executes what this
+  # schedules; a separate container (not `celery -A config worker -B`) so a
+  # worker restart never drops/duplicates the schedule's own timer state.
+  celery-beat:
+    image: ghcr.io/lycans-aerodesign/athar-backend:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    command: ["celery", "-A", "config", "beat", "-l", "info"]
+    environment: *backend_env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
   redis:
     image: redis:7-alpine
     restart: unless-stopped

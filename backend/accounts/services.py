@@ -3,6 +3,7 @@ from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
 from audit.services import log_action
+from files.services import confirm_stored_files
 from rbac.models import Role
 
 from .models import InvitationCode, User
@@ -78,6 +79,7 @@ def update_own_profile(*, actor: User, request=None, **fields) -> User:
     for field, value in fields.items():
         setattr(actor, field, value)
     actor.save(update_fields=[*fields.keys()])
+    confirm_stored_files(*fields.values())
     log_action(actor=actor, action="user.update_profile", target=actor, request=request)
     return actor
 

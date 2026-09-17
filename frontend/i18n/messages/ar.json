@@ -23,7 +23,13 @@
     "searchThisList": "ابحث في هذه القائمة...",
     "contributorsLabel": "المساهمون",
     "bookmark": "حفظ",
-    "bookmarked": "محفوظ"
+    "bookmarked": "محفوظ",
+    "dragDropImageHint": "انقر للرفع، أو اسحب صورة وأفلتها هنا",
+    "dragDropFileHint": "انقر للرفع، أو اسحب ملفًا وأفلته هنا",
+    "changePhoto": "تغيير",
+    "removePhoto": "إزالة الصورة",
+    "removeFile": "إزالة الملف",
+    "unsupportedImageType": "هذا الملف ليس نوع صورة مدعومًا - جرّب PNG أو JPG أو GIF أو WebP."
   },
   "auth": {
     "emailLabel": "البريد الإلكتروني",
@@ -583,8 +589,8 @@
       "italicPlaceholder": "نص مائل",
       "linkTextPlaceholder": "نص الرابط",
       "imageAltPlaceholder": "نص بديل",
-      "uploadingImage": "جارٍ رفع {filename}…",
-      "uploadingFile": "جارٍ رفع {filename}…",
+      "uploadingImage": "جارٍ رفع {filename}… {percent}٪",
+      "uploadingFile": "جارٍ رفع {filename}… {percent}٪",
       "uploadError": "تعذّر رفع {filename}: {message}",
       "mentionSearching": "جارٍ البحث...",
       "relationError": "تم ربط \"{title}\" في النص، لكن تعذّرت إضافته إلى المعرفة ذات الصلة: {message}",
@@ -851,6 +857,7 @@
       "deleteConfirmTitle": "حذف هذا المستند؟",
       "deleteConfirmBody": "لا يمكن التراجع عن هذا الإجراء.",
       "openLinkButton": "فتح الرابط",
+      "downloadButton": "تنزيل",
       "backToDocument": "العودة إلى المستند",
       "editPermissionRequired": "لا تملك صلاحية تعديل هذا المستند."
     },
@@ -902,6 +909,11 @@
     "discardTitle": "تجاهل التغييرات غير المحفوظة؟",
     "discardDescription": "لديك تغييرات غير محفوظة. الإغلاق الآن سيؤدي إلى فقدانها.",
     "keepEditing": "متابعة التحرير"
+  },
+  "filePreview": {
+    "downloadButton": "تنزيل",
+    "loading": "جارٍ تحميل المعاينة...",
+    "noPreview": "لا تتوفر معاينة لنوع هذا الملف - نزّله لعرضه."
   },
   "notFound": {
     "title": "الصفحة غير موجودة",

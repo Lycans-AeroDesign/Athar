@@ -310,7 +310,8 @@ JWT_REFRESH_COOKIE_DOMAIN = env("JWT_REFRESH_COOKIE_DOMAIN", default="") or None
 ENABLE_REGISTRATION = env.bool("ENABLE_REGISTRATION", default=True)
 
 
-# Celery (background jobs - currently just backups.tasks.generate_org_backup)
+# Celery (background jobs - backups.tasks.generate_org_backup on demand, plus
+# files.tasks.delete_unconfirmed_files on the schedule below)
 # https://docs.celeryq.dev/en/stable/userguide/configuration.html
 # config.celery's `namespace="CELERY"` maps CELERY_BROKER_URL here to Celery's
 # own `broker_url` setting, etc.
@@ -326,6 +327,18 @@ CELERY_TIMEZONE = TIME_ZONE
 # override above uses, for the same reason (no Redis/worker process in CI).
 CELERY_TASK_ALWAYS_EAGER = "test" in sys.argv
 CELERY_TASK_EAGER_PROPAGATES = True
+
+# Run by the `celery-beat` service (docker-compose.yml) - a plain in-code
+# schedule rather than the django-celery-beat package, since this is the only
+# periodic job and doesn't need runtime/admin-editable scheduling. Hourly
+# comfortably beats StoredFile's own 24h grace period (see
+# files/services.py's UNCONFIRMED_FILE_GRACE_PERIOD) without being chatty.
+CELERY_BEAT_SCHEDULE = {
+    "delete-unconfirmed-files": {
+        "task": "files.tasks.delete_unconfirmed_files",
+        "schedule": 3600.0,
+    },
+}
 
 
 # Email

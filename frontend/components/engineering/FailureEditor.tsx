@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
+import { ChangedIndicator } from "@/components/ui/ChangedIndicator";
 import { Combobox } from "@/components/ui/Combobox";
 import { MarkdownEditor } from "@/components/ui/MarkdownEditor";
 import {
@@ -72,21 +73,24 @@ export function FailureEditor({ failure, onDirtyChange }: FailureEditorProps) {
     getProjects().then((data) => setProjects(data.results));
   }, []);
 
-  const isDirty =
-    title !== (failure?.title ?? "") ||
-    componentId !== (failure?.component?.id ?? null) ||
-    projectId !== (failure?.project?.id ?? null) ||
-    aircraft !== (failure?.aircraft ?? "") ||
-    date !== (failure?.date ?? null) ||
-    severity !== (failure?.severity ?? "MEDIUM") ||
-    status !== (failure?.status ?? "UNDER_INVESTIGATION") ||
-    summary !== (failure?.summary ?? "") ||
-    rootCause !== (failure?.root_cause ?? "") ||
-    correctiveAction !== (failure?.corrective_action ?? "") ||
-    preventiveAction !== (failure?.preventive_action ?? "") ||
-    visibility !== (failure?.visibility ?? "PUBLIC") ||
-    restrictedAccessDraft.pendingAdd.length > 0 ||
-    restrictedAccessDraft.pendingRemoveGrantIds.length > 0;
+  const fieldChanged = {
+    title: title !== (failure?.title ?? ""),
+    component: componentId !== (failure?.component?.id ?? null),
+    project: projectId !== (failure?.project?.id ?? null),
+    aircraft: aircraft !== (failure?.aircraft ?? ""),
+    date: date !== (failure?.date ?? null),
+    severity: severity !== (failure?.severity ?? "MEDIUM"),
+    status: status !== (failure?.status ?? "UNDER_INVESTIGATION"),
+    summary: summary !== (failure?.summary ?? ""),
+    rootCause: rootCause !== (failure?.root_cause ?? ""),
+    correctiveAction: correctiveAction !== (failure?.corrective_action ?? ""),
+    preventiveAction: preventiveAction !== (failure?.preventive_action ?? ""),
+    visibility: visibility !== (failure?.visibility ?? "PUBLIC"),
+    restrictedAccess:
+      restrictedAccessDraft.pendingAdd.length > 0 || restrictedAccessDraft.pendingRemoveGrantIds.length > 0,
+  };
+
+  const isDirty = Object.values(fieldChanged).some(Boolean);
 
   useEffect(() => {
     onDirtyChange?.(isDirty);
@@ -134,39 +138,47 @@ export function FailureEditor({ failure, onDirtyChange }: FailureEditorProps) {
   return (
     <div className="space-y-4 max-w-[800px] mx-auto">
       <div className="space-y-4 border-b border-outline-variant pb-4">
-        <input
-          className="w-full font-headline-lg text-headline-lg font-bold border-none bg-transparent placeholder:text-on-surface-variant/50 focus:ring-0 p-0 text-on-surface outline-none"
-          placeholder={t("titlePlaceholder")}
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-        />
+        <ChangedIndicator changed={fieldChanged.title}>
+          <input
+            className="w-full font-headline-lg text-headline-lg font-bold border-none bg-transparent placeholder:text-on-surface-variant/50 focus:ring-0 p-0 text-on-surface outline-none"
+            placeholder={t("titlePlaceholder")}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
+        </ChangedIndicator>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Combobox
-            label={t("componentLabel")}
-            options={components.map((c) => ({ value: c.id, label: c.name }))}
-            value={componentId}
-            onChange={setComponentId}
-          />
-          <Combobox
-            label={t("projectLabel")}
-            options={projects.map((p) => ({ value: p.id, label: p.name }))}
-            value={projectId}
-            onChange={setProjectId}
-          />
+          <ChangedIndicator changed={fieldChanged.component}>
+            <Combobox
+              label={t("componentLabel")}
+              options={components.map((c) => ({ value: c.id, label: c.name }))}
+              value={componentId}
+              onChange={setComponentId}
+            />
+          </ChangedIndicator>
+          <ChangedIndicator changed={fieldChanged.project}>
+            <Combobox
+              label={t("projectLabel")}
+              options={projects.map((p) => ({ value: p.id, label: p.name }))}
+              value={projectId}
+              onChange={setProjectId}
+            />
+          </ChangedIndicator>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <input
-            className="block w-full px-4 py-2 font-body-md text-body-md text-on-surface bg-surface-container border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
-            placeholder={t("aircraftPlaceholder")}
-            value={aircraft}
-            onChange={(e) => setAircraft(e.target.value)}
-          />
+          <ChangedIndicator changed={fieldChanged.aircraft}>
+            <input
+              className="block w-full px-4 py-2 font-body-md text-body-md text-on-surface bg-surface-container border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
+              placeholder={t("aircraftPlaceholder")}
+              value={aircraft}
+              onChange={(e) => setAircraft(e.target.value)}
+            />
+          </ChangedIndicator>
           {/* Native date input, not DatePicker - DatePicker's value/onChange
               speak UTC timestamps (see its own JSDoc), but Failure.date is a
               plain "YYYY-MM-DD" calendar date (Django DateField). A native
               <input type="date"> already speaks that exact format with no
               timezone conversion in either direction. */}
-          <div className="space-y-2">
+          <ChangedIndicator changed={fieldChanged.date} className="space-y-2">
             <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase">
               {t("dateLabel")}
             </label>
@@ -176,74 +188,88 @@ export function FailureEditor({ failure, onDirtyChange }: FailureEditorProps) {
               value={date ?? ""}
               onChange={(e) => setDate(e.target.value || null)}
             />
-          </div>
+          </ChangedIndicator>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Combobox
-            label={t("severityLabel")}
-            options={SEVERITY_VALUES.map((value) => ({ value, label: severityT(value) }))}
-            value={severity}
-            onChange={(value) => setSeverity(value as FailureSeverity)}
-          />
-          <Combobox
-            label={t("statusLabel")}
-            options={STATUS_VALUES.map((value) => ({ value, label: statusT(value) }))}
-            value={status}
-            onChange={(value) => setStatus(value as FailureStatus)}
-          />
+          <ChangedIndicator changed={fieldChanged.severity}>
+            <Combobox
+              label={t("severityLabel")}
+              options={SEVERITY_VALUES.map((value) => ({ value, label: severityT(value) }))}
+              value={severity}
+              onChange={(value) => setSeverity(value as FailureSeverity)}
+            />
+          </ChangedIndicator>
+          <ChangedIndicator changed={fieldChanged.status}>
+            <Combobox
+              label={t("statusLabel")}
+              options={STATUS_VALUES.map((value) => ({ value, label: statusT(value) }))}
+              value={status}
+              onChange={(value) => setStatus(value as FailureStatus)}
+            />
+          </ChangedIndicator>
         </div>
-        <div className="w-48">
+        <ChangedIndicator changed={fieldChanged.visibility} className="w-48">
           <Combobox
             placeholder={t("visibilityLabel")}
             options={VISIBILITY_VALUES.map((value) => ({ value, label: t(`visibility${value}`) }))}
             value={visibility}
             onChange={(value) => setVisibility(value as Visibility)}
           />
-        </div>
+        </ChangedIndicator>
         {visibility === "RESTRICTED" && (
-          <RestrictedAccessPicker
-            initialGrants={failure?.restricted_to ?? []}
-            value={restrictedAccessDraft}
-            onChange={setRestrictedAccessDraft}
-          />
+          <ChangedIndicator changed={fieldChanged.restrictedAccess}>
+            <RestrictedAccessPicker
+              initialGrants={failure?.restricted_to ?? []}
+              value={restrictedAccessDraft}
+              onChange={setRestrictedAccessDraft}
+            />
+          </ChangedIndicator>
         )}
       </div>
 
       <div className="space-y-2">
         <h3 className="font-label-caps text-label-caps text-on-surface-variant uppercase">{t("summaryLabel")}</h3>
-        <MarkdownEditor
-          value={summary}
-          onChange={setSummary}
-          placeholder={t("summaryPlaceholder")}
-          relateFrom={failure ? { type: "failure", id: failure.id } : undefined}
-        />
+        <ChangedIndicator changed={fieldChanged.summary}>
+          <MarkdownEditor
+            value={summary}
+            onChange={setSummary}
+            placeholder={t("summaryPlaceholder")}
+            relateFrom={failure ? { type: "failure", id: failure.id } : undefined}
+          />
+        </ChangedIndicator>
       </div>
       <div className="space-y-2">
         <h3 className="font-label-caps text-label-caps text-on-surface-variant uppercase">{t("rootCauseLabel")}</h3>
-        <MarkdownEditor
-          value={rootCause}
-          onChange={setRootCause}
-          placeholder={t("rootCausePlaceholder")}
-          relateFrom={failure ? { type: "failure", id: failure.id } : undefined}
-        />
+        <ChangedIndicator changed={fieldChanged.rootCause}>
+          <MarkdownEditor
+            value={rootCause}
+            onChange={setRootCause}
+            placeholder={t("rootCausePlaceholder")}
+            relateFrom={failure ? { type: "failure", id: failure.id } : undefined}
+          />
+        </ChangedIndicator>
       </div>
       <div className="space-y-2">
         <h3 className="font-label-caps text-label-caps text-on-surface-variant uppercase">{t("correctiveActionLabel")}</h3>
-        <MarkdownEditor
-          value={correctiveAction}
-          onChange={setCorrectiveAction}
-          placeholder={t("correctiveActionPlaceholder")}
-          relateFrom={failure ? { type: "failure", id: failure.id } : undefined}
-        />
+        <ChangedIndicator changed={fieldChanged.correctiveAction}>
+          <MarkdownEditor
+            value={correctiveAction}
+            onChange={setCorrectiveAction}
+            placeholder={t("correctiveActionPlaceholder")}
+            relateFrom={failure ? { type: "failure", id: failure.id } : undefined}
+          />
+        </ChangedIndicator>
       </div>
       <div className="space-y-2">
         <h3 className="font-label-caps text-label-caps text-on-surface-variant uppercase">{t("preventiveActionLabel")}</h3>
-        <MarkdownEditor
-          value={preventiveAction}
-          onChange={setPreventiveAction}
-          placeholder={t("preventiveActionPlaceholder")}
-          relateFrom={failure ? { type: "failure", id: failure.id } : undefined}
-        />
+        <ChangedIndicator changed={fieldChanged.preventiveAction}>
+          <MarkdownEditor
+            value={preventiveAction}
+            onChange={setPreventiveAction}
+            placeholder={t("preventiveActionPlaceholder")}
+            relateFrom={failure ? { type: "failure", id: failure.id } : undefined}
+          />
+        </ChangedIndicator>
       </div>
 
       {error && (

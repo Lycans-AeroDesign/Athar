@@ -1,9 +1,10 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
-import { Button } from "@/components/ui/Button";
+import { FileDropzone } from "@/components/ui/FileDropzone";
+import { FilePreviewModal } from "@/components/ui/FilePreviewModal";
 import { Icon } from "@/components/ui/Icon";
 import {
   addComponentAttachment,
@@ -80,8 +81,8 @@ export function Attachments({ type, id, canEdit }: AttachmentsProps) {
   const t = useTranslations("knowledge.attachments");
   const [attachments, setAttachments] = useState<KnowledgeAttachment[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [previewAttachment, setPreviewAttachment] = useState<KnowledgeAttachment | null>(null);
 
   useEffect(() => {
     ATTACHMENT_API[type]
@@ -90,20 +91,17 @@ export function Attachments({ type, id, canEdit }: AttachmentsProps) {
       .catch((err) => setError(err instanceof Error ? err.message : String(err)));
   }, [type, id]);
 
-  async function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
+  async function handleFileSelected(file: File) {
     setError(null);
-    setIsUploading(true);
+    setUploadProgress(0);
     try {
-      const uploaded = await uploadFile(file);
+      const uploaded = await uploadFile(file, { onProgress: setUploadProgress });
       const attachment = await ATTACHMENT_API[type].add(id, uploaded.id);
       setAttachments((prev) => [...(prev ?? []), attachment]);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
-      setIsUploading(false);
+      setUploadProgress(null);
     }
   }
 
@@ -131,18 +129,15 @@ export function Attachments({ type, id, canEdit }: AttachmentsProps) {
 
   return (
     <div className="pt-6 border-t border-outline-variant space-y-3">
-      <div className="flex items-center justify-between">
-        <h3 className="font-headline-md text-headline-md text-on-surface">{t("title")}</h3>
-        {canEdit && (
-          <>
-            <Button variant="ghost" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
-              <Icon name="upload" size={16} />
-              {isUploading ? t("uploading") : t("addButton")}
-            </Button>
-            <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileSelected} />
-          </>
-        )}
-      </div>
+      <h3 className="font-headline-md text-headline-md text-on-surface">{t("title")}</h3>
+      {canEdit && (
+        <FileDropzone
+          onFileSelected={handleFileSelected}
+          progress={uploadProgress}
+          label={t("addButton")}
+          className="max-w-sm"
+        />
+      )}
 
       {attachments.length === 0 ? (
         <p className="font-body-md text-body-md text-on-surface-variant">{t("emptyState")}</p>
@@ -156,7 +151,7 @@ export function Attachments({ type, id, canEdit }: AttachmentsProps) {
               <Icon name="description" size={18} className="text-on-surface-variant shrink-0" />
               <button
                 type="button"
-                onClick={() => handleDownload(attachment)}
+                onClick={() => setPreviewAttachment(attachment)}
                 className="flex-1 min-w-0 text-start font-body-md text-body-md text-on-surface hover:text-primary transition-colors truncate"
               >
                 {attachment.file.original_filename}
@@ -191,6 +186,14 @@ export function Attachments({ type, id, canEdit }: AttachmentsProps) {
         <p className="font-body-md text-body-md text-error" role="alert">
           {error}
         </p>
+      )}
+
+      {previewAttachment && (
+        <FilePreviewModal
+          open
+          onOpenChange={(open) => !open && setPreviewAttachment(null)}
+          file={previewAttachment.file}
+        />
       )}
     </div>
   );

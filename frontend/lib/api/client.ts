@@ -99,28 +99,40 @@ export class ApiError extends Error {
 // instead of the status-code-only message apiJson used to throw, which meant
 // every backend validation/permission message (e.g. "Only a draft or
 // in-review article can be published.") never reached the user.
+// Shared by extractApiError (fetch Response) and apiUpload's XHR error path
+// below - both end up with a parsed JSON body and a status, just from
+// different transports.
+function parseErrorBody(
+  body: unknown,
+  status: number,
+  path: string,
+): { message: string; fields: Record<string, string> } {
+  if (body && typeof body === "object") {
+    const record = body as Record<string, unknown>;
+    if (typeof record.detail === "string") return { message: record.detail, fields: {} };
+    const fields: Record<string, string> = {};
+    for (const [key, value] of Object.entries(record)) {
+      if (Array.isArray(value) && value.every((entry): entry is string => typeof entry === "string") && value.length > 0) {
+        fields[key] = value.join(" ");
+      }
+    }
+    const messages = Object.values(fields);
+    if (messages.length > 0) return { message: messages.join(" "), fields };
+  }
+  return { message: `Request to ${path} failed with ${status}`, fields: {} };
+}
+
 export async function extractApiError(
   res: Response,
   path: string,
 ): Promise<{ message: string; fields: Record<string, string> }> {
   try {
     const body: unknown = await res.json();
-    if (body && typeof body === "object") {
-      const record = body as Record<string, unknown>;
-      if (typeof record.detail === "string") return { message: record.detail, fields: {} };
-      const fields: Record<string, string> = {};
-      for (const [key, value] of Object.entries(record)) {
-        if (Array.isArray(value) && value.every((entry): entry is string => typeof entry === "string") && value.length > 0) {
-          fields[key] = value.join(" ");
-        }
-      }
-      const messages = Object.values(fields);
-      if (messages.length > 0) return { message: messages.join(" "), fields };
-    }
+    return parseErrorBody(body, res.status, path);
   } catch {
     // Response body wasn't JSON (or was empty) - fall through to the generic message.
+    return { message: `Request to ${path} failed with ${res.status}`, fields: {} };
   }
-  return { message: `Request to ${path} failed with ${res.status}`, fields: {} };
 }
 
 export async function apiJson<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -141,4 +153,53 @@ export async function apiVoid(path: string, options: RequestInit = {}): Promise<
     const { message, fields } = await extractApiError(res, path);
     throw new ApiError(message, res.status, fields);
   }
+}
+
+/** Same auth/refresh-retry/error-shape contract as apiJson, but over
+ * XMLHttpRequest instead of fetch - fetch has no cross-browser way to report
+ * upload progress, while XHR's `upload.onprogress` does. Only worth the
+ * extra transport for large-file POSTs that show a progress bar; everything
+ * else should keep using apiJson. `onProgress` receives a 0-1 fraction. */
+export function apiUpload<T>(
+  path: string,
+  formData: FormData,
+  onProgress?: (fraction: number) => void,
+  _retried = false,
+): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", `${API_URL}${path}`);
+    xhr.withCredentials = true;
+    const token = tokenStore.getAccessToken();
+    if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+
+    xhr.upload.onprogress = (e) => {
+      if (onProgress && e.lengthComputable) onProgress(e.loaded / e.total);
+    };
+
+    xhr.onload = () => {
+      if (xhr.status === 401 && !_retried) {
+        ensureFreshToken()
+          .then(() => resolve(apiUpload<T>(path, formData, onProgress, true)))
+          .catch(reject);
+        return;
+      }
+      let body: unknown = null;
+      try {
+        body = xhr.responseText ? JSON.parse(xhr.responseText) : null;
+      } catch {
+        // Non-JSON body - body stays null, handled below either way.
+      }
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve(body as T);
+        return;
+      }
+      const { message, fields } = parseErrorBody(body, xhr.status, path);
+      reject(new ApiError(message, xhr.status, fields));
+    };
+
+    xhr.onerror = () => reject(new ApiError(`Request to ${path} failed`, 0));
+
+    xhr.send(formData);
+  });
 }
