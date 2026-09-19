@@ -167,6 +167,20 @@ services:
       - certbot_www:/var/www/certbot
     entrypoint: sh -c "trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot --quiet; sleep 12h & wait $$!; done"
 
+# Most cloud VM NICs (GCE in particular) cap real frames at 1460, not the
+# Ethernet-standard 1500 Docker's bridge networks default to - packets in
+# that 1460-1500 gap silently vanish once they leave the host's real NIC
+# instead of being fragmented, and recovery then depends on Path MTU
+# Discovery's ICMP round trip, which many cloud firewalls block by default -
+# so nothing auto-corrects it and every response over ~1460 bytes stalls for
+# many seconds before TCP's own loss-based backoff eventually works around
+# it. Override DOCKER_NETWORK_MTU in .env if your host NIC reports something
+# else (`ip link show <iface>`).
+networks:
+  default:
+    driver_opts:
+      com.docker.network.driver.mtu: ${DOCKER_NETWORK_MTU:-1460}
+
 volumes:
   postgres_data:
   redis_data:
