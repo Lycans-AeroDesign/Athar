@@ -1,3 +1,14 @@
+## [1.2.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.1.0...v1.2.0) (2026-09-20)
+
+### Features
+
+* add CSV bulk import and sortable table view to Components, extend table view to Failures/Tests/Documents ([a8e9d8b](https://github.com/Lycans-AeroDesign/Athar/commit/a8e9d8be8d6f8d4c59bf1ca0c1b603adb815fe4d))
+
+### Bug Fixes
+
+* **docker:** give celery-beat a writable schedule file path ([9f05ec8](https://github.com/Lycans-AeroDesign/Athar/commit/9f05ec8a8abfd0544045b21d9bd3a6b98e242242))
+* **docker:** set prod bridge network MTU to 1460 to match GCE NICs ([4c0e2cc](https://github.com/Lycans-AeroDesign/Athar/commit/4c0e2cc1d7a5907ee8c0902d8c0ca5268eac340d))
+
 ## [1.1.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.0.2...v1.1.0) (2026-09-17)
 
 ### Features
