@@ -148,7 +148,7 @@ export function GlobalSearch() {
     <div ref={containerRef} className="relative w-full">
       <Icon name="search" className="absolute start-4 top-1/2 -translate-y-1/2 text-outline" />
       <input
-        className="w-full bg-surface-container-low border border-outline-variant rounded-xl py-2 ps-[40px] pe-32 text-body-md font-body-md text-on-surface placeholder:text-outline focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+        className="w-full bg-surface-container-low border border-outline-variant rounded-xl py-2 ps-12 pe-16 sm:pe-32 text-body-md font-body-md text-on-surface placeholder:text-outline focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
         placeholder={t("searchPlaceholder")}
         type="text"
         value={query}
@@ -165,13 +165,18 @@ export function GlobalSearch() {
           trigger={
             <button
               type="button"
-              className={`flex items-center gap-1 px-2 py-1 rounded-full font-label-caps text-label-caps uppercase transition-colors ${
+              className={`flex items-center gap-1 px-1.5 sm:px-2 py-1 rounded-full font-label-caps text-label-caps uppercase transition-colors ${
                 scope === "all"
                   ? "text-on-surface-variant hover:bg-surface-variant"
                   : "bg-primary/10 text-primary border border-primary/20"
               }`}
             >
-              {scopeLabels[scope]}
+              {/* Below `sm` the bar is too narrow to reserve enough end-padding
+                  for a long label like "Components" without it overlapping the
+                  placeholder/typed text - an icon (when a specific scope is
+                  active) takes a fraction of the space instead. */}
+              {scope !== "all" && <Icon name={RELATABLE_ICON[scope]} size={14} className="sm:hidden" />}
+              <span className="hidden sm:inline">{scopeLabels[scope]}</span>
               <Icon name="expand_more" size={16} />
             </button>
           }

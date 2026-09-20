@@ -4,13 +4,14 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 import { Can } from "@/components/auth/Can";
+import { TestsTable } from "@/components/engineering/TestsTable";
 import { ActiveFilterChip } from "@/components/ui/ActiveFilterChip";
 import { Button } from "@/components/ui/Button";
 import { Combobox } from "@/components/ui/Combobox";
 import { Icon } from "@/components/ui/Icon";
 import { Pagination } from "@/components/ui/Pagination";
 import { Link } from "@/i18n/navigation";
-import { getTests } from "@/lib/api/engineering";
+import { getTests, type TestOrdering } from "@/lib/api/engineering";
 import type { TestPassFail, TestRunStatus, TestSummary, TestType } from "@/lib/api/types";
 import { useEngineeringListFiltersEnabled } from "@/lib/auth/permissions";
 
@@ -28,27 +29,6 @@ const TYPE_VALUES: TestType[] = [
 const STATUS_VALUES: TestRunStatus[] = ["PLANNED", "IN_PROGRESS", "COMPLETED"];
 const PASS_FAIL_VALUES: TestPassFail[] = ["PASS", "FAIL", "PARTIAL", "NOT_APPLICABLE"];
 
-// `test.date` is a plain "YYYY-MM-DD" calendar date (Django DateField), not
-// a UTC timestamp - see failures/page.tsx's matching comment for why this
-// doesn't use lib/datetime.ts's formatDate().
-function formatCalendarDate(isoDate: string): string {
-  const [year, month, day] = isoDate.split("-").map(Number);
-  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(new Date(year, month - 1, day));
-}
-
-const STATUS_CLASSES: Record<TestRunStatus, string> = {
-  PLANNED: "border border-outline-variant text-on-surface-variant",
-  IN_PROGRESS: "bg-tertiary-container text-on-tertiary-container",
-  COMPLETED: "bg-secondary-container text-on-secondary-container",
-};
-
-const PASS_FAIL_CLASSES: Record<Exclude<TestPassFail, "">, string> = {
-  PASS: "bg-secondary-container text-on-secondary-container",
-  FAIL: "bg-error-container text-on-error-container",
-  PARTIAL: "bg-tertiary-container text-on-tertiary-container",
-  NOT_APPLICABLE: "border border-outline-variant text-on-surface-variant",
-};
-
 export default function TestsPage() {
   const t = useTranslations("engineering.test");
   const typeT = useTranslations("engineering.testType");
@@ -63,6 +43,7 @@ export default function TestsPage() {
   const [searchInput, setSearchInput] = useState("");
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
+  const [ordering, setOrdering] = useState<TestOrdering | undefined>(undefined);
   useEffect(() => {
     const handle = setTimeout(() => {
       setQuery(searchInput.trim());
@@ -74,7 +55,7 @@ export default function TestsPage() {
   // Keyed by the filter+page combination it was fetched for - see
   // failures/page.tsx's matching comment for why this avoids a plain
   // setResult(null) reset.
-  const filterKey = `${typeFilter ?? ""}:${statusFilter ?? ""}:${passFailFilter ?? ""}:${query}:${page}`;
+  const filterKey = `${typeFilter ?? ""}:${statusFilter ?? ""}:${passFailFilter ?? ""}:${query}:${page}:${ordering ?? ""}`;
   const [result, setResult] = useState<{ key: string; tests: TestSummary[]; hasNext: boolean; count: number } | null>(
     null,
   );
@@ -89,11 +70,12 @@ export default function TestsPage() {
       pass_fail: passFailFilter ?? undefined,
       q: query || undefined,
       page,
+      ordering,
     }).then(
       (data) => setResult({ key: filterKey, tests: data.results, hasNext: data.next !== null, count: data.count }),
       (err) => setErrorResult({ key: filterKey, message: err instanceof Error ? err.message : String(err) }),
     );
-  }, [typeFilter, statusFilter, passFailFilter, query, page, filterKey]);
+  }, [typeFilter, statusFilter, passFailFilter, query, page, filterKey, ordering]);
 
   function updateTypeFilter(value: TestType | null) {
     setTypeFilter(value);
@@ -107,6 +89,11 @@ export default function TestsPage() {
 
   function updatePassFailFilter(value: Exclude<TestPassFail, ""> | null) {
     setPassFailFilter(value);
+    setPage(1);
+  }
+
+  function updateOrdering(value: TestOrdering) {
+    setOrdering(value);
     setPage(1);
   }
 
@@ -194,56 +181,7 @@ export default function TestsPage() {
       ) : tests.length === 0 ? (
         <p className="font-body-md text-body-md text-on-surface-variant">{t("emptyState")}</p>
       ) : (
-        <div className="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-x-auto">
-          <table className="w-full text-start border-collapse">
-            <thead>
-              <tr className="border-b border-outline-variant">
-                <th className="py-3 px-4 font-label-caps text-label-caps text-on-surface-variant text-start">{t("colTitle")}</th>
-                <th className="py-3 px-4 font-label-caps text-label-caps text-on-surface-variant text-start">{t("colType")}</th>
-                <th className="py-3 px-4 font-label-caps text-label-caps text-on-surface-variant text-start">{t("colProject")}</th>
-                <th className="py-3 px-4 font-label-caps text-label-caps text-on-surface-variant text-start">{t("colDate")}</th>
-                <th className="py-3 px-4 font-label-caps text-label-caps text-on-surface-variant text-start">{t("colStatus")}</th>
-                <th className="py-3 px-4 font-label-caps text-label-caps text-on-surface-variant text-start">{t("colPassFail")}</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-outline-variant">
-              {tests.map((test) => (
-                <tr key={test.id} className="hover:bg-surface-container-low transition-colors">
-                  <td className="py-3 px-4">
-                    <Link href={`/tests/${test.id}`} className="font-body-md text-body-md text-primary hover:underline">
-                      {test.title}
-                    </Link>
-                  </td>
-                  <td className="py-3 px-4 font-body-md text-body-md text-on-surface-variant">{typeT(test.test_type)}</td>
-                  <td className="py-3 px-4 font-body-md text-body-md text-on-surface-variant">
-                    {test.project?.name ?? "—"}
-                  </td>
-                  <td className="py-3 px-4 font-mono-sm text-mono-sm text-on-surface-variant">
-                    {test.date ? formatCalendarDate(test.date) : "—"}
-                  </td>
-                  <td className="py-3 px-4">
-                    <span
-                      className={`inline-flex items-center px-2 py-1 rounded-full font-label-caps text-label-caps uppercase ${STATUS_CLASSES[test.status]}`}
-                    >
-                      {statusT(test.status)}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4">
-                    {test.pass_fail ? (
-                      <span
-                        className={`inline-flex items-center px-2 py-1 rounded-full font-label-caps text-label-caps uppercase ${PASS_FAIL_CLASSES[test.pass_fail]}`}
-                      >
-                        {passFailT(test.pass_fail)}
-                      </span>
-                    ) : (
-                      <span className="font-body-md text-body-md text-on-surface-variant">—</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <TestsTable tests={tests} ordering={ordering} onOrderingChange={updateOrdering} />
       )}
 
       {tests && tests.length > 0 && (

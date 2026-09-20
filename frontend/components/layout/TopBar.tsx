@@ -8,7 +8,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Icon } from "@/components/ui/Icon";
 import { Menu } from "@/components/ui/Menu";
-import { Link, usePathname, useRouter } from "@/i18n/navigation";
+import { usePathname, useRouter } from "@/i18n/navigation";
 import { locales, localeNames, type Locale } from "@/i18n/request";
 import { updateMe } from "@/lib/api/accounts";
 import { useAuth } from "@/lib/auth/AuthProvider";
@@ -76,14 +76,6 @@ export function TopBar({ onOpenMenu, onCloseMenu }: TopBarProps) {
 
       <div className="flex items-center gap-2 sm:gap-4">
         {/* Notifications button hidden until the feature is implemented - see t("notifications"), kept in messages for when it returns. */}
-        <Link
-          className="hidden sm:inline-flex text-on-surface-variant hover:text-primary opacity-80 hover:opacity-100 transition-opacity"
-          href="/settings"
-          aria-label={t("settings")}
-        >
-          <Icon name="settings" />
-        </Link>
-        <div className="hidden sm:block h-8 w-px bg-outline-variant mx-1" />
         <Menu
           trigger={
             <button
@@ -109,6 +101,7 @@ export function TopBar({ onOpenMenu, onCloseMenu }: TopBarProps) {
           header={user?.email}
           items={[
             { label: t("myAccount"), icon: "account", onSelect: () => router.push("/account") },
+            { label: t("settings"), icon: "settings", onSelect: () => router.push("/settings") },
             ...(settings?.product_tour_enabled
               ? [{ label: t("takeTour"), icon: "travel_explore", onSelect: handleStartTour }]
               : []),

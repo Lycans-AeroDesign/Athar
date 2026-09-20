@@ -313,16 +313,16 @@ export function RolesSettingsForm() {
                       </span>
                     )}
                     {role.isDeleted ? (
-                      <span className="font-label-caps text-label-caps uppercase bg-tertiary-container text-on-tertiary-container rounded-full px-2 py-0.5">
+                      <span className="font-label-caps text-label-caps uppercase bg-primary-container text-on-primary-container rounded-full px-2 py-0.5">
                         {t("unsavedRemoving")}
                       </span>
                     ) : role.isNew ? (
-                      <span className="font-label-caps text-label-caps uppercase bg-tertiary-container text-on-tertiary-container rounded-full px-2 py-0.5">
+                      <span className="font-label-caps text-label-caps uppercase bg-primary-container text-on-primary-container rounded-full px-2 py-0.5">
                         {t("unsavedNew")}
                       </span>
                     ) : (
                       isRoleDirty(role) && (
-                        <span className="font-label-caps text-label-caps uppercase bg-tertiary-container text-on-tertiary-container rounded-full px-2 py-0.5">
+                        <span className="font-label-caps text-label-caps uppercase bg-primary-container text-on-primary-container rounded-full px-2 py-0.5">
                           {t("unsavedModified")}
                         </span>
                       )
@@ -353,7 +353,7 @@ export function RolesSettingsForm() {
                       {selectedRole.name}
                     </h3>
                     {selectedRole.isNew && (
-                      <span className="font-label-caps text-label-caps uppercase bg-tertiary-container text-on-tertiary-container rounded-full px-2 py-0.5">
+                      <span className="font-label-caps text-label-caps uppercase bg-primary-container text-on-primary-container rounded-full px-2 py-0.5">
                         {t("unsavedNew")}
                       </span>
                     )}
@@ -378,7 +378,7 @@ export function RolesSettingsForm() {
               </div>
 
               {selectedRole.isDeleted && (
-                <div className="bg-tertiary-container text-on-tertiary-container rounded-xl p-4 font-body-md text-body-md">
+                <div className="bg-primary-container text-on-primary-container rounded-xl p-4 font-body-md text-body-md">
                   {t("markedForDeletion")}
                 </div>
               )}
@@ -400,7 +400,7 @@ export function RolesSettingsForm() {
                           key={permission.id}
                           className={`inline-flex items-center gap-2 font-mono-sm text-mono-sm border rounded-full pl-3 pr-1 py-1 ${
                             pending === "add"
-                              ? "bg-tertiary-container text-on-tertiary-container border-transparent"
+                              ? "bg-primary-container text-on-primary-container border-transparent"
                               : pending === "remove"
                                 ? "bg-surface-container text-on-surface-variant border-outline-variant line-through opacity-70"
                                 : "bg-surface-container text-on-surface border-outline-variant"
@@ -421,7 +421,13 @@ export function RolesSettingsForm() {
                               type="button"
                               onClick={() => handleRevokePermission(permission)}
                               aria-label={t("removePermission")}
-                              className="text-on-surface-variant hover:text-error transition-colors"
+                              // A still-pending grant hasn't been saved yet, so
+                              // clicking this just drops the draft - not the
+                              // same weight as revoking a permission the role
+                              // already has, which gets the red/error hover.
+                              className={`text-on-surface-variant transition-colors ${
+                                pending === "add" ? "hover:text-on-surface" : "hover:text-error"
+                              }`}
                             >
                               <Icon name="close" size={14} />
                             </button>
@@ -458,7 +464,7 @@ export function RolesSettingsForm() {
                           key={user.id}
                           className={`flex items-center justify-between px-3 py-2 rounded-lg font-body-md text-body-md ${
                             pending === "add"
-                              ? "bg-tertiary-container text-on-tertiary-container"
+                              ? "bg-primary-container text-on-primary-container"
                               : pending === "remove"
                                 ? "bg-surface-container text-on-surface-variant line-through opacity-70"
                                 : "bg-surface-container text-on-surface"
@@ -477,7 +483,13 @@ export function RolesSettingsForm() {
                             <button
                               type="button"
                               onClick={() => handleUnassignUser(user.id)}
-                              className="font-label-caps text-label-caps uppercase text-on-surface-variant hover:text-error transition-colors"
+                              // A still-pending assignment hasn't been saved
+                              // yet, so clicking this just drops the draft -
+                              // not the same weight as unassigning a user the
+                              // role already has, which gets the red/error hover.
+                              className={`font-label-caps text-label-caps uppercase text-on-surface-variant transition-colors ${
+                                pending === "add" ? "hover:text-on-surface" : "hover:text-error"
+                              }`}
                             >
                               {t("removeUser")}
                             </button>

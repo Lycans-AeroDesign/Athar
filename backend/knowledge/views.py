@@ -8,6 +8,7 @@ from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import status
 from rest_framework.exceptions import PermissionDenied, ValidationError
+from rest_framework.parsers import MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -1175,6 +1176,61 @@ class ProjectAttachmentDetailView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+def apply_ordering(queryset, request, fields: dict[str, str]):
+    """Shared ?ordering= handling for every list view that backs a sortable
+    frontend table (see frontend/components/ui/DataTable.tsx) - `fields` is
+    that view's own allowlist mapping a public field name to the actual
+    model lookup to sort by (e.g. COMPONENT_ORDERING_FIELDS below), an
+    allowlist rather than passing the raw param straight to .order_by(),
+    which would let a caller sort (and leak ordering-oracle info about)
+    arbitrary related fields. ?ordering= is optionally "-"-prefixed for
+    descending (e.g. "-quantity_available") - an unrecognized value is
+    silently ignored rather than a 400, since it only ever comes from that
+    same view's own UI, never hand-typed by an API consumer that needs
+    strict validation."""
+    ordering_param = request.query_params.get("ordering", "").strip()
+    if not ordering_param:
+        return queryset
+    descending = ordering_param.startswith("-")
+    field = fields.get(ordering_param[1:] if descending else ordering_param)
+    if not field:
+        return queryset
+    return queryset.order_by(f"-{field}" if descending else field)
+
+
+# Tags/photo aren't sortable here - a M2M and a FK with no natural order -
+# so they're left out entirely; the table view just doesn't offer a sort
+# control for those columns.
+COMPONENT_ORDERING_FIELDS = {
+    "name": "name",
+    "category": "category__name",
+    "manufacturer": "manufacturer",
+    "part_number": "part_number",
+    "status": "status",
+    "quantity_available": "quantity_available",
+    "visibility": "visibility",
+    "created_at": "created_at",
+    "updated_at": "updated_at",
+}
+
+
+def _filter_and_order_components(queryset, request):
+    """Shared ?category=/?status=/?q=/?ordering= handling for
+    ComponentListCreateView.get and ComponentExportView.get, so "export"
+    keeps meaning "export what I'm currently looking at" (filtered AND
+    sorted) as the table view grows its own column sort."""
+    category_id = request.query_params.get("category")
+    if category_id:
+        queryset = queryset.filter(category_id=category_id)
+    status_param = request.query_params.get("status")
+    if status_param:
+        queryset = queryset.filter(status=status_param)
+    query = request.query_params.get("q", "").strip()
+    if query:
+        queryset = search.search_filter(queryset, query, "component")
+    return apply_ordering(queryset, request, COMPONENT_ORDERING_FIELDS)
+
+
 class ComponentListCreateView(APIView):
     def get_permissions(self):
         if self.request.method == "POST":
@@ -1183,22 +1239,17 @@ class ComponentListCreateView(APIView):
 
     @extend_schema(
         tags=["Engineering"],
-        summary="List components (optional ?category=<id>, ?status=, ?q=<search name/summary/manufacturer/part number>)",
+        summary=(
+            "List components (optional ?category=<id>, ?status=, ?q=<search name/summary/manufacturer/part "
+            "number>, ?ordering=<field, \"-\"-prefixed for descending - see COMPONENT_ORDERING_FIELDS>)"
+        ),
         responses={200: ComponentListSerializer(many=True), **COMMON_ERRORS},
     )
     def get(self, request):
         queryset = services.visible_components_for(request.user).select_related(
             "category", "created_by"
         ).prefetch_related("tags")
-        category_id = request.query_params.get("category")
-        if category_id:
-            queryset = queryset.filter(category_id=category_id)
-        status_param = request.query_params.get("status")
-        if status_param:
-            queryset = queryset.filter(status=status_param)
-        query = request.query_params.get("q", "").strip()
-        if query:
-            queryset = search.search_filter(queryset, query, "component")
+        queryset = _filter_and_order_components(queryset, request)
         return paginated_response(request, queryset, ComponentListSerializer)
 
     @extend_schema(
@@ -1215,30 +1266,22 @@ class ComponentListCreateView(APIView):
 
 
 class ComponentExportView(APIView):
-    """CSV export for the Components list page - same ?category=/?status=/?q=
-    filters as ComponentListCreateView.get, so "export" means "export what
-    I'm currently looking at", not always the whole org's inventory."""
+    """CSV export for the Components list page - same ?category=/?status=/
+    ?q=/?ordering= as ComponentListCreateView.get, so "export" means "export
+    what I'm currently looking at", not always the whole org's inventory."""
 
     permission_classes = [require_permission("component.read")]
 
     @extend_schema(
         tags=["Engineering"],
-        summary="Export visible components as CSV (optional ?category=<id>, ?status=, ?q=, same as the list endpoint)",
+        summary="Export visible components as CSV (optional ?category=<id>, ?status=, ?q=, ?ordering=, same as the list endpoint)",
         responses={200: OpenApiResponse(description="CSV file (text/csv)."), **COMMON_ERRORS},
     )
     def get(self, request):
         queryset = services.visible_components_for(request.user).select_related(
             "category", "created_by"
         ).prefetch_related("tags")
-        category_id = request.query_params.get("category")
-        if category_id:
-            queryset = queryset.filter(category_id=category_id)
-        status_param = request.query_params.get("status")
-        if status_param:
-            queryset = queryset.filter(status=status_param)
-        query = request.query_params.get("q", "").strip()
-        if query:
-            queryset = search.search_filter(queryset, query, "component")
+        queryset = _filter_and_order_components(queryset, request)
 
         response = HttpResponse(content_type="text/csv")
         response["Content-Disposition"] = 'attachment; filename="components.csv"'
@@ -1246,6 +1289,70 @@ class ComponentExportView(APIView):
         for row in services.component_csv_rows(queryset):
             writer.writerow(row)
         return response
+
+
+class ComponentImportTemplateView(APIView):
+    """A blank starting point for ComponentImportView - same column set,
+    with one filled-in example row so the free-text Specifications format
+    ("Label: Value; Label: Value") is self-documenting rather than needing a
+    separate help page."""
+
+    permission_classes = [require_permission("component.create")]
+
+    @extend_schema(
+        tags=["Engineering"],
+        summary="Download a blank CSV template for bulk-importing components",
+        responses={200: OpenApiResponse(description="CSV file (text/csv)."), **COMMON_ERRORS},
+    )
+    def get(self, request):
+        response = HttpResponse(content_type="text/csv")
+        response["Content-Disposition"] = 'attachment; filename="components-template.csv"'
+        writer = csv.writer(response)
+        for row in services.component_import_template_rows():
+            writer.writerow(row)
+        return response
+
+
+class ComponentImportView(APIView):
+    """Preview or apply a bulk CSV import of components (see
+    services.import_components_csv/component_import_template_rows for the
+    expected columns and the preview/commit contract) - gated on
+    component.create, same as creating one component at a time, since a
+    "create" row is that same action just repeated. Updating an existing
+    match additionally needs component.update, checked per-row by
+    services._classify_component_row so a Member's import still creates
+    what it can rather than failing outright."""
+
+    permission_classes = [require_permission("component.create")]
+    parser_classes = [MultiPartParser]
+
+    @extend_schema(
+        tags=["Engineering"],
+        summary=(
+            "Preview (commit=false, the default) or apply (commit=true) a bulk CSV import of components "
+            "(multipart fields: file, commit)"
+        ),
+        responses={
+            200: OpenApiResponse(
+                description=(
+                    '{"rows": [{"row": int, "action": "create"|"update"|"unchanged"|"error", "name"?: str, '
+                    '"changes"?: object, "message"?: str}], "summary": {"create": int, "update": int, '
+                    '"unchanged": int, "error": int}, "applied"?: {"created": int, "updated": int, "skipped": int}}'
+                )
+            ),
+            400: BAD_REQUEST,
+            **COMMON_ERRORS,
+        },
+    )
+    def post(self, request):
+        uploaded_file = request.FILES.get("file")
+        if uploaded_file is None:
+            raise ValidationError({"file": ["This field is required."]})
+        commit = str(request.data.get("commit", "")).strip().lower() in ("true", "1")
+        result = services.import_components_csv(
+            actor=request.user, request=request, csv_file=uploaded_file, commit=commit
+        )
+        return Response(result)
 
 
 class ComponentDetailView(APIView):
@@ -1346,6 +1453,20 @@ class ComponentAttachmentDetailView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+FAILURE_ORDERING_FIELDS = {
+    "title": "title",
+    "component": "component__name",
+    "project": "project__name",
+    "aircraft": "aircraft",
+    "date": "date",
+    "severity": "severity",
+    "status": "status",
+    "visibility": "visibility",
+    "created_at": "created_at",
+    "updated_at": "updated_at",
+}
+
+
 class FailureListCreateView(APIView):
     def get_permissions(self):
         if self.request.method == "POST":
@@ -1354,7 +1475,10 @@ class FailureListCreateView(APIView):
 
     @extend_schema(
         tags=["Engineering"],
-        summary="List failure reports (optional ?severity=, ?status=, ?q=<search title/summary/root cause>)",
+        summary=(
+            "List failure reports (optional ?severity=, ?status=, ?q=<search title/summary/root cause>, "
+            "?ordering=<field, \"-\"-prefixed for descending - see FAILURE_ORDERING_FIELDS>)"
+        ),
         responses={200: FailureListSerializer(many=True), **COMMON_ERRORS},
     )
     def get(self, request):
@@ -1370,6 +1494,7 @@ class FailureListCreateView(APIView):
         query = request.query_params.get("q", "").strip()
         if query:
             queryset = search.search_filter(queryset, query, "failure")
+        queryset = apply_ordering(queryset, request, FAILURE_ORDERING_FIELDS)
         return paginated_response(request, queryset, FailureListSerializer)
 
     @extend_schema(
@@ -1607,6 +1732,20 @@ class SopAttachmentDetailView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+TEST_ORDERING_FIELDS = {
+    "title": "title",
+    "test_type": "test_type",
+    "date": "date",
+    "location": "location",
+    "project": "project__name",
+    "status": "status",
+    "pass_fail": "pass_fail",
+    "visibility": "visibility",
+    "created_at": "created_at",
+    "updated_at": "updated_at",
+}
+
+
 class TestListCreateView(APIView):
     def get_permissions(self):
         if self.request.method == "POST":
@@ -1615,7 +1754,10 @@ class TestListCreateView(APIView):
 
     @extend_schema(
         tags=["Engineering"],
-        summary="List tests (optional ?test_type=, ?status=, ?pass_fail=, ?q=<search title/objective/results/conclusion>)",
+        summary=(
+            "List tests (optional ?test_type=, ?status=, ?pass_fail=, ?q=<search title/objective/results/"
+            "conclusion>, ?ordering=<field, \"-\"-prefixed for descending - see TEST_ORDERING_FIELDS>)"
+        ),
         responses={200: TestListSerializer(many=True), **COMMON_ERRORS},
     )
     def get(self, request):
@@ -1634,6 +1776,7 @@ class TestListCreateView(APIView):
         query = request.query_params.get("q", "").strip()
         if query:
             queryset = search.search_filter(queryset, query, "test")
+        queryset = apply_ordering(queryset, request, TEST_ORDERING_FIELDS)
         return paginated_response(request, queryset, TestListSerializer)
 
     @extend_schema(
@@ -1746,6 +1889,17 @@ def _visible_document_or_404(request, pk):
     return _visible_instance_or_404(request, queryset, "document", pk)
 
 
+DOCUMENT_ORDERING_FIELDS = {
+    "title": "title",
+    "doc_type": "doc_type",
+    "source": "source",
+    "category": "category__name",
+    "publication_date": "publication_date",
+    "created_at": "created_at",
+    "updated_at": "updated_at",
+}
+
+
 class DocumentListCreateView(APIView):
     def get_permissions(self):
         if self.request.method == "POST":
@@ -1754,7 +1908,10 @@ class DocumentListCreateView(APIView):
 
     @extend_schema(
         tags=["Engineering"],
-        summary="List documents (optional ?doc_type=, ?source=, ?category=, ?q=<search title/description>)",
+        summary=(
+            "List documents (optional ?doc_type=, ?source=, ?category=, ?q=<search title/description>, "
+            "?ordering=<field, \"-\"-prefixed for descending - see DOCUMENT_ORDERING_FIELDS>)"
+        ),
         responses={200: DocumentListSerializer(many=True), **COMMON_ERRORS},
     )
     def get(self, request):
@@ -1773,6 +1930,7 @@ class DocumentListCreateView(APIView):
         query = request.query_params.get("q", "").strip()
         if query:
             queryset = search.search_filter(queryset, query, "document")
+        queryset = apply_ordering(queryset, request, DOCUMENT_ORDERING_FIELDS)
         return paginated_response(request, queryset, DocumentListSerializer)
 
     @extend_schema(

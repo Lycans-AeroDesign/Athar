@@ -1599,6 +1599,32 @@ class EngineeringDomainTests(KnowledgeTestCase):
         self.assertEqual(response.data["results"][0]["quantity_available"], 12)
         self.assertEqual(response.data["results"][0]["photo"]["id"], str(photo.pk))
 
+    def test_component_list_ordering(self):
+        _, member_access = self._login_with_role("compordering@example.com", "Member")
+        for name, quantity in [("Zener Diode", 3), ("Aileron Servo", 10), ("Motor Mount", 1)]:
+            self.client.post(
+                reverse("knowledge-component-list-create"),
+                {"name": name, "quantity_available": quantity},
+                format="json",
+                **self._auth(member_access),
+            )
+
+        response = self.client.get(
+            reverse("knowledge-component-list-create") + "?ordering=name", **self._auth(member_access)
+        )
+        self.assertEqual([c["name"] for c in response.data["results"]], ["Aileron Servo", "Motor Mount", "Zener Diode"])
+
+        response = self.client.get(
+            reverse("knowledge-component-list-create") + "?ordering=-quantity_available", **self._auth(member_access)
+        )
+        self.assertEqual([c["name"] for c in response.data["results"]], ["Aileron Servo", "Zener Diode", "Motor Mount"])
+
+        # Unrecognized field - ignored rather than a 400, falling back to the default ordering.
+        response = self.client.get(
+            reverse("knowledge-component-list-create") + "?ordering=not_a_real_field", **self._auth(member_access)
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
     def test_component_rejects_photo_from_another_organization(self):
         _, member_access = self._login_with_role("compphotocross@example.com", "Member")
         other_organization = create_test_organization(name="Someone Else's Workshop")
@@ -1651,6 +1677,142 @@ class EngineeringDomainTests(KnowledgeTestCase):
         response = self.client.get(reverse("knowledge-component-export"), **self._auth(guest_access))
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
+    def test_component_import_template_lists_expected_columns(self):
+        _, member_access = self._login_with_role("compimporttemplate@example.com", "Member")
+        response = self.client.get(reverse("knowledge-component-import-template"), **self._auth(member_access))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response["Content-Type"], "text/csv")
+        header = response.getvalue().decode().splitlines()[0]
+        self.assertEqual(
+            header,
+            "Name,Category,Manufacturer,Part Number,Link,Quantity Available,Status,Visibility,Tags,Summary,"
+            "Specifications",
+        )
+
+    def _import_csv(self, access, csv_content: str, *, commit: bool):
+        # A fresh SimpleUploadedFile per call - reusing one instance across
+        # two posts (preview then commit) would send an already-exhausted
+        # stream the second time, same as a real browser re-reading a File.
+        upload = SimpleUploadedFile("components.csv", csv_content.encode(), content_type="text/csv")
+        return self.client.post(
+            reverse("knowledge-component-import"),
+            {"file": upload, "commit": "true" if commit else "false"},
+            format="multipart",
+            **self._auth(access),
+        )
+
+    def test_component_import_preview_classifies_rows_without_writing_anything(self):
+        _, mentor_access = self._login_with_role("compimportpreview@example.com", "Mentor")
+        self.client.post(
+            reverse("knowledge-component-list-create"),
+            {"name": "ESC 40A", "quantity_available": 2, "status": "TESTING"},
+            format="json",
+            **self._auth(mentor_access),
+        )
+        self.client.post(
+            reverse("knowledge-component-list-create"),
+            {"name": "Frame Kit", "quantity_available": 1},
+            format="json",
+            **self._auth(mentor_access),
+        )
+        csv_content = (
+            "Name,Category,Manufacturer,Part Number,Link,Quantity Available,Status,Visibility,Tags,Summary,"
+            "Specifications\n"
+            "Brushless Motor,Propulsion,T-Motor,MN5212,,4,Testing,Public,\"motor, propulsion\",,"
+            "\"KV: 340; Weight: 238g\"\n"  # new - create
+            "ESC 40A,,,,,5,Certified,,,,\n"  # existing, quantity+status changed - update
+            "Frame Kit,,,,,1,,,,,\n"  # existing, identical - unchanged
+            ",Propulsion,,,,1,,,,,\n"  # missing Name - error
+        )
+
+        response = self._import_csv(mentor_access, csv_content, commit=False)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["summary"], {"create": 1, "update": 1, "unchanged": 1, "error": 1})
+        self.assertNotIn("applied", response.data)
+        rows_by_row_number = {row["row"]: row for row in response.data["rows"]}
+        self.assertEqual(rows_by_row_number[2]["action"], "create")
+        self.assertEqual(
+            rows_by_row_number[3]["changes"],
+            {
+                "quantity_available": {"old": "2", "new": "5"},
+                "status": {"old": "Testing", "new": "Certified"},
+            },
+        )
+        self.assertEqual(rows_by_row_number[4]["action"], "unchanged")
+        self.assertEqual(rows_by_row_number[5]["action"], "error")
+
+        # Nothing was actually written - not the new component, not the
+        # quantity/status change, and not the auto-created "Propulsion" category.
+        self.assertFalse(Component.objects.filter(organization=self.organization, name="Brushless Motor").exists())
+        self.assertEqual(Component.objects.get(organization=self.organization, name="ESC 40A").quantity_available, 2)
+        self.assertFalse(Category.objects.filter(organization=self.organization, name__iexact="Propulsion").exists())
+
+    def test_component_import_commit_applies_changes_and_leaves_blank_cells_alone(self):
+        _, mentor_access = self._login_with_role("compimportcommit@example.com", "Mentor")
+        self.client.post(
+            reverse("knowledge-component-list-create"),
+            {"name": "ESC 40A", "manufacturer": "Hobbywing", "quantity_available": 2, "status": "TESTING"},
+            format="json",
+            **self._auth(mentor_access),
+        )
+        csv_content = (
+            "Name,Category,Manufacturer,Part Number,Link,Quantity Available,Status,Visibility,Tags,Summary,"
+            "Specifications\n"
+            "Brushless Motor,Propulsion,T-Motor,MN5212,,4,Testing,Public,\"motor, propulsion\",,"
+            "\"KV: 340; Weight: 238g\"\n"
+            "ESC 40A,,,,,5,Certified,,,,\n"  # Manufacturer left blank - should NOT clear Hobbywing
+        )
+
+        response = self._import_csv(mentor_access, csv_content, commit=True)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["applied"], {"created": 1, "updated": 1, "skipped": 0})
+
+        created = Component.objects.get(organization=self.organization, name="Brushless Motor")
+        self.assertEqual(created.manufacturer, "T-Motor")
+        self.assertEqual(created.quantity_available, 4)
+        self.assertEqual(created.specifications, [{"label": "KV", "value": "340"}, {"label": "Weight", "value": "238g"}])
+        self.assertCountEqual([tag.name for tag in created.tags.all()], ["motor", "propulsion"])
+        self.assertEqual(created.category, Category.objects.get(organization=self.organization, name__iexact="Propulsion"))
+
+        updated = Component.objects.get(organization=self.organization, name="ESC 40A")
+        self.assertEqual(updated.quantity_available, 5)
+        self.assertEqual(updated.status, Component.Status.CERTIFIED)
+        self.assertEqual(updated.manufacturer, "Hobbywing")  # untouched - blank cell, not cleared
+
+    def test_component_import_reimporting_identical_data_creates_nothing(self):
+        _, mentor_access = self._login_with_role("compimportidempotent@example.com", "Mentor")
+        csv_content = "Name,Quantity Available,Status\nESC 40A,2,Testing\n"
+        first = self._import_csv(mentor_access, csv_content, commit=True)
+        self.assertEqual(first.data["applied"], {"created": 1, "updated": 0, "skipped": 0})
+
+        second = self._import_csv(mentor_access, csv_content, commit=True)
+        self.assertEqual(second.data["applied"], {"created": 0, "updated": 0, "skipped": 1})
+        self.assertEqual(Component.objects.filter(organization=self.organization, name="ESC 40A").count(), 1)
+
+    def test_component_import_update_requires_component_update_permission(self):
+        _, member_access = self._login_with_role("compimportnoupdate@example.com", "Member")
+        self.client.post(
+            reverse("knowledge-component-list-create"),
+            {"name": "ESC 40A", "quantity_available": 2},
+            format="json",
+            **self._auth(member_access),
+        )
+        csv_content = "Name,Quantity Available\nESC 40A,5\n"
+
+        response = self._import_csv(member_access, csv_content, commit=True)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["applied"], {"created": 0, "updated": 0, "skipped": 0})
+        self.assertEqual(response.data["summary"]["error"], 1)
+        self.assertEqual(Component.objects.get(organization=self.organization, name="ESC 40A").quantity_available, 2)
+
+    def test_component_import_requires_component_create(self):
+        _, guest_access = self._login_with_role("compimportguest@example.com", "Guest")
+        response = self._import_csv(guest_access, "Name\nWidget\n", commit=False)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
     def test_failure_crud_and_permission_gating(self):
         _, member_access = self._login_with_role("failmember@example.com", "Member")
         response = self.client.post(
@@ -1691,6 +1853,34 @@ class EngineeringDomainTests(KnowledgeTestCase):
         response = self.client.delete(reverse("knowledge-failure-detail", args=[failure["id"]]), **self._auth(admin_access))
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(Failure.objects.exists())
+
+    def test_failure_list_ordering(self):
+        _, member_access = self._login_with_role("failordering@example.com", "Member")
+        for title, severity in [("Zener Diode Failure", "LOW"), ("Antenna Snap", "HIGH"), ("Motor Mount Crack", "MEDIUM")]:
+            self.client.post(
+                reverse("knowledge-failure-list-create"),
+                {"title": title, "severity": severity},
+                format="json",
+                **self._auth(member_access),
+            )
+
+        response = self.client.get(
+            reverse("knowledge-failure-list-create") + "?ordering=title", **self._auth(member_access)
+        )
+        self.assertEqual(
+            [f["title"] for f in response.data["results"]],
+            ["Antenna Snap", "Motor Mount Crack", "Zener Diode Failure"],
+        )
+
+        response = self.client.get(
+            reverse("knowledge-failure-list-create") + "?ordering=-severity", **self._auth(member_access)
+        )
+        # Alphabetical on the raw enum value (HIGH/LOW/MEDIUM), descending:
+        # this endpoint sorts the stored code, not a display severity ranking.
+        self.assertEqual(
+            [f["title"] for f in response.data["results"]],
+            ["Motor Mount Crack", "Zener Diode Failure", "Antenna Snap"],
+        )
 
     def test_sop_create_requires_senior_member_not_just_member(self):
         _, member_access = self._login_with_role("sopmember@example.com", "Member")
@@ -1752,6 +1942,31 @@ class EngineeringDomainTests(KnowledgeTestCase):
         response = self.client.delete(reverse("knowledge-test-detail", args=[test["id"]]), **self._auth(head_access))
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(Test.objects.exists())
+
+    def test_test_list_ordering(self):
+        _, member_access = self._login_with_role("testordering@example.com", "Member")
+        for title, test_type in [("Zener Bench Test", "ELECTRICAL"), ("Autopilot Flight Test", "FLIGHT"), ("Motor Thrust Test", "THRUST")]:
+            self.client.post(
+                reverse("knowledge-test-list-create"),
+                {"title": title, "test_type": test_type},
+                format="json",
+                **self._auth(member_access),
+            )
+
+        response = self.client.get(reverse("knowledge-test-list-create") + "?ordering=title", **self._auth(member_access))
+        self.assertEqual(
+            [t["title"] for t in response.data["results"]],
+            ["Autopilot Flight Test", "Motor Thrust Test", "Zener Bench Test"],
+        )
+
+        response = self.client.get(
+            reverse("knowledge-test-list-create") + "?ordering=-test_type", **self._auth(member_access)
+        )
+        # Alphabetical descending on the raw enum value: THRUST > FLIGHT > ELECTRICAL.
+        self.assertEqual(
+            [t["title"] for t in response.data["results"]],
+            ["Motor Thrust Test", "Autopilot Flight Test", "Zener Bench Test"],
+        )
 
     def test_test_relations_and_search(self):
         _, head_access = self._login_with_role("testrel@example.com", "Subteam Head")
@@ -2056,6 +2271,24 @@ class DocumentTests(KnowledgeTestCase):
         response = self.client.delete(reverse("knowledge-document-detail", args=[document["id"]]), **self._auth(senior_access))
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(Document.objects.exists())
+
+    def test_document_list_ordering(self):
+        _, member_access = self._login_with_role("docordering@example.com", "Member")
+        for title, doc_type in [("Zener Diode Datasheet", "DATASHEET"), ("Airframe Manual", "MANUAL"), ("Motor ESC Manual", "MANUAL")]:
+            self.client.post(
+                reverse("knowledge-document-list-create"),
+                {"title": title, "doc_type": doc_type},
+                format="json",
+                **self._auth(member_access),
+            )
+
+        response = self.client.get(
+            reverse("knowledge-document-list-create") + "?ordering=title", **self._auth(member_access)
+        )
+        self.assertEqual(
+            [d["title"] for d in response.data["results"]],
+            ["Airframe Manual", "Motor ESC Manual", "Zener Diode Datasheet"],
+        )
 
     def test_restricted_document_hidden_from_list_search_and_relations(self):
         owner, owner_access = self._login_with_role("docrestowner@example.com", "Member")

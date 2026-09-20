@@ -1,3 +1,6 @@
+import csv
+import io
+
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied
 from django.db.models import Q, QuerySet
@@ -1351,3 +1354,312 @@ def component_csv_rows(components):
             component.created_at.isoformat(),
             component.updated_at.isoformat(),
         ]
+
+
+def _resolve_choice(raw: str, choices) -> str | None:
+    """Matches `raw` against a TextChoices' values or display labels,
+    case-insensitively - so a sheet round-tripped from component_csv_rows's
+    own "Certified"/"Testing"/"Deprecated" labels imports the same as one
+    typed with the raw CERTIFIED/TESTING/DEPRECATED codes."""
+    normalized = raw.strip().lower()
+    for value, label in choices:
+        if normalized == value.lower() or normalized == label.lower():
+            return value
+    return None
+
+
+def _parse_specifications_cell(raw: str) -> list[dict[str, str]]:
+    """Parses the flattened "Label: Value; Label: Value" cell format the
+    Specifications column uses - ComponentWriteSerializer.validate_specifications
+    expects a list of {label, value} dicts, which a single CSV cell can't
+    represent any more directly than this."""
+    specifications = []
+    for chunk in raw.split(";"):
+        chunk = chunk.strip()
+        if not chunk:
+            continue
+        label, sep, value = chunk.partition(":")
+        if not sep:
+            raise ValueError('each specification must look like "Label: Value"')
+        specifications.append({"label": label.strip(), "value": value.strip()})
+    return specifications
+
+
+def _get_or_create_category_by_name(name: str, *, actor) -> Category:
+    """Case-insensitive get-or-create, scoped to actor's organization - a
+    typo-free but not-yet-existing category name in an imported sheet
+    creates the category on the fly rather than failing the row, the same
+    way an unrecognized tag name already does via _sync_tags. Not gated on
+    category.manage: creating components already lets a Member freely invent
+    new tags, so this keeps categories consistent with that rather than
+    silently failing rows for a Member who lacks that permission. Only ever
+    called at commit time (see _resolve_fields_for_apply) - a preview must
+    never write to the database, so during a dry run an unrecognized name is
+    compared/shown as plain text instead (see _build_field_changes)."""
+    category = Category.objects.filter(organization=actor.organization, name__iexact=name).first()
+    return category or create_category(actor=actor, name=name)
+
+
+def _parse_component_row(row: dict, *, actor) -> dict:
+    """Parses one CSV row into a dict using the same field names
+    create_component/update_component expect (plus "name", popped by the
+    caller) - but ONLY for cells that are actually filled in. A blank cell
+    is simply absent from the returned dict, which is what lets
+    _build_field_changes implement "blank means leave the existing value
+    alone" on an update while still meaning "use the normal default" on a
+    create. Category is kept as a plain `category_name` string, not
+    resolved to a Category instance, so parsing a row never writes to the
+    database - see _get_or_create_category_by_name. Raises ValueError on a
+    malformed cell (missing Name, non-numeric Quantity, an unrecognized
+    Status/Visibility, or a Specifications cell that isn't "Label: Value"
+    pairs)."""
+    name = (row.get("Name") or "").strip()
+    if not name:
+        raise ValueError("Name is required.")
+    parsed: dict = {"name": name}
+
+    category_name = (row.get("Category") or "").strip()
+    if category_name:
+        parsed["category_name"] = category_name
+
+    for field, column in (("manufacturer", "Manufacturer"), ("part_number", "Part Number"), ("link", "Link"), ("summary", "Summary")):
+        value = (row.get(column) or "").strip()
+        if value:
+            parsed[field] = value
+
+    quantity_raw = (row.get("Quantity Available") or "").strip()
+    if quantity_raw:
+        if not quantity_raw.isdigit():
+            raise ValueError("Quantity Available must be a non-negative whole number.")
+        parsed["quantity_available"] = int(quantity_raw)
+
+    status_raw = (row.get("Status") or "").strip()
+    if status_raw:
+        resolved_status = _resolve_choice(status_raw, Component.Status.choices)
+        if resolved_status is None:
+            raise ValueError(f'Status "{status_raw}" must be one of Certified, Testing, Deprecated.')
+        parsed["status"] = resolved_status
+
+    visibility_raw = (row.get("Visibility") or "").strip()
+    if visibility_raw:
+        resolved_visibility = _resolve_choice(visibility_raw, Visibility.choices)
+        if resolved_visibility is None:
+            raise ValueError(f'Visibility "{visibility_raw}" must be one of Public, Restricted.')
+        parsed["visibility"] = resolved_visibility
+
+    specifications_raw = (row.get("Specifications") or "").strip()
+    if specifications_raw:
+        parsed["specifications"] = _parse_specifications_cell(specifications_raw)
+
+    tags_raw = (row.get("Tags") or "").strip()
+    if tags_raw:
+        parsed["tag_names"] = [tag.strip() for tag in tags_raw.split(",") if tag.strip()]
+
+    return parsed
+
+
+# Maps a _parse_component_row field name to the key views.ComponentImportView's
+# response uses for it - only differs where the internal name carries a
+# "_name"/"_names" suffix that a display-only diff has no use for.
+_DIFF_FIELD_KEYS = {"category_name": "category", "tag_names": "tags"}
+
+
+def _format_tags_for_diff(tag_names) -> str:
+    # Same normalization _sync_tags applies (strip/lowercase/dedupe), so a
+    # sheet's "Motor, Propulsion" and a stored ["motor", "propulsion"] read
+    # as identical rather than a spurious diff.
+    return ", ".join(sorted({name.strip().lower() for name in tag_names if name.strip()}))
+
+
+def _format_specifications_for_diff(specifications) -> str:
+    return "; ".join(f"{row['label']}: {row['value']}" for row in specifications)
+
+
+def _new_field_display(field: str, value) -> str:
+    if field == "status":
+        return Component.Status(value).label
+    if field == "visibility":
+        return Visibility(value).label
+    if field == "tag_names":
+        return _format_tags_for_diff(value)
+    if field == "specifications":
+        return _format_specifications_for_diff(value)
+    if field == "quantity_available":
+        return str(value)
+    return value  # category_name, manufacturer, part_number, link, summary
+
+
+def _existing_field_display(field: str, existing: Component) -> str:
+    if field == "category_name":
+        return existing.category.name if existing.category else ""
+    if field == "tag_names":
+        return _format_tags_for_diff([tag.name for tag in existing.tags.all()])
+    if field == "specifications":
+        return _format_specifications_for_diff(existing.specifications)
+    if field == "status":
+        return existing.get_status_display()
+    if field == "visibility":
+        return Visibility(existing.visibility).label
+    if field == "quantity_available":
+        return str(existing.quantity_available)
+    return getattr(existing, field)  # manufacturer, part_number, link, summary
+
+
+def _build_field_changes(parsed: dict, existing: Component | None) -> dict[str, dict[str, str]]:
+    """Builds {field: {"old": str, "new": str}} for every field `parsed`
+    specifies (i.e. every non-blank cell besides Name) whose value actually
+    differs - `old` is always "" when `existing` is None (a new component),
+    letting a "create" row reuse the same shape a diff on an "update" row
+    uses. Comparison is case-insensitive so a same-value-different-case cell
+    (or a tag/category the sheet capitalizes differently) isn't reported as
+    a change."""
+    changes = {}
+    for field, value in parsed.items():
+        new_display = _new_field_display(field, value)
+        old_display = _existing_field_display(field, existing) if existing is not None else ""
+        if old_display.strip().lower() == new_display.strip().lower():
+            continue
+        changes[_DIFF_FIELD_KEYS.get(field, field)] = {"old": old_display, "new": new_display}
+    return changes
+
+
+def _classify_component_row(row: dict, *, actor) -> dict:
+    """Classifies one CSV row against the org's existing components, purely
+    in memory - see import_components_csv for how the result is used.
+    Matching is case-insensitive on Name, scoped to the org. Returns one of:
+      {"action": "error", "message": str}
+      {"action": "create", "name": str, "fields": dict, "changes": dict}
+      {"action": "update", "name": str, "component": Component, "fields": dict, "changes": dict}
+      {"action": "unchanged", "name": str}
+    `fields` is the exact kwargs shape create_component/update_component
+    expect, once _resolve_fields_for_apply swaps category_name for a real
+    Category - see that function's docstring for why that swap only ever
+    happens at commit time."""
+    try:
+        parsed = _parse_component_row(row, actor=actor)
+    except ValueError as exc:
+        return {"action": "error", "message": str(exc)}
+
+    name = parsed.pop("name")
+    existing = Component.objects.filter(organization=actor.organization, name__iexact=name).first()
+    changes = _build_field_changes(parsed, existing)
+
+    if existing is None:
+        return {"action": "create", "name": name, "fields": {"name": name, **parsed}, "changes": changes}
+
+    if not changes:
+        return {"action": "unchanged", "name": existing.name}
+
+    if not actor.has_permission("component.update"):
+        return {
+            "action": "error",
+            "message": f'"{name}" already exists and you don\'t have permission to update it.',
+        }
+
+    return {"action": "update", "name": existing.name, "component": existing, "fields": parsed, "changes": changes}
+
+
+def _resolve_fields_for_apply(fields: dict, *, actor) -> dict:
+    """Only called once a row is actually being written (see
+    import_components_csv's commit=True branch) - swaps the preview-safe
+    `category_name` string for a real, possibly-just-created Category
+    instance. Every other field is already in the exact shape
+    create_component/update_component expect."""
+    resolved = dict(fields)
+    if "category_name" in resolved:
+        resolved["category"] = _get_or_create_category_by_name(resolved.pop("category_name"), actor=actor)
+    return resolved
+
+
+def import_components_csv(*, actor, request=None, csv_file, commit: bool) -> dict:
+    """Two-phase bulk import for components (see views.ComponentImportView
+    and component_import_template_rows below for the expected columns).
+
+    With commit=False (the frontend's first call, once the user picks a
+    file), this is a pure preview: every row is classified/diffed against
+    any existing component with the same name (case-insensitive, scoped to
+    the org) but NOTHING is written to the database - not even an
+    auto-created Category (see _get_or_create_category_by_name). The
+    frontend shows this preview and asks the user to confirm before
+    anything is actually applied.
+
+    With commit=True, the frontend re-sends the identical file after that
+    confirmation; matching rows are then actually created/updated through
+    create_component/update_component (so audit logging/tag sync/
+    file-in-text confirmation stay consistent with a normal single-component
+    write). A row with no changes from its existing match is always skipped,
+    and an errored row is always skipped, regardless of commit - there's
+    nothing meaningful to apply either way.
+
+    Returns {"rows": [{"row": int, "action": "create"|"update"|"unchanged"|
+    "error", "name"?: str, "changes"?: dict, "message"?: str}], "summary":
+    {"create": int, "update": int, "unchanged": int, "error": int}} plus,
+    when commit=True, "applied": {"created": int, "updated": int, "skipped":
+    int} - row numbers count the header as row 1, matching what the user
+    sees if they open the sheet in Excel/Sheets."""
+    # StringIO over a decoded read(), not TextIOWrapper(csv_file) directly -
+    # Django's UploadedFile doesn't reliably implement the raw binary-stream
+    # protocol TextIOWrapper expects. utf-8-sig strips Excel's BOM if present.
+    try:
+        text = csv_file.read().decode("utf-8-sig")
+    except UnicodeDecodeError:
+        raise ValidationError({"file": ["That file isn't a valid UTF-8 CSV."]})
+    reader = csv.DictReader(io.StringIO(text))
+
+    rows: list[dict] = []
+    created = updated = skipped = 0
+    for row_number, row in enumerate(reader, start=2):
+        classification = _classify_component_row(row, actor=actor)
+        action = classification["action"]
+
+        if action == "error":
+            rows.append({"row": row_number, "action": "error", "message": classification["message"]})
+            continue
+
+        if action == "unchanged":
+            skipped += 1
+            rows.append({"row": row_number, "action": "unchanged", "name": classification["name"]})
+            continue
+
+        rows.append(
+            {"row": row_number, "action": action, "name": classification["name"], "changes": classification["changes"]}
+        )
+        if not commit:
+            continue
+
+        fields = _resolve_fields_for_apply(classification["fields"], actor=actor)
+        if action == "create":
+            create_component(actor=actor, request=request, **fields)
+            created += 1
+        else:
+            update_component(component=classification["component"], actor=actor, request=request, **fields)
+            updated += 1
+
+    result = {
+        "rows": rows,
+        "summary": {
+            "create": sum(1 for r in rows if r["action"] == "create"),
+            "update": sum(1 for r in rows if r["action"] == "update"),
+            "unchanged": sum(1 for r in rows if r["action"] == "unchanged"),
+            "error": sum(1 for r in rows if r["action"] == "error"),
+        },
+    }
+    if commit:
+        result["applied"] = {"created": created, "updated": updated, "skipped": skipped}
+    return result
+
+
+def component_import_template_rows():
+    """Header row + one example row for views.ComponentImportTemplateView -
+    matches import_components_csv's expected columns exactly, and the
+    example row doubles as inline documentation for the Specifications
+    cell's "Label: Value; Label: Value" format."""
+    yield [
+        "Name", "Category", "Manufacturer", "Part Number", "Link", "Quantity Available", "Status", "Visibility",
+        "Tags", "Summary", "Specifications",
+    ]
+    yield [
+        "Example: Brushless Motor", "Propulsion", "T-Motor", "MN5212-KV340", "https://example.com/product",
+        "4", "Testing", "Public", "motor, propulsion", "Short description of the component.",
+        "KV: 340; Weight: 238g",
+    ]

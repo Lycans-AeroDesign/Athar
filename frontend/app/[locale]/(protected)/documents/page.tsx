@@ -4,12 +4,13 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 import { Can } from "@/components/auth/Can";
+import { DocumentsTable } from "@/components/engineering/DocumentsTable";
 import { ActiveFilterChip } from "@/components/ui/ActiveFilterChip";
 import { Button } from "@/components/ui/Button";
 import { Combobox } from "@/components/ui/Combobox";
 import { Icon } from "@/components/ui/Icon";
 import { Pagination } from "@/components/ui/Pagination";
-import { getDocuments } from "@/lib/api/documents";
+import { getDocuments, type DocumentOrdering } from "@/lib/api/documents";
 import { Link } from "@/i18n/navigation";
 import type { DocType, DocumentSource, DocumentSummary } from "@/lib/api/types";
 import { useEngineeringListFiltersEnabled } from "@/lib/auth/permissions";
@@ -40,6 +41,7 @@ export default function DocumentsPage() {
   const [searchInput, setSearchInput] = useState("");
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
+  const [ordering, setOrdering] = useState<DocumentOrdering | undefined>(undefined);
   useEffect(() => {
     const handle = setTimeout(() => {
       setQuery(searchInput.trim());
@@ -51,7 +53,7 @@ export default function DocumentsPage() {
   // Keyed by the filter+page combination it was fetched for - see
   // failures/page.tsx's matching comment for why this avoids a plain
   // setResult(null) reset.
-  const filterKey = `${docTypeFilter ?? ""}:${sourceFilter ?? ""}:${query}:${page}`;
+  const filterKey = `${docTypeFilter ?? ""}:${sourceFilter ?? ""}:${query}:${page}:${ordering ?? ""}`;
   const [result, setResult] = useState<{
     key: string;
     documents: DocumentSummary[];
@@ -68,12 +70,13 @@ export default function DocumentsPage() {
       source: sourceFilter ?? undefined,
       q: query || undefined,
       page,
+      ordering,
     }).then(
       (data) =>
         setResult({ key: filterKey, documents: data.results, hasNext: data.next !== null, count: data.count }),
       (err) => setErrorResult({ key: filterKey, message: err instanceof Error ? err.message : String(err) }),
     );
-  }, [docTypeFilter, sourceFilter, query, page, filterKey]);
+  }, [docTypeFilter, sourceFilter, query, page, filterKey, ordering]);
 
   function updateDocTypeFilter(value: DocType | null) {
     setDocTypeFilter(value);
@@ -82,6 +85,11 @@ export default function DocumentsPage() {
 
   function updateSourceFilter(value: DocumentSource | null) {
     setSourceFilter(value);
+    setPage(1);
+  }
+
+  function updateOrdering(value: DocumentOrdering) {
+    setOrdering(value);
     setPage(1);
   }
 
@@ -158,38 +166,7 @@ export default function DocumentsPage() {
       ) : documents.length === 0 ? (
         <p className="font-body-md text-body-md text-on-surface-variant">{t("emptyState")}</p>
       ) : (
-        <div className="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-x-auto">
-          <table className="w-full text-start border-collapse">
-            <thead>
-              <tr className="border-b border-outline-variant">
-                <th className="py-3 px-4 font-label-caps text-label-caps text-on-surface-variant text-start">{t("colTitle")}</th>
-                <th className="py-3 px-4 font-label-caps text-label-caps text-on-surface-variant text-start">{t("colType")}</th>
-                <th className="py-3 px-4 font-label-caps text-label-caps text-on-surface-variant text-start">{t("colSource")}</th>
-                <th className="py-3 px-4 font-label-caps text-label-caps text-on-surface-variant text-start">{t("colCategory")}</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-outline-variant">
-              {documents.map((doc) => (
-                <tr key={doc.id} className="hover:bg-surface-container-low transition-colors">
-                  <td className="py-3 px-4">
-                    <Link
-                      href={`/documents/${doc.id}`}
-                      className="flex items-center gap-1.5 font-body-md text-body-md text-primary hover:underline"
-                    >
-                      {doc.visibility === "RESTRICTED" && <Icon name="lock" size={14} className="text-error shrink-0" />}
-                      {doc.title}
-                    </Link>
-                  </td>
-                  <td className="py-3 px-4 font-body-md text-body-md text-on-surface-variant">{docTypeT(doc.doc_type)}</td>
-                  <td className="py-3 px-4 font-body-md text-body-md text-on-surface-variant">{sourceT(doc.source)}</td>
-                  <td className="py-3 px-4 font-body-md text-body-md text-on-surface-variant">
-                    {doc.category?.name ?? "—"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DocumentsTable documents={documents} ordering={ordering} onOrderingChange={updateOrdering} />
       )}
 
       {documents && documents.length > 0 && (

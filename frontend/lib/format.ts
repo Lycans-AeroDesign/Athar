@@ -25,3 +25,15 @@ export function getInitials(person: NamedPerson | null | undefined): string {
   const initials = `${person.first_name?.[0] ?? ""}${person.last_name?.[0] ?? ""}`;
   return (initials || person.email?.[0] || "?").toUpperCase();
 }
+
+/** A plain "YYYY-MM-DD" (Failure.date/Test.date/Document.publication_date -
+ * a DateField, not a datetime) formatted for display - parsed manually
+ * rather than `new Date(isoDate)` because that parses a bare date as UTC
+ * midnight, which can display as the previous day in a negative-UTC-offset
+ * timezone; building the Date from local y/m/d components avoids that.
+ * Originally duplicated identically in failures/page.tsx and tests/page.tsx
+ * before being pulled out here. */
+export function formatCalendarDate(isoDate: string): string {
+  const [year, month, day] = isoDate.split("-").map(Number);
+  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(new Date(year, month - 1, day));
+}

@@ -24,6 +24,8 @@ from .views import (
     ComponentAttachmentListView,
     ComponentDetailView,
     ComponentExportView,
+    ComponentImportTemplateView,
+    ComponentImportView,
     ComponentListCreateView,
     ComponentRelationsView,
     DocumentDetailView,
@@ -139,6 +141,12 @@ urlpatterns = [
     ),
     path("components/", ComponentListCreateView.as_view(), name="knowledge-component-list-create"),
     path("components/export/", ComponentExportView.as_view(), name="knowledge-component-export"),
+    path("components/import/", ComponentImportView.as_view(), name="knowledge-component-import"),
+    path(
+        "components/import/template/",
+        ComponentImportTemplateView.as_view(),
+        name="knowledge-component-import-template",
+    ),
     path("components/<uuid:pk>/", ComponentDetailView.as_view(), name="knowledge-component-detail"),
     path("components/<uuid:pk>/relations/", ComponentRelationsView.as_view(), name="knowledge-component-relations"),
     path(

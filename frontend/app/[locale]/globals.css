@@ -277,3 +277,22 @@ body {
   background: var(--color-background);
   color: var(--color-on-background);
 }
+
+/* Generic "just swapped in" transition - e.g. Components' grid/table view
+   toggle remounts its result panel under a new `key` when the view changes,
+   so this plays a short fade+rise instead of an abrupt cut. Kept generic
+   (not view-specific) so any other view-switcher can reuse it the same way. */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 200ms ease-out;
+}

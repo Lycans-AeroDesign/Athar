@@ -19,6 +19,11 @@ interface ComboboxProps {
   value: string | null;
   onChange: (value: string) => void;
   emptyText?: string;
+  /** Applied to the trigger button itself (not the outer wrapper) - e.g. an
+   * explicit h-* to line this control up with sibling controls (Button,
+   * a plain input) that render at a different intrinsic height because
+   * they use a different text/line-height scale. */
+  triggerClassName?: string;
 }
 
 // The "dropdown list" primitive - a type-to-filter select. The Stitch
@@ -32,6 +37,7 @@ export function Combobox({
   value,
   onChange,
   emptyText,
+  triggerClassName,
 }: ComboboxProps) {
   const t = useTranslations("common");
   const [open, setOpen] = useState(false);
@@ -50,7 +56,7 @@ export function Combobox({
         <Popover.Trigger asChild>
           <button
             type="button"
-            className="flex items-center justify-between w-full px-4 py-2 bg-surface border border-outline-variant rounded-lg font-body-md text-body-md text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow"
+            className={`flex items-center justify-between w-full px-4 py-2 bg-surface border border-outline-variant rounded-lg font-body-md text-body-md text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow ${triggerClassName ?? ""}`}
           >
             <span className={selected ? "" : "text-outline"}>
               {selected ? selected.label : resolvedPlaceholder}

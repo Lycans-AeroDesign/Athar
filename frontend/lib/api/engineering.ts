@@ -6,7 +6,7 @@
 // payloads use `..._id`/`tag_names` field names matching the backend's
 // WriteSerializers.
 
-import { apiFetch, apiJson, apiVoid } from "./client";
+import { apiFetch, apiJson, apiUpload, apiVoid } from "./client";
 import type {
   ComponentDetail,
   ComponentStatus,
@@ -96,17 +96,33 @@ export function removeProjectAttachment(projectId: string, attachmentId: string)
 
 // --- Components ---------------------------------------------------------------
 
+/** Sortable columns for the table view - see backend/knowledge/views.py's
+ * COMPONENT_ORDERING_FIELDS, the allowlist this must stay in sync with.
+ * "-"-prefix a value for descending. */
+export type ComponentOrdering =
+  | "name" | "-name"
+  | "category" | "-category"
+  | "manufacturer" | "-manufacturer"
+  | "part_number" | "-part_number"
+  | "status" | "-status"
+  | "quantity_available" | "-quantity_available"
+  | "visibility" | "-visibility"
+  | "created_at" | "-created_at"
+  | "updated_at" | "-updated_at";
+
 export function getComponents(filters?: {
   category?: string;
   status?: ComponentStatus;
   q?: string;
   page?: number;
+  ordering?: ComponentOrdering;
 }): Promise<Paginated<ComponentSummary>> {
   const params = new URLSearchParams();
   if (filters?.category) params.set("category", filters.category);
   if (filters?.status) params.set("status", filters.status);
   if (filters?.q) params.set("q", filters.q);
   if (filters?.page) params.set("page", String(filters.page));
+  if (filters?.ordering) params.set("ordering", filters.ordering);
   const query = params.toString() ? `?${params.toString()}` : "";
   return apiJson<Paginated<ComponentSummary>>(`/api/v1/knowledge/components/${query}`);
 }
@@ -170,10 +186,16 @@ export function removeComponentAttachment(componentId: string, attachmentId: str
  * auth-gated endpoint (see backend/knowledge/views.py's ComponentExportView) -
  * same blob: URL approach as lib/api/backups.ts's downloadBackupJob, since a
  * plain <a href> can't carry the Bearer header. */
-export async function exportComponentsCsv(filters?: { category?: string; status?: ComponentStatus; q?: string }): Promise<void> {
+export async function exportComponentsCsv(filters?: {
+  category?: string;
+  status?: ComponentStatus;
+  q?: string;
+  ordering?: ComponentOrdering;
+}): Promise<void> {
   const params = new URLSearchParams();
   if (filters?.category) params.set("category", filters.category);
   if (filters?.status) params.set("status", filters.status);
+  if (filters?.ordering) params.set("ordering", filters.ordering);
   if (filters?.q) params.set("q", filters.q);
   const query = params.toString() ? `?${params.toString()}` : "";
   const res = await apiFetch(`/api/v1/knowledge/components/export/${query}`);
@@ -189,19 +211,95 @@ export async function exportComponentsCsv(filters?: { category?: string; status?
   URL.revokeObjectURL(objectUrl);
 }
 
+/** Downloads a blank starting-point CSV for bulk-importing components (see
+ * backend/knowledge/views.py's ComponentImportTemplateView) - same blob: URL
+ * approach as exportComponentsCsv above, since this is also auth-gated. */
+export async function downloadComponentImportTemplate(): Promise<void> {
+  const res = await apiFetch("/api/v1/knowledge/components/import/template/");
+  if (!res.ok) throw new Error(`Failed to download template (${res.status})`);
+  const blob = await res.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = objectUrl;
+  anchor.download = "components-template.csv";
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(objectUrl);
+}
+
+export interface ComponentImportFieldChange {
+  old: string;
+  new: string;
+}
+
+export type ComponentImportRowAction = "create" | "update" | "unchanged" | "error";
+
+export interface ComponentImportRow {
+  row: number;
+  action: ComponentImportRowAction;
+  /** Present for create/update/unchanged, absent for error. */
+  name?: string;
+  /** Present for create/update - field key (e.g. "quantity_available") to {old, new} display strings. */
+  changes?: Record<string, ComponentImportFieldChange>;
+  /** Present for error only. */
+  message?: string;
+}
+
+export interface ComponentImportPreview {
+  rows: ComponentImportRow[];
+  summary: { create: number; update: number; unchanged: number; error: number };
+  /** Present only when the request was sent with commit=true. */
+  applied?: { created: number; updated: number; skipped: number };
+}
+
+/** Previews (commit=false) or applies (commit=true) a bulk CSV import of
+ * components (see backend/knowledge/services.py's import_components_csv for
+ * the full preview/commit contract, matching-by-name dedup, and per-row
+ * validation). Call with commit=false first to get a diff to show the user,
+ * then re-call with the SAME file and commit=true once they confirm - the
+ * backend never writes anything on a commit=false call. Uses apiUpload (not
+ * apiJson) for the same real-progress reason as uploadFile in
+ * lib/api/files.ts. */
+export function importComponentsCsv(
+  file: File,
+  commit: boolean,
+  onProgress?: (fraction: number) => void,
+): Promise<ComponentImportPreview> {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("commit", commit ? "true" : "false");
+  return apiUpload<ComponentImportPreview>("/api/v1/knowledge/components/import/", formData, onProgress);
+}
+
 // --- Failures ---------------------------------------------------------------
+
+/** See backend/knowledge/views.py's FAILURE_ORDERING_FIELDS, the allowlist this must stay in sync with. */
+export type FailureOrdering =
+  | "title" | "-title"
+  | "component" | "-component"
+  | "project" | "-project"
+  | "aircraft" | "-aircraft"
+  | "date" | "-date"
+  | "severity" | "-severity"
+  | "status" | "-status"
+  | "visibility" | "-visibility"
+  | "created_at" | "-created_at"
+  | "updated_at" | "-updated_at";
 
 export function getFailures(filters?: {
   severity?: FailureSeverity;
   status?: FailureStatus;
   q?: string;
   page?: number;
+  ordering?: FailureOrdering;
 }): Promise<Paginated<FailureSummary>> {
   const params = new URLSearchParams();
   if (filters?.severity) params.set("severity", filters.severity);
   if (filters?.status) params.set("status", filters.status);
   if (filters?.q) params.set("q", filters.q);
   if (filters?.page) params.set("page", String(filters.page));
+  if (filters?.ordering) params.set("ordering", filters.ordering);
   const query = params.toString() ? `?${params.toString()}` : "";
   return apiJson<Paginated<FailureSummary>>(`/api/v1/knowledge/failures/${query}`);
 }
@@ -330,12 +428,26 @@ export function removeSopAttachment(sopId: string, attachmentId: string): Promis
 
 // --- Tests / Experiments -----------------------------------------------------
 
+/** See backend/knowledge/views.py's TEST_ORDERING_FIELDS, the allowlist this must stay in sync with. */
+export type TestOrdering =
+  | "title" | "-title"
+  | "test_type" | "-test_type"
+  | "date" | "-date"
+  | "location" | "-location"
+  | "project" | "-project"
+  | "status" | "-status"
+  | "pass_fail" | "-pass_fail"
+  | "visibility" | "-visibility"
+  | "created_at" | "-created_at"
+  | "updated_at" | "-updated_at";
+
 export function getTests(filters?: {
   test_type?: TestType;
   status?: TestRunStatus;
   pass_fail?: TestPassFail;
   q?: string;
   page?: number;
+  ordering?: TestOrdering;
 }): Promise<Paginated<TestSummary>> {
   const params = new URLSearchParams();
   if (filters?.test_type) params.set("test_type", filters.test_type);
@@ -343,6 +455,7 @@ export function getTests(filters?: {
   if (filters?.pass_fail) params.set("pass_fail", filters.pass_fail);
   if (filters?.q) params.set("q", filters.q);
   if (filters?.page) params.set("page", String(filters.page));
+  if (filters?.ordering) params.set("ordering", filters.ordering);
   const query = params.toString() ? `?${params.toString()}` : "";
   return apiJson<Paginated<TestSummary>>(`/api/v1/knowledge/tests/${query}`);
 }

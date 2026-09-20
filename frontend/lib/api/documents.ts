@@ -7,12 +7,23 @@
 import { apiJson, apiVoid } from "./client";
 import type { DocType, DocumentDetail, DocumentSource, DocumentSummary, Paginated, Visibility } from "./types";
 
+/** See backend/knowledge/views.py's DOCUMENT_ORDERING_FIELDS, the allowlist this must stay in sync with. */
+export type DocumentOrdering =
+  | "title" | "-title"
+  | "doc_type" | "-doc_type"
+  | "source" | "-source"
+  | "category" | "-category"
+  | "publication_date" | "-publication_date"
+  | "created_at" | "-created_at"
+  | "updated_at" | "-updated_at";
+
 export function getDocuments(filters?: {
   doc_type?: DocType;
   source?: DocumentSource;
   category?: string;
   q?: string;
   page?: number;
+  ordering?: DocumentOrdering;
 }): Promise<Paginated<DocumentSummary>> {
   const params = new URLSearchParams();
   if (filters?.doc_type) params.set("doc_type", filters.doc_type);
@@ -20,6 +31,7 @@ export function getDocuments(filters?: {
   if (filters?.category) params.set("category", filters.category);
   if (filters?.q) params.set("q", filters.q);
   if (filters?.page) params.set("page", String(filters.page));
+  if (filters?.ordering) params.set("ordering", filters.ordering);
   const query = params.toString() ? `?${params.toString()}` : "";
   return apiJson<Paginated<DocumentSummary>>(`/api/v1/knowledge/documents/${query}`);
 }
