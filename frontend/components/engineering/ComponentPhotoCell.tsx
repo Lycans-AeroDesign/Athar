@@ -1,5 +1,6 @@
 "use client";
 
+import * as Popover from "@radix-ui/react-popover";
 import { useEffect, useRef, useState } from "react";
 
 import { apiFetch } from "@/lib/api/client";
@@ -18,6 +19,7 @@ interface ComponentPhotoCellProps {
 export function ComponentPhotoCell({ photo, alt }: ComponentPhotoCellProps) {
   const [url, setUrl] = useState<string | null>(null);
   const [isVisible, setIsVisible] = useState(false);
+  const [isHovering, setIsHovering] = useState(false);
   const cellRef = useRef<HTMLDivElement>(null);
 
   // Lazy: don't even issue the auth-gated request until this cell has
@@ -71,22 +73,50 @@ export function ComponentPhotoCell({ photo, alt }: ComponentPhotoCellProps) {
   }
 
   return (
-    <div ref={cellRef} className="group/photo relative inline-block">
-      {/* eslint-disable-next-line @next/next/no-img-element -- blob: URLs aren't supported by next/image's optimizer. */}
-      <img src={url} alt={alt} className="h-9 w-9 rounded-lg object-cover border border-outline-variant" />
-      <div className="pointer-events-none absolute start-0 top-full z-50 mt-1 origin-top opacity-0 scale-95 transition-all duration-150 group-hover/photo:opacity-100 group-hover/photo:scale-100">
-        {/* max-h/max-w with auto width/height (not a fixed square box) - most
-            component photos aren't square, and a fixed box with object-contain
-            would letterbox them, making the actual visible image narrower
-            than the box itself. This instead renders at the photo's own
-            aspect ratio, just capped so it can't grow past 256px either way. */}
-        {/* eslint-disable-next-line @next/next/no-img-element -- blob: URLs aren't supported by next/image's optimizer. */}
-        <img
-          src={url}
-          alt={alt}
-          className="h-auto w-auto max-h-64 max-w-64 rounded-xl object-contain border border-outline-variant shadow-[0_4px_16px_0_rgba(0,0,0,0.16)]"
-        />
-      </div>
+    <div ref={cellRef} className="inline-block">
+      {/* Popover (portaled to <body>, position: fixed) rather than a plain
+          CSS absolute + group-hover overlay - the table wraps its rows in an
+          overflow-x-auto scroller (DataTable.tsx), which clips any
+          absolutely-positioned descendant to the scroller's box no matter
+          the z-index. Portaling escapes that clipping entirely. open is
+          driven by plain hover state rather than Popover's own click
+          trigger, since this should show on hover, not on click. */}
+      <Popover.Root open={isHovering}>
+        <Popover.Anchor asChild>
+          <span
+            className="inline-block"
+            onMouseEnter={() => setIsHovering(true)}
+            onMouseLeave={() => setIsHovering(false)}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element -- blob: URLs aren't supported by next/image's optimizer. */}
+            <img src={url} alt={alt} className="h-9 w-9 rounded-lg object-cover border border-outline-variant" />
+          </span>
+        </Popover.Anchor>
+        <Popover.Portal forceMount>
+          <Popover.Content
+            forceMount
+            side="bottom"
+            align="start"
+            sideOffset={4}
+            onOpenAutoFocus={(event) => event.preventDefault()}
+            className={`pointer-events-none z-50 origin-top transition-all duration-150 ${
+              isHovering ? "opacity-100 scale-100" : "opacity-0 scale-95"
+            }`}
+          >
+            {/* max-h/max-w with auto width/height (not a fixed square box) - most
+                component photos aren't square, and a fixed box with object-contain
+                would letterbox them, making the actual visible image narrower
+                than the box itself. This instead renders at the photo's own
+                aspect ratio, just capped so it can't grow past 256px either way. */}
+            {/* eslint-disable-next-line @next/next/no-img-element -- blob: URLs aren't supported by next/image's optimizer. */}
+            <img
+              src={url}
+              alt={alt}
+              className="h-auto w-auto max-h-64 max-w-64 rounded-xl object-contain border border-outline-variant shadow-[0_4px_16px_0_rgba(0,0,0,0.16)]"
+            />
+          </Popover.Content>
+        </Popover.Portal>
+      </Popover.Root>
     </div>
   );
 }
