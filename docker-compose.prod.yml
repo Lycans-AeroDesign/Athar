@@ -89,7 +89,14 @@ services:
   celery-beat:
     image: ghcr.io/lycans-aerodesign/athar-backend:${IMAGE_TAG:-latest}
     restart: unless-stopped
-    command: ["celery", "-A", "config", "beat", "-l", "info"]
+    # --schedule: celery beat's default schedule file ("celerybeat-schedule")
+    # is a relative path resolving to the CWD (/app), which is root-owned in
+    # this image (see backend/Dockerfile/docker/entrypoint.sh - only
+    # staticfiles/media get chown'd to appuser) - appuser can't write there,
+    # so beat crashed on every startup without this. /tmp is writable by any
+    # user and this file only tracks last-run times, so losing it on
+    # container recreation is harmless.
+    command: ["celery", "-A", "config", "beat", "-l", "info", "--schedule=/tmp/celerybeat-schedule"]
     environment: *backend_env
     depends_on:
       db:

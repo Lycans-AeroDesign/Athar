@@ -90,7 +90,10 @@ services:
       context: ./backend
       target: dev
     restart: unless-stopped
-    command: ["celery", "-A", "config", "beat", "-l", "info"]
+    # See the matching comment in docker-compose.prod.yml - the entrypoint
+    # drops to appuser before running this, and /app (celery beat's default
+    # relative schedule-file location) isn't writable by appuser here either.
+    command: ["celery", "-A", "config", "beat", "-l", "info", "--schedule=/tmp/celerybeat-schedule"]
     environment: *backend_env
     volumes:
       - ./backend:/app
