@@ -161,6 +161,27 @@ class AuthFlowTests(APITestCase):
         cookie = response.cookies["refresh_token"]
         self.assertTrue(cookie["httponly"])
 
+    def test_login_accepts_username_in_place_of_email(self):
+        # The wire field is still called "email" (see accounts/serializers.py's
+        # CustomTokenObtainPairSerializer / User.USERNAME_FIELD), but
+        # EmailOrUsernameBackend (accounts/backends.py) treats its value as
+        # either credential.
+        self.client.post(
+            reverse("auth-register"),
+            {
+                "email": "handle@example.com",
+                "password": "somepassword123",
+                "invitation_code": self._invitation_code().code,
+                "username": "somehandle",
+            },
+            format="json",
+        )
+        response = self.client.post(
+            reverse("auth-login"), {"email": "somehandle", "password": "somepassword123"}, format="json"
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["user"]["email"], "handle@example.com")
+
     def test_me_requires_authentication(self):
         response = self.client.get(reverse("auth-me"))
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)

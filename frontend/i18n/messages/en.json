@@ -41,9 +41,10 @@
     "passwordTooShort": "Password must be at least {min} characters.",
     "login": {
       "tagline": "Engineering Knowledge System",
+      "identifierLabel": "Email or Username",
       "submit": "Login",
       "submitting": "Logging in...",
-      "error": "Invalid email or password.",
+      "error": "Invalid email/username or password.",
       "rateLimited": "Too many login attempts. Please wait a moment and try again.",
       "credit": "Developed by Lycans AeroDesign Team",
       "needAccount": "Don't have an account?",

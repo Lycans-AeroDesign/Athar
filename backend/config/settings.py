@@ -80,6 +80,12 @@ INSTALLED_APPS = [
 
 AUTH_USER_MODEL = "accounts.User"
 
+# Lets login accept either email or the optional username - see
+# accounts/backends.py. Replaces (not adds to) the default ModelBackend,
+# since EmailOrUsernameBackend already covers everything it does plus the
+# username fallback.
+AUTHENTICATION_BACKENDS = ["accounts.backends.EmailOrUsernameBackend"]
+
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",

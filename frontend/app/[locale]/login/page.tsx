@@ -11,10 +11,8 @@ import { ApiError, apiUrl } from "@/lib/api/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { useOrganization } from "@/lib/organization/OrganizationProvider";
 
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
 interface FieldErrors {
-  email?: string;
+  identifier?: string;
   password?: string;
 }
 
@@ -33,7 +31,7 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const t = useTranslations("auth");
 
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
@@ -41,8 +39,7 @@ function LoginForm() {
 
   function validate(): FieldErrors {
     const errors: FieldErrors = {};
-    if (!email.trim()) errors.email = t("fieldRequired");
-    else if (!EMAIL_PATTERN.test(email)) errors.email = t("invalidEmail");
+    if (!identifier.trim()) errors.identifier = t("fieldRequired");
     if (!password) errors.password = t("fieldRequired");
     return errors;
   }
@@ -56,12 +53,17 @@ function LoginForm() {
 
     setIsSubmitting(true);
     try {
-      await login(email, password);
+      // The wire field is still called "email" (see backend/accounts/serializers.py's
+      // CustomTokenObtainPairSerializer / User.USERNAME_FIELD) - the backend's
+      // EmailOrUsernameBackend treats its value as either credential, so this
+      // can be an email address or a username.
+      await login(identifier, password);
       router.push(searchParams.get("next") || "/");
     } catch (err) {
       // A 429 (rate limited) isn't a credentials problem - telling them
-      // apart avoids "Invalid email or password" showing for a burst of
-      // attempts that were never actually checked against the database.
+      // apart avoids "Invalid email/username or password" showing for a
+      // burst of attempts that were never actually checked against the
+      // database.
       setError(err instanceof ApiError && err.status === 429 ? t("login.rateLimited") : t("login.error"));
     } finally {
       setIsSubmitting(false);
@@ -94,17 +96,17 @@ function LoginForm() {
           <form className="space-y-6" noValidate onSubmit={handleSubmit}>
             <div className="space-y-1">
               <FloatingLabelInput
-                autoComplete="email"
-                error={fieldErrors.email}
-                icon="mail"
-                id="email"
-                label={t("emailLabel")}
-                name="email"
-                type="email"
-                value={email}
+                autoComplete="username"
+                error={fieldErrors.identifier}
+                icon="account"
+                id="identifier"
+                label={t("login.identifierLabel")}
+                name="identifier"
+                type="text"
+                value={identifier}
                 onChange={(e) => {
-                  setEmail(e.target.value);
-                  setFieldErrors((prev) => ({ ...prev, email: undefined }));
+                  setIdentifier(e.target.value);
+                  setFieldErrors((prev) => ({ ...prev, identifier: undefined }));
                 }}
               />
 
