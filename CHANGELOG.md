@@ -1,3 +1,14 @@
+## [1.3.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.2.0...v1.3.0) (2026-09-21)
+
+### Features
+
+* **auth:** allow logging in with username as well as email ([805b96d](https://github.com/Lycans-AeroDesign/Athar/commit/805b96d190cdc5ece5af5500a83317fab672fa1a))
+* **training:** embed video/PDF resources inline, fix editor gaps and bugs ([22ad00c](https://github.com/Lycans-AeroDesign/Athar/commit/22ad00c0628b1231ea3a0faefbd393a938638775))
+
+### Bug Fixes
+
+* **frontend:** stop component photo hover preview from being clipped ([898c482](https://github.com/Lycans-AeroDesign/Athar/commit/898c48229556f1f3fecd5c391bc188c04aae3526))
+
 ## [1.2.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.1.0...v1.2.0) (2026-09-20)
 
 ### Features
