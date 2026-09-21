@@ -1070,6 +1070,7 @@
       "loading": "Loading...",
       "notFound": "This lesson isn't accessible to you.",
       "previewBanner": "Preview mode",
+      "editLessonLink": "Edit Lesson",
       "enrollToTrack": "Enroll in this course to track your progress."
     },
     "relatedKnowledge": {
@@ -1077,10 +1078,13 @@
       "addButton": "Add",
       "emptyState": "No related Knowledge content yet.",
       "searchPlaceholder": "Search Knowledge...",
+      "notePlaceholder": "Note (optional)",
       "searching": "Searching...",
       "removeButton": "Remove"
     },
     "manage": {
+      "previewButton": "Preview",
+      "editModuleButton": "Edit module",
       "dashboardTitle": "Training Management",
       "createCourseButton": "Create Course",
       "coursesByStatusTitle": "Courses",
@@ -1131,7 +1135,9 @@
       "deleteCategoryConfirmBody": "Courses in it become uncategorized. This can't be undone."
     },
     "lessonEditor": {
+      "loading": "Loading...",
       "backToCourse": "Back to Course",
+      "previewButton": "Preview",
       "title": "Lesson",
       "titlePlaceholder": "Lesson title",
       "shortDescriptionPlaceholder": "Short description",
@@ -1139,13 +1145,20 @@
       "requiredToggleLabel": "Required for course completion",
       "estimatedMinutesLabel": "Estimated minutes",
       "contentPlaceholder": "Lesson content (markdown)",
+      "additionalNotesPlaceholder": "Additional notes (optional, shown below the main content)",
+      "mainContentLabel": "Main Content",
+      "mainContentHint": "This is the main thing learners will see for this lesson.",
       "saveButton": "Save",
+      "moveUp": "Move up",
+      "moveDown": "Move down",
       "objectivesTitle": "Learning Objectives",
       "addObjectiveButton": "Add Objective",
       "objectivePlaceholder": "What should learners be able to do after this lesson?",
+      "editObjective": "Edit",
       "removeObjective": "Remove",
       "resourcesTitle": "Resources",
       "addResourceButton": "Add Resource",
+      "editResource": "Edit",
       "removeResource": "Remove"
     },
     "resourceEditor": {

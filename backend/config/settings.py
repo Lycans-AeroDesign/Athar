@@ -252,6 +252,18 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.IsAuthenticated",
     ],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    # BrowsableAPIRenderer only in DEBUG (handy for poking an endpoint by
+    # hand locally) - outside it, DRF would otherwise still serve its own
+    # styled HTML error page to a real browser navigating straight to an
+    # API URL (e.g. an auth-gated file link, see files/views.py) purely
+    # because the browser's Accept header prefers text/html. JSON-only in
+    # production means that always comes back as plain JSON instead,
+    # regardless of Accept.
+    "DEFAULT_RENDERER_CLASSES": (
+        ["rest_framework.renderers.JSONRenderer", "rest_framework.renderers.BrowsableAPIRenderer"]
+        if DEBUG
+        else ["rest_framework.renderers.JSONRenderer"]
+    ),
     # Anon/User apply everywhere by default; the "auth" scope is opted into
     # explicitly (see accounts/views.py's LoginView/RegisterView/RefreshView)
     # for a much stricter rate, since those are the endpoints brute-forcing

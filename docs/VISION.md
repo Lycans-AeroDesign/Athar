@@ -588,7 +588,7 @@ Features:
 
 * Learning paths — done, as Course → Module → Lesson (not a separate "path" concept spanning multiple courses)
 * Courses — done, with category/difficulty/estimated-duration and the same draft/review/publish workflow as Article
-* Lessons — done, five types (text, video, document, external link, exercise); a lesson's primary video/document resource is either an external URL (e.g. a Google Drive share link, embedded via a narrowly-scoped iframe for Drive links specifically) or an Athar-hosted file, never a second file-storage mechanism
+* Lessons — done, five types (text, video, document, external link, exercise); a lesson's primary video/document resource is either an external URL (a YouTube or Google Drive link embeds via a narrowly-scoped iframe, see `frontend/lib/training/video.ts`; anything else just links out) or an Athar-hosted file, never a second file-storage mechanism
 * Assessments — **not started** (quizzes/scored assessments remain future scope, per the spec's own "don't overbuild V1" guidance)
 * Practical tasks — partially done, as the `EXERCISE` lesson type (presented + a manual "mark complete", no submission/grading workflow yet)
 * Training progress — done, per-lesson completion tracking, with automatic course completion once every *required* lesson is done (optional lessons don't block it)

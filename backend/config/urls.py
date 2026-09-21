@@ -34,3 +34,9 @@ if settings.DEBUG:
         path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
         path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
     ]
+
+# Only reached when DEBUG=False (see config/views.py) - keeps every response
+# this API server ever sends JSON, even for a URL that matched no view at all
+# or an exception no view/DRF exception handler caught.
+handler404 = "config.views.api_not_found"
+handler500 = "config.views.api_server_error"

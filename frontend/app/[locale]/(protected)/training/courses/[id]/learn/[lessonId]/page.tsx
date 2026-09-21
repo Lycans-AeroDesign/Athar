@@ -11,7 +11,7 @@ import { RelatedKnowledgePanel } from "@/components/training/RelatedKnowledgePan
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { Link } from "@/i18n/navigation";
-import { completeLesson, getCourse, getCourseProgress, getLesson } from "@/lib/api/training";
+import { completeLesson, enrollInCourse, getCourse, getCourseProgress, getLesson } from "@/lib/api/training";
 import type { CourseDetail, CourseProgress, LessonDetail, LessonSummary } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { useHasPermission } from "@/lib/auth/permissions";
@@ -21,6 +21,7 @@ const RESOURCE_TYPES_RENDERED_INLINE = new Set(["VIDEO", "DOCUMENT", "EXTERNAL"]
 export default function LessonViewerPage() {
   const { id, lessonId } = useParams<{ id: string; lessonId: string }>();
   const t = useTranslations("training.lesson");
+  const courseT = useTranslations("training.course");
   const canUpdateAny = useHasPermission("training.update");
   const { user } = useAuth();
 
@@ -34,6 +35,7 @@ export default function LessonViewerPage() {
   const [progress, setProgress] = useState<CourseProgress | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [isCompleting, setIsCompleting] = useState(false);
+  const [isEnrolling, setIsEnrolling] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -80,6 +82,20 @@ export default function LessonViewerPage() {
     }
   }
 
+  async function handleEnroll() {
+    if (!course) return;
+    setIsEnrolling(true);
+    setError(null);
+    try {
+      await enrollInCourse(course.id);
+      setProgress(await getCourseProgress(course.id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setIsEnrolling(false);
+    }
+  }
+
   if (notFound) {
     return <p className="font-body-md text-body-md text-error">{t("notFound")}</p>;
   }
@@ -113,9 +129,18 @@ export default function LessonViewerPage() {
 
       <div className="flex-1 min-w-0 max-w-[760px] space-y-6">
         {isPreview && (
-          <div className="flex items-center gap-2 bg-tertiary-container text-on-tertiary-container rounded-xl px-4 py-3 font-body-md text-body-md">
-            <Icon name="visibility" size={18} />
-            {t("previewBanner")}
+          <div className="flex items-center justify-between gap-2 bg-tertiary-container text-on-tertiary-container rounded-xl px-4 py-3 font-body-md text-body-md">
+            <span className="flex items-center gap-2">
+              <Icon name="visibility" size={18} />
+              {t("previewBanner")}
+            </span>
+            <Link
+              href={`/training/manage/courses/${course.id}/lessons/${lesson.id}`}
+              className="flex items-center gap-1 font-label-caps text-label-caps uppercase hover:underline shrink-0"
+            >
+              <Icon name="edit" size={16} />
+              {t("editLessonLink")}
+            </Link>
           </div>
         )}
 
@@ -194,7 +219,12 @@ export default function LessonViewerPage() {
               </Button>
             )
           ) : !isPreview ? (
-            <span className="font-body-md text-body-md text-on-surface-variant">{t("enrollToTrack")}</span>
+            <div className="flex items-center gap-3">
+              <span className="font-body-md text-body-md text-on-surface-variant">{t("enrollToTrack")}</span>
+              <Button onClick={handleEnroll} disabled={isEnrolling}>
+                {isEnrolling ? courseT("enrolling") : courseT("startCourseButton")}
+              </Button>
+            </div>
           ) : null}
 
           {nextLesson ? (

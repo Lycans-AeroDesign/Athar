@@ -1070,6 +1070,7 @@
       "loading": "جارٍ التحميل...",
       "notFound": "هذا الدرس غير متاح لك.",
       "previewBanner": "وضع المعاينة",
+      "editLessonLink": "تعديل الدرس",
       "enrollToTrack": "سجّل في هذه الدورة لتتبع تقدمك."
     },
     "relatedKnowledge": {
@@ -1077,10 +1078,13 @@
       "addButton": "إضافة",
       "emptyState": "لا يوجد محتوى معرفي ذو صلة بعد.",
       "searchPlaceholder": "ابحث في المعرفة...",
+      "notePlaceholder": "ملاحظة (اختياري)",
       "searching": "جارٍ البحث...",
       "removeButton": "إزالة"
     },
     "manage": {
+      "previewButton": "معاينة",
+      "editModuleButton": "تعديل الوحدة",
       "dashboardTitle": "إدارة التدريب",
       "createCourseButton": "إنشاء دورة",
       "coursesByStatusTitle": "الدورات",
@@ -1131,7 +1135,9 @@
       "deleteCategoryConfirmBody": "ستصبح الدورات فيها بلا فئة. لا يمكن التراجع عن هذا."
     },
     "lessonEditor": {
+      "loading": "جارٍ التحميل...",
       "backToCourse": "العودة إلى الدورة",
+      "previewButton": "معاينة",
       "title": "الدرس",
       "titlePlaceholder": "عنوان الدرس",
       "shortDescriptionPlaceholder": "وصف قصير",
@@ -1139,13 +1145,20 @@
       "requiredToggleLabel": "إلزامي لإكمال الدورة",
       "estimatedMinutesLabel": "الدقائق المقدّرة",
       "contentPlaceholder": "محتوى الدرس (ماركداون)",
+      "additionalNotesPlaceholder": "ملاحظات إضافية (اختياري، تظهر أسفل المحتوى الرئيسي)",
+      "mainContentLabel": "المحتوى الرئيسي",
+      "mainContentHint": "هذا هو المحتوى الرئيسي الذي سيراه المتعلمون في هذا الدرس.",
       "saveButton": "حفظ",
+      "moveUp": "تحريك للأعلى",
+      "moveDown": "تحريك للأسفل",
       "objectivesTitle": "أهداف التعلم",
       "addObjectiveButton": "إضافة هدف",
       "objectivePlaceholder": "ما الذي يجب أن يتمكن المتعلمون من فعله بعد هذا الدرس؟",
+      "editObjective": "تعديل",
       "removeObjective": "إزالة",
       "resourcesTitle": "الموارد",
       "addResourceButton": "إضافة مورد",
+      "editResource": "تعديل",
       "removeResource": "إزالة"
     },
     "resourceEditor": {

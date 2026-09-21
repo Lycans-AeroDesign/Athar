@@ -28,6 +28,7 @@ export function RelatedKnowledgePanel({ lessonId, canEdit }: RelatedKnowledgePan
   const [error, setError] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [note, setNote] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
 
@@ -52,13 +53,18 @@ export function RelatedKnowledgePanel({ lessonId, canEdit }: RelatedKnowledgePan
   function closePicker() {
     setPickerOpen(false);
     setQuery("");
+    setNote("");
     setResults([]);
   }
 
   async function handleAdd(result: SearchResult) {
     setError(null);
     try {
-      const reference = await createKnowledgeReference(lessonId, { content_type: result.type, object_id: result.id });
+      const reference = await createKnowledgeReference(lessonId, {
+        content_type: result.type,
+        object_id: result.id,
+        note: note.trim() || undefined,
+      });
       setReferences((prev) => [...(prev ?? []), reference]);
       closePicker();
     } catch (err) {
@@ -157,6 +163,12 @@ export function RelatedKnowledgePanel({ lessonId, canEdit }: RelatedKnowledgePan
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             autoFocus
+          />
+          <input
+            className="block w-full px-4 py-2 font-body-md text-body-md text-on-surface bg-surface-container border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
+            placeholder={t("notePlaceholder")}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
           />
           {isSearching ? (
             <p className="font-body-md text-body-md text-on-surface-variant">{t("searching")}</p>

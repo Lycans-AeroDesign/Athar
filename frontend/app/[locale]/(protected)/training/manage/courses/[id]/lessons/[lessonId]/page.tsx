@@ -22,8 +22,10 @@ import {
   reorderObjectives,
   reorderResources,
   updateLesson,
+  updateObjective,
+  updateResource,
 } from "@/lib/api/training";
-import type { CourseResourceProvider, LessonDetail, LessonType } from "@/lib/api/types";
+import type { CourseResource, CourseResourceProvider, LessonDetail, LessonType } from "@/lib/api/types";
 
 const LESSON_TYPES: LessonType[] = ["TEXT", "VIDEO", "DOCUMENT", "EXTERNAL", "EXERCISE"];
 const PROVIDERS: CourseResourceProvider[] = ["GOOGLE_DRIVE", "YOUTUBE", "VIMEO", "GITHUB", "WEBSITE", "OTHER"];
@@ -33,6 +35,7 @@ export default function LessonEditorPage() {
   const t = useTranslations("training.lessonEditor");
   const resourceT = useTranslations("training.resourceEditor");
   const lessonTypeT = useTranslations("training.lessonType");
+  const commonT = useTranslations("common");
 
   const [lesson, setLesson] = useState<LessonDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -46,6 +49,8 @@ export default function LessonEditorPage() {
   const [isRequired, setIsRequired] = useState(true);
 
   const [newObjectiveText, setNewObjectiveText] = useState("");
+  const [editingObjectiveId, setEditingObjectiveId] = useState<string | null>(null);
+  const [editObjectiveText, setEditObjectiveText] = useState("");
 
   const [newResourceTitle, setNewResourceTitle] = useState("");
   const [newResourceProvider, setNewResourceProvider] = useState<CourseResourceProvider>("WEBSITE");
@@ -53,15 +58,46 @@ export default function LessonEditorPage() {
   const [newResourceIsPrimary, setNewResourceIsPrimary] = useState(false);
   const [resourceFileUploadProgress, setResourceFileUploadProgress] = useState<number | null>(null);
 
+  const [editingResourceId, setEditingResourceId] = useState<string | null>(null);
+  const [editResourceTitle, setEditResourceTitle] = useState("");
+  const [editResourceProvider, setEditResourceProvider] = useState<CourseResourceProvider>("WEBSITE");
+  const [editResourceUrl, setEditResourceUrl] = useState("");
+  const [editResourceIsPrimary, setEditResourceIsPrimary] = useState(false);
+
+  // Draft for the VIDEO/EXTERNAL/DOCUMENT "Main Content" block below - a
+  // lesson's primary resource IS the lesson for those types (see
+  // backend/training/models.py's CourseResource docstring), so it gets its
+  // own prominent editor instead of living buried in the generic Resources
+  // list further down the page like every other (supplementary) resource.
+  const [mainResourceProvider, setMainResourceProvider] = useState<CourseResourceProvider>("YOUTUBE");
+  const [mainResourceUrl, setMainResourceUrl] = useState("");
+  const [isSavingMainResource, setIsSavingMainResource] = useState(false);
+  const [mainResourceFileUploadProgress, setMainResourceFileUploadProgress] = useState<number | null>(null);
+
+  // Always resyncs every local draft field from the server's response, not
+  // just `lesson` itself - DRF's CharField trims whitespace server-side by
+  // default, so a title/description saved with a stray trailing space would
+  // otherwise leave the local draft permanently mismatched against the saved
+  // `lesson.title` (isDirty comparing them would never go false again, even
+  // though the save genuinely succeeded - the Save button would stay
+  // enabled forever). Used after both the initial load and every save.
+  function applyLessonToState(data: LessonDetail) {
+    setLesson(data);
+    setTitle(data.title);
+    setShortDescription(data.short_description);
+    setLessonType(data.lesson_type);
+    setContent(data.content);
+    setEstimatedMinutes(data.estimated_minutes);
+    setIsRequired(data.is_required);
+    const primary = data.resources.find((resource) => resource.is_primary) ?? null;
+    const defaultProvider = data.lesson_type === "DOCUMENT" ? "GOOGLE_DRIVE" : "YOUTUBE";
+    setMainResourceProvider((primary?.resource_type === "EXTERNAL_LINK" && primary.provider) || defaultProvider);
+    setMainResourceUrl(primary?.resource_type === "EXTERNAL_LINK" ? primary.url : "");
+  }
+
   function loadLesson() {
     return getLesson(lessonId).then((data) => {
-      setLesson(data);
-      setTitle(data.title);
-      setShortDescription(data.short_description);
-      setLessonType(data.lesson_type);
-      setContent(data.content);
-      setEstimatedMinutes(data.estimated_minutes);
-      setIsRequired(data.is_required);
+      applyLessonToState(data);
       return data;
     });
   }
@@ -72,8 +108,30 @@ export default function LessonEditorPage() {
   }, [lessonId]);
 
   if (!lesson) {
-    return <p className="font-body-md text-body-md text-on-surface-variant">Loading...</p>;
+    return <p className="font-body-md text-body-md text-on-surface-variant">{t("loading")}</p>;
   }
+
+  const primaryResource = lesson.resources.find((resource) => resource.is_primary) ?? null;
+  const isDocumentLessonType = lessonType === "DOCUMENT";
+  // VIDEO/EXTERNAL only take over the link path - an existing primary
+  // resource that predates this editor could still be a STORED_FILE for
+  // those two types, so this falls back to the generic Resources list below
+  // rather than hiding a file-backed primary resource with no way left to
+  // manage it. DOCUMENT handles both a link (e.g. Drive) AND an uploaded
+  // file natively (see the FileDropzone in the block below), so it always
+  // takes over regardless of which one the current primary resource is.
+  const showMainContentEditor =
+    isDocumentLessonType ||
+    ((lessonType === "VIDEO" || lessonType === "EXTERNAL") &&
+      (!primaryResource || primaryResource.resource_type === "EXTERNAL_LINK"));
+  const listedResources = showMainContentEditor
+    ? lesson.resources.filter((resource) => !resource.is_primary)
+    : lesson.resources;
+  const isMainResourceDirty =
+    !primaryResource ||
+    primaryResource.resource_type !== "EXTERNAL_LINK" ||
+    mainResourceProvider !== primaryResource.provider ||
+    mainResourceUrl.trim() !== primaryResource.url;
 
   const isDirty =
     title !== lesson.title ||
@@ -105,11 +163,69 @@ export default function LessonEditorPage() {
         estimated_minutes: estimatedMinutes,
         is_required: isRequired,
       });
-      setLesson(updated);
+      applyLessonToState(updated);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setIsSaving(false);
+    }
+  }
+
+  async function handleSaveMainResource() {
+    if (!mainResourceUrl.trim()) return;
+    setIsSavingMainResource(true);
+    setError(null);
+    try {
+      const payload = {
+        title: title.trim() || lessonTypeT(lessonType),
+        resource_type: "EXTERNAL_LINK" as const,
+        provider: mainResourceProvider,
+        url: mainResourceUrl.trim(),
+        // Explicit null - clears a previously-uploaded file when switching
+        // this DOCUMENT lesson's main content from an upload to a link;
+        // the backend's _validate_resource_fields rejects an EXTERNAL_LINK
+        // resource that still carries a stored_file.
+        stored_file_id: null,
+        is_primary: true,
+      };
+      if (primaryResource) {
+        await updateResource(primaryResource.id, payload);
+      } else {
+        await createResource(lesson!.id, payload);
+      }
+      await loadLesson();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setIsSavingMainResource(false);
+    }
+  }
+
+  async function handleUploadMainResourceFile(file: File) {
+    setMainResourceFileUploadProgress(0);
+    setError(null);
+    try {
+      const uploaded = await uploadFile(file, { onProgress: setMainResourceFileUploadProgress });
+      const payload = {
+        title: title.trim() || file.name,
+        resource_type: "STORED_FILE" as const,
+        stored_file_id: uploaded.id,
+        // Explicit clears - required the other direction from
+        // handleSaveMainResource's stored_file_id: null above, same reason.
+        provider: "" as CourseResourceProvider,
+        url: "",
+        is_primary: true,
+      };
+      if (primaryResource) {
+        await updateResource(primaryResource.id, payload);
+      } else {
+        await createResource(lesson!.id, payload);
+      }
+      await loadLesson();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setMainResourceFileUploadProgress(null);
     }
   }
 
@@ -128,6 +244,21 @@ export default function LessonEditorPage() {
     await runAction(() => reorderObjectives(lesson!.id, order));
   }
 
+  function startEditObjective(objectiveId: string, text: string) {
+    setEditingObjectiveId(objectiveId);
+    setEditObjectiveText(text);
+  }
+
+  function cancelEditObjective() {
+    setEditingObjectiveId(null);
+  }
+
+  async function handleSaveObjectiveEdit(objectiveId: string) {
+    if (!editObjectiveText.trim()) return;
+    await runAction(() => updateObjective(objectiveId, editObjectiveText.trim()));
+    setEditingObjectiveId(null);
+  }
+
   async function handleAddResource() {
     if (!newResourceTitle.trim()) return;
     await runAction(() =>
@@ -136,7 +267,7 @@ export default function LessonEditorPage() {
         resource_type: "EXTERNAL_LINK",
         provider: newResourceProvider,
         url: newResourceUrl.trim(),
-        is_primary: newResourceIsPrimary,
+        is_primary: !showMainContentEditor && newResourceIsPrimary,
       }),
     );
     setNewResourceTitle("");
@@ -153,7 +284,7 @@ export default function LessonEditorPage() {
         title: newResourceTitle.trim() || file.name,
         resource_type: "STORED_FILE",
         stored_file_id: uploaded.id,
-        is_primary: newResourceIsPrimary,
+        is_primary: !showMainContentEditor && newResourceIsPrimary,
       });
       await loadLesson();
       setNewResourceTitle("");
@@ -174,15 +305,46 @@ export default function LessonEditorPage() {
     await runAction(() => reorderResources(lesson!.id, order));
   }
 
+  function startEditResource(resource: CourseResource) {
+    setEditingResourceId(resource.id);
+    setEditResourceTitle(resource.title);
+    setEditResourceProvider(resource.provider || "WEBSITE");
+    setEditResourceUrl(resource.url);
+    setEditResourceIsPrimary(resource.is_primary);
+  }
+
+  function cancelEditResource() {
+    setEditingResourceId(null);
+  }
+
+  async function handleSaveResourceEdit(resource: CourseResource) {
+    if (!editResourceTitle.trim()) return;
+    await runAction(() =>
+      updateResource(resource.id, {
+        title: editResourceTitle.trim(),
+        is_primary: editResourceIsPrimary,
+        ...(resource.resource_type === "EXTERNAL_LINK"
+          ? { provider: editResourceProvider, url: editResourceUrl.trim() }
+          : {}),
+      }),
+    );
+    setEditingResourceId(null);
+  }
+
   return (
     <div className="max-w-[800px] mx-auto space-y-6">
-      <Link
-        href={`/training/manage/courses/${id}`}
-        className="inline-flex items-center gap-1 font-label-caps text-label-caps uppercase text-on-surface-variant hover:text-on-surface transition-colors"
-      >
-        <Icon name="arrow_back" size={16} />
-        {t("backToCourse")}
-      </Link>
+      <div className="flex items-center justify-between gap-3">
+        <Link
+          href={`/training/manage/courses/${id}`}
+          className="inline-flex items-center gap-1 font-label-caps text-label-caps uppercase text-on-surface-variant hover:text-on-surface transition-colors"
+        >
+          <Icon name="arrow_back" size={16} />
+          {t("backToCourse")}
+        </Link>
+        <Link href={`/training/courses/${id}/learn/${lessonId}`}>
+          <IconButton icon="visibility" variant="secondary" aria-label={t("previewButton")} />
+        </Link>
+      </div>
 
       {error && (
         <p className="font-body-md text-body-md text-error" role="alert">
@@ -230,7 +392,56 @@ export default function LessonEditorPage() {
           </label>
         </div>
 
-        <MarkdownEditor value={content} onChange={setContent} placeholder={t("contentPlaceholder")} />
+        {showMainContentEditor && (
+          <div className="space-y-3 p-4 rounded-xl border border-primary bg-surface">
+            <div>
+              <label className="block font-label-caps text-label-caps text-primary uppercase">
+                {t("mainContentLabel")}
+              </label>
+              <p className="font-body-md text-body-md text-on-surface-variant">{t("mainContentHint")}</p>
+            </div>
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="w-40">
+                <Combobox
+                  label={resourceT("providerLabel")}
+                  options={PROVIDERS.map((value) => ({ value, label: resourceT(`provider_${value}` as never) }))}
+                  value={mainResourceProvider}
+                  onChange={(value) => setMainResourceProvider(value as CourseResourceProvider)}
+                />
+              </div>
+              <input
+                className="flex-1 min-w-[220px] px-3 py-2 font-body-md text-body-md text-on-surface bg-surface-container border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
+                placeholder={resourceT("urlPlaceholder")}
+                value={mainResourceUrl}
+                onChange={(e) => setMainResourceUrl(e.target.value)}
+              />
+              <Button
+                onClick={handleSaveMainResource}
+                disabled={isSavingMainResource || !mainResourceUrl.trim() || !isMainResourceDirty}
+              >
+                {commonT("save")}
+              </Button>
+            </div>
+            {isDocumentLessonType && (
+              <div className="flex items-center gap-2 pt-1">
+                <span className="font-body-md text-body-md text-on-surface-variant">or</span>
+                <FileDropzone
+                  onFileSelected={handleUploadMainResourceFile}
+                  progress={mainResourceFileUploadProgress}
+                  fileName={primaryResource?.resource_type === "STORED_FILE" ? primaryResource.stored_file?.original_filename : null}
+                  label={resourceT("uploadButton")}
+                  className="flex-1 max-w-sm"
+                />
+              </div>
+            )}
+          </div>
+        )}
+
+        <MarkdownEditor
+          value={content}
+          onChange={setContent}
+          placeholder={showMainContentEditor ? t("additionalNotesPlaceholder") : t("contentPlaceholder")}
+        />
 
         <Button onClick={handleSave} disabled={isSaving || !isDirty || !title.trim()}>
           {t("saveButton")}
@@ -240,14 +451,36 @@ export default function LessonEditorPage() {
       <div className="space-y-3">
         <h2 className="font-headline-md text-headline-md text-on-surface">{t("objectivesTitle")}</h2>
         <ul className="space-y-1">
-          {lesson.objectives.map((objective, index) => (
-            <li key={objective.id} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-surface-container-low border border-outline-variant">
-              <span className="flex-1 font-body-md text-body-md text-on-surface">{objective.text}</span>
-              <IconButton icon="arrow_upward" size={16} aria-label="Up" disabled={index === 0} onClick={() => handleMoveObjective(objective.id, -1)} />
-              <IconButton icon="arrow_downward" size={16} aria-label="Down" disabled={index === lesson.objectives.length - 1} onClick={() => handleMoveObjective(objective.id, 1)} />
-              <IconButton icon="close" size={16} variant="danger" aria-label={t("removeObjective")} onClick={() => runAction(() => deleteObjective(objective.id))} />
-            </li>
-          ))}
+          {lesson.objectives.map((objective, index) =>
+            editingObjectiveId === objective.id ? (
+              <li
+                key={objective.id}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-surface-container-low border border-primary"
+              >
+                <input
+                  autoFocus
+                  className="flex-1 px-3 py-1.5 font-body-md text-body-md text-on-surface bg-surface border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
+                  value={editObjectiveText}
+                  onChange={(e) => setEditObjectiveText(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleSaveObjectiveEdit(objective.id)}
+                />
+                <Button variant="secondary" onClick={cancelEditObjective}>
+                  {commonT("cancel")}
+                </Button>
+                <Button onClick={() => handleSaveObjectiveEdit(objective.id)} disabled={!editObjectiveText.trim()}>
+                  {commonT("save")}
+                </Button>
+              </li>
+            ) : (
+              <li key={objective.id} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-surface-container-low border border-outline-variant">
+                <span className="flex-1 font-body-md text-body-md text-on-surface">{objective.text}</span>
+                <IconButton icon="edit" size={16} aria-label={t("editObjective")} onClick={() => startEditObjective(objective.id, objective.text)} />
+                <IconButton icon="arrow_upward" size={16} aria-label={t("moveUp")} disabled={index === 0} onClick={() => handleMoveObjective(objective.id, -1)} />
+                <IconButton icon="arrow_downward" size={16} aria-label={t("moveDown")} disabled={index === lesson.objectives.length - 1} onClick={() => handleMoveObjective(objective.id, 1)} />
+                <IconButton icon="close" size={16} variant="danger" aria-label={t("removeObjective")} onClick={() => runAction(() => deleteObjective(objective.id))} />
+              </li>
+            ),
+          )}
         </ul>
         <div className="flex items-center gap-2">
           <input
@@ -266,18 +499,69 @@ export default function LessonEditorPage() {
       <div className="space-y-3">
         <h2 className="font-headline-md text-headline-md text-on-surface">{t("resourcesTitle")}</h2>
         <ul className="space-y-1">
-          {lesson.resources.map((resource, index) => (
-            <li key={resource.id} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-surface-container-low border border-outline-variant">
-              <Icon name={resource.resource_type === "STORED_FILE" ? "description" : "link"} size={16} className="text-on-surface-variant shrink-0" />
-              <span className="flex-1 min-w-0 truncate font-body-md text-body-md text-on-surface">{resource.title}</span>
-              {resource.is_primary && (
-                <span className="font-label-caps text-label-caps text-primary uppercase shrink-0">{resourceT("primaryLabel")}</span>
-              )}
-              <IconButton icon="arrow_upward" size={16} aria-label="Up" disabled={index === 0} onClick={() => handleMoveResource(resource.id, -1)} />
-              <IconButton icon="arrow_downward" size={16} aria-label="Down" disabled={index === lesson.resources.length - 1} onClick={() => handleMoveResource(resource.id, 1)} />
-              <IconButton icon="close" size={16} variant="danger" aria-label={t("removeResource")} onClick={() => runAction(() => deleteResource(resource.id))} />
-            </li>
-          ))}
+          {listedResources.map((resource, index) =>
+            editingResourceId === resource.id ? (
+              <li
+                key={resource.id}
+                className="space-y-2 px-3 py-3 rounded-lg bg-surface-container-low border border-primary"
+              >
+                <input
+                  className="w-full px-3 py-2 font-body-md text-body-md text-on-surface bg-surface border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
+                  placeholder={resourceT("titlePlaceholder")}
+                  value={editResourceTitle}
+                  onChange={(e) => setEditResourceTitle(e.target.value)}
+                />
+                {resource.resource_type === "EXTERNAL_LINK" && (
+                  <div className="flex flex-wrap items-end gap-3">
+                    <div className="w-40">
+                      <Combobox
+                        label={resourceT("providerLabel")}
+                        options={PROVIDERS.map((value) => ({ value, label: resourceT(`provider_${value}` as never) }))}
+                        value={editResourceProvider}
+                        onChange={(value) => setEditResourceProvider(value as CourseResourceProvider)}
+                      />
+                    </div>
+                    <input
+                      className="flex-1 min-w-[200px] px-3 py-2 font-body-md text-body-md text-on-surface bg-surface border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
+                      placeholder={resourceT("urlPlaceholder")}
+                      value={editResourceUrl}
+                      onChange={(e) => setEditResourceUrl(e.target.value)}
+                    />
+                  </div>
+                )}
+                <div className="flex items-center justify-between">
+                  <label className="flex items-center gap-2 font-body-md text-body-md text-on-surface">
+                    <input
+                      type="checkbox"
+                      checked={editResourceIsPrimary}
+                      onChange={(e) => setEditResourceIsPrimary(e.target.checked)}
+                    />
+                    {resourceT("primaryLabel")}
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <Button variant="secondary" onClick={cancelEditResource}>
+                      {commonT("cancel")}
+                    </Button>
+                    <Button onClick={() => handleSaveResourceEdit(resource)} disabled={!editResourceTitle.trim()}>
+                      {commonT("save")}
+                    </Button>
+                  </div>
+                </div>
+              </li>
+            ) : (
+              <li key={resource.id} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-surface-container-low border border-outline-variant">
+                <Icon name={resource.resource_type === "STORED_FILE" ? "description" : "link"} size={16} className="text-on-surface-variant shrink-0" />
+                <span className="flex-1 min-w-0 truncate font-body-md text-body-md text-on-surface">{resource.title}</span>
+                {resource.is_primary && (
+                  <span className="font-label-caps text-label-caps text-primary uppercase shrink-0">{resourceT("primaryLabel")}</span>
+                )}
+                <IconButton icon="edit" size={16} aria-label={t("editResource")} onClick={() => startEditResource(resource)} />
+                <IconButton icon="arrow_upward" size={16} aria-label={t("moveUp")} disabled={index === 0} onClick={() => handleMoveResource(resource.id, -1)} />
+                <IconButton icon="arrow_downward" size={16} aria-label={t("moveDown")} disabled={index === listedResources.length - 1} onClick={() => handleMoveResource(resource.id, 1)} />
+                <IconButton icon="close" size={16} variant="danger" aria-label={t("removeResource")} onClick={() => runAction(() => deleteResource(resource.id))} />
+              </li>
+            ),
+          )}
         </ul>
 
         <div className="space-y-2 bg-surface-container-low border border-outline-variant rounded-xl p-4">
@@ -288,12 +572,14 @@ export default function LessonEditorPage() {
               value={newResourceTitle}
               onChange={(e) => setNewResourceTitle(e.target.value)}
             />
-            <label className="flex items-center gap-2 font-body-md text-body-md text-on-surface">
-              <input type="checkbox" checked={newResourceIsPrimary} onChange={(e) => setNewResourceIsPrimary(e.target.checked)} />
-              {resourceT("primaryLabel")}
-            </label>
+            {!showMainContentEditor && (
+              <label className="flex items-center gap-2 font-body-md text-body-md text-on-surface">
+                <input type="checkbox" checked={newResourceIsPrimary} onChange={(e) => setNewResourceIsPrimary(e.target.checked)} />
+                {resourceT("primaryLabel")}
+              </label>
+            )}
           </div>
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-end gap-3">
             <div className="w-40">
               <Combobox
                 label={resourceT("providerLabel")}

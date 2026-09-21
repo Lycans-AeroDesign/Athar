@@ -8,7 +8,18 @@ import remarkGfm from "remark-gfm";
 import { AuthenticatedImage } from "./AuthenticatedImage";
 import { Icon } from "./Icon";
 import { MermaidDiagram } from "./MermaidDiagram";
+import { downloadFile } from "@/lib/api/files";
 import { slugify } from "@/lib/slug";
+
+// Matches ImageRenderer's own /api/v1/files/ check below - a non-image file
+// uploaded through the editor (see MarkdownEditor.tsx's uploadAndInsert)
+// embeds as [filename](/api/v1/files/<id>/download/), which is the same
+// auth-gated (Bearer-only) endpoint AuthenticatedImage works around. A plain
+// <a href> to it is a direct browser navigation with no Bearer header, which
+// the backend can't authenticate - it doesn't 404, it errors out (see
+// backend/files/views.py). Downloading via apiFetch instead of navigating
+// fixes that the same way AuthenticatedImage does for images.
+const FILE_DOWNLOAD_HREF_PATTERN = /^\/api\/v1\/files\/([^/]+)\/download\/?$/;
 
 // react-markdown gives each fenced ```code block``` to `pre` as a single
 // `code` child (react-markdown.dev's "syntax highlighting" recipe - there's
@@ -102,6 +113,39 @@ function isStandaloneImageParagraph(children: ReactNode): boolean {
   return meaningful.length === 1 && isValidElement(meaningful[0]) && meaningful[0].type === ImageRenderer;
 }
 
+// A link to that same auth-gated download endpoint - see
+// FILE_DOWNLOAD_HREF_PATTERN above - downloads via apiFetch instead of
+// navigating; anything else (an external URL someone pasted or typed by
+// hand) renders as a normal <a target="_blank">.
+function FileAwareLink({ href, children }: { href?: string; children?: ReactNode }) {
+  const [isDownloading, setIsDownloading] = useState(false);
+  const fileId = typeof href === "string" ? FILE_DOWNLOAD_HREF_PATTERN.exec(href)?.[1] : undefined;
+
+  if (fileId) {
+    return (
+      <a
+        href={href}
+        aria-busy={isDownloading}
+        className="text-primary underline hover:no-underline cursor-pointer"
+        onClick={(e) => {
+          e.preventDefault();
+          if (isDownloading) return;
+          setIsDownloading(true);
+          downloadFile(fileId, extractText(children) || fileId).finally(() => setIsDownloading(false));
+        }}
+      >
+        {children}
+      </a>
+    );
+  }
+
+  return (
+    <a href={href} className="text-primary underline hover:no-underline" target="_blank" rel="noreferrer">
+      {children}
+    </a>
+  );
+}
+
 // Maps markdown elements onto the app's own semantic Tailwind tokens rather
 // than the Tailwind Typography `prose` plugin - that plugin isn't installed,
 // and its hardcoded color palette would fight this app's CSS-variable-driven
@@ -134,11 +178,7 @@ const COMPONENTS: Components = {
     ) : (
       <p className="font-body-lg text-body-lg text-on-surface mb-4">{children}</p>
     ),
-  a: ({ href, children }) => (
-    <a href={href} className="text-primary underline hover:no-underline" target="_blank" rel="noreferrer">
-      {children}
-    </a>
-  ),
+  a: FileAwareLink,
   ul: ({ children }) => (
     <ul className="list-disc pl-6 mb-4 space-y-1 font-body-lg text-body-lg text-on-surface">{children}</ul>
   ),

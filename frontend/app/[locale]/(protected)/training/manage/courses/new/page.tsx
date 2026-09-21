@@ -6,14 +6,18 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Combobox } from "@/components/ui/Combobox";
 import { Icon } from "@/components/ui/Icon";
+import { MarkdownEditor } from "@/components/ui/MarkdownEditor";
+import { PhotoDropzone } from "@/components/ui/PhotoDropzone";
 import { Link, useRouter } from "@/i18n/navigation";
+import { uploadFile } from "@/lib/api/files";
 import { createCourse, listCourseCategories } from "@/lib/api/training";
-import type { CourseCategory, CourseDifficulty } from "@/lib/api/types";
+import type { CourseCategory, CourseDifficulty, StoredFileRef } from "@/lib/api/types";
 
 const DIFFICULTIES: CourseDifficulty[] = ["BEGINNER", "INTERMEDIATE", "ADVANCED"];
 
 export default function NewCoursePage() {
   const t = useTranslations("training.manage");
+  const commonT = useTranslations("common");
   const difficultyT = useTranslations("training.difficulty");
   const router = useRouter();
 
@@ -23,12 +27,26 @@ export default function NewCoursePage() {
   const [description, setDescription] = useState("");
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [difficulty, setDifficulty] = useState<CourseDifficulty>("BEGINNER");
+  const [coverImage, setCoverImage] = useState<StoredFileRef | null>(null);
+  const [coverUploadProgress, setCoverUploadProgress] = useState<number | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     listCourseCategories().then(setCategories);
   }, []);
+
+  async function handleCoverUpload(file: File) {
+    setCoverUploadProgress(0);
+    setError(null);
+    try {
+      setCoverImage(await uploadFile(file, { onProgress: setCoverUploadProgress }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setCoverUploadProgress(null);
+    }
+  }
 
   async function handleCreate() {
     setIsSaving(true);
@@ -39,6 +57,7 @@ export default function NewCoursePage() {
         short_description: shortDescription,
         description,
         category_id: categoryId,
+        cover_image_id: coverImage?.id ?? null,
         difficulty,
       });
       router.push(`/training/manage/courses/${course.id}`);
@@ -73,12 +92,7 @@ export default function NewCoursePage() {
           value={shortDescription}
           onChange={(e) => setShortDescription(e.target.value)}
         />
-        <textarea
-          className="block w-full min-h-[120px] px-4 py-2 font-body-md text-body-md text-on-surface bg-surface border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
-          placeholder={t("descriptionPlaceholder")}
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-        />
+        <MarkdownEditor value={description} onChange={setDescription} placeholder={t("descriptionPlaceholder")} />
         <div className="flex flex-wrap gap-3">
           <div className="w-56">
             <Combobox
@@ -98,6 +112,19 @@ export default function NewCoursePage() {
             />
           </div>
         </div>
+
+        {/* Its own block row (not a bare inline-flex Button sibling) so it
+            never ends up sharing a line with the Create button below - same
+            layout precedent as the course edit page's own PhotoDropzone. */}
+        <PhotoDropzone
+          value={coverImage}
+          onFileSelected={handleCoverUpload}
+          onUnsupportedFile={() => setError(commonT("unsupportedImageType"))}
+          progress={coverUploadProgress}
+          alt={coverImage ? t("changeCoverButton") : t("addCoverButton")}
+          shape="wide"
+          className="h-36 w-72"
+        />
 
         {error && (
           <p className="font-body-md text-body-md text-error" role="alert">
