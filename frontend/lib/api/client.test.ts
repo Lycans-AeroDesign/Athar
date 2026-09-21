@@ -30,6 +30,21 @@ describe("extractApiError", () => {
     expect(result.message).toContain("Something else is wrong.");
   });
 
+  it("flattens DRF's bare-array shape for a plain-string ValidationError raised directly in a service function", async () => {
+    // e.g. training/services.py's delete_course: raise ValidationError("A
+    // course with enrollments can't be deleted - archive it instead.") -
+    // DRF's exception_handler serializes this as a top-level JSON array,
+    // not {"detail": "..."}.
+    const result = await extractApiError(
+      fakeResponse(["A course with enrollments can't be deleted - archive it instead."]),
+      "/api/v1/training/courses/abc/",
+    );
+    expect(result).toEqual({
+      message: "A course with enrollments can't be deleted - archive it instead.",
+      fields: {},
+    });
+  });
+
   it("falls back to a generic status-based message when the body isn't JSON", async () => {
     const res = {
       status: 500,

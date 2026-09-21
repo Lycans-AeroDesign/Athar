@@ -107,6 +107,21 @@ function parseErrorBody(
   status: number,
   path: string,
 ): { message: string; fields: Record<string, string> } {
+  // DRF's own exception_handler special-cases this: raising
+  // rest_framework.exceptions.ValidationError("some message") - the
+  // shape training/services.py (and every other app's services.py) uses for
+  // a plain business-rule rejection like "A course with enrollments can't
+  // be deleted" - wraps the string in a *bare* top-level JSON array
+  // (["some message"]), not {"detail": "some message"}. That still passes
+  // `typeof body === "object"` (arrays do in JS), so without this check it
+  // silently fell through the field-dict branch below (Object.entries on an
+  // array yields index->string pairs, and a string never satisfies the
+  // Array.isArray(value) check) all the way to the generic fallback -
+  // exactly the "every backend validation message reaches the user" gap
+  // this function's own docstring says it fixed, just for this one shape.
+  if (Array.isArray(body) && body.every((entry): entry is string => typeof entry === "string") && body.length > 0) {
+    return { message: body.join(" "), fields: {} };
+  }
   if (body && typeof body === "object") {
     const record = body as Record<string, unknown>;
     if (typeof record.detail === "string") return { message: record.detail, fields: {} };
