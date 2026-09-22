@@ -39,6 +39,7 @@ services:
       JWT_REFRESH_COOKIE_SAMESITE: ${JWT_REFRESH_COOKIE_SAMESITE:-Lax}
       JWT_REFRESH_COOKIE_DOMAIN: ${JWT_REFRESH_COOKIE_DOMAIN:-}
       ENABLE_REGISTRATION: ${ENABLE_REGISTRATION:-True}
+      ENABLE_ORGANIZATION_REGISTRATION: ${ENABLE_ORGANIZATION_REGISTRATION:-True}
       # File storage - empty means local disk (see backend/.env.example);
       # set AWS_STORAGE_BUCKET_NAME (root .env) to switch to S3-compatible
       # object storage instead.

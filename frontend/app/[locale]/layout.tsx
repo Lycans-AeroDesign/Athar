@@ -33,6 +33,17 @@ const jetbrainsMono = localFont({
   weight: "100 800",
 });
 
+// A single accent cut, deliberately not the everyday UI typeface - used only
+// for the login/register slogan (see globals.css's --font-accent). Latin-only
+// (no Arabic glyphs), so it's applied to the English slogan alone; Arabic
+// stays in the normal body font rather than faking italics on that script.
+const newsreaderItalic = localFont({
+  src: "../fonts/Newsreader-Italic.woff2",
+  variable: "--font-newsreader",
+  weight: "500",
+  style: "italic",
+});
+
 export function generateStaticParams() {
   return locales.map((locale) => ({ locale }));
 }
@@ -72,7 +83,7 @@ export default async function LocaleLayout({
       lang={locale}
       dir={localeDirections[locale as Locale]}
       data-theme={dataTheme}
-      className={`${inter.variable} ${jetbrainsMono.variable} h-full antialiased`}
+      className={`${inter.variable} ${jetbrainsMono.variable} ${newsreaderItalic.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col font-body-md text-body-md">
         <NextIntlClientProvider messages={messages}>

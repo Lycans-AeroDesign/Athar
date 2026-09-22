@@ -1,7 +1,7 @@
 "use client";
 
-import { useTranslations } from "next-intl";
-import { Suspense, useState, type FormEvent } from "react";
+import { useLocale, useTranslations } from "next-intl";
+import { Suspense, useEffect, useState, type FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
 
 import { BrandMark } from "@/components/ui/BrandMark";
@@ -41,6 +41,7 @@ function RegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const t = useTranslations("auth");
+  const locale = useLocale();
 
   // Defaults to "invite" - most visitors to a self-hosted Athar instance are
   // joining an existing team, not starting a new SaaS org. Anyone landing
@@ -61,6 +62,18 @@ function RegisterForm() {
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Undefined (not yet loaded) defaults to shown, matching the backend's own
+  // ENABLE_ORGANIZATION_REGISTRATION default (True) - only an explicit
+  // `false` from the settings fetch hides the tab.
+  const organizationSignupEnabled = settings?.organization_registration_enabled !== false;
+
+  // Settings can finish loading (or the URL can carry mode=organization)
+  // after the tab is already showing - fall back to "invite" rather than
+  // leave the visitor stuck on a tab that always 404s.
+  useEffect(() => {
+    if (!organizationSignupEnabled && mode === "organization") setMode("invite");
+  }, [organizationSignupEnabled, mode]);
 
   function validate(): FieldErrors {
     const errors: FieldErrors = {};
@@ -140,39 +153,47 @@ function RegisterForm() {
             <h1 className="font-headline-lg text-headline-lg text-on-surface">
               {settings?.name ?? "Athar"}
             </h1>
-            <p className="font-body-md text-body-md text-on-surface-variant mt-2">
+            <p
+              className={
+                locale === "en"
+                  ? "font-accent italic text-body-lg text-on-surface-variant mt-2"
+                  : "font-body-md text-body-md text-on-surface-variant mt-2"
+              }
+            >
               {t("register.tagline")}
             </p>
           </div>
 
-          <div className="flex bg-surface-container rounded-lg p-1 mb-6" role="tablist">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={mode === "invite"}
-              onClick={() => setMode("invite")}
-              className={`flex-1 py-2 rounded-md font-label-caps text-label-caps uppercase transition-colors ${
-                mode === "invite"
-                  ? "bg-surface-container-lowest text-primary shadow-[0_1px_3px_0_rgba(0,0,0,0.08)]"
-                  : "text-on-surface-variant"
-              }`}
-            >
-              {t("register.modeInvite")}
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={mode === "organization"}
-              onClick={() => setMode("organization")}
-              className={`flex-1 py-2 rounded-md font-label-caps text-label-caps uppercase transition-colors ${
-                mode === "organization"
-                  ? "bg-surface-container-lowest text-primary shadow-[0_1px_3px_0_rgba(0,0,0,0.08)]"
-                  : "text-on-surface-variant"
-              }`}
-            >
-              {t("register.modeOrganization")}
-            </button>
-          </div>
+          {organizationSignupEnabled && (
+            <div className="flex bg-surface-container rounded-lg p-1 mb-6" role="tablist">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={mode === "invite"}
+                onClick={() => setMode("invite")}
+                className={`flex-1 py-2 rounded-md font-label-caps text-label-caps uppercase transition-colors ${
+                  mode === "invite"
+                    ? "bg-surface-container-lowest text-primary shadow-[0_1px_3px_0_rgba(0,0,0,0.08)]"
+                    : "text-on-surface-variant"
+                }`}
+              >
+                {t("register.modeInvite")}
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={mode === "organization"}
+                onClick={() => setMode("organization")}
+                className={`flex-1 py-2 rounded-md font-label-caps text-label-caps uppercase transition-colors ${
+                  mode === "organization"
+                    ? "bg-surface-container-lowest text-primary shadow-[0_1px_3px_0_rgba(0,0,0,0.08)]"
+                    : "text-on-surface-variant"
+                }`}
+              >
+                {t("register.modeOrganization")}
+              </button>
+            </div>
+          )}
 
           <form className="space-y-6" noValidate onSubmit={handleSubmit}>
             <div className="space-y-1">

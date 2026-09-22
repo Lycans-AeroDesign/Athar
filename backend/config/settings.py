@@ -326,6 +326,10 @@ JWT_REFRESH_COOKIE_SAMESITE = env("JWT_REFRESH_COOKIE_SAMESITE", default="Lax")
 JWT_REFRESH_COOKIE_DOMAIN = env("JWT_REFRESH_COOKIE_DOMAIN", default="") or None
 
 ENABLE_REGISTRATION = env.bool("ENABLE_REGISTRATION", default=True)
+# Gates only the self-service "create a brand-new organization" signup flow
+# (organization.views.OrganizationCreateView) - distinct from ENABLE_REGISTRATION
+# above, which gates joining an EXISTING org via invitation code.
+ENABLE_ORGANIZATION_REGISTRATION = env.bool("ENABLE_ORGANIZATION_REGISTRATION", default=True)
 
 
 # Celery (background jobs - backups.tasks.generate_org_backup on demand, plus

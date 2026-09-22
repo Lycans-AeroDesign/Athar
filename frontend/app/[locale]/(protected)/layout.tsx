@@ -44,7 +44,10 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className="bg-background text-on-background flex h-screen overflow-hidden">
+    // h-dvh, not h-screen - see SideNav.tsx's own comment on the same
+    // mobile-viewport issue; this wrapper sets the height SideNav's h-dvh
+    // sits inside, so it needs to match rather than reintroduce the gap.
+    <div className="bg-background text-on-background flex h-dvh overflow-hidden">
       <ProductTourAutostart openMobileNav={openMobileNav} closeMobileNav={closeMobileNav} />
       <SideNav open={mobileNavOpen} onClose={closeMobileNav} />
       <div className="flex-1 flex flex-col lg:ms-64 overflow-hidden bg-background">

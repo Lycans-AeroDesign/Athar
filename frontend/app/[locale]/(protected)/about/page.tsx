@@ -58,6 +58,14 @@ export default async function AboutPage() {
         <p className="font-body-md text-body-md text-on-surface-variant mt-3 leading-relaxed max-w-3xl">
           {t("creditBody")}
         </p>
+        <a
+          className="font-body-md text-body-md text-primary hover:underline mt-3 inline-block"
+          href="https://lycansteam.com"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          {t("creditLink")}
+        </a>
       </div>
     </section>
   );

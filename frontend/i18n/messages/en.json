@@ -40,7 +40,7 @@
     "invalidEmail": "Enter a valid email address.",
     "passwordTooShort": "Password must be at least {min} characters.",
     "login": {
-      "tagline": "Engineering Knowledge System",
+      "tagline": "Knowledge that never graduates.",
       "identifierLabel": "Email or Username",
       "submit": "Login",
       "submitting": "Logging in...",
@@ -51,7 +51,7 @@
       "registerLink": "Register"
     },
     "register": {
-      "tagline": "Create your account",
+      "tagline": "Knowledge that never graduates.",
       "modeOrganization": "Create a Team",
       "modeInvite": "I Have an Invite",
       "organizationNameLabel": "Team/Organization Name",
@@ -355,7 +355,8 @@
     "principle3Title": "Backend-enforced authorization",
     "principle3Body": "The frontend is never a security boundary — every request is authorized on the server, regardless of client.",
     "creditTitle": "Built by Lycans AeroDesign",
-    "creditBody": "Athar is built and self-hosted by Lycans AeroDesign as the reference deployment for this system, and shared as open source so other student teams can run their own instance."
+    "creditBody": "Athar is built and self-hosted by Lycans AeroDesign as the reference deployment for this system, and shared as open source so other student teams can run their own instance.",
+    "creditLink": "lycansteam.com"
   },
   "userProfile": {
     "loading": "Loading profile...",

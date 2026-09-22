@@ -209,6 +209,17 @@ class OrganizationCreateTests(APITestCase):
         # response is the created admin, not a token pair.
         self.assertNotIn("access", response.data)
 
+    def test_organization_registration_disabled_returns_404(self):
+        with self.settings(ENABLE_ORGANIZATION_REGISTRATION=False):
+            response = self.client.post(
+                reverse("organization-create"),
+                {"name": "Blocked Org", "admin_email": "blocked@neworg.example", "admin_password": "somepassword123"},
+                format="json",
+            )
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertFalse(Organization.objects.filter(name="Blocked Org").exists())
+        self.assertFalse(User.objects.filter(email="blocked@neworg.example").exists())
+
     def test_admin_username_accepted_and_rejects_duplicates(self):
         self.client.post(
             reverse("organization-create"),

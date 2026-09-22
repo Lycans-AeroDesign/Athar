@@ -1,6 +1,6 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Suspense, useState, type FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
 
@@ -30,6 +30,7 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const t = useTranslations("auth");
+  const locale = useLocale();
 
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
@@ -88,7 +89,13 @@ function LoginForm() {
             <h1 className="font-headline-lg text-headline-lg text-on-surface">
               {settings?.name ?? "Athar"}
             </h1>
-            <p className="font-body-md text-body-md text-on-surface-variant mt-2">
+            <p
+              className={
+                locale === "en"
+                  ? "font-accent italic text-body-lg text-on-surface-variant mt-2"
+                  : "font-body-md text-body-md text-on-surface-variant mt-2"
+              }
+            >
               {t("login.tagline")}
             </p>
           </div>

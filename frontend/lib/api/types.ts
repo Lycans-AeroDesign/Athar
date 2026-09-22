@@ -141,6 +141,8 @@ export interface OrganizationSettings {
   secondary_color_dark: string;
   /** Org-wide kill switch for the first-run interactive product tour - see UserPreferences.has_completed_tour for the per-user "already seen it" flag. */
   product_tour_enabled: boolean;
+  /** Instance-wide (not per-org) - mirrors the backend's ENABLE_ORGANIZATION_REGISTRATION setting. Controls whether the register page's "create a new organization" tab is shown. */
+  organization_registration_enabled: boolean;
   updated_at: string;
 }
 

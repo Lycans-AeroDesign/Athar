@@ -247,6 +247,10 @@
   --font-body-md: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-label-caps: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-mono-sm: var(--font-jetbrains-mono), ui-monospace, monospace;
+  /* The one deliberately-different voice on the page - the login/register
+     slogan only (see LoginPage/RegisterForm). Latin-only cut, so it's never
+     applied to Arabic copy. */
+  --font-accent: var(--font-newsreader), ui-serif, Georgia, "Times New Roman", serif;
 
   --text-display: 36px;
   --text-display--line-height: 44px;

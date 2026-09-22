@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db.models import Count
 from django.http import FileResponse, Http404
 from drf_spectacular.utils import OpenApiResponse, extend_schema
@@ -170,9 +171,16 @@ class OrganizationCreateView(APIView):
         tags=["Organization"],
         summary="Create a brand-new organization with its first user as Organization Admin",
         request=OrganizationCreateSerializer,
-        responses={201: UserSerializer, 400: BAD_REQUEST},
+        responses={
+            201: UserSerializer,
+            400: BAD_REQUEST,
+            404: OpenApiResponse(description="Organization signup is disabled (ENABLE_ORGANIZATION_REGISTRATION=False)."),
+        },
     )
     def post(self, request):
+        if not settings.ENABLE_ORGANIZATION_REGISTRATION:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
         serializer = OrganizationCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         _organization, admin = services.create_organization(request=request, **serializer.validated_data)

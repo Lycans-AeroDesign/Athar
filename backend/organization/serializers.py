@@ -1,3 +1,4 @@
+from django.conf import settings as django_settings
 from rest_framework import serializers
 
 from accounts.models import User, username_validator
@@ -21,6 +22,13 @@ class OrganizationSettingsSerializer(serializers.ModelSerializer):
     # useful for the settings form's own bookkeeping (filename, id, ...).
     logo_url = serializers.SerializerMethodField()
     favicon_url = serializers.SerializerMethodField()
+    # Instance-wide (not per-organization) flag mirrored from settings.py's
+    # ENABLE_ORGANIZATION_REGISTRATION, not an OrganizationSettings model
+    # field - piggybacks on this always-public, pre-login endpoint so the
+    # register page can hide its "create a new organization" tab without a
+    # dedicated endpoint. See OrganizationCreateView, which is the one that
+    # actually enforces this server-side.
+    organization_registration_enabled = serializers.SerializerMethodField()
 
     class Meta:
         model = OrganizationSettings
@@ -36,6 +44,7 @@ class OrganizationSettingsSerializer(serializers.ModelSerializer):
             "primary_color_dark",
             "secondary_color_dark",
             "product_tour_enabled",
+            "organization_registration_enabled",
             "updated_at",
         ]
 
@@ -44,6 +53,9 @@ class OrganizationSettingsSerializer(serializers.ModelSerializer):
 
     def get_favicon_url(self, obj: OrganizationSettings) -> str | None:
         return "/api/v1/organization/settings/favicon/" if obj.favicon else None
+
+    def get_organization_registration_enabled(self, obj: OrganizationSettings) -> bool:
+        return django_settings.ENABLE_ORGANIZATION_REGISTRATION
 
 
 class OrganizationCreateSerializer(serializers.Serializer):

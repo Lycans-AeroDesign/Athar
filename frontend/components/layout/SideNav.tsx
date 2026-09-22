@@ -102,7 +102,14 @@ export function SideNav({ open, onClose }: SideNavProps) {
         // widths in Arabic, pushing the whole sidebar off-screen. Scoping
         // both hide classes to max-lg means they simply don't exist as
         // applicable rules at lg+, so there's no rule left to win a tie.
-        className={`bg-surface-container-low text-primary font-body-md text-body-md h-screen w-64 border-e border-outline-variant flex flex-col fixed start-0 top-0 z-40 transition-transform duration-200 lg:translate-x-0 ${
+        //
+        // h-dvh, not h-screen - the Settings/About block at the bottom is
+        // mt-auto inside this fixed, non-page-scrolling nav, so on mobile
+        // browsers h-screen's 100vh (sized as if the URL bar were hidden)
+        // pushed it below the actually-visible viewport whenever that chrome
+        // was showing, which is the default state. dvh tracks the real
+        // visible height as the chrome shows/hides.
+        className={`bg-surface-container-low text-primary font-body-md text-body-md h-dvh w-64 border-e border-outline-variant flex flex-col fixed start-0 top-0 z-40 transition-transform duration-200 lg:translate-x-0 ${
           open ? "translate-x-0" : "max-lg:-translate-x-full max-lg:rtl:translate-x-full"
         }`}
       >
