@@ -1,3 +1,9 @@
+## [1.4.1](https://github.com/Lycans-AeroDesign/Athar/compare/v1.4.0...v1.4.1) (2026-09-22)
+
+### Bug Fixes
+
+* **organization:** rate-limit and validate org self-signup properly ([147613a](https://github.com/Lycans-AeroDesign/Athar/commit/147613a8d4e8e8739f32b00d33702b963d123f65))
+
 ## [1.4.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.3.0...v1.4.0) (2026-09-22)
 
 ### Features
