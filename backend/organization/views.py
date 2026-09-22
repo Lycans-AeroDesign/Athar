@@ -5,6 +5,7 @@ from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from accounts.serializers import UserSerializer
@@ -166,6 +167,12 @@ class OrganizationCreateView(APIView):
     redirects to /login afterward, same flow as invitation-based registration."""
 
     permission_classes = [AllowAny]
+    # Same "auth" scope as RegisterView/LoginView/RefreshView (accounts/views.py)
+    # - actually tighter to apply here than to those, since this creates a
+    # whole new tenant (Organization + OrganizationSettings + a full RBAC role
+    # set + the admin User) per request, not just one row.
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "auth"
 
     @extend_schema(
         tags=["Organization"],

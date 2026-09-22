@@ -1,8 +1,13 @@
+from unittest.mock import patch
+
+from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
 
+from django.test import override_settings
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
+from rest_framework.throttling import ScopedRateThrottle
 
 from core.testing import create_test_organization
 from accounts.models import User
@@ -189,10 +194,18 @@ class OrganizationSettingsTests(APITestCase):
         self.assertEqual(public_response.data["name"], "Real Org")
 
 
+@override_settings(ENABLE_ORGANIZATION_REGISTRATION=True)
 class OrganizationCreateTests(APITestCase):
     """The self-service SaaS signup entrypoint - POST /api/v1/organization/,
     AllowAny. See services.create_organization's own docstring for how this
-    differs from accounts.RegisterView (joins an existing org via invite)."""
+    differs from accounts.RegisterView (joins an existing org via invite).
+
+    Pins ENABLE_ORGANIZATION_REGISTRATION=True at the class level rather than
+    relying on its default - these tests assert what happens when org signup
+    is enabled, so they shouldn't silently break in an environment (or CI
+    config) that happens to have it turned off. test_organization_
+    registration_disabled_returns_404 below overrides it back to False just
+    for itself."""
 
     def test_creates_organization_with_first_admin(self):
         response = self.client.post(
@@ -218,6 +231,48 @@ class OrganizationCreateTests(APITestCase):
             )
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         self.assertFalse(Organization.objects.filter(name="Blocked Org").exists())
+
+    def test_admin_email_rejects_duplicates_with_a_clean_400(self):
+        User.objects.create_user(
+            email="already-registered@example.com",
+            password="somepassword123",
+            organization=create_test_organization(),
+        )
+
+        response = self.client.post(
+            reverse("organization-create"),
+            {
+                "name": "Second Org",
+                "admin_email": "already-registered@example.com",
+                "admin_password": "somepassword123",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("admin_email", response.data)
+        self.assertFalse(Organization.objects.filter(name="Second Org").exists())
+
+    # Same pattern as accounts/tests.py's test_login_is_rate_limited_after_repeated_attempts -
+    # see that test's own comment for why THROTTLE_RATES has to be patched
+    # directly rather than via override_settings.
+    @patch.dict(ScopedRateThrottle.THROTTLE_RATES, {"auth": "3/min"})
+    def test_organization_create_is_rate_limited_after_repeated_attempts(self):
+        cache.clear()
+        for i in range(3):
+            response = self.client.post(
+                reverse("organization-create"),
+                {"name": f"Org {i}", "admin_email": f"founder{i}@neworg.example", "admin_password": "somepassword123"},
+                format="json",
+            )
+            self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        response = self.client.post(
+            reverse("organization-create"),
+            {"name": "One Too Many", "admin_email": "onetoomany@neworg.example", "admin_password": "somepassword123"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+        self.assertFalse(Organization.objects.filter(name="One Too Many").exists())
         self.assertFalse(User.objects.filter(email="blocked@neworg.example").exists())
 
     def test_admin_username_accepted_and_rejects_duplicates(self):

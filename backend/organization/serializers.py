@@ -81,6 +81,18 @@ class OrganizationCreateSerializer(serializers.Serializer):
         required=False, allow_blank=True, default="", max_length=30, validators=[username_validator]
     )
 
+    def validate_admin_email(self, value):
+        # A plain Serializer (see the admin_username field's own comment
+        # above for why) gets none of ModelSerializer's automatic
+        # UniqueValidator machinery, so without this, a duplicate email
+        # sails through validation and only fails once create_organization()
+        # hits User.objects.create_user()'s DB-level unique constraint - an
+        # unhandled IntegrityError (500), not a clean 400 like
+        # accounts.RegisterSerializer already returns for the same case.
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("A user with that email already exists.")
+        return value
+
     def validate_admin_username(self, value):
         value = value or None
         if value and User.objects.filter(username=value).exists():
