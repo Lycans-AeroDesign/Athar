@@ -4,6 +4,13 @@
 
 Open-source, self-hosted **Knowledge Management System** for student AeroDesign teams — built and self-hosted by [Lycans AeroDesign](https://github.com/Lycans-AeroDesign) as its reference deployment.
 
+> **Don't want to manage your own deployment?**  
+> We are exploring a managed hosting option for teams that want to use Athar without maintaining their own infrastructure. Hosting would be provided by Lycans AeroDesign and may be offered through a subscription-based plan.
+>
+> If your team would be interested in a hosted Athar instance, [contact Lycans](https://www.lycansteam.com/contact) and let us know. Your interest will help us determine whether there is enough demand to launch a shared hosted service for teams.
+>
+> **Self-hosting will always remain available** — you can deploy your own independent instance, own your data, and manage your infrastructure yourself.
+
 ## Why
 
 Student engineering teams accumulate a huge amount of knowledge — designs, failures, SOPs, flight history, decisions, lessons learned — that mostly lives in people's heads and disappears when they graduate. Athar exists so a new member can search the system and understand not just **what** the team does, but **why**.
