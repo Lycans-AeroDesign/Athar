@@ -1,7 +1,7 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
-import { Suspense, useEffect, useState, type FormEvent } from "react";
+import { Suspense, useState, type FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
 
 import { BrandMark } from "@/components/ui/BrandMark";
@@ -47,7 +47,7 @@ function RegisterForm() {
   // joining an existing team, not starting a new SaaS org. Anyone landing
   // with an invite link (?code=...) gets this anyway, and "Create a new
   // organization" is one tab click away for the rarer self-service signup.
-  const [mode, setMode] = useState<Mode>("invite");
+  const [rawMode, setMode] = useState<Mode>("invite");
   const [organizationName, setOrganizationName] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -70,10 +70,10 @@ function RegisterForm() {
 
   // Settings can finish loading (or the URL can carry mode=organization)
   // after the tab is already showing - fall back to "invite" rather than
-  // leave the visitor stuck on a tab that always 404s.
-  useEffect(() => {
-    if (!organizationSignupEnabled && mode === "organization") setMode("invite");
-  }, [organizationSignupEnabled, mode]);
+  // leave the visitor stuck on a tab that always 404s. Derived at render
+  // time (not synced via an effect) since this just clamps already-known
+  // state instead of reacting to anything external.
+  const mode: Mode = rawMode === "organization" && !organizationSignupEnabled ? "invite" : rawMode;
 
   function validate(): FieldErrors {
     const errors: FieldErrors = {};
