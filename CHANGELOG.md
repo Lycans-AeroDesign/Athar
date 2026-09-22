@@ -1,3 +1,14 @@
+## [1.4.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.3.0...v1.4.0) (2026-09-22)
+
+### Features
+
+* **auth,organization,layout:** togglable org signup, login/register slogan, mobile sidebar fix ([ce70ef6](https://github.com/Lycans-AeroDesign/Athar/commit/ce70ef68949ed30858da26da5e8e798ce2f6dab5))
+
+### Bug Fixes
+
+* **auth:** avoid setState-in-effect lint error on register page ([09a2147](https://github.com/Lycans-AeroDesign/Athar/commit/09a21473e2723f558e7d5878b04d273a9f2d5242))
+* **frontend:** surface plain-string backend validation errors correctly ([a2e64ba](https://github.com/Lycans-AeroDesign/Athar/commit/a2e64bae07ec8d3bf1ab5c88f0e2ef5c3abb0fcf))
+
 ## [1.3.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.2.0...v1.3.0) (2026-09-21)
 
 ### Features
