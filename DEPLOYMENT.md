@@ -51,7 +51,8 @@ This creates a root `.env` with a random `SECRET_KEY` and `POSTGRES_PASSWORD` al
 | `ALLOWED_HOSTS` | same domain, e.g. `athar.example.com` | Django rejects requests for any host not listed here — required |
 | `CORS_ALLOWED_ORIGINS` | `https://athar.example.com` | required |
 | `IMAGE_TAG` | a published tag, e.g. `v1.0.0`, or `latest` | which GHCR image build to pull — see step 1 |
-| `ENABLE_REGISTRATION` | `True` or `False` | your call — whether public self-signup should be open |
+| `ENABLE_REGISTRATION` | `True` or `False` | your call — whether public self-signup (via invitation code) should be open |
+| `ENABLE_ORGANIZATION_REGISTRATION` | `True` or `False` | your call — whether the public "Create a Team" self-service signup (a brand-new org, not joining yours) should be open; most single-team deployments want this `False` |
 | `AWS_STORAGE_BUCKET_NAME` + the 4 `AWS_*` vars below it | only if using S3/R2/B2/MinIO | optional — leave blank to keep local-disk storage |
 
 `NEXT_PUBLIC_API_URL` in this file is **not** used in production at all — the published frontend image ships with it empty (see [Publish the images](#2-publish-the-images-once-before-first-deploy) above), relying on `DOMAIN` (and the bundled nginx) instead. Everything else in `.env` (`POSTGRES_*`, `JWT_*`, `NGINX_PORT`/`NGINX_SSL_PORT`, `SECRET_KEY`) is already either generated for you or fine to leave at its default.
