@@ -169,10 +169,10 @@ export default function ComponentsPage() {
 
   const actionsMenuItems: MenuEntry[] = [
     ...(canReadComponents
-      ? [{ label: isExporting ? commonT("working") : t("exportCsvButton"), icon: "download", onSelect: handleExport }]
+      ? [{ label: isExporting ? commonT("working") : t("exportCsvButton"), icon: "upload", onSelect: handleExport }]
       : []),
     ...(canCreateComponents
-      ? [{ label: t("importCsvButton"), icon: "upload", onSelect: () => setIsImportOpen(true) }]
+      ? [{ label: t("importCsvButton"), icon: "download", onSelect: () => setIsImportOpen(true) }]
       : []),
   ];
 
