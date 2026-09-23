@@ -191,7 +191,7 @@ export function SopEditor({ sop, onDirtyChange }: SopEditorProps) {
       )}
 
       <div className="flex items-center gap-3">
-        <Button onClick={handleSave} disabled={isSaving || !title.trim()}>
+        <Button onClick={handleSave} disabled={isSaving || !title.trim() || (!!sop && !isDirty)}>
           {isSaving ? commonT("saving") : commonT("save")}
         </Button>
       </div>

@@ -417,8 +417,11 @@ export function MarkdownEditor({ value, onChange, placeholder, relateFrom }: Mar
 
   return (
     <div className="border border-outline-variant rounded-xl overflow-hidden bg-surface">
-      <div className="flex items-center justify-between border-b border-outline-variant bg-surface-container">
-        <div className="flex items-center gap-1 px-2 py-1.5">
+      {/* Mobile: Edit/Preview tabs stack above a wrapping toolbar (flex-col-reverse puts the
+          later-in-DOM tabs on top) - on one unwrapped row the tabs got clipped off-screen by the
+          container's overflow-hidden. sm+ keeps the single toolbar-left/tabs-right row. */}
+      <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between border-b border-outline-variant bg-surface-container">
+        <div className="flex flex-wrap items-center gap-1 px-2 py-1.5">
           <button
             type="button"
             onClick={() => wrapSelection("**", "**", t("boldPlaceholder"))}
@@ -536,11 +539,11 @@ export function MarkdownEditor({ value, onChange, placeholder, relateFrom }: Mar
             </Popover.Portal>
           </Popover.Root>
         </div>
-        <div className="flex items-center gap-1 px-2">
+        <div className="flex items-center gap-1 px-2 py-1.5 sm:py-0 border-b border-outline-variant sm:border-b-0 shrink-0">
           <button
             type="button"
             onClick={() => setTab("edit")}
-            className={`px-3 py-1 rounded-lg font-label-caps text-label-caps uppercase transition-colors ${
+            className={`flex-1 sm:flex-none px-3 py-1 rounded-lg font-label-caps text-label-caps uppercase transition-colors ${
               tab === "edit" ? "bg-surface-container-lowest text-primary" : "text-on-surface-variant"
             }`}
           >
@@ -549,7 +552,7 @@ export function MarkdownEditor({ value, onChange, placeholder, relateFrom }: Mar
           <button
             type="button"
             onClick={() => setTab("preview")}
-            className={`px-3 py-1 rounded-lg font-label-caps text-label-caps uppercase transition-colors ${
+            className={`flex-1 sm:flex-none px-3 py-1 rounded-lg font-label-caps text-label-caps uppercase transition-colors ${
               tab === "preview" ? "bg-surface-container-lowest text-primary" : "text-on-surface-variant"
             }`}
           >

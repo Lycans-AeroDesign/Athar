@@ -79,7 +79,7 @@ export default function NewCoursePage() {
 
       <h1 className="font-display text-display text-on-surface">{t("createCourseButton")}</h1>
 
-      <div className="space-y-4 bg-surface-container-low border border-outline-variant rounded-xl p-6">
+      <div className="space-y-4 bg-surface-container-low border border-outline-variant rounded-xl p-4 sm:p-6">
         <input
           className="w-full font-headline-lg text-headline-lg font-bold border-none bg-transparent placeholder:text-on-surface-variant/50 focus:ring-0 p-0 text-on-surface outline-none"
           placeholder={t("titlePlaceholder")}
@@ -123,7 +123,7 @@ export default function NewCoursePage() {
           progress={coverUploadProgress}
           alt={coverImage ? t("changeCoverButton") : t("addCoverButton")}
           shape="wide"
-          className="h-36 w-72"
+          className="h-36 w-full sm:w-72"
         />
 
         {error && (

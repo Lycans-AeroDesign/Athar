@@ -279,7 +279,7 @@ export function FailureEditor({ failure, onDirtyChange }: FailureEditorProps) {
       )}
 
       <div className="flex items-center gap-3">
-        <Button onClick={handleSave} disabled={isSaving || !title.trim()}>
+        <Button onClick={handleSave} disabled={isSaving || !title.trim() || (!!failure && !isDirty)}>
           {isSaving ? commonT("saving") : commonT("save")}
         </Button>
       </div>

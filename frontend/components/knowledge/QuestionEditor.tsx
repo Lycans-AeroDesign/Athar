@@ -138,7 +138,7 @@ export function QuestionEditor({ question, onDirtyChange }: QuestionEditorProps)
       )}
 
       <div className="flex items-center gap-3">
-        <Button onClick={handleSave} disabled={isSaving || !title.trim()}>
+        <Button onClick={handleSave} disabled={isSaving || !title.trim() || (!!question && !isDirty)}>
           {question ? (isSaving ? t("saving") : t("save")) : isSaving ? t("asking") : t("askButton")}
         </Button>
       </div>

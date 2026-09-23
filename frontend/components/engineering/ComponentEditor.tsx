@@ -327,7 +327,7 @@ export function ComponentEditor({ component, onDirtyChange }: ComponentEditorPro
       )}
 
       <div className="flex items-center gap-3">
-        <Button onClick={handleSave} disabled={isSaving || !name.trim()}>
+        <Button onClick={handleSave} disabled={isSaving || !name.trim() || (!!component && !isDirty)}>
           {isSaving ? commonT("saving") : commonT("save")}
         </Button>
       </div>

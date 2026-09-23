@@ -148,7 +148,7 @@ export function ProjectEditor({ project, onDirtyChange }: ProjectEditorProps) {
       )}
 
       <div className="flex items-center gap-3">
-        <Button onClick={handleSave} disabled={isSaving || !name.trim()}>
+        <Button onClick={handleSave} disabled={isSaving || !name.trim() || (!!project && !isDirty)}>
           {isSaving ? commonT("saving") : commonT("save")}
         </Button>
       </div>

@@ -197,15 +197,17 @@ export function ArticleEditor({ article, onDirtyChange }: ArticleEditorProps) {
         </p>
       )}
 
-      <div className="flex items-center gap-3">
-        <Button variant="secondary" onClick={() => saveAndThen()} disabled={isSaving || !title.trim()}>
-          {saveLabel}
-        </Button>
+      {/* Stacked full-width below sm - up to three buttons on one row doesn't fit a phone.
+          Discard/Save styling and dirty-gating match the settings forms (BrandingSettingsForm.tsx). */}
+      <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3 *:w-full sm:*:w-auto">
         {article && (
-          <Button variant="ghost" onClick={handleDiscard} disabled={isSaving || !isDirty}>
+          <Button variant="secondary" onClick={handleDiscard} disabled={isSaving || !isDirty}>
             {commonT("discard")}
           </Button>
         )}
+        <Button onClick={() => saveAndThen()} disabled={isSaving || !title.trim() || (!!article && !isDirty)}>
+          {saveLabel}
+        </Button>
         {canSubmitForReview && (
           <Button onClick={() => saveAndThen(submitArticle)} disabled={isSaving || !title.trim()}>
             {t("submitForReview")}

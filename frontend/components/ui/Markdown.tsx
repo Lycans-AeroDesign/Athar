@@ -227,7 +227,9 @@ interface MarkdownProps {
 
 export function Markdown({ content, className }: MarkdownProps) {
   return (
-    <div className={className}>
+    // wrap-break-word (inherited by every block inside) so a long pasted URL or
+    // unbroken word wraps instead of pushing past a phone-width screen.
+    <div className={`wrap-break-word ${className ?? ""}`}>
       <ReactMarkdown remarkPlugins={[remarkGfm]} components={COMPONENTS}>
         {content}
       </ReactMarkdown>

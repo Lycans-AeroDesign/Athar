@@ -195,7 +195,9 @@ export default function LessonViewerPage() {
           </p>
         )}
 
-        <div className="flex items-center justify-between gap-3 pt-6 border-t border-outline-variant">
+        {/* Below sm the middle action takes its own full-width row on top (order-first) with
+            Previous/Next sharing the row beneath - all three side by side overflows a phone. */}
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-6 border-t border-outline-variant">
           {previousLesson ? (
             <Link href={`/training/courses/${course.id}/learn/${previousLesson.id}`}>
               <Button variant="secondary">
@@ -209,19 +211,23 @@ export default function LessonViewerPage() {
 
           {progress?.enrolled ? (
             isCompleted ? (
-              <span className="flex items-center gap-1 font-label-caps text-label-caps uppercase text-primary">
+              <span className="order-first sm:order-none w-full sm:w-auto flex items-center justify-center gap-1 font-label-caps text-label-caps uppercase text-primary">
                 <Icon name="check_circle" size={18} />
                 {t("completedLabel")}
               </span>
             ) : (
-              <Button onClick={handleMarkComplete} disabled={isCompleting}>
+              <Button
+                onClick={handleMarkComplete}
+                disabled={isCompleting}
+                className="order-first sm:order-none w-full sm:w-auto"
+              >
                 {t("markComplete")}
               </Button>
             )
           ) : !isPreview ? (
-            <div className="flex items-center gap-3">
+            <div className="order-first sm:order-none w-full sm:w-auto flex flex-col sm:flex-row items-center gap-3 text-center sm:text-start">
               <span className="font-body-md text-body-md text-on-surface-variant">{t("enrollToTrack")}</span>
-              <Button onClick={handleEnroll} disabled={isEnrolling}>
+              <Button onClick={handleEnroll} disabled={isEnrolling} className="w-full sm:w-auto">
                 {isEnrolling ? courseT("enrolling") : courseT("startCourseButton")}
               </Button>
             </div>

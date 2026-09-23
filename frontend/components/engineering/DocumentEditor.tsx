@@ -296,7 +296,7 @@ export function DocumentEditor({ document, onDirtyChange }: DocumentEditorProps)
       )}
 
       <div className="flex items-center gap-3">
-        <Button onClick={handleSave} disabled={isSaving || !title.trim()}>
+        <Button onClick={handleSave} disabled={isSaving || !title.trim() || (!!document && !isDirty)}>
           {isSaving ? commonT("saving") : commonT("save")}
         </Button>
       </div>

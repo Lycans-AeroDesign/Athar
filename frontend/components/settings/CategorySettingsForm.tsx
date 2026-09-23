@@ -76,7 +76,7 @@ export function CategorySettingsForm() {
   return (
     <div className="space-y-6 max-w-2xl">
       <div className="bg-surface rounded-xl border border-outline-variant p-6 space-y-4">
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h2 className="font-headline-md text-headline-md text-on-surface">{t("title")}</h2>
             <p className="font-body-md text-body-md text-on-surface-variant mt-1">{t("description")}</p>

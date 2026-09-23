@@ -173,18 +173,20 @@ export default function ComponentDetailPage() {
           <div className="bg-surface-container-low px-4 py-2 border-b border-outline-variant">
             <span className="font-label-caps text-label-caps text-on-surface uppercase">{t("specificationsTitle")}</span>
           </div>
-          <table className="w-full text-start border-collapse">
-            <tbody>
-              {component.specifications.map((row, i) => (
-                <tr key={i} className="border-b border-outline-variant last:border-b-0">
-                  <th className="px-4 py-2 font-body-md text-body-md text-on-surface-variant font-normal text-start w-1/3">
-                    {row.label}
-                  </th>
-                  <td className="px-4 py-2 font-mono-sm text-mono-sm text-on-surface">{row.value}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="overflow-x-auto">
+            <table className="w-full text-start border-collapse">
+              <tbody>
+                {component.specifications.map((row, i) => (
+                  <tr key={i} className="border-b border-outline-variant last:border-b-0">
+                    <th className="px-4 py-2 font-body-md text-body-md text-on-surface-variant font-normal text-start w-1/3">
+                      {row.label}
+                    </th>
+                    <td className="px-4 py-2 wrap-anywhere font-mono-sm text-mono-sm text-on-surface">{row.value}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 

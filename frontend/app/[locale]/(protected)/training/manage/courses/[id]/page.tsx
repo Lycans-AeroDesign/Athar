@@ -261,7 +261,7 @@ export default function CourseEditorPage() {
 
   return (
     <div className="max-w-[800px] mx-auto space-y-6">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <Link
           href="/training/manage"
           className="inline-flex items-center gap-1 font-label-caps text-label-caps uppercase text-on-surface-variant hover:text-on-surface transition-colors"
@@ -304,7 +304,7 @@ export default function CourseEditorPage() {
         </div>
       )}
 
-      <div className="space-y-4 bg-surface-container-low border border-outline-variant rounded-xl p-6">
+      <div className="space-y-4 bg-surface-container-low border border-outline-variant rounded-xl p-4 sm:p-6">
         <h2 className="font-headline-md text-headline-md text-on-surface">{t("courseEditorTitle")}</h2>
         <input
           className="w-full font-headline-lg text-headline-lg font-bold border-none bg-transparent placeholder:text-on-surface-variant/50 focus:ring-0 p-0 text-on-surface outline-none"
@@ -326,7 +326,7 @@ export default function CourseEditorPage() {
           description && <Markdown content={description} />
         )}
         <div className="flex flex-wrap gap-3">
-          <div className="w-56">
+          <div className="w-full sm:w-56">
             <Combobox
               label={t("difficultyLabel")}
               options={DIFFICULTIES.map((value) => ({ value, label: difficultyT(value) }))}
@@ -334,7 +334,7 @@ export default function CourseEditorPage() {
               onChange={(value) => setDifficulty(value as CourseDifficulty)}
             />
           </div>
-          <div className="w-56">
+          <div className="w-full sm:w-56">
             <Combobox
               label={t("categoryLabel")}
               placeholder={t("categoryPlaceholder")}
@@ -354,7 +354,7 @@ export default function CourseEditorPage() {
           progress={coverUploadProgress}
           alt={course.cover_image ? t("changeCoverButton") : t("addCoverButton")}
           shape="wide"
-          className="h-36 w-72"
+          className="h-36 w-full sm:w-72"
         />
 
         {canEdit && (
@@ -405,7 +405,8 @@ export default function CourseEditorPage() {
             </div>
           ) : (
           <div key={module.id} className="bg-surface-container-low border border-outline-variant rounded-xl p-4 space-y-3">
-            <div className="flex items-center justify-between gap-2">
+            {/* Title above the icon buttons below sm - side by side, four buttons leave the title almost no room. */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <div className="flex-1 min-w-0">
                 <h3 className="font-headline-md text-headline-md font-bold text-on-surface truncate">{module.title}</h3>
                 {module.description && (
@@ -418,7 +419,7 @@ export default function CourseEditorPage() {
                 )}
               </div>
               {canEdit && (
-                <div className="flex items-center gap-1 shrink-0">
+                <div className="flex items-center gap-1 shrink-0 self-end sm:self-auto">
                   <IconButton icon="edit" aria-label={t("editModuleButton")} onClick={() => startEditModule(module)} />
                   <IconButton icon="arrow_upward" aria-label={t("moveUp")} disabled={moduleIndex === 0} onClick={() => handleMoveModule(module.id, -1)} />
                   <IconButton icon="arrow_downward" aria-label={t("moveDown")} disabled={moduleIndex === course.modules.length - 1} onClick={() => handleMoveModule(module.id, 1)} />
@@ -432,9 +433,9 @@ export default function CourseEditorPage() {
                 <li key={lesson.id} className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-surface">
                   <Link
                     href={`/training/manage/courses/${course.id}/lessons/${lesson.id}`}
-                    className="flex-1 min-w-0 flex items-center gap-2 font-body-md text-body-md text-on-surface hover:text-primary transition-colors"
+                    className="flex-1 min-w-0 flex flex-wrap items-center gap-x-2 font-body-md text-body-md text-on-surface hover:text-primary transition-colors"
                   >
-                    <span className="truncate">{lesson.title}</span>
+                    <span className="truncate max-w-full">{lesson.title}</span>
                     <span className="font-label-caps text-label-caps text-on-surface-variant uppercase shrink-0">
                       {lessonTypeT(lesson.lesson_type)}
                     </span>
