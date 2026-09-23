@@ -1,3 +1,10 @@
+## [1.4.2](https://github.com/Lycans-AeroDesign/Athar/compare/v1.4.1...v1.4.2) (2026-09-23)
+
+### Bug Fixes
+
+* **deploy:** wire ENABLE_ORGANIZATION_REGISTRATION into prod compose ([72bfae8](https://github.com/Lycans-AeroDesign/Athar/commit/72bfae89974a4baad3e08fc74b2cb35112c1881a))
+* **frontend:** mobile layout fixes and editor save/discard consistency ([0a38619](https://github.com/Lycans-AeroDesign/Athar/commit/0a38619715c22c0cc7508d66f760b3f5b63a610d))
+
 ## [1.4.1](https://github.com/Lycans-AeroDesign/Athar/compare/v1.4.0...v1.4.1) (2026-09-22)
 
 ### Bug Fixes
