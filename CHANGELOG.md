@@ -1,3 +1,13 @@
+## [1.5.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.4.3...v1.5.0) (2026-09-24)
+
+### Features
+
+* **frontend:** align course categories with knowledge categories workflow ([9c8dc13](https://github.com/Lycans-AeroDesign/Athar/commit/9c8dc13c1f86cacf3f751ff9718500403e2ae8ef))
+
+### Bug Fixes
+
+* **frontend:** mobile overflow on detail pages, course categories and account menu ([31c253d](https://github.com/Lycans-AeroDesign/Athar/commit/31c253deac80a3bfd8c7f50e3860dffe5f87a523))
+
 ## [1.4.3](https://github.com/Lycans-AeroDesign/Athar/compare/v1.4.2...v1.4.3) (2026-09-23)
 
 ### Bug Fixes
