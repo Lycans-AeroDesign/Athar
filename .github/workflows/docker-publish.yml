@@ -63,6 +63,13 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Each image gets its own GHA cache `scope`: with the default (shared)
+      # scope, every build's cache export overwrote the previous one's, so
+      # the frontend build imported the backend's cache and hit ~nothing.
+      # backend-prod is the same scope ci.yml's prod build writes, so a
+      # release reuses the layers CI just built for that commit; the
+      # frontend also reads ci.yml's frontend-ci scope for its shared deps
+      # (npm ci) layer - its build layer differs (NEXT_PUBLIC_API_URL).
       - name: Build and push backend image
         uses: docker/build-push-action@v7
         with:
@@ -72,8 +79,8 @@ jobs:
           tags: |
             ghcr.io/${{ steps.repo.outputs.name }}-backend:${{ steps.version.outputs.tag }}
             ghcr.io/${{ steps.repo.outputs.name }}-backend:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=backend-prod
+          cache-to: type=gha,scope=backend-prod,mode=max
 
       - name: Build and push frontend image
         uses: docker/build-push-action@v7
@@ -86,5 +93,7 @@ jobs:
           tags: |
             ghcr.io/${{ steps.repo.outputs.name }}-frontend:${{ steps.version.outputs.tag }}
             ghcr.io/${{ steps.repo.outputs.name }}-frontend:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: |
+            type=gha,scope=frontend-prod
+            type=gha,scope=frontend-ci
+          cache-to: type=gha,scope=frontend-prod,mode=max

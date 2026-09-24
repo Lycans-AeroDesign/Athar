@@ -7,7 +7,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
     PATH="/app/.venv/bin:$PATH"
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+# Pinned, not :latest - this layer sits in the shared `base` stage, so every
+# new uv release on a floating tag would change it and invalidate the build
+# cache for everything after it (apt packages, deps, app) on the next CI run.
+# Bump deliberately.
+COPY --from=ghcr.io/astral-sh/uv:0.12.18 /uv /uvx /bin/
 WORKDIR /app
 # Debian's own "postgresql-client" package trails the Postgres release this
 # app actually runs (postgres:18-alpine, see docker-compose.yml) - pg_dump

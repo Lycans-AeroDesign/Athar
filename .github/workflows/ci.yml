@@ -133,8 +133,8 @@ jobs:
           context: ./backend
           target: dev
           push: false
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=backend-dev
+          cache-to: type=gha,scope=backend-dev,mode=max
 
       - name: Build backend image (prod target)
         uses: docker/build-push-action@v7
@@ -142,8 +142,8 @@ jobs:
           context: ./backend
           target: prod
           push: false
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=backend-prod
+          cache-to: type=gha,scope=backend-prod,mode=max
 
       - name: Build frontend image (prod target)
         uses: docker/build-push-action@v7
@@ -153,5 +153,5 @@ jobs:
           push: false
           build-args: |
             NEXT_PUBLIC_API_URL=http://localhost:8000
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=frontend-ci
+          cache-to: type=gha,scope=frontend-ci,mode=max
