@@ -4,6 +4,8 @@
 
 Open-source, self-hosted **Knowledge Management System** for student AeroDesign teams — built and self-hosted by [Lycans AeroDesign](https://github.com/Lycans-AeroDesign) as its reference deployment.
 
+![An Athar article: an incident post-mortem with an auto-generated table of contents and a Related Content panel linking the failure record, components, SOPs, tests, project and documents](docs/marketing/screenshots/readme-article.png)
+
 > **Don't want to manage your own deployment?**  
 > We are exploring a managed hosting option for teams that want to use Athar without maintaining their own infrastructure. Hosting would be provided by Lycans AeroDesign and may be offered through a subscription-based plan.
 >

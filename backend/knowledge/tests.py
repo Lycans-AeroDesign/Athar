@@ -787,6 +787,18 @@ class QuestionStatusAndPromotionTests(KnowledgeTestCase):
 
 
 class SearchTests(KnowledgeTestCase):
+    def test_result_excerpts_are_plain_text_not_markdown_source(self):
+        _, access = self._login_with_role("snippetauthor@example.com", "Member")
+        self.client.post(
+            reverse("knowledge-question-list-create"),
+            {"title": "Snippet check", "body": "We had [a thermal event](/failures/123) - is there a **checklist**?"},
+            format="json",
+            **self._auth(access),
+        )
+        response = self.client.get(reverse("knowledge-search"), {"q": "Snippet check"}, **self._auth(access))
+        result = next(r for r in response.data["results"] if r["title"] == "Snippet check")
+        self.assertEqual(result["excerpt"], "We had a thermal event - is there a checklist?")
+
     def test_search_scopes_by_type_and_only_returns_published_articles(self):
         author, author_access = self._login_with_role("searchauthor@example.com", "Member")
         draft = self.client.post(

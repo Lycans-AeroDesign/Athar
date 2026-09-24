@@ -13,9 +13,10 @@ import { StatCard } from "@/components/ui/StatCard";
 import { Link } from "@/i18n/navigation";
 import { getKnowledgeActivity } from "@/lib/api/audit";
 import { getArticleCount, getArticles, getLeaderboard, getOpenQuestionCount, getQuestions } from "@/lib/api/knowledge";
-import type { ArticleSummary, AuditLogEntry, ContributionPeriod, LeaderboardEntry, QuestionSummary } from "@/lib/api/types";
+import type { ActivityEntry, ArticleSummary, ContributionPeriod, LeaderboardEntry, QuestionSummary } from "@/lib/api/types";
 import { formatRelativeTime } from "@/lib/datetime";
 import { formatPersonName } from "@/lib/format";
+import { RELATABLE_ROUTE_PREFIX } from "@/lib/knowledgeTypes";
 import { useAuth } from "@/lib/auth/AuthProvider";
 
 // Maps an audit action string (see backend/audit/views.py's
@@ -50,7 +51,7 @@ export default function DashboardPage() {
   const [openQuestionCount, setOpenQuestionCount] = useState<number | null>(null);
   const [articles, setArticles] = useState<ArticleSummary[] | null>(null);
   const [questions, setQuestions] = useState<QuestionSummary[] | null>(null);
-  const [activity, setActivity] = useState<AuditLogEntry[] | null>(null);
+  const [activity, setActivity] = useState<ActivityEntry[] | null>(null);
   const [leaderboardPeriod, setLeaderboardPeriod] = useState<ContributionPeriod>("all");
   // Keyed by period - same "avoid a plain setState(null) reset in the effect
   // body" pattern ContributionsPanel/RecentActivity use, so switching tabs
@@ -226,8 +227,22 @@ export default function DashboardPage() {
                   <span className="mt-1.5 size-1.5 rounded-full bg-primary shrink-0" />
                   <div className="min-w-0">
                     <p className="font-body-md text-body-md text-on-surface">
-                      <span className="font-medium">{entry.actor_email ?? t("systemActor")}</span>{" "}
-                      {actionLabel} {entry.target_repr}
+                      {entry.actor ? (
+                        <Link href={`/users/${entry.actor.id}`} className="font-medium hover:text-primary hover:underline">
+                          {formatPersonName(entry.actor)}
+                        </Link>
+                      ) : (
+                        <span className="font-medium">{t("systemActor")}</span>
+                      )}{" "}
+                      {actionLabel}{" "}
+                      {entry.target && (
+                        <Link
+                          href={`${RELATABLE_ROUTE_PREFIX[entry.target.type]}/${entry.target.id}`}
+                          className="text-primary hover:underline"
+                        >
+                          {entry.target.title}
+                        </Link>
+                      )}
                     </p>
                     <p className="font-mono-sm text-mono-sm text-on-surface-variant mt-0.5">
                       {formatRelativeTime(entry.created_at)}

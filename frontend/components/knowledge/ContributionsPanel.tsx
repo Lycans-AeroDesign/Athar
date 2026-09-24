@@ -13,8 +13,8 @@ import { getUserActivity } from "@/lib/api/audit";
 import { getUserContributions } from "@/lib/api/knowledge";
 import type {
   Answer,
+  ActivityEntry,
   ArticleSummary,
-  AuditLogEntry,
   ComponentSummary,
   ContributionPeriod,
   ContributionType,
@@ -51,7 +51,7 @@ function RecentActivity({ userId }: { userId: string }) {
   // Keyed by userId, same "avoid a plain setState(null) reset in the effect
   // body" pattern the parent component uses for its own tab/page results -
   // switching between profiles never shows a stale list.
-  const [result, setResult] = useState<{ userId: string; entries: AuditLogEntry[] } | null>(null);
+  const [result, setResult] = useState<{ userId: string; entries: ActivityEntry[] } | null>(null);
   const activity = result?.userId === userId ? result.entries : null;
 
   useEffect(() => {
@@ -78,7 +78,15 @@ function RecentActivity({ userId }: { userId: string }) {
                 <span className="mt-1.5 size-1.5 rounded-full bg-primary shrink-0" />
                 <div className="min-w-0">
                   <p className="font-body-md text-body-md text-on-surface">
-                    {actionLabel} {entry.target_repr}
+                    {actionLabel}{" "}
+                    {entry.target && (
+                      <Link
+                        href={`${RELATABLE_ROUTE_PREFIX[entry.target.type]}/${entry.target.id}`}
+                        className="text-primary hover:underline"
+                      >
+                        {entry.target.title}
+                      </Link>
+                    )}
                   </p>
                   <p className="font-mono-sm text-mono-sm text-on-surface-variant mt-0.5">
                     {formatRelativeTime(entry.created_at)}

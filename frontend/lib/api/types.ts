@@ -105,6 +105,17 @@ export interface AuditLogEntry {
   created_at: string;
 }
 
+/** One entry of the org-visible activity feeds (backend audit.serializers.
+ * ActivityEntrySerializer) - a display-ready actor and a live, linkable target
+ * (an answer resolves to its question), unlike the admin-only AuditLogEntry. */
+export interface ActivityEntry {
+  id: string;
+  actor: KnowledgeAuthor | null;
+  action: string;
+  target: { type: "article" | "question"; id: string; title: string } | null;
+  created_at: string;
+}
+
 export interface StoredFile {
   id: string;
   original_filename: string;

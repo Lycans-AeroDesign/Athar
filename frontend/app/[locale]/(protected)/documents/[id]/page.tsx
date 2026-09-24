@@ -117,7 +117,7 @@ export default function DocumentDetailPage() {
           </div>
         </div>
         <h1 className="font-display text-display text-on-surface">{document.title}</h1>
-        <div className="flex flex-wrap items-center gap-lg font-mono-sm text-mono-sm text-on-surface-variant">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono-sm text-mono-sm text-on-surface-variant">
           {document.author && <span>{document.author}</span>}
           {document.organization && <span>{document.organization}</span>}
           {document.publication_date && <span>{formatCalendarDate(document.publication_date)}</span>}

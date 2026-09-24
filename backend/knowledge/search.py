@@ -4,6 +4,8 @@ SearchView and each engineering ListCreateView's own `?q=` filter. See
 core/migrations/0001_enable_pg_trgm.py for the extension this depends on.
 """
 
+import re
+
 from django.contrib.postgres.search import SearchQuery, SearchRank, SearchVector, TrigramWordSimilarity
 from django.db.models import Q, QuerySet, TextField, Value
 from django.db.models.functions import Concat
@@ -85,3 +87,31 @@ def search_filter(queryset: QuerySet, query: str, model_name: str) -> QuerySet:
         rank=SearchRank(vector, ts_query),
         similarity=TrigramWordSimilarity(query, _concat_fields(all_fields)),
     ).filter(Q(rank__gt=0) | Q(similarity__gt=TRIGRAM_THRESHOLD))
+
+
+# Ordered: fenced code first (its contents aren't prose), then images before
+# links (an image is a link with a leading "!"), then inline syntax.
+_MARKDOWN_TO_TEXT = [
+    (re.compile(r"```.*?(```|$)", re.DOTALL), " "),
+    (re.compile(r"!\[([^\]]*)\]\([^)]*\)"), r"\1"),
+    (re.compile(r"\[([^\]]*)\]\([^)]*\)"), r"\1"),
+    (re.compile(r"^\s{0,3}(#{1,6}|>|[-*+]|\d+\.)\s+(\[[ xX]\]\s+)?", re.MULTILINE), ""),
+    (re.compile(r"^\s*\|?\s*:?-{3,}.*$", re.MULTILINE), " "),
+    (re.compile(r"[*`~]+"), ""),
+    (re.compile(r"\|"), " "),
+    (re.compile(r"\s+"), " "),
+]
+
+
+def plain_text_excerpt(markdown: str, limit: int = 200) -> str:
+    """Readable plain text for a search-result snippet. Most searchable
+    fields are markdown (article excerpts/content, question bodies, SOPs,
+    ...), and a raw slice of the source showed link syntax like
+    "[Battery thermal runaway](/failures/6a31...)" in the results list."""
+    text = markdown or ""
+    for pattern, replacement in _MARKDOWN_TO_TEXT:
+        text = pattern.sub(replacement, text)
+    text = text.strip()
+    if len(text) <= limit:
+        return text
+    return text[:limit].rsplit(" ", 1)[0] + "…"

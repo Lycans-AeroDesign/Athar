@@ -116,7 +116,7 @@ export default function FailureDetailPage() {
             </span>
           )}
         </div>
-        <div className="flex flex-wrap items-center gap-lg font-mono-sm text-mono-sm text-on-surface-variant">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono-sm text-mono-sm text-on-surface-variant">
           {failure.date && <span>{formatCalendarDate(failure.date)}</span>}
           {failure.component && (
             <span>

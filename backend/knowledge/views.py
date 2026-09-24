@@ -326,11 +326,16 @@ class SearchView(APIView):
             for row in rows:
                 excerpt = excerpt_source(row) if callable(excerpt_source) else getattr(row, excerpt_source, "")
                 results.append(
-                    {"type": type_name, "id": str(row.id), "title": getattr(row, title_field), "excerpt": (excerpt or "")[:200]}
+                    {
+                        "type": type_name,
+                        "id": str(row.id),
+                        "title": getattr(row, title_field),
+                        "excerpt": search.plain_text_excerpt(excerpt),
+                    }
                 )
 
         collect("article", article_matches, "title", "excerpt")
-        collect("question", question_matches, "title", lambda q: q.body[:200])
+        collect("question", question_matches, "title", "body")
         collect("project", project_matches, "name", "description")
         collect("component", component_matches, "name", "summary")
         collect("failure", failure_matches, "title", "summary")
