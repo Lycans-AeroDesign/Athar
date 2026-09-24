@@ -71,15 +71,20 @@ export function CourseCategoryManager() {
           <p className="font-body-md text-body-md text-on-surface-variant">{t("noCourseCategories")}</p>
         )}
       </div>
-      <div className="flex items-center gap-2 max-w-sm">
+      <div className="flex items-center gap-2 w-full sm:max-w-sm">
         <input
-          className="flex-1 px-4 py-2 font-body-md text-body-md text-on-surface bg-surface border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
+          className="flex-1 min-w-0 px-4 py-2 font-body-md text-body-md text-on-surface bg-surface border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
           placeholder={t("categoryNamePlaceholder")}
           value={newCategoryName}
           onChange={(e) => setNewCategoryName(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleAddCategory()}
         />
-        <Button variant="secondary" onClick={handleAddCategory} disabled={!newCategoryName.trim()}>
+        <Button
+          variant="secondary"
+          className="shrink-0 whitespace-nowrap"
+          onClick={handleAddCategory}
+          disabled={!newCategoryName.trim()}
+        >
           {t("addCategoryButton")}
         </Button>
       </div>

@@ -182,7 +182,7 @@ export default function ArticleDetailPage() {
         </aside>
       )}
 
-      <div className="flex-1 min-w-0 max-w-[800px] space-y-6">
+      <div className="flex-1 w-full min-w-0 max-w-[800px] space-y-6">
         <Link
           href="/knowledge"
           className="inline-flex items-center gap-1 font-label-caps text-label-caps uppercase text-on-surface-variant hover:text-on-surface transition-colors"
@@ -192,7 +192,7 @@ export default function ArticleDetailPage() {
         </Link>
 
         <div className="border-t-4 border-primary rounded-t-xl bg-surface pt-6 space-y-3">
-          <div className="flex items-start justify-between gap-3">
+          <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="flex items-center gap-2">
               <span className="flex items-center gap-1 font-label-caps text-label-caps uppercase text-primary">
                 <Icon name="menu_book" size={14} />
@@ -313,7 +313,7 @@ export default function ArticleDetailPage() {
                     <Avatar person={revision.edited_by} />
                   )}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-2 mb-1">
+                    <div className="flex flex-wrap items-center justify-between gap-x-2 mb-1">
                       {revision.edited_by ? (
                         <Link
                           href={`/users/${revision.edited_by.id}`}

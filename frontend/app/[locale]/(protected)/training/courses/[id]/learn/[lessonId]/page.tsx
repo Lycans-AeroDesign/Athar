@@ -127,7 +127,7 @@ export default function LessonViewerPage() {
         />
       </aside>
 
-      <div className="flex-1 min-w-0 max-w-[760px] space-y-6">
+      <div className="flex-1 w-full min-w-0 max-w-[760px] space-y-6">
         {isPreview && (
           <div className="flex items-center justify-between gap-2 bg-tertiary-container text-on-tertiary-container rounded-xl px-4 py-3 font-body-md text-body-md">
             <span className="flex items-center gap-2">

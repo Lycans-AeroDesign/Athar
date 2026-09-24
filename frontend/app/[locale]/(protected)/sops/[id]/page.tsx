@@ -53,7 +53,7 @@ export default function SopDetailPage() {
 
   return (
     <div className="flex flex-col lg:flex-row gap-8 items-start">
-    <div className="flex-1 min-w-0 max-w-[800px] space-y-6">
+    <div className="flex-1 w-full min-w-0 max-w-[800px] space-y-6">
       <Link
         href="/sops"
         className="inline-flex items-center gap-1 font-label-caps text-label-caps uppercase text-on-surface-variant hover:text-on-surface transition-colors"
@@ -63,7 +63,7 @@ export default function SopDetailPage() {
       </Link>
 
       <div className="border-t-4 border-primary rounded-t-xl bg-surface pt-6 space-y-3">
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex items-center gap-2">
             <span className="bg-primary-container text-on-primary-container font-label-caps text-label-caps px-2.5 py-1 rounded-full uppercase">
               {t("badgeLabel")}

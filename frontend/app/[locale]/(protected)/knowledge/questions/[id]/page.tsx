@@ -132,7 +132,7 @@ export default function QuestionDetailPage() {
 
   return (
     <div className="flex flex-col lg:flex-row gap-8 items-start">
-    <div className="flex-1 min-w-0 max-w-[800px] space-y-6">
+    <div className="flex-1 w-full min-w-0 max-w-[800px] space-y-6">
       <Link
         href="/knowledge"
         className="inline-flex items-center gap-1 font-label-caps text-label-caps uppercase text-on-surface-variant hover:text-on-surface transition-colors"
@@ -142,7 +142,7 @@ export default function QuestionDetailPage() {
       </Link>
 
       <div className="pb-4 border-b border-outline-variant space-y-3">
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex items-center gap-2 font-mono-sm text-mono-sm text-on-surface-variant">
             <Icon name="forum" size={16} />
             <span>{questionId}</span>
