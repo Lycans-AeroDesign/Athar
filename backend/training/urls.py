@@ -1,6 +1,8 @@
 from django.urls import path
 
 from .views import (
+    CourseAccessGrantDetailView,
+    CourseAccessGrantListCreateView,
     CourseArchiveView,
     CourseCategoryDetailView,
     CourseCategoryListView,
@@ -46,6 +48,16 @@ urlpatterns = [
     path("courses/<uuid:pk>/reject/", CourseRejectView.as_view(), name="training-course-reject"),
     path("courses/<uuid:pk>/archive/", CourseArchiveView.as_view(), name="training-course-archive"),
     path("courses/<uuid:pk>/unarchive/", CourseUnarchiveView.as_view(), name="training-course-unarchive"),
+    path(
+        "courses/<uuid:pk>/access-grants/",
+        CourseAccessGrantListCreateView.as_view(),
+        name="training-course-access-grant-list-create",
+    ),
+    path(
+        "courses/<uuid:pk>/access-grants/<uuid:grant_pk>/",
+        CourseAccessGrantDetailView.as_view(),
+        name="training-course-access-grant-detail",
+    ),
     path("courses/<uuid:pk>/enroll/", CourseEnrollView.as_view(), name="training-course-enroll"),
     path("courses/<uuid:pk>/progress/", CourseProgressView.as_view(), name="training-course-progress"),
     path("courses/<uuid:pk>/stats/", CourseStatsView.as_view(), name="training-course-stats"),

@@ -8,6 +8,34 @@ from rbac.services import seed_rbac_for_organization
 
 from .models import Organization, OrganizationSettings
 
+# Leading bytes -> the only Content-Type branding images are ever served
+# as (see views.OrganizationLogoView/OrganizationFaviconView). Decided from
+# the file's actual content, not its client-supplied filename or MIME type -
+# both are whatever the uploader said. SVG is deliberately absent: it's a
+# script-capable document, and the logo/favicon URLs are public and served
+# inline from the app's own origin, so an SVG there is stored XSS against
+# anyone who opens the link.
+_BRANDING_IMAGE_SIGNATURES = (
+    (b"\x89PNG\r\n\x1a\n", "image/png"),
+    (b"\xff\xd8\xff", "image/jpeg"),
+    (b"GIF87a", "image/gif"),
+    (b"GIF89a", "image/gif"),
+    (b"\x00\x00\x01\x00", "image/x-icon"),
+)
+
+
+def branding_image_content_type(stored_file) -> str | None:
+    """The safe Content-Type for `stored_file` as a logo/favicon, or None if
+    its bytes aren't one of the allowed raster formats."""
+    with stored_file.file.open("rb") as handle:
+        header = handle.read(12)
+    if header[:4] == b"RIFF" and header[8:12] == b"WEBP":
+        return "image/webp"
+    for signature, content_type in _BRANDING_IMAGE_SIGNATURES:
+        if header.startswith(signature):
+            return content_type
+    return None
+
 
 def _unique_org_slug(name: str) -> str:
     """Same slugify-and-dedupe shape as knowledge/services.py's _unique_slug -
@@ -78,6 +106,8 @@ def update_branding(*, settings: OrganizationSettings, actor, request=None, **fi
         value = fields.get(field)
         if value is not None and value.organization_id != settings.organization_id:
             raise ValidationError({f"{field}_id": "That file doesn't belong to your organization."})
+        if value is not None and branding_image_content_type(value) is None:
+            raise ValidationError({f"{field}_id": "Use a PNG, JPEG, GIF, WebP or ICO image."})
     for field, value in fields.items():
         setattr(settings, field, value)
     settings.save(update_fields=[*fields.keys(), "updated_at"])

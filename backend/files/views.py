@@ -58,6 +58,13 @@ class FileDownloadView(APIView):
         stored_file = get_object_or_404(StoredFile, pk=pk, organization=request.user.organization)
         if not request.user.has_permission(stored_file.required_permission):
             raise PermissionDenied("You do not have permission to access this file.")
+        # Imported here, not at module level: knowledge already depends on
+        # files (its attachment models FK to StoredFile), so a top-level
+        # import the other way would be circular.
+        from knowledge.visibility import can_view_file
+
+        if not can_view_file(request.user, stored_file):
+            raise PermissionDenied("This file belongs to content that isn't accessible to you.")
         # as_attachment=True (Content-Disposition: attachment) rather than
         # inline: the frontend never navigates the browser to this URL
         # directly (see AuthenticatedImage.tsx / lib/api/files.ts's

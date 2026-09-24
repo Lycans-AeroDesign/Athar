@@ -58,6 +58,22 @@ def _public_organization(request) -> Organization | None:
     )
 
 
+def _branding_image_response(stored_file) -> FileResponse:
+    """Serves a logo/favicon inline (it's an <img>/<link rel="icon"> source)
+    but never as anything script-capable: the Content-Type comes from the
+    file's own bytes (services.branding_image_content_type), and the CSP
+    sandbox stops even a mislabelled file from running script on this
+    origin if someone opens the URL directly. Anything that no longer sniffs
+    as an allowed image (e.g. an SVG saved before update_branding checked
+    this) is a 404 rather than served."""
+    content_type = services.branding_image_content_type(stored_file)
+    if content_type is None:
+        raise Http404
+    response = FileResponse(stored_file.file.open("rb"), content_type=content_type)
+    response["Content-Security-Policy"] = "default-src 'none'; sandbox"
+    return response
+
+
 class OrganizationSettingsView(APIView):
     """Read-only and fully public (no auth required) - name/branding are
     shown on the pre-login screen too, not just inside the authenticated app.
@@ -97,7 +113,7 @@ class OrganizationLogoView(APIView):
         settings = OrganizationSettings.load(organization)
         if not settings.logo:
             raise Http404
-        return FileResponse(settings.logo.file.open("rb"), filename=settings.logo.original_filename)
+        return _branding_image_response(settings.logo)
 
 
 class OrganizationFaviconView(APIView):
@@ -118,7 +134,7 @@ class OrganizationFaviconView(APIView):
         settings = OrganizationSettings.load(organization)
         if not settings.favicon:
             raise Http404
-        return FileResponse(settings.favicon.file.open("rb"), filename=settings.favicon.original_filename)
+        return _branding_image_response(settings.favicon)
 
 
 class OrganizationGeneralUpdateView(APIView):

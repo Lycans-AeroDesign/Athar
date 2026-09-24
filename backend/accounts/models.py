@@ -3,6 +3,7 @@ import uuid
 from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 from django.core.validators import RegexValidator
 from django.db import models
+from django.db.models.functions import Lower
 from django.utils import timezone
 from django.utils.crypto import get_random_string
 
@@ -98,8 +99,29 @@ class User(AbstractBaseUser):
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
 
+    class Meta:
+        # Login matches email/username case-insensitively (see
+        # accounts/backends.py) and refuses to pick when more than one row
+        # matches - so uniqueness has to be case-insensitive too. With only
+        # the fields' own case-sensitive unique=True, registering
+        # "Alice@x.com" next to an existing "alice@x.com" was allowed and
+        # locked the original account out of login for good.
+        constraints = [
+            models.UniqueConstraint(Lower("email"), name="accounts_user_email_ci_unique"),
+            models.UniqueConstraint(Lower("username"), name="accounts_user_username_ci_unique"),
+        ]
+
     def __str__(self):
         return self.email
+
+    def save(self, *args, **kwargs):
+        # Stored lowercased whatever path created/edited the row (the
+        # manager, get_or_create in a management command, the admin, ...),
+        # so the case-insensitive constraint in Meta above is the only
+        # uniqueness rule anyone ever has to reason about.
+        if self.email:
+            self.email = self.email.strip().lower()
+        super().save(*args, **kwargs)
 
     def has_permission(self, codename: str) -> bool:
         if self.is_superuser:

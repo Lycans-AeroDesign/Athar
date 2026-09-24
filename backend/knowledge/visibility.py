@@ -104,3 +104,51 @@ def exclude_inaccessible(queryset: QuerySet, viewer, model, model_name: str) -> 
         granted_user=viewer,
     ).values_list("object_id", flat=True)
     return queryset.exclude(Q(visibility=Visibility.RESTRICTED) & ~owned & ~Q(pk__in=granted_ids))
+
+
+def _file_owners(stored_file):
+    """(model_name, instance) for every knowledge item `stored_file` is
+    attached to - an XAttachment row's parent, a Component's photo, or a
+    Document's file. Imported lazily: models.py already imports this module's
+    dependencies, and nothing else here needs the concrete models."""
+    from .models import (
+        ArticleAttachment,
+        Component,
+        ComponentAttachment,
+        Document,
+        FailureAttachment,
+        ProjectAttachment,
+        QuestionAttachment,
+        SopAttachment,
+        TestAttachment,
+    )
+
+    attachment_parents = (
+        (ArticleAttachment, "article"),
+        (QuestionAttachment, "question"),
+        (ProjectAttachment, "project"),
+        (ComponentAttachment, "component"),
+        (FailureAttachment, "failure"),
+        (SopAttachment, "sop"),
+        (TestAttachment, "test"),
+    )
+    for attachment_model, parent_field in attachment_parents:
+        for attachment in attachment_model.objects.filter(file=stored_file).select_related(parent_field):
+            yield parent_field, getattr(attachment, parent_field)
+    for component in Component.objects.filter(photo=stored_file):
+        yield "component", component
+    for document in Document.objects.filter(file=stored_file):
+        yield "document", document
+
+
+def can_view_file(viewer, stored_file) -> bool:
+    """The RESTRICTED rule applied to a file download: a file attached only
+    to items `viewer` can't see is itself off-limits, even to someone who
+    holds its required_permission (file.read) and has its id. A file
+    attached to nothing (a staged upload, a markdown inline image, a logo,
+    a course cover) or to at least one item the viewer can see stays
+    governed by required_permission alone, as before."""
+    if is_org_admin(viewer):
+        return True
+    owners = list(_file_owners(stored_file))
+    return not owners or any(can_view_instance(viewer, model_name, instance) for model_name, instance in owners)

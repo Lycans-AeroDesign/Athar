@@ -536,3 +536,99 @@ class TrainingAuditTests(TrainingTestCase):
         self.client.post(reverse("training-lesson-complete", args=[lesson["id"]]), **self._auth(member_access))
         self.assertTrue(AuditLog.objects.filter(action="lesson.complete", organization=self.organization).exists())
         self.assertTrue(AuditLog.objects.filter(action="course.complete", organization=self.organization).exists())
+
+
+class CourseVisibilityTests(TrainingTestCase):
+    """RESTRICTED courses - see training/visibility.py."""
+
+    def _restricted_published_course(self):
+        head, head_access = self._login_with_role("vhead@example.com", "Subteam Head")
+        course = self.client.post(
+            reverse("training-course-list-create"),
+            {"title": "Secret Course", "visibility": "RESTRICTED"},
+            format="json",
+            **self._auth(head_access),
+        ).data
+        self.assertEqual(course["visibility"], "RESTRICTED")
+        module = self._create_module(head_access, course["id"])
+        lesson = self._create_lesson(head_access, module["id"])
+        self._publish_course(head_access, course["id"])
+        return head_access, course, lesson
+
+    def test_public_is_the_default(self):
+        _, head_access = self._login_with_role("vdefault@example.com", "Subteam Head")
+        self.assertEqual(self._create_course(head_access)["visibility"], "PUBLIC")
+
+    def test_restricted_course_hidden_from_non_granted_members_everywhere(self):
+        _, course, lesson = self._restricted_published_course()
+        _, member_access = self._login_with_role("voutsider@example.com", "Member")
+        auth = self._auth(member_access)
+
+        self.assertEqual(
+            self.client.get(reverse("training-course-detail", args=[course["id"]]), **auth).status_code,
+            status.HTTP_403_FORBIDDEN,
+        )
+        self.assertEqual(
+            self.client.get(reverse("training-lesson-detail", args=[lesson["id"]]), **auth).status_code,
+            status.HTTP_403_FORBIDDEN,
+        )
+        self.assertEqual(
+            self.client.post(reverse("training-course-enroll", args=[course["id"]]), **auth).status_code,
+            status.HTTP_403_FORBIDDEN,
+        )
+        listed = self.client.get(reverse("training-course-list-create"), **auth).data["results"]
+        self.assertNotIn(course["id"], {c["id"] for c in listed})
+        found = self.client.get(reverse("training-search"), {"q": "Secret"}, **auth).data["results"]
+        self.assertNotIn(course["id"], {c["id"] for c in found})
+
+    def test_granted_member_can_see_and_enroll_until_revoked(self):
+        head_access, course, lesson = self._restricted_published_course()
+        member, member_access = self._login_with_role("vgranted@example.com", "Member")
+        auth = self._auth(member_access)
+
+        response = self.client.post(
+            reverse("training-course-access-grant-list-create", args=[course["id"]]),
+            {"user_id": str(member.id)},
+            format="json",
+            **self._auth(head_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        grant_id = response.data["id"]
+
+        detail = self.client.get(reverse("training-course-detail", args=[course["id"]]), **self._auth(head_access))
+        self.assertEqual([g["grant_id"] for g in detail.data["restricted_to"]], [grant_id])
+
+        self.assertEqual(
+            self.client.get(reverse("training-course-detail", args=[course["id"]]), **auth).status_code,
+            status.HTTP_200_OK,
+        )
+        self.assertEqual(
+            self.client.post(reverse("training-course-enroll", args=[course["id"]]), **auth).status_code,
+            status.HTTP_201_CREATED,
+        )
+        my_courses = self.client.get(reverse("training-my-courses"), **auth).data["results"]
+        self.assertEqual(len(my_courses), 1)
+
+        response = self.client.delete(
+            reverse("training-course-access-grant-detail", args=[course["id"], grant_id]), **self._auth(head_access)
+        )
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(
+            self.client.get(reverse("training-lesson-detail", args=[lesson["id"]]), **auth).status_code,
+            status.HTTP_403_FORBIDDEN,
+        )
+        self.assertEqual(self.client.get(reverse("training-my-courses"), **auth).data["results"], [])
+
+    def test_only_course_managers_can_grant_access(self):
+        # A Member can't even reach the endpoint (training.create); a Mentor
+        # holds training.update, so counts as a course manager and could.
+        _, course, _ = self._restricted_published_course()
+        member, member_access = self._login_with_role("vsneaky@example.com", "Member")
+        response = self.client.post(
+            reverse("training-course-access-grant-list-create", args=[course["id"]]),
+            {"user_id": str(member.id)},
+            format="json",
+            **self._auth(member_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+

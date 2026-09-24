@@ -6,6 +6,7 @@ from django.db.models import Q
 
 from core.models import OrganizationScopedModel, TimeStampedModel, UUIDPrimaryKeyModel
 from files.models import StoredFile
+from knowledge.models import Visibility
 
 
 class CourseCategory(UUIDPrimaryKeyModel, OrganizationScopedModel, TimeStampedModel):
@@ -72,6 +73,12 @@ class Course(UUIDPrimaryKeyModel, OrganizationScopedModel, TimeStampedModel):
     # avoids an expensive aggregate query on every course-list render.
     estimated_minutes = models.PositiveIntegerField(default=0)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT)
+    # Same PUBLIC/RESTRICTED axis as every knowledge type (knowledge.models.
+    # Visibility), orthogonal to `status` above: a RESTRICTED course is only
+    # visible to its author, org admins, training managers and users named in
+    # a knowledge.RestrictedAccessGrant for it - whatever its status. See
+    # training/visibility.py for the rule.
+    visibility = models.CharField(max_length=20, choices=Visibility.choices, default=Visibility.PUBLIC)
     # SET_NULL, not CASCADE - deleting a user must not delete their content
     # (matches knowledge.models.Article.author's precedent).
     author = models.ForeignKey(

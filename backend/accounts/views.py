@@ -81,7 +81,7 @@ class LoginView(TokenObtainPairView):
 class RefreshView(APIView):
     permission_classes = [AllowAny]
     throttle_classes = [ScopedRateThrottle]
-    throttle_scope = "auth"
+    throttle_scope = "auth_refresh"
 
     @extend_schema(
         tags=["Auth"],

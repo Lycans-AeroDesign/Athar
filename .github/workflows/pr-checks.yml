@@ -60,7 +60,7 @@ jobs:
 
       - name: Comment title help (on failure)
         if: steps.title_check.outcome == 'failure' && github.event.pull_request.user.type != 'Bot'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const pr = context.payload.pull_request;
@@ -113,7 +113,7 @@ jobs:
 
       - name: Collapse title help (on success)
         if: steps.title_check.outcome == 'success'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const pr = context.payload.pull_request;

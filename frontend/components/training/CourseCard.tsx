@@ -40,7 +40,18 @@ export function CourseCard({ course, progressPercent }: CourseCardProps) {
           <span className="font-label-caps text-label-caps uppercase text-on-surface-variant">
             {t(`difficulty.${course.difficulty}`)}
           </span>
-          {course.status !== "PUBLISHED" && <CourseStatusPill status={course.status} />}
+          <div className="flex items-center gap-1.5">
+            {course.visibility === "RESTRICTED" && (
+              <span
+                className="flex items-center text-on-error-container bg-error-container rounded-full p-1"
+                title={t("manage.visibilityRESTRICTED")}
+                aria-label={t("manage.visibilityRESTRICTED")}
+              >
+                <Icon name="lock" size={12} />
+              </span>
+            )}
+            {course.status !== "PUBLISHED" && <CourseStatusPill status={course.status} />}
+          </div>
         </div>
         <h4 className="font-headline-md text-headline-md text-primary line-clamp-2">{course.title}</h4>
         {course.short_description && (

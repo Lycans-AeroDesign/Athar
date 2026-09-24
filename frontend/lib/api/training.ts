@@ -1,5 +1,6 @@
 import { apiJson, apiVoid } from "./client";
 import type {
+  AccessGrant,
   CourseCategory,
   CourseDetail,
   CourseDifficulty,
@@ -20,6 +21,7 @@ import type {
   LessonType,
   Paginated,
   TrainingStats,
+  Visibility,
 } from "./types";
 
 // Same "unwrap .results, return a bare array" convention as lib/api/knowledge.ts -
@@ -76,6 +78,7 @@ export interface CourseWritePayload {
   category_id?: string | null;
   cover_image_id?: string | null;
   difficulty?: CourseDifficulty;
+  visibility?: Visibility;
 }
 
 export function createCourse(payload: CourseWritePayload): Promise<CourseDetail> {
@@ -92,6 +95,25 @@ export function updateCourse(id: string, payload: CourseWritePayload): Promise<C
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
+}
+
+// Course counterparts of lib/api/accessGrants.ts - same RestrictedAccessGrant
+// rows server-side, but nested under the course (training/views.py's
+// CourseAccessGrantListCreateView) since courses aren't a knowledge
+// RelatableType.
+export function addCourseAccessGrant(courseId: string, userId: string): Promise<AccessGrant> {
+  return apiJson<{ id: string; granted_user: AccessGrant["user"]; created_at: string }>(
+    `/api/v1/training/courses/${courseId}/access-grants/`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: userId }),
+    },
+  ).then((data) => ({ grant_id: data.id, user: data.granted_user }));
+}
+
+export function removeCourseAccessGrant(courseId: string, grantId: string): Promise<void> {
+  return apiVoid(`/api/v1/training/courses/${courseId}/access-grants/${grantId}/`, { method: "DELETE" });
 }
 
 export function deleteCourse(id: string): Promise<void> {

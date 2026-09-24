@@ -357,6 +357,101 @@ class AuthFlowTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
 
 
+    @patch.dict(ScopedRateThrottle.THROTTLE_RATES, {"auth": "3/min"})
+    def test_login_throttle_ignores_a_spoofed_x_forwarded_for(self):
+        # nginx overwrites X-Forwarded-For with the real peer address, and
+        # NUM_PROXIES=1 makes DRF key on that last entry only - so rotating
+        # a fake client-supplied prefix must NOT buy a fresh rate-limit
+        # bucket per request (it used to: the whole header was the key).
+        cache.clear()
+        for i in range(3):
+            response = self.client.post(
+                reverse("auth-login"),
+                {"email": "nobody@example.com", "password": "wrong"},
+                format="json",
+                HTTP_X_FORWARDED_FOR=f"10.0.0.{i}, 203.0.113.7",
+            )
+            self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        response = self.client.post(
+            reverse("auth-login"),
+            {"email": "nobody@example.com", "password": "wrong"},
+            format="json",
+            HTTP_X_FORWARDED_FOR="10.0.0.99, 203.0.113.7",
+        )
+        self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+
+    def test_register_rejects_a_case_variant_of_an_existing_email(self):
+        User.objects.create_user(email="alice@example.com", password="correctpassword123", organization=self.organization)
+        response = self.client.post(
+            reverse("auth-register"),
+            {"email": "ALICE@Example.com", "password": "somepassword123", "invitation_code": self._invitation_code().code},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("email", response.data)
+        # ...and the original owner can still log in, which is the actual
+        # harm this prevents (login refuses ambiguous case-insensitive matches).
+        response = self.client.post(
+            reverse("auth-login"), {"email": "alice@example.com", "password": "correctpassword123"}, format="json"
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_register_rejects_a_case_variant_of_an_existing_username(self):
+        User.objects.create_user(email="bob@example.com", username="bob", organization=self.organization)
+        response = self.client.post(
+            reverse("auth-register"),
+            {
+                "email": "bob2@example.com",
+                "username": "BOB",
+                "password": "somepassword123",
+                "invitation_code": self._invitation_code().code,
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("username", response.data)
+
+    def test_emails_are_stored_lowercased(self):
+        user = User.objects.create_user(email="  Mixed.Case@Example.COM ", organization=self.organization)
+        self.assertEqual(user.email, "mixed.case@example.com")
+
+    def test_register_rejects_weak_passwords(self):
+        for weak in ("12345678", "password", "guest@example.com"):
+            response = self.client.post(
+                reverse("auth-register"),
+                {"email": "guest@example.com", "password": weak, "invitation_code": self._invitation_code().code},
+                format="json",
+            )
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST, weak)
+            self.assertIn("password", response.data)
+        self.assertFalse(User.objects.filter(email="guest@example.com").exists())
+
+    def test_malformed_x_forwarded_for_does_not_break_login(self):
+        # audit.services._client_ip used to save the header's first entry
+        # straight into a GenericIPAddressField - a non-IP value 500'd login.
+        User.objects.create_user(email="ip@example.com", password="correctpassword123", organization=self.organization)
+        response = self.client.post(
+            reverse("auth-login"),
+            {"email": "ip@example.com", "password": "correctpassword123"},
+            format="json",
+            HTTP_X_FORWARDED_FOR="not-an-ip",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_audit_log_records_the_proxy_seen_address_not_the_client_claimed_one(self):
+        from audit.models import AuditLog
+
+        User.objects.create_user(email="ip2@example.com", password="correctpassword123", organization=self.organization)
+        self.client.post(
+            reverse("auth-login"),
+            {"email": "ip2@example.com", "password": "correctpassword123"},
+            format="json",
+            HTTP_X_FORWARDED_FOR="1.2.3.4, 203.0.113.9",
+        )
+        entry = AuditLog.objects.filter(action="auth.login").latest("created_at")
+        self.assertEqual(entry.ip_address, "203.0.113.9")
+
+
 class InvitationCodeAdminTests(APITestCase):
     @classmethod
     def setUpTestData(cls):

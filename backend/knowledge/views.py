@@ -817,7 +817,10 @@ class AnswerListCreateView(APIView):
         responses={200: AnswerSerializer(many=True), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def get(self, request, pk):
-        question = get_object_or_404(Question, pk=pk, organization=request.user.organization)
+        # Same visibility gate as QuestionDetailView - an org-only lookup
+        # here let anyone read (and add to) the answers of a RESTRICTED
+        # question they can't even open.
+        question = _visible_question_or_404(request, pk)
         return paginated_response(request, question.answers.select_related("author"), AnswerSerializer)
 
     @extend_schema(
@@ -827,7 +830,7 @@ class AnswerListCreateView(APIView):
         responses={201: AnswerSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def post(self, request, pk):
-        question = get_object_or_404(Question, pk=pk, organization=request.user.organization)
+        question = _visible_question_or_404(request, pk)
         serializer = AnswerWriteSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         answer = services.create_answer(
@@ -2034,7 +2037,15 @@ class AccessGrantDetailView(APIView):
         responses={204: OpenApiResponse(description="Deleted."), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def delete(self, request, pk):
-        grant = get_object_or_404(RestrictedAccessGrant, pk=pk, organization=request.user.organization)
+        # knowledge-app targets only - a grant on a training.Course is managed
+        # through training's own course access-grant endpoint, under
+        # training's permission rules rather than knowledge's.
+        grant = get_object_or_404(
+            RestrictedAccessGrant,
+            pk=pk,
+            organization=request.user.organization,
+            content_type__app_label="knowledge",
+        )
         services.remove_restricted_access(grant=grant, actor=request.user, request=request)
         return Response(status=status.HTTP_204_NO_CONTENT)
 

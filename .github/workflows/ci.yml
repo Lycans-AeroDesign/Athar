@@ -33,7 +33,7 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # ubuntu-latest's default apt repos only ship postgresql-client-16, but
       # the `postgres` service above runs 18 (matching docker-compose's own
@@ -49,7 +49,7 @@ jobs:
           sudo apt-get install -y postgresql-client-18
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v7
         with:
           version: latest
           # `enable-cache` already defaults to "auto" (on for GitHub-hosted
@@ -85,9 +85,9 @@ jobs:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
@@ -102,7 +102,7 @@ jobs:
       # source change invalidates it, falling back to a lockfile-only match
       # (source changed, deps didn't) rather than a fully cold cache.
       - name: Cache Next.js build
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: frontend/.next/cache
           key: ${{ runner.os }}-nextjs-${{ hashFiles('frontend/package-lock.json') }}-${{ hashFiles('frontend/**/*.js', 'frontend/**/*.jsx', 'frontend/**/*.ts', 'frontend/**/*.tsx') }}
@@ -123,12 +123,12 @@ jobs:
     runs-on: ubuntu-latest
     needs: [backend, frontend]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
 
       - name: Build backend image (dev target)
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: ./backend
           target: dev
@@ -137,7 +137,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Build backend image (prod target)
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: ./backend
           target: prod
@@ -146,7 +146,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Build frontend image (prod target)
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: ./frontend
           target: prod

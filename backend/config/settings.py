@@ -265,9 +265,13 @@ REST_FRAMEWORK = {
         else ["rest_framework.renderers.JSONRenderer"]
     ),
     # Anon/User apply everywhere by default; the "auth" scope is opted into
-    # explicitly (see accounts/views.py's LoginView/RegisterView/RefreshView)
-    # for a much stricter rate, since those are the endpoints brute-forcing
-    # actually pays off on.
+    # explicitly (see accounts/views.py's LoginView/RegisterView and
+    # organization/views.py's OrganizationCreateView) for a much stricter
+    # rate, since those are the endpoints brute-forcing actually pays off on.
+    # RefreshView gets its own looser "auth_refresh" scope instead - the SPA
+    # calls it on every full page load, so sharing the strict login budget
+    # would log real users out after a handful of reloads, and a refresh
+    # cookie isn't something guessing can produce anyway.
     "DEFAULT_THROTTLE_CLASSES": [
         "rest_framework.throttling.AnonRateThrottle",
         "rest_framework.throttling.UserRateThrottle",
@@ -276,7 +280,16 @@ REST_FRAMEWORK = {
         "anon": env("THROTTLE_ANON_RATE", default="60/min"),
         "user": env("THROTTLE_USER_RATE", default="300/min"),
         "auth": env("THROTTLE_AUTH_RATE", default="10/min"),
+        "auth_refresh": env("THROTTLE_AUTH_REFRESH_RATE", default="60/min"),
     },
+    # Exactly one trusted proxy (nginx) sits in front of the app, and it
+    # overwrites X-Forwarded-For with the real peer address rather than
+    # appending to a client-supplied one (see nginx/templates/
+    # locations.inc.template). Without this, DRF's throttles key on the
+    # *whole* X-Forwarded-For string - which a client can change on every
+    # request to get a fresh rate-limit bucket each time, defeating the
+    # "auth" scope's brute-force protection entirely.
+    "NUM_PROXIES": 1,
 }
 
 # Throttle counters are cache-backed and persist for the life of the test
@@ -290,6 +303,7 @@ REST_FRAMEWORK = {
 if "test" in sys.argv:
     REST_FRAMEWORK["DEFAULT_THROTTLE_CLASSES"] = []
     REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"]["auth"] = None
+    REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"]["auth_refresh"] = None
 
 SPECTACULAR_SETTINGS = {
     "TITLE": "Athar API",

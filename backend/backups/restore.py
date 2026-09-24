@@ -75,6 +75,7 @@ from knowledge.models import (
     Tag,
     Test,
     TestAttachment,
+    Visibility,
 )
 from training.models import (
     Course,
@@ -183,7 +184,10 @@ class _RestoreContext:
 
     def content_type_for(self, model_name: str):
         if model_name not in self.content_type_by_model:
-            self.content_type_by_model[model_name] = ContentType.objects.get(app_label="knowledge", model=model_name)
+            # Every grant/bookmark target is a knowledge model except
+            # training.Course, which can carry RestrictedAccessGrants too.
+            app_label = "training" if model_name == "course" else "knowledge"
+            self.content_type_by_model[model_name] = ContentType.objects.get(app_label=app_label, model=model_name)
         return self.content_type_by_model[model_name]
 
 
@@ -533,6 +537,9 @@ def _restore_courses(ctx, zf, course_categories_by_id, files_by_id) -> dict[uuid
             difficulty=row["difficulty"],
             estimated_minutes=_int_or_default(row["estimated_minutes"]),
             status=row["status"],
+            # .get(): archives made before courses had a visibility column
+            # restore as PUBLIC, which is what every course was back then.
+            visibility=row.get("visibility") or Visibility.PUBLIC,
             author_id=ctx.user_id(row["author_id"]),
             published_at=row["published_at"] or None,
         )

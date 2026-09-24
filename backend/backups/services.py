@@ -501,6 +501,7 @@ def _export_specs(organization):
                 ("difficulty", lambda o: o.difficulty),
                 ("estimated_minutes", lambda o: _s(o.estimated_minutes)),
                 ("status", lambda o: o.status),
+                ("visibility", lambda o: o.visibility),
                 ("author_id", lambda o: _s(o.author_id)),
                 ("author_email", lambda o: _s(o.author and o.author.email)),
                 ("published_at", lambda o: _s(o.published_at)),

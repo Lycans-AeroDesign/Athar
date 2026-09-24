@@ -953,6 +953,11 @@ def create_relation(
     # cross-org relation from ever being created, not a check after the fact.
     source_model, source = _resolve_relatable(source_type, source_id, actor.organization)
     target_model, target = _resolve_relatable(target_type, target_id, actor.organization)
+    # A RESTRICTED target the actor can't see gets the exact same "not
+    # found" as a nonexistent id - otherwise linking to a guessed id would
+    # both confirm it exists and echo its title back in the response.
+    if not visibility_rules.can_view_instance(actor, target_type, target):
+        raise ValidationError(f"No {target_type} with id {target_id}.")
     if source_model is target_model and source.pk == target.pk:
         raise ValidationError("An item can't be related to itself.")
 

@@ -560,6 +560,7 @@ export interface CourseSummary {
   difficulty: CourseDifficulty;
   estimated_minutes: number;
   status: CourseStatus;
+  visibility: Visibility;
   author: KnowledgeAuthor | null;
   module_count: number;
   lesson_count: number;
@@ -591,6 +592,7 @@ export interface CourseModule {
 export interface CourseDetail extends CourseSummary {
   description: string;
   modules: CourseModule[];
+  restricted_to: AccessGrant[];
 }
 
 export interface LearningObjective {

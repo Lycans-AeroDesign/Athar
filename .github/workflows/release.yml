@@ -25,12 +25,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
+          # A tag pushed with the default GITHUB_TOKEN can't trigger other
+          # workflows (GitHub blocks this to prevent trigger loops) - use a
+          # real PAT so pushing the vX.Y.Z tag here fires
+          # docker-publish.yml's `on: push: tags:` automatically. Falls back
+          # to GITHUB_TOKEN if RELEASE_TOKEN isn't set, so this still works
+          # (minus the auto-trigger) before that secret is configured.
+          token: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 24
 

@@ -15,6 +15,15 @@
 # listens on plain HTTP, and prod's HTTPS server (where this is actually
 # included) is the TLS termination point itself, not a hop behind some
 # other proxy - no X-Forwarded-Proto trust/spoofing question to worry about.
+#
+# The same goes for X-Forwarded-For: every location below sets it to
+# $remote_addr (overwrite), never $proxy_add_x_forwarded_for (append).
+# nginx is the edge, so any X-Forwarded-For arriving from the client is
+# attacker-controlled - appending would pass it through to Django, where
+# DRF's throttles and the audit log's client IP (NUM_PROXIES=1, see
+# backend/config/settings.py) would trust it. If this ever moves behind a
+# CDN/load balancer, switch to ngx_http_realip_module with that proxy's
+# address range in set_real_ip_from rather than reverting to append.
 # ====================================================
 
 # ------------------------------------------------
@@ -57,7 +66,7 @@ location /static/ {
     proxy_pass http://backend;
     proxy_set_header Host $host;
     proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-For $remote_addr;
     proxy_set_header X-Forwarded-Proto $scheme;
     access_log off;
 }
@@ -82,7 +91,7 @@ location = /api/v1/health/ {
     proxy_pass http://backend;
     proxy_set_header Host $host;
     proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-For $remote_addr;
     proxy_set_header X-Forwarded-Proto $scheme;
     access_log off;
 }
@@ -98,7 +107,7 @@ location /api/ {
 
     proxy_set_header Host $host;
     proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-For $remote_addr;
     proxy_set_header X-Forwarded-Host $host;
     proxy_set_header X-Forwarded-Port $server_port;
     proxy_set_header X-Forwarded-Proto $scheme;
@@ -115,7 +124,7 @@ location ~ ^/(admin|api/schema|api/docs)/ {
     proxy_pass http://backend;
     proxy_set_header Host $host;
     proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-For $remote_addr;
     proxy_set_header X-Forwarded-Proto $scheme;
 }
 
@@ -131,7 +140,7 @@ location / {
     proxy_pass http://frontend;
     proxy_set_header Host $host;
     proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-For $remote_addr;
     proxy_set_header X-Forwarded-Host $host;
     proxy_set_header X-Forwarded-Port $server_port;
     proxy_set_header X-Forwarded-Proto $scheme;

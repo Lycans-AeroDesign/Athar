@@ -16,6 +16,10 @@ from rbac.models import Role
 
 from .models import Organization, OrganizationSettings
 
+# Smallest thing organization.services.branding_image_content_type accepts
+# as a PNG - just the signature plus a few bytes; nothing decodes it.
+PNG_BYTES = b"\x89PNG\r\n\x1a\n" + b"fake-png-body"
+
 
 class OrganizationSettingsTests(APITestCase):
     @classmethod
@@ -134,10 +138,10 @@ class OrganizationSettingsTests(APITestCase):
 
         logo_file = StoredFile.objects.create(
             organization=public_organization,
-            file=SimpleUploadedFile("logo.png", b"fake-png-bytes", content_type="image/png"),
+            file=SimpleUploadedFile("logo.png", PNG_BYTES, content_type="image/png"),
             original_filename="logo.png",
             content_type="image/png",
-            size=14,
+            size=len(PNG_BYTES),
         )
         response = self.client.patch(
             reverse("organization-branding-update"),
@@ -152,7 +156,38 @@ class OrganizationSettingsTests(APITestCase):
         # authenticated download endpoint, since the login screen needs it.
         logo_response = self.client.get(reverse("organization-logo"))
         self.assertEqual(logo_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(b"".join(logo_response.streaming_content), b"fake-png-bytes")
+        self.assertEqual(b"".join(logo_response.streaming_content), PNG_BYTES)
+        # Type comes from the bytes, and the sandbox CSP keeps even a
+        # mislabelled file from running script on this origin.
+        self.assertEqual(logo_response["Content-Type"], "image/png")
+        self.assertIn("sandbox", logo_response["Content-Security-Policy"])
+
+    def test_branding_rejects_non_raster_images(self):
+        # An SVG logo/favicon would be served inline from the app's own
+        # origin on a public URL - stored XSS for anyone who opens it. The
+        # check sniffs content, so neither the filename nor the claimed
+        # MIME type can talk it past.
+        admin = User.objects.create_user(
+            email="svgadmin@example.com", password="correctpassword123", organization=self.organization
+        )
+        Role.objects.get(organization=self.organization, name="Organization Admin").user_roles.create(user=admin)
+        access = self.client.post(
+            reverse("auth-login"), {"email": "svgadmin@example.com", "password": "correctpassword123"}, format="json"
+        ).data["access"]
+        svg = b'<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>'
+        for field in ("logo_id", "favicon_id"):
+            disguised = StoredFile.objects.create(
+                organization=self.organization,
+                file=SimpleUploadedFile("logo.png", svg, content_type="image/png"),
+                original_filename="logo.png",
+                content_type="image/png",
+                size=len(svg),
+            )
+            response = self.client.patch(
+                reverse("organization-branding-update"), {field: str(disguised.pk)}, format="json", **self._auth(access)
+            )
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST, field)
+            self.assertIn(field, response.data)
 
     def test_public_endpoints_prefer_a_populated_org_over_an_empty_older_one(self):
         # Regression test for a real deployment bug: a single-org self-hosted
@@ -310,3 +345,24 @@ class OrganizationCreateTests(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertIsNone(User.objects.get(email="nouser@neworg.example").username)
+
+    def test_rejects_a_case_variant_of_an_existing_email(self):
+        other = create_test_organization()
+        User.objects.create_user(email="taken@example.com", password="correctpassword123", organization=other)
+        response = self.client.post(
+            reverse("organization-create"),
+            {"name": "Squatter Org", "admin_email": "TAKEN@example.com", "admin_password": "somepassword123"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("admin_email", response.data)
+        self.assertFalse(Organization.objects.filter(name="Squatter Org").exists())
+
+    def test_rejects_weak_admin_password(self):
+        response = self.client.post(
+            reverse("organization-create"),
+            {"name": "Weak Org", "admin_email": "weak@neworg.example", "admin_password": "12345678"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("admin_password", response.data)

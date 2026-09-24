@@ -1,3 +1,5 @@
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
@@ -5,6 +7,43 @@ from files.models import StoredFile
 from files.serializers import StoredFileSerializer
 
 from .models import InvitationCode, User
+
+
+def normalize_unique_email(value: str) -> str:
+    """Lowercased email, rejected if any account already has it in any
+    case. DRF's auto-generated UniqueValidator is a case-sensitive exact
+    match, which let "Alice@x.com" register next to "alice@x.com" - and
+    since login matches case-insensitively and refuses ambiguous matches
+    (see backends.py), that locked the original owner out. Shared with
+    organization.serializers.OrganizationCreateSerializer."""
+    value = value.strip().lower()
+    if User.objects.filter(email__iexact=value).exists():
+        raise serializers.ValidationError("A user with that email already exists.")
+    return value
+
+
+def check_unique_username(value: str | None, *, exclude_pk=None) -> str | None:
+    """"" -> None (see models.py's username field comment), then the same
+    case-insensitive uniqueness rule as normalize_unique_email - usernames
+    log in through the same iexact lookup."""
+    value = value or None
+    if value:
+        clashes = User.objects.filter(username__iexact=value)
+        if exclude_pk is not None:
+            clashes = clashes.exclude(pk=exclude_pk)
+        if clashes.exists():
+            raise serializers.ValidationError("A user with that username already exists.")
+    return value
+
+
+def check_password_strength(password: str, *, user: User, field: str = "password") -> None:
+    """Runs settings.AUTH_PASSWORD_VALIDATORS (length, common-password list,
+    all-numeric, similarity to the user's own email/name) - create_user()
+    never does this on its own, so every signup path has to call it."""
+    try:
+        validate_password(password, user=user)
+    except DjangoValidationError as exc:
+        raise serializers.ValidationError({field: list(exc.messages)}) from exc
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -61,7 +100,7 @@ class MeUpdateSerializer(serializers.ModelSerializer):
         # "" means "clear it" from the client's perspective, but the model
         # field must never store "" (see models.py's username field comment -
         # two blank strings would collide on the unique constraint).
-        return value or None
+        return check_unique_username(value, exclude_pk=self.instance.pk if self.instance else None)
 
     def validate_profile_picture_id(self, value):
         if value is not None and value.organization_id != self.instance.organization_id:
@@ -95,11 +134,26 @@ class RegisterSerializer(serializers.ModelSerializer):
         model = User
         fields = ["email", "password", "first_name", "last_name", "invitation_code", "username"]
 
+    def validate_email(self, value):
+        return normalize_unique_email(value)
+
     def validate_username(self, value):
         # Same "" -> None normalization as MeUpdateSerializer.validate_username
         # (see models.py's username field comment) - optional here too, not
         # required at signup.
-        return value or None
+        return check_unique_username(value)
+
+    def validate(self, attrs):
+        check_password_strength(
+            attrs["password"],
+            user=User(
+                email=attrs.get("email", ""),
+                username=attrs.get("username"),
+                first_name=attrs.get("first_name", ""),
+                last_name=attrs.get("last_name", ""),
+            ),
+        )
+        return attrs
 
 
 class InvitationCodeSerializer(serializers.ModelSerializer):

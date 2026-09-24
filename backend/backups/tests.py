@@ -10,7 +10,7 @@ from core.testing import create_test_organization
 from accounts.models import User
 from rbac.models import Role
 
-from knowledge.models import Article, Bookmark, KnowledgeRelation, Project, Tag
+from knowledge.models import Article, Bookmark, KnowledgeRelation, Project, RestrictedAccessGrant, Tag
 from training.models import (
     Course,
     CourseCategory,
@@ -253,7 +253,18 @@ class RestoreJobTests(BackupJobTestCase):
             slug="intro-to-avionics",
             category=category,
             status="PUBLISHED",
+            visibility="RESTRICTED",
             author=author,
+        )
+        # Course grants live in knowledge's RestrictedAccessGrant table but
+        # point at a training model - restore has to resolve that content
+        # type in the right app.
+        RestrictedAccessGrant.objects.create(
+            organization=self.organization,
+            content_type=ContentType.objects.get_for_model(Course),
+            object_id=course.id,
+            granted_user=learner,
+            granted_by=author,
         )
         module = CourseModule.objects.create(course=course, title="Basics", order=1)
         lesson = Lesson.objects.create(module=module, title="Wiring", order=1)
@@ -303,6 +314,12 @@ class RestoreJobTests(BackupJobTestCase):
         self.assertEqual(restored_course.title, "Intro to Avionics")
         self.assertEqual(restored_course.category_id, category.id)
         self.assertEqual(restored_course.author_id, author.id)
+        self.assertEqual(restored_course.visibility, "RESTRICTED")
+        self.assertTrue(
+            RestrictedAccessGrant.objects.filter(
+                content_type=ContentType.objects.get_for_model(Course), object_id=course_id, granted_user=learner
+            ).exists()
+        )
 
         restored_lesson = Lesson.objects.get(pk=lesson_id)
         self.assertEqual(restored_lesson.module_id, module_id)

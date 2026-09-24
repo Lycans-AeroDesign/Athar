@@ -1095,6 +1095,77 @@ class VisibilityTests(KnowledgeTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
 
+    def _restricted_question(self, author_access):
+        return self.client.post(
+            reverse("knowledge-question-list-create"),
+            {"title": "Private Q", "body": "...", "visibility": "RESTRICTED"},
+            format="json",
+            **self._auth(author_access),
+        ).data
+
+    def test_restricted_question_answers_are_hidden_and_closed_to_outsiders(self):
+        # Answers have no visibility of their own - they inherit the
+        # question's. The answers endpoint used to look the question up by
+        # org only, so anyone could read and post there.
+        _, author_access = self._login_with_role("ansauthor@example.com", "Member")
+        question = self._restricted_question(author_access)
+        answers_url = reverse("knowledge-answer-list-create", args=[question["id"]])
+        response = self.client.post(answers_url, {"body": "Owner's own answer"}, format="json", **self._auth(author_access))
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        _, other_access = self._login_with_role("ansother@example.com", "Member")
+        self.assertEqual(self.client.get(answers_url, **self._auth(other_access)).status_code, status.HTTP_403_FORBIDDEN)
+        response = self.client.post(answers_url, {"body": "Outsider"}, format="json", **self._auth(other_access))
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        response = self.client.get(answers_url, **self._auth(author_access))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["count"], 1)
+
+    def test_cannot_relate_own_item_to_a_restricted_target_you_cannot_see(self):
+        _, author_access = self._login_with_role("relrauthor@example.com", "Member")
+        question = self._restricted_question(author_access)
+
+        _, other_access = self._login_with_role("relrother@example.com", "Member")
+        own_article = self.client.post(
+            reverse("knowledge-article-list-create"),
+            {"title": "Mine", "content": "Body"},
+            format="json",
+            **self._auth(other_access),
+        ).data
+        response = self.client.post(
+            reverse("knowledge-relation-create"),
+            {"source_type": "article", "source_id": own_article["id"], "target_type": "question", "target_id": question["id"]},
+            format="json",
+            **self._auth(other_access),
+        )
+        # Same "not found" 400 as a nonexistent id - no existence/title leak.
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertNotIn("Private Q", str(response.data))
+
+    def test_restricted_items_attachments_cannot_be_downloaded_by_outsiders(self):
+        _, author_access = self._login_with_role("dlauthor@example.com", "Member")
+        question = self._restricted_question(author_access)
+        file_id = self.client.post(
+            reverse("files-upload"),
+            {"file": SimpleUploadedFile("secret.txt", b"secret contents")},
+            format="multipart",
+            **self._auth(author_access),
+        ).data["id"]
+        response = self.client.post(
+            reverse("knowledge-question-attachment-list", args=[question["id"]]),
+            {"file_id": file_id},
+            format="json",
+            **self._auth(author_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        download_url = reverse("files-download", args=[file_id])
+        _, other_access = self._login_with_role("dlother@example.com", "Member")
+        self.assertEqual(self.client.get(download_url, **self._auth(other_access)).status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(self.client.get(download_url, **self._auth(author_access)).status_code, status.HTTP_200_OK)
+
+
 class KnowledgeRelationTests(KnowledgeTestCase):
     def test_create_list_and_delete_relation_between_two_articles(self):
         author, author_access = self._login_with_role("relauthor@example.com", "Member")

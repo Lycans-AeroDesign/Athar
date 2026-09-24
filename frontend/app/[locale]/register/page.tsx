@@ -121,12 +121,18 @@ function RegisterForm() {
       await login(email, password);
       router.push("/");
     } catch (err) {
-      // Organization mode's field is "admin_username" server-side (see
-      // OrganizationCreateSerializer) but this form has just one shared
-      // username input either way - normalize both to the same fieldErrors key.
-      const usernameMessage = err instanceof ApiError ? err.fields.username ?? err.fields.admin_username : undefined;
-      if (usernameMessage) {
-        setFieldErrors((prev) => ({ ...prev, username: usernameMessage }));
+      // Organization mode's fields are "admin_username"/"admin_email"/
+      // "admin_password" server-side (see OrganizationCreateSerializer) but
+      // this form has one shared input for each either way - normalize both
+      // to the same fieldErrors keys.
+      const fields = err instanceof ApiError ? err.fields : {};
+      const serverFieldErrors: FieldErrors = {
+        username: fields.username ?? fields.admin_username,
+        email: fields.email ?? fields.admin_email,
+        password: fields.password ?? fields.admin_password,
+      };
+      if (serverFieldErrors.username || serverFieldErrors.email || serverFieldErrors.password) {
+        setFieldErrors((prev) => ({ ...prev, ...serverFieldErrors }));
       } else {
         setError(err instanceof ApiError ? err.message : t("register.error"));
       }
@@ -195,7 +201,8 @@ function RegisterForm() {
             </div>
           )}
 
-          <form className="space-y-6" noValidate onSubmit={handleSubmit}>
+          {/* method="post" - see the login page's form for why. */}
+          <form className="space-y-6" method="post" noValidate onSubmit={handleSubmit}>
             <div className="space-y-1">
               {mode === "organization" && (
                 <FloatingLabelInput

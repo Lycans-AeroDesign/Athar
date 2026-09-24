@@ -2,6 +2,7 @@ from django.conf import settings as django_settings
 from rest_framework import serializers
 
 from accounts.models import User, username_validator
+from accounts.serializers import check_password_strength, check_unique_username, normalize_unique_email
 from files.models import StoredFile
 from files.serializers import StoredFileSerializer
 
@@ -84,20 +85,25 @@ class OrganizationCreateSerializer(serializers.Serializer):
     def validate_admin_email(self, value):
         # A plain Serializer (see the admin_username field's own comment
         # above for why) gets none of ModelSerializer's automatic
-        # UniqueValidator machinery, so without this, a duplicate email
-        # sails through validation and only fails once create_organization()
-        # hits User.objects.create_user()'s DB-level unique constraint - an
-        # unhandled IntegrityError (500), not a clean 400 like
-        # accounts.RegisterSerializer already returns for the same case.
-        if User.objects.filter(email=value).exists():
-            raise serializers.ValidationError("A user with that email already exists.")
-        return value
+        # UniqueValidator machinery - and that one is case-sensitive anyway,
+        # which is exactly the gap normalize_unique_email closes.
+        return normalize_unique_email(value)
 
     def validate_admin_username(self, value):
-        value = value or None
-        if value and User.objects.filter(username=value).exists():
-            raise serializers.ValidationError("A user with that username already exists.")
-        return value
+        return check_unique_username(value)
+
+    def validate(self, attrs):
+        check_password_strength(
+            attrs["admin_password"],
+            user=User(
+                email=attrs.get("admin_email", ""),
+                username=attrs.get("admin_username"),
+                first_name=attrs.get("admin_first_name", ""),
+                last_name=attrs.get("admin_last_name", ""),
+            ),
+            field="admin_password",
+        )
+        return attrs
 
 
 class OrganizationGeneralUpdateSerializer(serializers.ModelSerializer):

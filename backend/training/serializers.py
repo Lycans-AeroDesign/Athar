@@ -2,7 +2,7 @@ from rest_framework import serializers
 
 from files.models import StoredFile
 from files.serializers import StoredFileSerializer
-from knowledge.serializers import AuthorSerializer
+from knowledge.serializers import AuthorSerializer, RestrictedAccessMixin
 
 from . import services
 from .models import (
@@ -188,8 +188,8 @@ class CourseListSerializer(serializers.ModelSerializer):
         model = Course
         fields = [
             "id", "title", "slug", "short_description", "cover_image", "category", "difficulty",
-            "estimated_minutes", "status", "author", "module_count", "lesson_count", "enrollment_count",
-            "created_at", "updated_at", "published_at",
+            "estimated_minutes", "status", "visibility", "author", "module_count", "lesson_count",
+            "enrollment_count", "created_at", "updated_at", "published_at",
         ]
 
     def get_module_count(self, obj: Course) -> int:
@@ -202,11 +202,14 @@ class CourseListSerializer(serializers.ModelSerializer):
         return obj.enrollments.count()
 
 
-class CourseDetailSerializer(CourseListSerializer):
+class CourseDetailSerializer(RestrictedAccessMixin, CourseListSerializer):
     modules = CourseModuleSerializer(many=True, read_only=True)
+    # Same shape as every knowledge *DetailSerializer's restricted_to - see
+    # knowledge.serializers.RestrictedAccessMixin.
+    restricted_to = serializers.SerializerMethodField()
 
     class Meta(CourseListSerializer.Meta):
-        fields = [*CourseListSerializer.Meta.fields, "description", "modules"]
+        fields = [*CourseListSerializer.Meta.fields, "description", "modules", "restricted_to"]
 
 
 class CourseWriteSerializer(serializers.ModelSerializer):
@@ -222,7 +225,9 @@ class CourseWriteSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Course
-        fields = ["title", "short_description", "description", "category_id", "cover_image_id", "difficulty"]
+        fields = [
+            "title", "short_description", "description", "category_id", "cover_image_id", "difficulty", "visibility",
+        ]
 
     def validate_category_id(self, value):
         if value is not None and value.organization_id != self.context["request"].user.organization_id:
@@ -263,3 +268,7 @@ class ReorderSerializer(serializers.Serializer):
     re-validates the set matches exactly before applying it."""
 
     order = serializers.ListField(child=serializers.UUIDField())
+
+
+class CourseAccessGrantCreateSerializer(serializers.Serializer):
+    user_id = serializers.UUIDField()

@@ -9,6 +9,7 @@ import { FloatingLabelInput } from "@/components/ui/FloatingLabelInput";
 import { Link, useRouter } from "@/i18n/navigation";
 import { ApiError, apiUrl } from "@/lib/api/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { safeRedirectPath } from "@/lib/auth/redirect";
 import { useOrganization } from "@/lib/organization/OrganizationProvider";
 
 interface FieldErrors {
@@ -59,7 +60,7 @@ function LoginForm() {
       // EmailOrUsernameBackend treats its value as either credential, so this
       // can be an email address or a username.
       await login(identifier, password);
-      router.push(searchParams.get("next") || "/");
+      router.push(safeRedirectPath(searchParams.get("next")));
     } catch (err) {
       // A 429 (rate limited) isn't a credentials problem - telling them
       // apart avoids "Invalid email/username or password" showing for a
@@ -100,7 +101,11 @@ function LoginForm() {
             </p>
           </div>
 
-          <form className="space-y-6" noValidate onSubmit={handleSubmit}>
+          {/* method="post": if this is submitted before hydration (slow network,
+              JS still loading), the browser's native fallback must never be a
+              GET - that would put the password in the URL, browser history
+              and server access logs. */}
+          <form className="space-y-6" method="post" noValidate onSubmit={handleSubmit}>
             <div className="space-y-1">
               <FloatingLabelInput
                 autoComplete="username"

@@ -4,6 +4,11 @@ import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import {
+  EMPTY_RESTRICTED_ACCESS_DRAFT,
+  RestrictedAccessPicker,
+  type RestrictedAccessDraft,
+} from "@/components/knowledge/RestrictedAccessPicker";
 import { CourseStatusPill } from "@/components/training/CourseStatusPill";
 import { Button } from "@/components/ui/Button";
 import { Combobox } from "@/components/ui/Combobox";
@@ -17,6 +22,7 @@ import { PhotoDropzone } from "@/components/ui/PhotoDropzone";
 import { Link, useRouter } from "@/i18n/navigation";
 import { uploadFile } from "@/lib/api/files";
 import {
+  addCourseAccessGrant,
   archiveCourse,
   createLesson,
   createModule,
@@ -27,6 +33,7 @@ import {
   listCourseCategories,
   publishCourse,
   rejectCourse,
+  removeCourseAccessGrant,
   reorderLessons,
   reorderModules,
   submitCourse,
@@ -34,11 +41,19 @@ import {
   updateCourse,
   updateModule,
 } from "@/lib/api/training";
-import type { CourseCategory, CourseDetail, CourseDifficulty, CourseModule, LessonType } from "@/lib/api/types";
+import type {
+  CourseCategory,
+  CourseDetail,
+  CourseDifficulty,
+  CourseModule,
+  LessonType,
+  Visibility,
+} from "@/lib/api/types";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { useHasPermission } from "@/lib/auth/permissions";
 
 const DIFFICULTIES: CourseDifficulty[] = ["BEGINNER", "INTERMEDIATE", "ADVANCED"];
+const VISIBILITY_VALUES: Visibility[] = ["PUBLIC", "RESTRICTED"];
 const LESSON_TYPES: LessonType[] = ["TEXT", "VIDEO", "DOCUMENT", "EXTERNAL", "EXERCISE"];
 
 export default function CourseEditorPage() {
@@ -70,6 +85,9 @@ export default function CourseEditorPage() {
   const [description, setDescription] = useState("");
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [difficulty, setDifficulty] = useState<CourseDifficulty>("BEGINNER");
+  const [visibility, setVisibility] = useState<Visibility>("PUBLIC");
+  const [restrictedAccessDraft, setRestrictedAccessDraft] =
+    useState<RestrictedAccessDraft>(EMPTY_RESTRICTED_ACCESS_DRAFT);
   const [coverUploadProgress, setCoverUploadProgress] = useState<number | null>(null);
 
   const [newModuleTitle, setNewModuleTitle] = useState("");
@@ -101,6 +119,10 @@ export default function CourseEditorPage() {
     setDescription(data.description);
     setCategoryId(data.category?.id ?? null);
     setDifficulty(data.difficulty);
+    setVisibility(data.visibility);
+    // The freshly-loaded restricted_to is the new source of truth - see
+    // RestrictedAccessPicker's RestrictedAccessDraft docstring.
+    setRestrictedAccessDraft(EMPTY_RESTRICTED_ACCESS_DRAFT);
   }
 
   function loadCourse() {
@@ -137,7 +159,10 @@ export default function CourseEditorPage() {
     shortDescription !== course.short_description ||
     description !== course.description ||
     categoryId !== (course.category?.id ?? null) ||
-    difficulty !== course.difficulty;
+    difficulty !== course.difficulty ||
+    visibility !== course.visibility ||
+    restrictedAccessDraft.pendingAdd.length > 0 ||
+    restrictedAccessDraft.pendingRemoveGrantIds.length > 0;
 
   async function handleSaveInfo() {
     setIsSaving(true);
@@ -149,8 +174,18 @@ export default function CourseEditorPage() {
         description,
         category_id: categoryId,
         difficulty,
+        visibility,
       });
-      applyCourseToState(updated);
+      for (const grantId of restrictedAccessDraft.pendingRemoveGrantIds) {
+        await removeCourseAccessGrant(updated.id, grantId);
+      }
+      for (const grantUser of restrictedAccessDraft.pendingAdd) {
+        await addCourseAccessGrant(updated.id, grantUser.id);
+      }
+      const hadGrantChanges =
+        restrictedAccessDraft.pendingAdd.length > 0 || restrictedAccessDraft.pendingRemoveGrantIds.length > 0;
+      // Re-fetch when grants changed so restricted_to reflects them.
+      applyCourseToState(hadGrantChanges ? await getCourse(updated.id) : updated);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -343,7 +378,23 @@ export default function CourseEditorPage() {
               onChange={setCategoryId}
             />
           </div>
+          <div className="w-full sm:w-56">
+            <Combobox
+              label={t("visibilityLabel")}
+              options={VISIBILITY_VALUES.map((value) => ({ value, label: t(`visibility${value}`) }))}
+              value={visibility}
+              onChange={(value) => setVisibility(value as Visibility)}
+            />
+          </div>
         </div>
+
+        {visibility === "RESTRICTED" && (
+          <RestrictedAccessPicker
+            initialGrants={course.restricted_to}
+            value={restrictedAccessDraft}
+            onChange={setRestrictedAccessDraft}
+          />
+        )}
 
         {/* Its own block row (not a bare inline-flex Button sibling) so it
             never ends up sharing a line with the Save button below. */}

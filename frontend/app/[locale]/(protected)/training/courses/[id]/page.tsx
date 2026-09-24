@@ -37,6 +37,7 @@ export default function CourseDetailPage() {
   const { id } = useParams<{ id: string }>();
   const t = useTranslations("training.course");
   const workflowT = useTranslations("training.workflow");
+  const manageT = useTranslations("training.manage");
   const cardT = useTranslations("training.card");
   const { user } = useAuth();
   const router = useRouter();
@@ -231,6 +232,13 @@ export default function CourseDetailPage() {
           <CourseStatusPill status={course.status} />
           <DifficultyPill difficulty={course.difficulty} />
           {course.category && <CategoryBadge name={course.category.name} />}
+          {/* Same restricted pill as the knowledge detail pages (see the article page). */}
+          {course.visibility === "RESTRICTED" && (
+            <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-error-container text-on-error-container font-label-caps text-label-caps uppercase">
+              <Icon name="lock" size={12} />
+              {manageT("visibilityRESTRICTED")}
+            </span>
+          )}
         </div>
 
         {/* Tier 2: quantitative facts - icon + text, quieter than the pills above. */}

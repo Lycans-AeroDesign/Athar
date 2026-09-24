@@ -9,7 +9,18 @@ from rest_framework.exceptions import ValidationError
 from audit.services import log_action
 from files.services import confirm_stored_files, confirm_stored_files_in_text
 from knowledge import visibility as visibility_rules
-from knowledge.models import Article, Component, Document, Failure, Project, Question, Sop, Test
+from knowledge.models import (
+    Article,
+    Component,
+    Document,
+    Failure,
+    Project,
+    Question,
+    RestrictedAccessGrant,
+    Sop,
+    Test,
+    Visibility,
+)
 
 from .models import (
     Course,
@@ -118,7 +129,7 @@ def delete_course_category(*, category: CourseCategory, actor, request=None) -> 
 
 def create_course(
     *, actor, request=None, title, short_description="", description="", category=None,
-    difficulty=Course.Difficulty.BEGINNER, cover_image=None,
+    difficulty=Course.Difficulty.BEGINNER, cover_image=None, visibility=Visibility.PUBLIC,
 ) -> Course:
     course = Course.objects.create(
         organization=actor.organization,
@@ -129,6 +140,7 @@ def create_course(
         category=category,
         difficulty=difficulty,
         cover_image=cover_image,
+        visibility=visibility,
         author=actor,
     )
     confirm_stored_files(cover_image)
@@ -476,6 +488,45 @@ def visible_knowledge_references_for(lesson: Lesson, viewer) -> list[LessonKnowl
 
 
 # --- Enrollment / Progress -----------------------------------------------------
+
+
+def add_course_access(*, course: Course, actor, user_id, request=None) -> RestrictedAccessGrant:
+    """Names one more org member who may see a RESTRICTED course - the
+    training counterpart of knowledge.services.add_restricted_access, with
+    the same "whoever can manage this course" rule for who may do it."""
+    from accounts.models import User
+
+    _require_can_manage_course(actor, course)
+    granted_user = User.objects.filter(pk=user_id, organization=actor.organization).first()
+    if granted_user is None:
+        raise ValidationError(f"No user with id {user_id} in your organization.")
+    grant, created = RestrictedAccessGrant.objects.get_or_create(
+        organization=actor.organization,
+        content_type=ContentType.objects.get_for_model(Course),
+        object_id=course.pk,
+        granted_user=granted_user,
+        defaults={"granted_by": actor},
+    )
+    if created:
+        log_action(
+            actor=actor,
+            action="access_grant.create",
+            target=course,
+            metadata={"granted_user": str(granted_user.pk)},
+            request=request,
+        )
+    return grant
+
+
+def remove_course_access(*, course: Course, grant: RestrictedAccessGrant, actor, request=None) -> None:
+    _require_can_manage_course(actor, course)
+    log_action(
+        actor=actor,
+        action="access_grant.delete",
+        metadata={"grant_id": str(grant.pk), "granted_user": str(grant.granted_user_id)},
+        request=request,
+    )
+    grant.delete()
 
 
 def enroll_in_course(*, course: Course, actor, request=None) -> CourseEnrollment:

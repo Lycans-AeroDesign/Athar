@@ -3,6 +3,11 @@
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
+import {
+  EMPTY_RESTRICTED_ACCESS_DRAFT,
+  RestrictedAccessPicker,
+  type RestrictedAccessDraft,
+} from "@/components/knowledge/RestrictedAccessPicker";
 import { Button } from "@/components/ui/Button";
 import { Combobox } from "@/components/ui/Combobox";
 import { Icon } from "@/components/ui/Icon";
@@ -10,10 +15,11 @@ import { MarkdownEditor } from "@/components/ui/MarkdownEditor";
 import { PhotoDropzone } from "@/components/ui/PhotoDropzone";
 import { Link, useRouter } from "@/i18n/navigation";
 import { uploadFile } from "@/lib/api/files";
-import { createCourse, listCourseCategories } from "@/lib/api/training";
-import type { CourseCategory, CourseDifficulty, StoredFileRef } from "@/lib/api/types";
+import { addCourseAccessGrant, createCourse, listCourseCategories } from "@/lib/api/training";
+import type { CourseCategory, CourseDifficulty, StoredFileRef, Visibility } from "@/lib/api/types";
 
 const DIFFICULTIES: CourseDifficulty[] = ["BEGINNER", "INTERMEDIATE", "ADVANCED"];
+const VISIBILITY_VALUES: Visibility[] = ["PUBLIC", "RESTRICTED"];
 
 export default function NewCoursePage() {
   const t = useTranslations("training.manage");
@@ -27,6 +33,9 @@ export default function NewCoursePage() {
   const [description, setDescription] = useState("");
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [difficulty, setDifficulty] = useState<CourseDifficulty>("BEGINNER");
+  const [visibility, setVisibility] = useState<Visibility>("PUBLIC");
+  const [restrictedAccessDraft, setRestrictedAccessDraft] =
+    useState<RestrictedAccessDraft>(EMPTY_RESTRICTED_ACCESS_DRAFT);
   const [coverImage, setCoverImage] = useState<StoredFileRef | null>(null);
   const [coverUploadProgress, setCoverUploadProgress] = useState<number | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -59,7 +68,14 @@ export default function NewCoursePage() {
         category_id: categoryId,
         cover_image_id: coverImage?.id ?? null,
         difficulty,
+        visibility,
       });
+      // A brand-new course has no saved grants yet, so only additions apply.
+      if (visibility === "RESTRICTED") {
+        for (const user of restrictedAccessDraft.pendingAdd) {
+          await addCourseAccessGrant(course.id, user.id);
+        }
+      }
       router.push(`/training/manage/courses/${course.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -111,7 +127,23 @@ export default function NewCoursePage() {
               onChange={setCategoryId}
             />
           </div>
+          <div className="w-56">
+            <Combobox
+              label={t("visibilityLabel")}
+              options={VISIBILITY_VALUES.map((value) => ({ value, label: t(`visibility${value}`) }))}
+              value={visibility}
+              onChange={(value) => setVisibility(value as Visibility)}
+            />
+          </div>
         </div>
+
+        {visibility === "RESTRICTED" && (
+          <RestrictedAccessPicker
+            initialGrants={[]}
+            value={restrictedAccessDraft}
+            onChange={setRestrictedAccessDraft}
+          />
+        )}
 
         {/* Its own block row (not a bare inline-flex Button sibling) so it
             never ends up sharing a line with the Create button below - same

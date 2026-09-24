@@ -1,3 +1,4 @@
+from django.contrib.contenttypes.models import ContentType
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import OpenApiResponse, extend_schema
@@ -10,7 +11,11 @@ from config.openapi import BAD_REQUEST, COMMON_ERRORS, NOT_FOUND
 from config.pagination import paginated_response
 from rbac.permissions import require_permission
 
+from knowledge.models import RestrictedAccessGrant
+from knowledge.serializers import AccessGrantSerializer
+
 from . import search, services
+from . import visibility as course_visibility
 from .models import (
     Course,
     CourseCategory,
@@ -22,6 +27,7 @@ from .models import (
     LessonKnowledgeReference,
 )
 from .serializers import (
+    CourseAccessGrantCreateSerializer,
     CourseCategorySerializer,
     CourseCategoryWriteSerializer,
     CourseDetailSerializer,
@@ -52,6 +58,9 @@ from .serializers import (
 
 
 def _ensure_course_visible(request, course: Course) -> None:
+    # RESTRICTED first, independent of status - see training/visibility.py.
+    if not course_visibility.can_view_course(request.user, course):
+        raise PermissionDenied("This course isn't accessible to you.")
     if course.status == Course.Status.PUBLISHED:
         return
     if course.status == Course.Status.ARCHIVED and CourseEnrollment.objects.filter(
@@ -75,6 +84,17 @@ def _visible_course_or_404(request, pk):
         Course.objects.select_related("category", "author"), pk=pk, organization=request.user.organization
     )
     _ensure_course_visible(request, course)
+    return course
+
+
+def _restriction_checked_course_or_404(request, pk):
+    """Only the RESTRICTED half of _ensure_course_visible - for enroll/
+    progress, where a non-published course is already answered by the
+    service layer (enroll_in_course's own "only a published course" 400)
+    rather than hidden behind a 403."""
+    course = get_object_or_404(Course, pk=pk, organization=request.user.organization)
+    if not course_visibility.can_view_course(request.user, course):
+        raise PermissionDenied("This course isn't accessible to you.")
     return course
 
 
@@ -163,7 +183,10 @@ class CourseListCreateView(APIView):
     )
     def get(self, request):
         status_param = request.query_params.get("status", Course.Status.PUBLISHED)
-        queryset = Course.objects.filter(organization=request.user.organization).select_related("category", "author")
+        queryset = course_visibility.exclude_inaccessible_courses(
+            Course.objects.filter(organization=request.user.organization).select_related("category", "author"),
+            request.user,
+        )
         can_review = request.user.has_permission("training.review") or request.user.has_permission("training.publish")
         if status_param == "ALL":
             if not can_review:
@@ -299,6 +322,51 @@ class CourseUnarchiveView(APIView):
         return Response(CourseDetailSerializer(course, context={"request": request}).data)
 
 
+class CourseAccessGrantListCreateView(APIView):
+    """Names a specific org member who may see a RESTRICTED course - the
+    training counterpart of knowledge.views.AccessGrantListCreateView (same
+    RestrictedAccessGrant model; who already has access is read off the
+    course's own `restricted_to`). Nested under the course rather than a
+    generic content_type/object_id body, since courses aren't one of
+    Knowledge's relatable types."""
+
+    permission_classes = [require_permission("training.create")]
+
+    @extend_schema(
+        tags=["Training"], summary="Grant a user access to a restricted course (own course, or requires training.update)",
+        request=CourseAccessGrantCreateSerializer,
+        responses={201: AccessGrantSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
+    )
+    def post(self, request, pk):
+        course = get_object_or_404(Course, pk=pk, organization=request.user.organization)
+        serializer = CourseAccessGrantCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        grant = services.add_course_access(
+            course=course, actor=request.user, request=request, user_id=serializer.validated_data["user_id"]
+        )
+        return Response(AccessGrantSerializer(grant).data, status=status.HTTP_201_CREATED)
+
+
+class CourseAccessGrantDetailView(APIView):
+    permission_classes = [require_permission("training.create")]
+
+    @extend_schema(
+        tags=["Training"], summary="Revoke a user's access to a restricted course (own course, or requires training.update)",
+        responses={204: OpenApiResponse(description="Revoked."), 404: NOT_FOUND, **COMMON_ERRORS},
+    )
+    def delete(self, request, pk, grant_pk):
+        course = get_object_or_404(Course, pk=pk, organization=request.user.organization)
+        grant = get_object_or_404(
+            RestrictedAccessGrant,
+            pk=grant_pk,
+            organization=request.user.organization,
+            content_type=ContentType.objects.get_for_model(Course),
+            object_id=course.pk,
+        )
+        services.remove_course_access(course=course, grant=grant, actor=request.user, request=request)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
 class CourseEnrollView(APIView):
     permission_classes = [require_permission("training.read")]
 
@@ -307,7 +375,7 @@ class CourseEnrollView(APIView):
         responses={201: CourseEnrollmentSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def post(self, request, pk):
-        course = get_object_or_404(Course, pk=pk, organization=request.user.organization)
+        course = _restriction_checked_course_or_404(request, pk)
         enrollment = services.enroll_in_course(course=course, actor=request.user, request=request)
         return Response(CourseEnrollmentSerializer(enrollment).data, status=status.HTTP_201_CREATED)
 
@@ -321,7 +389,7 @@ class CourseProgressView(APIView):
         responses={200: CourseProgressSerializer, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def get(self, request, pk):
-        course = get_object_or_404(Course, pk=pk, organization=request.user.organization)
+        course = _restriction_checked_course_or_404(request, pk)
         progress = services.compute_course_progress(course=course, actor=request.user)
         return Response(CourseProgressSerializer(progress).data)
 
@@ -362,8 +430,12 @@ class MyCoursesView(APIView):
         responses={200: CourseEnrollmentSerializer(many=True), 400: BAD_REQUEST, **COMMON_ERRORS},
     )
     def get(self, request):
-        enrollments = CourseEnrollment.objects.filter(user=request.user).select_related(
-            "course", "course__category", "course__author"
+        enrollments = course_visibility.exclude_inaccessible_courses(
+            CourseEnrollment.objects.filter(user=request.user).select_related(
+                "course", "course__category", "course__author"
+            ),
+            request.user,
+            course_field="course",
         )
         status_param = request.query_params.get("status")
         if status_param == "in_progress":
@@ -388,9 +460,12 @@ class TrainingSearchView(APIView):
     )
     def get(self, request):
         query = request.query_params.get("q", "").strip()
-        queryset = Course.objects.filter(
-            organization=request.user.organization, status=Course.Status.PUBLISHED
-        ).select_related("category", "author")
+        queryset = course_visibility.exclude_inaccessible_courses(
+            Course.objects.filter(
+                organization=request.user.organization, status=Course.Status.PUBLISHED
+            ).select_related("category", "author"),
+            request.user,
+        )
         category_id = request.query_params.get("category")
         if category_id:
             queryset = queryset.filter(category_id=category_id)
@@ -547,7 +622,7 @@ class LessonCompleteView(APIView):
         responses={200: OpenApiResponse(description="{lesson_id, completed_at}"), 403: OpenApiResponse(description="Not enrolled in this lesson's course."), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def post(self, request, pk):
-        lesson = get_object_or_404(Lesson, pk=pk, module__course__organization=request.user.organization)
+        lesson = _visible_lesson_or_404(request, pk)
         progress = services.mark_lesson_complete(lesson=lesson, actor=request.user, request=request)
         return Response({"lesson_id": str(lesson.pk), "completed_at": progress.completed_at})
 
