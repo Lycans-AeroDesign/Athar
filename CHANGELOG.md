@@ -1,3 +1,9 @@
+## [1.6.1](https://github.com/Lycans-AeroDesign/Athar/compare/v1.6.0...v1.6.1) (2026-09-24)
+
+### Bug Fixes
+
+* activity feed names/links and restricted-item leak, detail meta spacing, plain-text search snippets ([b3c749f](https://github.com/Lycans-AeroDesign/Athar/commit/b3c749f2fa8d41d77ae43d6e246e129b6f8caeee))
+
 ## [1.6.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.5.0...v1.6.0) (2026-09-24)
 
 ### Features
