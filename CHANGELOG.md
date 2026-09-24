@@ -1,3 +1,9 @@
+## [1.6.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.5.0...v1.6.0) (2026-09-24)
+
+### Features
+
+* restricted courses, security hardening and Node 24 CI actions ([c2d5047](https://github.com/Lycans-AeroDesign/Athar/commit/c2d50479cb00309aaa02d1dea28c02401ba0e89a))
+
 ## [1.5.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.4.3...v1.5.0) (2026-09-24)
 
 ### Features
