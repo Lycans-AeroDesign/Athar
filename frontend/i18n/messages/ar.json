@@ -230,8 +230,7 @@
       "emptyState": "لا توجد فئات بعد.",
       "articleCount": "{count, plural, =0 {لا مقالات} one {مقالة واحدة} two {مقالتان} few {# مقالات} many {# مقالة} other {# مقالة}}",
       "deleteConfirmTitle": "حذف \"{name}\"؟",
-      "deleteConfirmBody": "ستصبح المقالات ضمن هذه الفئة بلا تصنيف. لا يمكن التراجع عن هذا الإجراء.",
-      "courseCategoriesDescription": "فئات لتنظيم دورات التدريب - منفصلة عن فئات المعرفة أعلاه، فلا تظهر في مُنتقي فئة المقالة والعكس صحيح."
+      "deleteConfirmBody": "ستصبح المقالات ضمن هذه الفئة بلا تصنيف. لا يمكن التراجع عن هذا الإجراء."
     },
     "permissions": {
       "title": "الأدوار",
@@ -1130,9 +1129,9 @@
       "estimatedMinutesLabel": "الدقائق المقدّرة",
       "categoriesTitle": "فئات الدورات",
       "noCourseCategories": "لا توجد فئات دورات بعد.",
-      "addCategoryButton": "إضافة فئة",
-      "categoryNamePlaceholder": "اسم الفئة",
-      "deleteCategoryConfirmTitle": "حذف هذه الفئة؟",
+      "categoriesDescription": "إدارة الفئات التي يمكن تصنيف دورات التدريب ضمنها.",
+      "courseCount": "{count, plural, =0 {لا دورات} one {دورة واحدة} two {دورتان} few {# دورات} many {# دورة} other {# دورة}}",
+      "deleteCategoryConfirmTitle": "حذف \"{name}\"؟",
       "deleteCategoryConfirmBody": "ستصبح الدورات فيها بلا فئة. لا يمكن التراجع عن هذا."
     },
     "lessonEditor": {

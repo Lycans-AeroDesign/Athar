@@ -37,7 +37,6 @@ export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<TabId>("general");
   const t = useTranslations("settings");
   const commonT = useTranslations("common");
-  const trainingManageT = useTranslations("training.manage");
 
   const canEditGeneral = useHasPermission("organization.manage");
   const canEditBranding = useHasPermission("branding.manage");
@@ -103,19 +102,7 @@ export default function SettingsPage() {
       ) : activeTab === "categories" ? (
         <div className="space-y-8">
           {canManageCategories && <CategorySettingsForm />}
-          {canManageTrainingCategories && (
-            <div className="bg-surface rounded-xl border border-outline-variant p-6 space-y-4 max-w-2xl">
-              <div>
-                <h2 className="font-headline-md text-headline-md text-on-surface">
-                  {trainingManageT("categoriesTitle")}
-                </h2>
-                <p className="font-body-md text-body-md text-on-surface-variant mt-1">
-                  {t("categories.courseCategoriesDescription")}
-                </p>
-              </div>
-              <CourseCategoryManager />
-            </div>
-          )}
+          {canManageTrainingCategories && <CourseCategoryManager />}
         </div>
       ) : activeTab === "users" ? (
         <UsersSettingsForm />

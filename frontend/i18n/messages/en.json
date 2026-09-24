@@ -230,8 +230,7 @@
       "emptyState": "No categories yet.",
       "articleCount": "{count, plural, =0 {No articles} one {# article} other {# articles}}",
       "deleteConfirmTitle": "Delete \"{name}\"?",
-      "deleteConfirmBody": "Articles in this category will become uncategorized. This can't be undone.",
-      "courseCategoriesDescription": "Categories for organizing Training courses - kept separate from the Knowledge categories above, so they won't show up in an article's category picker or vice versa."
+      "deleteConfirmBody": "Articles in this category will become uncategorized. This can't be undone."
     },
     "permissions": {
       "title": "Roles",
@@ -1130,9 +1129,9 @@
       "estimatedMinutesLabel": "Est. minutes",
       "categoriesTitle": "Course Categories",
       "noCourseCategories": "No course categories yet.",
-      "addCategoryButton": "Add Category",
-      "categoryNamePlaceholder": "Category name",
-      "deleteCategoryConfirmTitle": "Delete this category?",
+      "categoriesDescription": "Manage the categories Training courses can be organized under.",
+      "courseCount": "{count, plural, =0 {No courses} one {# course} other {# courses}}",
+      "deleteCategoryConfirmTitle": "Delete \"{name}\"?",
       "deleteCategoryConfirmBody": "Courses in it become uncategorized. This can't be undone."
     },
     "lessonEditor": {

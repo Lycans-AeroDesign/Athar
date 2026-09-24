@@ -136,10 +136,7 @@ export default function TrainingManageDashboardPage() {
       </div>
 
       <Can permission="training.manage">
-        <div className="space-y-3">
-          <h2 className="font-headline-md text-headline-md text-on-surface">{t("categoriesTitle")}</h2>
-          <CourseCategoryManager />
-        </div>
+        <CourseCategoryManager />
       </Can>
     </div>
   );
