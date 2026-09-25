@@ -17,6 +17,7 @@ import { useRouter } from "@/i18n/navigation";
 import { addAccessGrant, removeAccessGrant } from "@/lib/api/accessGrants";
 import { createProject, updateProject, type ProjectWritePayload } from "@/lib/api/engineering";
 import type { ProjectDetail, ProjectStatus, Visibility } from "@/lib/api/types";
+import { PROJECT_STATUS_ICONS, VISIBILITY_ICONS } from "@/lib/optionIcons";
 
 const STATUS_VALUES: ProjectStatus[] = ["ACTIVE", "ON_HOLD", "COMPLETED"];
 const VISIBILITY_VALUES: Visibility[] = ["PUBLIC", "RESTRICTED"];
@@ -107,7 +108,7 @@ export function ProjectEditor({ project, onDirtyChange }: ProjectEditorProps) {
           <ChangedIndicator changed={fieldChanged.status} className="w-48">
             <Combobox
               placeholder={t("statusLabel")}
-              options={STATUS_VALUES.map((value) => ({ value, label: statusT(value) }))}
+              options={STATUS_VALUES.map((value) => ({ value, label: statusT(value), ...PROJECT_STATUS_ICONS[value] }))}
               value={status}
               onChange={(value) => setStatus(value as ProjectStatus)}
             />
@@ -115,7 +116,7 @@ export function ProjectEditor({ project, onDirtyChange }: ProjectEditorProps) {
           <ChangedIndicator changed={fieldChanged.visibility} className="w-48">
             <Combobox
               placeholder={t("visibilityLabel")}
-              options={VISIBILITY_VALUES.map((value) => ({ value, label: t(`visibility${value}`) }))}
+              options={VISIBILITY_VALUES.map((value) => ({ value, label: t(`visibility${value}`), ...VISIBILITY_ICONS[value] }))}
               value={visibility}
               onChange={(value) => setVisibility(value as Visibility)}
             />

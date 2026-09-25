@@ -14,6 +14,7 @@ import { getDocuments, type DocumentOrdering } from "@/lib/api/documents";
 import { Link } from "@/i18n/navigation";
 import type { DocType, DocumentSource, DocumentSummary } from "@/lib/api/types";
 import { useEngineeringListFiltersEnabled } from "@/lib/auth/permissions";
+import { DOC_SOURCE_ICONS, DOC_TYPE_ICONS } from "@/lib/optionIcons";
 
 const DOC_TYPE_VALUES: DocType[] = [
   "COMPETITION_REPORT",
@@ -116,7 +117,7 @@ export default function DocumentsPage() {
               placeholder={docTypeT("all")}
               options={[
                 { value: "", label: docTypeT("all") },
-                ...DOC_TYPE_VALUES.map((value) => ({ value, label: docTypeT(value) })),
+                ...DOC_TYPE_VALUES.map((value) => ({ value, label: docTypeT(value), ...DOC_TYPE_ICONS[value] })),
               ]}
               value={docTypeFilter ?? ""}
               onChange={(value) => updateDocTypeFilter((value || null) as DocType | null)}
@@ -127,7 +128,7 @@ export default function DocumentsPage() {
               placeholder={sourceT("all")}
               options={[
                 { value: "", label: sourceT("all") },
-                ...SOURCE_VALUES.map((value) => ({ value, label: sourceT(value) })),
+                ...SOURCE_VALUES.map((value) => ({ value, label: sourceT(value), ...DOC_SOURCE_ICONS[value] })),
               ]}
               value={sourceFilter ?? ""}
               onChange={(value) => updateSourceFilter((value || null) as DocumentSource | null)}

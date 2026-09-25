@@ -18,6 +18,7 @@ import { addAccessGrant, removeAccessGrant } from "@/lib/api/accessGrants";
 import { createSop, updateSop, type SopWritePayload } from "@/lib/api/engineering";
 import { getCategories } from "@/lib/api/knowledge";
 import type { Category, SopDetail, Visibility } from "@/lib/api/types";
+import { VISIBILITY_ICONS } from "@/lib/optionIcons";
 
 const VISIBILITY_VALUES: Visibility[] = ["PUBLIC", "RESTRICTED"];
 
@@ -144,7 +145,7 @@ export function SopEditor({ sop, onDirtyChange }: SopEditorProps) {
           <ChangedIndicator changed={fieldChanged.visibility} className="w-48">
             <Combobox
               placeholder={t("visibilityLabel")}
-              options={VISIBILITY_VALUES.map((value) => ({ value, label: t(`visibility${value}`) }))}
+              options={VISIBILITY_VALUES.map((value) => ({ value, label: t(`visibility${value}`), ...VISIBILITY_ICONS[value] }))}
               value={visibility}
               onChange={(value) => setVisibility(value as Visibility)}
             />

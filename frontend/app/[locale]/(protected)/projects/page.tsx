@@ -13,6 +13,7 @@ import { Link } from "@/i18n/navigation";
 import { getProjects } from "@/lib/api/engineering";
 import type { ProjectStatus, ProjectSummary } from "@/lib/api/types";
 import { useEngineeringListFiltersEnabled } from "@/lib/auth/permissions";
+import { PROJECT_STATUS_ICONS } from "@/lib/optionIcons";
 
 const STATUS_VALUES: ProjectStatus[] = ["ACTIVE", "ON_HOLD", "COMPLETED"];
 
@@ -92,7 +93,7 @@ export default function ProjectsPage() {
               placeholder={statusT("all")}
               options={[
                 { value: "", label: statusT("all") },
-                ...STATUS_VALUES.map((value) => ({ value, label: statusT(value) })),
+                ...STATUS_VALUES.map((value) => ({ value, label: statusT(value), ...PROJECT_STATUS_ICONS[value] })),
               ]}
               value={statusFilter ?? ""}
               onChange={(value) => updateStatusFilter((value || null) as ProjectStatus | null)}

@@ -23,6 +23,7 @@ import type {
   ProjectSummary,
   Visibility,
 } from "@/lib/api/types";
+import { FAILURE_SEVERITY_ICONS, FAILURE_STATUS_ICONS, VISIBILITY_ICONS } from "@/lib/optionIcons";
 
 const SEVERITY_VALUES: FailureSeverity[] = ["LOW", "MEDIUM", "HIGH"];
 const STATUS_VALUES: FailureStatus[] = ["UNDER_INVESTIGATION", "RESOLVED"];
@@ -194,7 +195,7 @@ export function FailureEditor({ failure, onDirtyChange }: FailureEditorProps) {
           <ChangedIndicator changed={fieldChanged.severity}>
             <Combobox
               label={t("severityLabel")}
-              options={SEVERITY_VALUES.map((value) => ({ value, label: severityT(value) }))}
+              options={SEVERITY_VALUES.map((value) => ({ value, label: severityT(value), ...FAILURE_SEVERITY_ICONS[value] }))}
               value={severity}
               onChange={(value) => setSeverity(value as FailureSeverity)}
             />
@@ -202,7 +203,7 @@ export function FailureEditor({ failure, onDirtyChange }: FailureEditorProps) {
           <ChangedIndicator changed={fieldChanged.status}>
             <Combobox
               label={t("statusLabel")}
-              options={STATUS_VALUES.map((value) => ({ value, label: statusT(value) }))}
+              options={STATUS_VALUES.map((value) => ({ value, label: statusT(value), ...FAILURE_STATUS_ICONS[value] }))}
               value={status}
               onChange={(value) => setStatus(value as FailureStatus)}
             />
@@ -211,7 +212,7 @@ export function FailureEditor({ failure, onDirtyChange }: FailureEditorProps) {
         <ChangedIndicator changed={fieldChanged.visibility} className="w-48">
           <Combobox
             placeholder={t("visibilityLabel")}
-            options={VISIBILITY_VALUES.map((value) => ({ value, label: t(`visibility${value}`) }))}
+            options={VISIBILITY_VALUES.map((value) => ({ value, label: t(`visibility${value}`), ...VISIBILITY_ICONS[value] }))}
             value={visibility}
             onChange={(value) => setVisibility(value as Visibility)}
           />

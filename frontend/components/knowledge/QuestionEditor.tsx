@@ -17,6 +17,7 @@ import { useRouter } from "@/i18n/navigation";
 import { addAccessGrant, removeAccessGrant } from "@/lib/api/accessGrants";
 import { createQuestion, updateQuestion } from "@/lib/api/knowledge";
 import type { QuestionDetail, Visibility } from "@/lib/api/types";
+import { VISIBILITY_ICONS } from "@/lib/optionIcons";
 
 interface QuestionEditorProps {
   /** Omit to ask a new question; pass an existing one to edit it in place. */
@@ -105,6 +106,7 @@ export function QuestionEditor({ question, onDirtyChange }: QuestionEditorProps)
               options={(["PUBLIC", "RESTRICTED"] as Visibility[]).map((value) => ({
                 value,
                 label: t(`visibility${value}`),
+                ...VISIBILITY_ICONS[value],
               }))}
               value={visibility}
               onChange={(value) => setVisibility(value as Visibility)}

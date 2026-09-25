@@ -17,6 +17,7 @@ import { Link, useRouter } from "@/i18n/navigation";
 import { uploadFile } from "@/lib/api/files";
 import { addCourseAccessGrant, createCourse, listCourseCategories } from "@/lib/api/training";
 import type { CourseCategory, CourseDifficulty, StoredFileRef, Visibility } from "@/lib/api/types";
+import { DIFFICULTY_ICONS, VISIBILITY_ICONS } from "@/lib/optionIcons";
 
 const DIFFICULTIES: CourseDifficulty[] = ["BEGINNER", "INTERMEDIATE", "ADVANCED"];
 const VISIBILITY_VALUES: Visibility[] = ["PUBLIC", "RESTRICTED"];
@@ -113,7 +114,7 @@ export default function NewCoursePage() {
           <div className="w-56">
             <Combobox
               label={t("difficultyLabel")}
-              options={DIFFICULTIES.map((value) => ({ value, label: difficultyT(value) }))}
+              options={DIFFICULTIES.map((value) => ({ value, label: difficultyT(value), ...DIFFICULTY_ICONS[value] }))}
               value={difficulty}
               onChange={(value) => setDifficulty(value as CourseDifficulty)}
             />
@@ -130,7 +131,7 @@ export default function NewCoursePage() {
           <div className="w-56">
             <Combobox
               label={t("visibilityLabel")}
-              options={VISIBILITY_VALUES.map((value) => ({ value, label: t(`visibility${value}`) }))}
+              options={VISIBILITY_VALUES.map((value) => ({ value, label: t(`visibility${value}`), ...VISIBILITY_ICONS[value] }))}
               value={visibility}
               onChange={(value) => setVisibility(value as Visibility)}
             />

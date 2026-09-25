@@ -2,7 +2,8 @@ import { useTranslations } from "next-intl";
 
 import { Icon } from "@/components/ui/Icon";
 import { Link } from "@/i18n/navigation";
-import type { CourseModule, LessonType } from "@/lib/api/types";
+import type { CourseModule } from "@/lib/api/types";
+import { LESSON_TYPE_ICONS } from "@/lib/optionIcons";
 
 interface CurriculumListProps {
   courseId: string;
@@ -11,14 +12,6 @@ interface CurriculumListProps {
   completedLessonIds?: Set<string>;
   activeLessonId?: string;
 }
-
-const LESSON_TYPE_ICON: Record<LessonType, string> = {
-  TEXT: "menu_book",
-  VIDEO: "play_circle",
-  DOCUMENT: "description",
-  EXTERNAL: "link",
-  EXERCISE: "science",
-};
 
 // ✓/→/○ per the spec's curriculum sketch - 🔒 (locking) is FUTURE (see the
 // Training Center plan's §1.4/§23): V1 always shows every published lesson
@@ -64,7 +57,7 @@ export function CurriculumList({ courseId, modules, completedLessonIds, activeLe
                           isActive ? "text-on-primary-container/70" : "text-on-surface-variant"
                         }`}
                       >
-                        <Icon name={LESSON_TYPE_ICON[lesson.lesson_type]} size={12} />
+                        <Icon name={LESSON_TYPE_ICONS[lesson.lesson_type].icon} size={12} />
                         {lessonTypeT(lesson.lesson_type)}
                         {!lesson.is_required && <>&nbsp;&middot; {t("optionalLabel")}</>}
                       </span>

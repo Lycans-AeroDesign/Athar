@@ -11,6 +11,7 @@ import { Icon } from "@/components/ui/Icon";
 import { Link } from "@/i18n/navigation";
 import { getCourseProgress, listCourseCategories, listCourses, listMyCourses, searchCourses } from "@/lib/api/training";
 import type { CourseCategory, CourseDifficulty, CourseEnrollment, CourseSummary } from "@/lib/api/types";
+import { DIFFICULTY_ICONS } from "@/lib/optionIcons";
 
 const DIFFICULTIES: CourseDifficulty[] = ["BEGINNER", "INTERMEDIATE", "ADVANCED"];
 
@@ -121,7 +122,7 @@ export default function TrainingDiscoveryPage() {
             <div className="w-44">
               <Combobox
                 placeholder={t("difficultyAll")}
-                options={DIFFICULTIES.map((value) => ({ value, label: difficultyT(value) }))}
+                options={DIFFICULTIES.map((value) => ({ value, label: difficultyT(value), ...DIFFICULTY_ICONS[value] }))}
                 value={difficulty}
                 onChange={(value) => setDifficulty(value as CourseDifficulty)}
               />

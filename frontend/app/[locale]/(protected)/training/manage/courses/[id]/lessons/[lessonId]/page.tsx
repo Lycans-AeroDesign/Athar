@@ -26,6 +26,7 @@ import {
   updateResource,
 } from "@/lib/api/training";
 import type { CourseResource, CourseResourceProvider, LessonDetail, LessonType } from "@/lib/api/types";
+import { LESSON_TYPE_ICONS, RESOURCE_PROVIDER_ICONS } from "@/lib/optionIcons";
 
 const LESSON_TYPES: LessonType[] = ["TEXT", "VIDEO", "DOCUMENT", "EXTERNAL", "EXERCISE"];
 const PROVIDERS: CourseResourceProvider[] = ["GOOGLE_DRIVE", "YOUTUBE", "VIMEO", "GITHUB", "WEBSITE", "OTHER"];
@@ -369,7 +370,7 @@ export default function LessonEditorPage() {
           <div className="w-48">
             <Combobox
               label={t("typeLabel")}
-              options={LESSON_TYPES.map((value) => ({ value, label: lessonTypeT(value) }))}
+              options={LESSON_TYPES.map((value) => ({ value, label: lessonTypeT(value), ...LESSON_TYPE_ICONS[value] }))}
               value={lessonType}
               onChange={(value) => setLessonType(value as LessonType)}
             />
@@ -404,7 +405,7 @@ export default function LessonEditorPage() {
               <div className="w-40">
                 <Combobox
                   label={resourceT("providerLabel")}
-                  options={PROVIDERS.map((value) => ({ value, label: resourceT(`provider_${value}` as never) }))}
+                  options={PROVIDERS.map((value) => ({ value, label: resourceT(`provider_${value}` as never), ...RESOURCE_PROVIDER_ICONS[value] }))}
                   value={mainResourceProvider}
                   onChange={(value) => setMainResourceProvider(value as CourseResourceProvider)}
                 />
@@ -516,7 +517,7 @@ export default function LessonEditorPage() {
                     <div className="w-40">
                       <Combobox
                         label={resourceT("providerLabel")}
-                        options={PROVIDERS.map((value) => ({ value, label: resourceT(`provider_${value}` as never) }))}
+                        options={PROVIDERS.map((value) => ({ value, label: resourceT(`provider_${value}` as never), ...RESOURCE_PROVIDER_ICONS[value] }))}
                         value={editResourceProvider}
                         onChange={(value) => setEditResourceProvider(value as CourseResourceProvider)}
                       />
@@ -583,7 +584,7 @@ export default function LessonEditorPage() {
             <div className="w-40">
               <Combobox
                 label={resourceT("providerLabel")}
-                options={PROVIDERS.map((value) => ({ value, label: resourceT(`provider_${value}` as never) }))}
+                options={PROVIDERS.map((value) => ({ value, label: resourceT(`provider_${value}` as never), ...RESOURCE_PROVIDER_ICONS[value] }))}
                 value={newResourceProvider}
                 onChange={(value) => setNewResourceProvider(value as CourseResourceProvider)}
               />

@@ -28,6 +28,7 @@ import type {
   StoredFileRef,
   Visibility,
 } from "@/lib/api/types";
+import { COMPONENT_STATUS_ICONS, VISIBILITY_ICONS } from "@/lib/optionIcons";
 
 const STATUS_VALUES: ComponentStatus[] = ["CERTIFIED", "TESTING", "DEPRECATED"];
 const VISIBILITY_VALUES: Visibility[] = ["PUBLIC", "RESTRICTED"];
@@ -202,7 +203,7 @@ export function ComponentEditor({ component, onDirtyChange }: ComponentEditorPro
           <ChangedIndicator changed={fieldChanged.status} className="w-48">
             <Combobox
               placeholder={t("statusLabel")}
-              options={STATUS_VALUES.map((value) => ({ value, label: statusT(value) }))}
+              options={STATUS_VALUES.map((value) => ({ value, label: statusT(value), ...COMPONENT_STATUS_ICONS[value] }))}
               value={status}
               onChange={(value) => setStatus(value as ComponentStatus)}
             />
@@ -213,7 +214,7 @@ export function ComponentEditor({ component, onDirtyChange }: ComponentEditorPro
           <ChangedIndicator changed={fieldChanged.visibility} className="w-48">
             <Combobox
               placeholder={t("visibilityLabel")}
-              options={VISIBILITY_VALUES.map((value) => ({ value, label: t(`visibility${value}`) }))}
+              options={VISIBILITY_VALUES.map((value) => ({ value, label: t(`visibility${value}`), ...VISIBILITY_ICONS[value] }))}
               value={visibility}
               onChange={(value) => setVisibility(value as Visibility)}
             />

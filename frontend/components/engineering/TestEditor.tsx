@@ -16,6 +16,7 @@ import { useRouter } from "@/i18n/navigation";
 import { addAccessGrant, removeAccessGrant } from "@/lib/api/accessGrants";
 import { createTest, getProjects, updateTest, type TestWritePayload } from "@/lib/api/engineering";
 import type { ProjectSummary, TestDetail, TestPassFail, TestRunStatus, TestType, Visibility } from "@/lib/api/types";
+import { TEST_PASS_FAIL_ICONS, TEST_STATUS_ICONS, TEST_TYPE_ICONS, VISIBILITY_ICONS } from "@/lib/optionIcons";
 
 const TEST_TYPE_VALUES: TestType[] = [
   "FLIGHT",
@@ -154,7 +155,7 @@ export function TestEditor({ test, onDirtyChange }: TestEditorProps) {
           <ChangedIndicator changed={fieldChanged.testType}>
             <Combobox
               label={t("testTypeLabel")}
-              options={TEST_TYPE_VALUES.map((value) => ({ value, label: testTypeT(value) }))}
+              options={TEST_TYPE_VALUES.map((value) => ({ value, label: testTypeT(value), ...TEST_TYPE_ICONS[value] }))}
               value={testType}
               onChange={(value) => setTestType(value as TestType)}
             />
@@ -196,7 +197,7 @@ export function TestEditor({ test, onDirtyChange }: TestEditorProps) {
           <ChangedIndicator changed={fieldChanged.status}>
             <Combobox
               label={t("statusLabel")}
-              options={STATUS_VALUES.map((value) => ({ value, label: statusT(value) }))}
+              options={STATUS_VALUES.map((value) => ({ value, label: statusT(value), ...TEST_STATUS_ICONS[value] }))}
               value={status}
               onChange={(value) => setStatus(value as TestRunStatus)}
             />
@@ -206,7 +207,7 @@ export function TestEditor({ test, onDirtyChange }: TestEditorProps) {
               label={t("passFailLabel")}
               options={[
                 { value: "", label: passFailT("notSet") },
-                ...PASS_FAIL_VALUES.map((value) => ({ value, label: passFailT(value) })),
+                ...PASS_FAIL_VALUES.map((value) => ({ value, label: passFailT(value), ...TEST_PASS_FAIL_ICONS[value] })),
               ]}
               value={passFail}
               onChange={(value) => setPassFail((value || "") as TestPassFail)}
@@ -216,7 +217,7 @@ export function TestEditor({ test, onDirtyChange }: TestEditorProps) {
         <ChangedIndicator changed={fieldChanged.visibility} className="w-48">
           <Combobox
             placeholder={t("visibilityLabel")}
-            options={VISIBILITY_VALUES.map((value) => ({ value, label: t(`visibility${value}`) }))}
+            options={VISIBILITY_VALUES.map((value) => ({ value, label: t(`visibility${value}`), ...VISIBILITY_ICONS[value] }))}
             value={visibility}
             onChange={(value) => setVisibility(value as Visibility)}
           />

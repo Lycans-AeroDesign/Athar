@@ -25,6 +25,7 @@ import {
 } from "@/lib/api/knowledge";
 import type { ArticleDetail, Category, Visibility } from "@/lib/api/types";
 import { useHasPermission } from "@/lib/auth/permissions";
+import { VISIBILITY_ICONS } from "@/lib/optionIcons";
 
 interface ArticleEditorProps {
   /** Omit to create a new article; pass an existing one to edit it in place. */
@@ -157,6 +158,7 @@ export function ArticleEditor({ article, onDirtyChange }: ArticleEditorProps) {
               options={(["PUBLIC", "RESTRICTED"] as Visibility[]).map((value) => ({
                 value,
                 label: t(`visibility${value}`),
+                ...VISIBILITY_ICONS[value],
               }))}
               value={visibility}
               onChange={(value) => setVisibility(value as Visibility)}

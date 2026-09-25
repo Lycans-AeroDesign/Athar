@@ -14,6 +14,7 @@ import { Link } from "@/i18n/navigation";
 import { getTrainingStats, listCourses } from "@/lib/api/training";
 import type { CourseStatus, CourseStatusFilter, CourseSummary, TrainingStats } from "@/lib/api/types";
 import { useHasPermission } from "@/lib/auth/permissions";
+import { PUBLISH_STATUS_ICONS } from "@/lib/optionIcons";
 
 const STATUS_FILTERS: CourseStatusFilter[] = ["ALL", "DRAFT", "IN_REVIEW", "PUBLISHED", "REJECTED", "ARCHIVED"];
 
@@ -106,6 +107,7 @@ export default function TrainingManageDashboardPage() {
               options={STATUS_FILTERS.map((value) => ({
                 value,
                 label: value === "ALL" ? t("statusFilterAll") : statusT(COURSE_STATUS_LABEL_KEYS[value]),
+                ...(value === "ALL" ? {} : PUBLISH_STATUS_ICONS[value]),
               }))}
               value={statusFilter}
               onChange={(value) => setStatusFilter(value as CourseStatusFilter)}

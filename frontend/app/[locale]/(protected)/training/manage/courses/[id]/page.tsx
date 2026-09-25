@@ -51,6 +51,7 @@ import type {
 } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { useHasPermission } from "@/lib/auth/permissions";
+import { DIFFICULTY_ICONS, LESSON_TYPE_ICONS, VISIBILITY_ICONS } from "@/lib/optionIcons";
 
 const DIFFICULTIES: CourseDifficulty[] = ["BEGINNER", "INTERMEDIATE", "ADVANCED"];
 const VISIBILITY_VALUES: Visibility[] = ["PUBLIC", "RESTRICTED"];
@@ -364,7 +365,7 @@ export default function CourseEditorPage() {
           <div className="w-full sm:w-56">
             <Combobox
               label={t("difficultyLabel")}
-              options={DIFFICULTIES.map((value) => ({ value, label: difficultyT(value) }))}
+              options={DIFFICULTIES.map((value) => ({ value, label: difficultyT(value), ...DIFFICULTY_ICONS[value] }))}
               value={difficulty}
               onChange={(value) => setDifficulty(value as CourseDifficulty)}
             />
@@ -381,7 +382,7 @@ export default function CourseEditorPage() {
           <div className="w-full sm:w-56">
             <Combobox
               label={t("visibilityLabel")}
-              options={VISIBILITY_VALUES.map((value) => ({ value, label: t(`visibility${value}`) }))}
+              options={VISIBILITY_VALUES.map((value) => ({ value, label: t(`visibility${value}`), ...VISIBILITY_ICONS[value] }))}
               value={visibility}
               onChange={(value) => setVisibility(value as Visibility)}
             />
@@ -521,7 +522,7 @@ export default function CourseEditorPage() {
                   />
                   <div className="w-40">
                     <Combobox
-                      options={LESSON_TYPES.map((value) => ({ value, label: lessonTypeT(value) }))}
+                      options={LESSON_TYPES.map((value) => ({ value, label: lessonTypeT(value), ...LESSON_TYPE_ICONS[value] }))}
                       value={newLessonType}
                       onChange={(value) => setNewLessonType(value as LessonType)}
                     />

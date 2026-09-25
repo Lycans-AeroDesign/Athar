@@ -20,6 +20,7 @@ import { uploadFile } from "@/lib/api/files";
 import { getCategories } from "@/lib/api/knowledge";
 import type { Category, DocType, DocumentDetail, DocumentSource, Visibility } from "@/lib/api/types";
 import { useRouter } from "@/i18n/navigation";
+import { DOC_SOURCE_ICONS, DOC_TYPE_ICONS, VISIBILITY_ICONS } from "@/lib/optionIcons";
 
 const DOC_TYPE_VALUES: DocType[] = [
   "COMPETITION_REPORT",
@@ -172,7 +173,7 @@ export function DocumentEditor({ document, onDirtyChange }: DocumentEditorProps)
           <ChangedIndicator changed={fieldChanged.docType}>
             <Combobox
               label={t("docTypeLabel")}
-              options={DOC_TYPE_VALUES.map((value) => ({ value, label: docTypeT(value) }))}
+              options={DOC_TYPE_VALUES.map((value) => ({ value, label: docTypeT(value), ...DOC_TYPE_ICONS[value] }))}
               value={docType}
               onChange={(value) => setDocType(value as DocType)}
             />
@@ -180,7 +181,7 @@ export function DocumentEditor({ document, onDirtyChange }: DocumentEditorProps)
           <ChangedIndicator changed={fieldChanged.source}>
             <Combobox
               label={t("sourceLabel")}
-              options={SOURCE_VALUES.map((value) => ({ value, label: sourceT(value) }))}
+              options={SOURCE_VALUES.map((value) => ({ value, label: sourceT(value), ...DOC_SOURCE_ICONS[value] }))}
               value={source}
               onChange={(value) => setSource(value as DocumentSource)}
             />
@@ -243,7 +244,7 @@ export function DocumentEditor({ document, onDirtyChange }: DocumentEditorProps)
           <ChangedIndicator changed={fieldChanged.visibility} className="w-48">
             <Combobox
               placeholder={t("visibilityLabel")}
-              options={VISIBILITY_VALUES.map((value) => ({ value, label: t(`visibility${value}`) }))}
+              options={VISIBILITY_VALUES.map((value) => ({ value, label: t(`visibility${value}`), ...VISIBILITY_ICONS[value] }))}
               value={visibility}
               onChange={(value) => setVisibility(value as Visibility)}
             />

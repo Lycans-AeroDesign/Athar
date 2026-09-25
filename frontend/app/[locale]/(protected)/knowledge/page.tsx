@@ -15,6 +15,7 @@ import { Icon } from "@/components/ui/Icon";
 import { Link } from "@/i18n/navigation";
 import { getArticles, getCategories, getQuestions, getTags } from "@/lib/api/knowledge";
 import type { ArticleStatusFilter, ArticleSummary, Category, QuestionSummary, Tag } from "@/lib/api/types";
+import { PUBLISH_STATUS_ICONS } from "@/lib/optionIcons";
 
 // "ALL" plus every status Article.Status defines backend-side (see
 // backend/knowledge/models.py) - the list endpoint defaults to PUBLISHED
@@ -165,6 +166,7 @@ export default function KnowledgePage() {
                 options={ARTICLE_STATUSES.map((value) => ({
                   value,
                   label: value === "ALL" ? statusT("all") : statusT(ARTICLE_STATUS_LABEL_KEYS[value]),
+                  ...(value === "ALL" ? {} : PUBLISH_STATUS_ICONS[value]),
                 }))}
                 value={articleStatus}
                 onChange={(value) => setArticleStatus(value as ArticleStatusFilter)}

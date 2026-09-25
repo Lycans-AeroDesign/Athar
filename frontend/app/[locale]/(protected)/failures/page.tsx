@@ -14,6 +14,7 @@ import { Link } from "@/i18n/navigation";
 import { getFailures, type FailureOrdering } from "@/lib/api/engineering";
 import type { FailureSeverity, FailureStatus, FailureSummary } from "@/lib/api/types";
 import { useEngineeringListFiltersEnabled } from "@/lib/auth/permissions";
+import { FAILURE_SEVERITY_ICONS, FAILURE_STATUS_ICONS } from "@/lib/optionIcons";
 
 const SEVERITY_VALUES: FailureSeverity[] = ["LOW", "MEDIUM", "HIGH"];
 const STATUS_VALUES: FailureStatus[] = ["UNDER_INVESTIGATION", "RESOLVED"];
@@ -105,7 +106,7 @@ export default function FailuresPage() {
               placeholder={severityT("all")}
               options={[
                 { value: "", label: severityT("all") },
-                ...SEVERITY_VALUES.map((value) => ({ value, label: severityT(value) })),
+                ...SEVERITY_VALUES.map((value) => ({ value, label: severityT(value), ...FAILURE_SEVERITY_ICONS[value] })),
               ]}
               value={severityFilter ?? ""}
               onChange={(value) => updateSeverityFilter((value || null) as FailureSeverity | null)}
@@ -116,7 +117,7 @@ export default function FailuresPage() {
               placeholder={statusT("all")}
               options={[
                 { value: "", label: statusT("all") },
-                ...STATUS_VALUES.map((value) => ({ value, label: statusT(value) })),
+                ...STATUS_VALUES.map((value) => ({ value, label: statusT(value), ...FAILURE_STATUS_ICONS[value] })),
               ]}
               value={statusFilter ?? ""}
               onChange={(value) => updateStatusFilter((value || null) as FailureStatus | null)}

@@ -14,6 +14,7 @@ import { Link } from "@/i18n/navigation";
 import { getTests, type TestOrdering } from "@/lib/api/engineering";
 import type { TestPassFail, TestRunStatus, TestSummary, TestType } from "@/lib/api/types";
 import { useEngineeringListFiltersEnabled } from "@/lib/auth/permissions";
+import { TEST_PASS_FAIL_ICONS, TEST_STATUS_ICONS, TEST_TYPE_ICONS } from "@/lib/optionIcons";
 
 const TYPE_VALUES: TestType[] = [
   "FLIGHT",
@@ -120,7 +121,7 @@ export default function TestsPage() {
               placeholder={typeT("all")}
               options={[
                 { value: "", label: typeT("all") },
-                ...TYPE_VALUES.map((value) => ({ value, label: typeT(value) })),
+                ...TYPE_VALUES.map((value) => ({ value, label: typeT(value), ...TEST_TYPE_ICONS[value] })),
               ]}
               value={typeFilter ?? ""}
               onChange={(value) => updateTypeFilter((value || null) as TestType | null)}
@@ -131,7 +132,7 @@ export default function TestsPage() {
               placeholder={statusT("all")}
               options={[
                 { value: "", label: statusT("all") },
-                ...STATUS_VALUES.map((value) => ({ value, label: statusT(value) })),
+                ...STATUS_VALUES.map((value) => ({ value, label: statusT(value), ...TEST_STATUS_ICONS[value] })),
               ]}
               value={statusFilter ?? ""}
               onChange={(value) => updateStatusFilter((value || null) as TestRunStatus | null)}
@@ -142,7 +143,7 @@ export default function TestsPage() {
               placeholder={passFailT("all")}
               options={[
                 { value: "", label: passFailT("all") },
-                ...PASS_FAIL_VALUES.map((value) => ({ value, label: passFailT(value) })),
+                ...PASS_FAIL_VALUES.map((value) => ({ value, label: passFailT(value), ...TEST_PASS_FAIL_ICONS[value] })),
               ]}
               value={passFailFilter ?? ""}
               onChange={(value) => updatePassFailFilter((value || null) as Exclude<TestPassFail, ""> | null)}

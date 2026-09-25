@@ -10,6 +10,22 @@ import { Icon } from "./Icon";
 export interface ComboboxOption {
   value: string;
   label: string;
+  /** An Icon name shown before the label, in the list and on the trigger -
+   * see lib/optionIcons.ts for the shared per-enum mappings. */
+  icon?: string;
+  /** Overrides the icon's default muted color (e.g. text-error for a
+   * failing/high-severity value). */
+  iconClassName?: string;
+}
+
+function OptionLabel({ option }: { option: ComboboxOption }) {
+  if (!option.icon) return <>{option.label}</>;
+  return (
+    <span className="flex items-center gap-2 min-w-0">
+      <Icon name={option.icon} size={16} className={`shrink-0 ${option.iconClassName ?? "text-on-surface-variant"}`} />
+      <span className="truncate">{option.label}</span>
+    </span>
+  );
 }
 
 interface ComboboxProps {
@@ -58,8 +74,8 @@ export function Combobox({
             type="button"
             className={`flex items-center justify-between w-full px-4 py-2 bg-surface border border-outline-variant rounded-lg font-body-md text-body-md text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow ${triggerClassName ?? ""}`}
           >
-            <span className={selected ? "" : "text-outline"}>
-              {selected ? selected.label : resolvedPlaceholder}
+            <span className={`min-w-0 ${selected ? "" : "text-outline"}`}>
+              {selected ? <OptionLabel option={selected} /> : resolvedPlaceholder}
             </span>
             <Icon name="expand_more" className="text-on-surface-variant" size={18} />
           </button>
@@ -89,7 +105,7 @@ export function Combobox({
                     }}
                     className="flex items-center justify-between px-4 py-2 rounded-lg font-body-md text-body-md text-on-surface cursor-pointer data-[selected=true]:bg-surface-variant"
                   >
-                    {option.label}
+                    <OptionLabel option={option} />
                     {option.value === value && (
                       <Icon name="check" size={16} className="text-primary" />
                     )}

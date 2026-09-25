@@ -18,6 +18,7 @@ import { exportComponentsCsv, getComponents, type ComponentOrdering } from "@/li
 import { getCategories } from "@/lib/api/knowledge";
 import type { Category, ComponentStatus, ComponentSummary } from "@/lib/api/types";
 import { useEngineeringListFiltersEnabled, useHasPermission } from "@/lib/auth/permissions";
+import { COMPONENT_STATUS_ICONS } from "@/lib/optionIcons";
 
 const STATUS_VALUES: ComponentStatus[] = ["CERTIFIED", "TESTING", "DEPRECATED"];
 
@@ -208,7 +209,7 @@ export default function ComponentsPage() {
               placeholder={commonT("select")}
               options={[
                 { value: "", label: statusT("all") },
-                ...STATUS_VALUES.map((value) => ({ value, label: statusT(value) })),
+                ...STATUS_VALUES.map((value) => ({ value, label: statusT(value), ...COMPONENT_STATUS_ICONS[value] })),
               ]}
               value={statusFilter ?? ""}
               onChange={(value) => updateStatusFilter((value || null) as ComponentStatus | null)}
