@@ -6,6 +6,7 @@ import { useState } from "react";
 import { AuditLogSettingsForm } from "@/components/settings/AuditLogSettingsForm";
 import { BackupsSettingsForm } from "@/components/settings/BackupsSettingsForm";
 import { BrandingSettingsForm } from "@/components/settings/BrandingSettingsForm";
+import { InventoryListManager } from "@/components/engineering/InventoryListManager";
 import { CategorySettingsForm } from "@/components/settings/CategorySettingsForm";
 import { GeneralSettingsForm } from "@/components/settings/GeneralSettingsForm";
 import { InvitationsSettingsForm } from "@/components/settings/InvitationsSettingsForm";
@@ -102,6 +103,12 @@ export default function SettingsPage() {
       ) : activeTab === "categories" ? (
         <div className="space-y-8">
           {canManageCategories && <CategorySettingsForm />}
+          {/* Components' own categories and storage locations - separate
+              lists from the knowledge categories above (see
+              backend/knowledge/models.py's ComponentCategory), gated on the
+              same category.manage permission. */}
+          {canManageCategories && <InventoryListManager kind="categories" />}
+          {canManageCategories && <InventoryListManager kind="locations" />}
           {canManageTrainingCategories && <CourseCategoryManager />}
         </div>
       ) : activeTab === "users" ? (

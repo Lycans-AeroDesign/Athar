@@ -15,6 +15,7 @@ from .models import (
     Category,
     Component,
     ComponentAttachment,
+    ComponentCategory,
     Document,
     Failure,
     FailureAttachment,
@@ -26,6 +27,7 @@ from .models import (
     RestrictedAccessGrant,
     Sop,
     SopAttachment,
+    StorageLocation,
     Tag,
     Test,
     TestAttachment,
@@ -491,10 +493,65 @@ class ProjectWriteSerializer(serializers.ModelSerializer):
         fields = ["name", "description", "status", "visibility", "tag_names"]
 
 
+class ComponentCategorySerializer(serializers.ModelSerializer):
+    # Annotated by the list view (see views.ComponentCategoryListView) to
+    # avoid a count query per row; falls back to counting for a single object.
+    component_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ComponentCategory
+        fields = ["id", "name", "slug", "description", "component_count"]
+
+    def get_component_count(self, obj: ComponentCategory) -> int:
+        count = getattr(obj, "component_count", None)
+        return obj.components.count() if count is None else count
+
+
+class ComponentCategoryWriteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ComponentCategory
+        fields = ["name", "description"]
+
+
+class ComponentCategoryRefSerializer(serializers.ModelSerializer):
+    """What a component embeds - no count, so listing components never
+    triggers a per-row count query."""
+
+    class Meta:
+        model = ComponentCategory
+        fields = ["id", "name", "slug"]
+
+
+class StorageLocationSerializer(serializers.ModelSerializer):
+    component_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = StorageLocation
+        fields = ["id", "name", "description", "component_count"]
+
+    def get_component_count(self, obj: StorageLocation) -> int:
+        count = getattr(obj, "component_count", None)
+        return obj.components.count() if count is None else count
+
+
+class StorageLocationWriteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = StorageLocation
+        fields = ["name", "description"]
+
+
+class StorageLocationRefSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = StorageLocation
+        fields = ["id", "name"]
+
+
 class ComponentListSerializer(serializers.ModelSerializer):
-    category = CategorySerializer(read_only=True)
+    category = ComponentCategoryRefSerializer(read_only=True)
+    location = StorageLocationRefSerializer(read_only=True)
     tags = TagSerializer(many=True, read_only=True)
     created_by = AuthorSerializer(read_only=True)
+    updated_by = AuthorSerializer(read_only=True)
     photo = StoredFileSerializer(read_only=True)
 
     class Meta:
@@ -509,10 +566,17 @@ class ComponentListSerializer(serializers.ModelSerializer):
             "link",
             "quantity_available",
             "status",
+            "inventory_type",
+            "location",
+            "unit",
+            "condition",
+            "stock_status",
+            "min_quantity",
             "specifications",
             "visibility",
             "tags",
             "created_by",
+            "updated_by",
             "created_at",
             "updated_at",
         ]
@@ -527,6 +591,7 @@ class ComponentDetailSerializer(ContributorsMixin, RestrictedAccessMixin, Bookma
         fields = [
             *ComponentListSerializer.Meta.fields,
             "summary",
+            "inventory_notes",
             "contributors",
             "restricted_to",
             "bookmark_id",
@@ -535,7 +600,7 @@ class ComponentDetailSerializer(ContributorsMixin, RestrictedAccessMixin, Bookma
 
 class ComponentWriteSerializer(serializers.ModelSerializer):
     category_id = serializers.PrimaryKeyRelatedField(
-        source="category", queryset=Category.objects.all(), allow_null=True, required=False
+        source="category", queryset=ComponentCategory.objects.all(), allow_null=True, required=False
     )
     # Same two-phase "upload via files.upload, then attach by id" flow as
     # accounts.MeUpdateSerializer.profile_picture_id - see
@@ -543,6 +608,9 @@ class ComponentWriteSerializer(serializers.ModelSerializer):
     photo_id = serializers.PrimaryKeyRelatedField(
         source="photo", queryset=StoredFile.objects.all(), allow_null=True, required=False
     )
+    # By name, not id: typing a place that doesn't exist yet creates it (see
+    # services._resolve_location_name); "" clears it.
+    location_name = serializers.CharField(required=False, allow_blank=True, max_length=150)
     tag_names = serializers.ListField(child=serializers.CharField(), required=False)
 
     class Meta:
@@ -556,6 +624,14 @@ class ComponentWriteSerializer(serializers.ModelSerializer):
             "link",
             "quantity_available",
             "status",
+            "inventory_type",
+            "location_name",
+            "unit",
+            "condition",
+            # "" = derive it from the quantity (see services.derive_stock_status).
+            "stock_status",
+            "min_quantity",
+            "inventory_notes",
             "summary",
             "specifications",
             "visibility",
@@ -567,6 +643,11 @@ class ComponentWriteSerializer(serializers.ModelSerializer):
             isinstance(row, dict) and {"label", "value"} <= row.keys() for row in value
         ):
             raise serializers.ValidationError("specifications must be a list of {label, value} objects.")
+        return value
+
+    def validate_category_id(self, value):
+        if value is not None and value.organization_id != self.context["request"].user.organization_id:
+            raise serializers.ValidationError("That category doesn't belong to your organization.")
         return value
 
     def validate_photo_id(self, value):

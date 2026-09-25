@@ -1248,7 +1248,7 @@ This is where the connected knowledge model becomes extremely valuable.
 ### V0.3 — Engineering *(partially done)*
 
 * Projects — done
-* Components — done
+* Components — done, including workshop inventory (grid location, unit, condition, automatic stock status, min. quantity, an inventory summary) and two-way CSV sync with an inventory spreadsheet
 * Failures — done
 * SOPs — done
 * Test/Experiment records — done (not originally in this section's list; a full CRUD type covering test/flight/thrust/structural/etc. records, permission-gated like the four above, added alongside them)

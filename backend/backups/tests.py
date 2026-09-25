@@ -10,7 +10,18 @@ from core.testing import create_test_organization
 from accounts.models import User
 from rbac.models import Role
 
-from knowledge.models import Article, Bookmark, KnowledgeRelation, Project, RestrictedAccessGrant, Tag
+from knowledge import services as knowledge_services
+from knowledge.models import (
+    Article,
+    Bookmark,
+    Component,
+    ComponentCategory,
+    KnowledgeRelation,
+    Project,
+    RestrictedAccessGrant,
+    StorageLocation,
+    Tag,
+)
 from training.models import (
     Course,
     CourseCategory,
@@ -23,6 +34,7 @@ from training.models import (
     LessonProgress,
 )
 
+from . import restore
 from .models import BackupJob, RestoreJob
 
 
@@ -358,6 +370,68 @@ class RestoreJobTests(BackupJobTestCase):
 
         restored_article = Article.objects.get(pk=article.id)
         self.assertIsNone(restored_article.author_id)
+
+    def test_restore_round_trips_component_inventory(self):
+        author, _ = self._login_with_role("restoreinv@example.com", "Subteam Head")
+        _, admin_access = self._login_with_role("restoreinvadmin@example.com", "Organization Admin")
+        drill = knowledge_services.create_component(
+            actor=author,
+            name="Cordless Drill",
+            category=knowledge_services.get_or_create_component_category("Power Tools", actor=author),
+            location_name="New Total Tools Box",
+            inventory_type=Component.InventoryType.MECHANICAL,
+            quantity_available=2,
+            unit="each",
+            condition=Component.Condition.NEW,
+            min_quantity=1,
+            inventory_notes="Includes 2x 20V batteries",
+            link="https://example.com/drill",
+            status="",
+        )
+
+        backup_job = self._run_backup(admin_access)
+        Component.objects.filter(pk=drill.pk).delete()
+        StorageLocation.objects.filter(organization=self.organization).delete()
+
+        response = self.client.post(
+            reverse("backups-restore-list-create"),
+            {"backup_job_id": str(backup_job.id)},
+            format="json",
+            **self._auth(admin_access),
+        )
+        response = self.client.get(reverse("backups-restore-detail", args=[response.data["id"]]), **self._auth(admin_access))
+        self.assertEqual(response.data["status"], "DONE", response.data)
+
+        restored = Component.objects.get(pk=drill.pk)
+        self.assertEqual(restored.category.name, "Power Tools")
+        self.assertEqual(restored.location.name, "New Total Tools Box")
+        self.assertEqual(restored.inventory_type, Component.InventoryType.MECHANICAL)
+        self.assertEqual(restored.quantity_available, 2)
+        self.assertEqual(restored.unit, "each")
+        self.assertEqual(restored.condition, Component.Condition.NEW)
+        self.assertEqual(restored.stock_status, Component.StockStatus.IN_STOCK)
+        self.assertEqual(restored.min_quantity, 1)
+        self.assertEqual(restored.inventory_notes, "Includes 2x 20V batteries")
+        self.assertEqual(restored.link, "https://example.com/drill")
+        self.assertEqual(restored.updated_by_id, author.id)
+
+    def test_restoring_an_archive_from_before_component_categories_rebuilds_them_by_name(self):
+        legacy_components_csv = (
+            "id,name,category_id,category,manufacturer,part_number,status,summary,specifications,visibility,"
+            "tag_ids,tags,created_by_id,created_by_email,created_at,updated_at\n"
+            "6a3b1b5e-1d2a-4c3e-9f00-000000000001,Pixhawk,9d1f0000-0000-0000-0000-00000000abcd,Avionics,Holybro,"
+            "PIX6X,CERTIFIED,,[],PUBLIC,,,,,2026-01-01,2026-01-01\n"
+        )
+        archive = io.BytesIO()
+        with zipfile.ZipFile(archive, "w") as zf:
+            zf.writestr("components.csv", legacy_components_csv)
+        archive.seek(0)
+
+        restore.restore_org_backup_archive(self.organization, archive)
+
+        pixhawk = Component.objects.get(organization=self.organization, name="Pixhawk")
+        self.assertEqual(pixhawk.category, ComponentCategory.objects.get(organization=self.organization, name="Avionics"))
+        self.assertEqual(pixhawk.stock_status, "")  # untracked, as it was
 
     def test_only_organization_manage_can_list_or_create_restores(self):
         author, _ = self._login_with_role("restorepermauthor@example.com", "Subteam Head")

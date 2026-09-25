@@ -1,9 +1,12 @@
 import csv
+import datetime
 import io
+import re
+import uuid
 
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied
-from django.db.models import Q, QuerySet
+from django.db.models import Count, Q, QuerySet
 from django.utils import timezone
 from django.utils.text import slugify
 from rest_framework.exceptions import ValidationError
@@ -24,6 +27,7 @@ from .models import (
     Category,
     Component,
     ComponentAttachment,
+    ComponentCategory,
     Document,
     Failure,
     FailureAttachment,
@@ -35,6 +39,7 @@ from .models import (
     RestrictedAccessGrant,
     Sop,
     SopAttachment,
+    StorageLocation,
     Tag,
     Test,
     TestAttachment,
@@ -520,11 +525,148 @@ def delete_project(*, project: Project, actor, request=None) -> None:
     project.delete()
 
 
+# --- Component categories & storage locations -------------------------------
+
+
+def create_component_category(*, actor, request=None, name, description="") -> ComponentCategory:
+    category = ComponentCategory.objects.create(
+        organization=actor.organization,
+        name=name,
+        slug=_unique_slug(ComponentCategory, name, actor.organization),
+        description=description,
+    )
+    log_action(actor=actor, action="component_category.create", target=category, request=request)
+    return category
+
+
+def update_component_category(*, category: ComponentCategory, actor, request=None, **fields) -> ComponentCategory:
+    for field, value in fields.items():
+        setattr(category, field, value)
+    category.save(update_fields=[*fields.keys(), "updated_at"])
+    log_action(actor=actor, action="component_category.update", target=category, request=request)
+    return category
+
+
+def delete_component_category(*, category: ComponentCategory, actor, request=None) -> None:
+    # SET_NULL on Component.category - its components just become uncategorized.
+    log_action(
+        actor=actor,
+        action="component_category.delete",
+        metadata={"category_id": str(category.pk), "name": category.name},
+        request=request,
+    )
+    category.delete()
+
+
+def get_or_create_component_category(name: str, *, actor, request=None) -> ComponentCategory:
+    """Case-insensitive, org-scoped. Not gated on category.manage: anyone who
+    can create a component can already invent new tags freely, and a CSV
+    import row shouldn't fail just because its category is new."""
+    name = name.strip()
+    category = ComponentCategory.objects.filter(organization=actor.organization, name__iexact=name).first()
+    return category or create_component_category(actor=actor, request=request, name=name)
+
+
+def create_storage_location(*, actor, request=None, name, description="") -> StorageLocation:
+    location = StorageLocation.objects.create(organization=actor.organization, name=name.strip(), description=description)
+    log_action(actor=actor, action="storage_location.create", target=location, request=request)
+    return location
+
+
+def update_storage_location(*, location: StorageLocation, actor, request=None, **fields) -> StorageLocation:
+    """Renaming a location to the name of another existing one merges them -
+    every component moves to the existing location and this one is deleted -
+    which is how a "Fuselage box" / "Fuselage Box" typo pair gets cleaned up.
+    Returns whichever location survives."""
+    new_name = fields.get("name", "").strip()
+    if new_name:
+        fields["name"] = new_name
+        target = (
+            StorageLocation.objects.filter(organization=location.organization, name__iexact=new_name)
+            .exclude(pk=location.pk)
+            .first()
+        )
+        if target is not None:
+            Component.objects.filter(location=location).update(location=target)
+            log_action(
+                actor=actor,
+                action="storage_location.merge",
+                target=target,
+                metadata={"merged_location_id": str(location.pk), "merged_name": location.name},
+                request=request,
+            )
+            location.delete()
+            return target
+    for field, value in fields.items():
+        setattr(location, field, value)
+    location.save(update_fields=[*fields.keys(), "updated_at"])
+    log_action(actor=actor, action="storage_location.update", target=location, request=request)
+    return location
+
+
+def delete_storage_location(*, location: StorageLocation, actor, request=None) -> None:
+    # SET_NULL on Component.location - its components just lose their place.
+    log_action(
+        actor=actor,
+        action="storage_location.delete",
+        metadata={"location_id": str(location.pk), "name": location.name},
+        request=request,
+    )
+    location.delete()
+
+
+def get_or_create_storage_location(name: str, *, actor, request=None) -> StorageLocation:
+    name = name.strip()
+    location = StorageLocation.objects.filter(organization=actor.organization, name__iexact=name).first()
+    return location or create_storage_location(actor=actor, request=request, name=name)
+
+
+def _resolve_location_name(location_name: str, *, actor, request=None) -> StorageLocation | None:
+    """The write APIs take a location by name (see ComponentWriteSerializer)
+    so the editor can offer "type a new place" without a separate create
+    step: "" clears it, anything else is get-or-created."""
+    if not location_name.strip():
+        return None
+    return get_or_create_storage_location(location_name, actor=actor, request=request)
+
+
+# --- Components ----------------------------------------------------------------
+
+# Stock statuses that follow the quantity automatically - ON_ORDER/RETIRED
+# are a person's call and never overwritten by a quantity change. "" is a
+# component whose inventory was never tracked (it predates these fields).
+_AUTO_STOCK_STATUSES = {
+    "",
+    Component.StockStatus.IN_STOCK,
+    Component.StockStatus.LOW_STOCK,
+    Component.StockStatus.MISSING,
+}
+
+
+def derive_stock_status(quantity: int, min_quantity: int | None, current: str = "") -> str:
+    """The automatic stock status for a quantity: none left is Missing;
+    below the "Min. Qty Desired" threshold is Low Stock; otherwise In Stock.
+    With no threshold set, a Low Stock someone chose by hand is kept (the
+    inventory sheet marks things low without ever filling in a minimum)."""
+    if quantity == 0:
+        return Component.StockStatus.MISSING
+    if min_quantity is not None:
+        return Component.StockStatus.LOW_STOCK if quantity < min_quantity else Component.StockStatus.IN_STOCK
+    if current == Component.StockStatus.LOW_STOCK:
+        return Component.StockStatus.LOW_STOCK
+    return Component.StockStatus.IN_STOCK
+
+
 def create_component(
     *, actor, request=None, name, category=None, photo=None, manufacturer="", part_number="", link="",
     quantity_available=0, status=Component.Status.TESTING, summary="", specifications=None, tag_names=None,
-    visibility=Visibility.PUBLIC,
+    visibility=Visibility.PUBLIC, inventory_type="", location=None, location_name=None, unit="", condition="",
+    stock_status=None, min_quantity=None, inventory_notes="",
 ) -> Component:
+    """`stock_status` None/"" means "work it out from the quantity" - see
+    derive_stock_status."""
+    if location_name is not None:
+        location = _resolve_location_name(location_name, actor=actor, request=request)
     component = Component.objects.create(
         organization=actor.organization,
         name=name,
@@ -538,7 +680,15 @@ def create_component(
         summary=summary,
         specifications=specifications or [],
         created_by=actor,
+        updated_by=actor,
         visibility=visibility,
+        inventory_type=inventory_type,
+        location=location,
+        unit=unit,
+        condition=condition,
+        stock_status=stock_status or derive_stock_status(quantity_available, min_quantity),
+        min_quantity=min_quantity,
+        inventory_notes=inventory_notes,
     )
     _sync_tags(component, tag_names)
     confirm_stored_files(photo)
@@ -547,10 +697,29 @@ def create_component(
     return component
 
 
+def _apply_stock_status_rule(component: Component, fields: dict) -> None:
+    """Mutates `fields` in place: an explicit "" stock_status, or a quantity/
+    minimum change with no stock_status given while the current one is
+    automatic, gets the derived status."""
+    quantity = fields.get("quantity_available", component.quantity_available)
+    min_quantity = fields.get("min_quantity", component.min_quantity)
+    if "stock_status" in fields:
+        if not fields["stock_status"]:
+            fields["stock_status"] = derive_stock_status(quantity, min_quantity, component.stock_status)
+    elif ("quantity_available" in fields or "min_quantity" in fields) and component.stock_status in _AUTO_STOCK_STATUSES:
+        derived = derive_stock_status(quantity, min_quantity, component.stock_status)
+        if derived != component.stock_status:
+            fields["stock_status"] = derived
+
+
 def update_component(*, component: Component, actor, request=None, **fields) -> Component:
     if not actor.has_permission("component.update"):
         raise PermissionDenied("You need component.update to edit this component.")
     tag_names = fields.pop("tag_names", None)
+    if "location_name" in fields:
+        fields["location"] = _resolve_location_name(fields.pop("location_name"), actor=actor, request=request)
+    _apply_stock_status_rule(component, fields)
+    fields["updated_by"] = actor
     for field, value in fields.items():
         setattr(component, field, value)
     component.save(update_fields=[*fields.keys(), "updated_at"])
@@ -1334,42 +1503,198 @@ def contributors_for(model_name: str, obj) -> list:
     return list(User.objects.filter(pk__in=actor_ids))
 
 
+# --- Component CSV import/export --------------------------------------------
+#
+# One column layout both ways, laid out so the workshop's inventory sheet can
+# be synced in either direction: its own 11 columns first, in its own order
+# and with its own dropdown labels ("In Stock", "Needs Repair", ...), then an
+# "Athar ID" column the sheet needs to add once, then every other component
+# field. Importing an export back unchanged is a no-op, and importing a tab
+# of the sheet as-is (its own headers, no Athar ID yet) works too - see
+# _HEADER_ALIASES.
+
+INVENTORY_CSV_COLUMNS = [
+    "Athar ID", "Category", "Item", "Grid Location", "Quantity", "Unit", "Condition", "Status",
+    "Min. Qty Desired", "Notes", "Last Updated", "Updated By",
+    "Inventory Type", "Engineering Status", "Manufacturer", "Part Number", "Link", "Visibility", "Tags",
+    "Summary", "Specifications",
+]
+
+
+def _normalize_label(value: str) -> str:
+    """"Min. Qty Desired" -> "min qty desired", "Missing / Need to Order" ->
+    "missing need to order" - so headers and dropdown values match no matter
+    the punctuation, spacing or case a spreadsheet ends up with."""
+    return re.sub(r"[^a-z0-9]+", " ", (value or "").lower()).strip()
+
+
+# Normalized header -> the canonical key _parse_component_row reads. Covers
+# this app's own export/template columns, the older import template's names,
+# and the inventory sheet's headers.
+_HEADER_ALIASES = {
+    "athar id": "athar_id",
+    "id": "athar_id",
+    "name": "name",
+    "item": "name",
+    "item name": "name",
+    "category": "category",
+    "grid location": "location",
+    "location": "location",
+    "quantity": "quantity",
+    "quantity available": "quantity",
+    "qty": "quantity",
+    "unit": "unit",
+    "units": "unit",
+    "condition": "condition",
+    # The sheet's "Status" is a stock status, this app's older template's
+    # "Status" an engineering one - the two value sets don't overlap, so the
+    # cell's value decides (see _parse_component_row).
+    "status": "status_any",
+    "stock status": "stock_status",
+    "engineering status": "status",
+    "component status": "status",
+    "min qty desired": "min_quantity",
+    "min qty": "min_quantity",
+    "min quantity": "min_quantity",
+    "minimum quantity": "min_quantity",
+    "notes": "notes",
+    "last updated": "last_updated",
+    "updated by": "updated_by",
+    "inventory type": "inventory_type",
+    "inventory": "inventory_type",
+    "type": "inventory_type",
+    "manufacturer": "manufacturer",
+    "part number": "part_number",
+    "link": "link",
+    "visibility": "visibility",
+    "tags": "tags",
+    "summary": "summary",
+    "specifications": "specifications",
+}
+
+# Extra accepted spellings, beyond each choice's own value and label.
+_CHOICE_ALIASES = {
+    "missing": Component.StockStatus.MISSING,
+    "need to order": Component.StockStatus.MISSING,
+    "retired": Component.StockStatus.RETIRED,
+    "mechanical inventory": Component.InventoryType.MECHANICAL,
+    "electrical inventory": Component.InventoryType.ELECTRICAL,
+}
+
+_BLANK_NUMBER_CELLS = {"", "none", "n a", "na"}
+
+
+def _person_label(user) -> str:
+    if user is None:
+        return ""
+    return f"{user.first_name} {user.last_name}".strip() or user.email
+
+
+def _choice_label(choices, value: str) -> str:
+    return choices(value).label if value else ""
+
+
+def _format_tags_for_diff(tag_names) -> str:
+    # Same normalization _sync_tags applies (strip/lowercase/dedupe), so a
+    # sheet's "Motor, Propulsion" and a stored ["motor", "propulsion"] read
+    # as identical rather than a spurious diff.
+    return ", ".join(sorted({name.strip().lower() for name in tag_names if name.strip()}))
+
+
+def _format_specifications_for_diff(specifications) -> str:
+    return "; ".join(f"{row['label']}: {row['value']}" for row in specifications)
+
+
 def component_csv_rows(components):
-    """Header row + one row per component, for views.ComponentExportView.
-    Lives here (not utils.py) since each row reads related objects off the
-    component (category name, tag names) - a DB-touching operation, not a
-    pure formatting helper. Caller is expected to have already
-    select_related("category")/prefetch_related("tags") for this to avoid
-    N+1 queries."""
-    yield [
-        "Name", "Category", "Manufacturer", "Part Number", "Status", "Quantity Available", "Link", "Tags",
-        "Created By", "Created At", "Updated At",
-    ]
+    """Header row + one row per component, for views.ComponentExportView -
+    see INVENTORY_CSV_COLUMNS. Caller is expected to have already
+    select_related("category", "location", "updated_by")/
+    prefetch_related("tags") for this to avoid N+1 queries."""
+    yield INVENTORY_CSV_COLUMNS
     for component in components:
         yield [
-            component.name,
+            str(component.pk),
             component.category.name if component.category else "",
+            component.name,
+            component.location.name if component.location else "",
+            component.quantity_available,
+            component.unit,
+            _choice_label(Component.Condition, component.condition),
+            _choice_label(Component.StockStatus, component.stock_status),
+            "" if component.min_quantity is None else component.min_quantity,
+            component.inventory_notes,
+            timezone.localdate(component.updated_at).isoformat(),
+            _person_label(component.updated_by),
+            _choice_label(Component.InventoryType, component.inventory_type),
+            _choice_label(Component.Status, component.status),
             component.manufacturer,
             component.part_number,
-            component.get_status_display(),
-            component.quantity_available,
             component.link,
-            ", ".join(tag.name for tag in component.tags.all()),
-            component.created_by.email if component.created_by else "",
-            component.created_at.isoformat(),
-            component.updated_at.isoformat(),
+            Visibility(component.visibility).label,
+            _format_tags_for_diff([tag.name for tag in component.tags.all()]),
+            component.summary,
+            _format_specifications_for_diff(component.specifications),
         ]
 
 
+def component_import_template_rows():
+    """Header row + one example row per inventory tab for
+    views.ComponentImportTemplateView - the same columns an export has."""
+    yield INVENTORY_CSV_COLUMNS
+    yield [
+        "", "Hand Tools", "Example: Allen Key Set", "Fuselage Box -> Hand Tools", "1", "set", "Good", "Low Stock",
+        "2", "Missing the 2mm key", "", "", "Mechanical", "", "", "", "", "Public", "", "", "",
+    ]
+    yield [
+        "", "Motor", "Example: T-Motor AT3520 550KV", "Motors, ESCs and BECs Box", "1", "each", "New", "In Stock",
+        "", "", "", "", "Electrical", "Testing", "T-Motor", "AT3520", "https://example.com/product", "Public",
+        "motor, propulsion", "Short description of the component.", "KV: 550; Weight: 238g",
+    ]
+
+
 def _resolve_choice(raw: str, choices) -> str | None:
-    """Matches `raw` against a TextChoices' values or display labels,
-    case-insensitively - so a sheet round-tripped from component_csv_rows's
-    own "Certified"/"Testing"/"Deprecated" labels imports the same as one
-    typed with the raw CERTIFIED/TESTING/DEPRECATED codes."""
-    normalized = raw.strip().lower()
-    for value, label in choices:
-        if normalized == value.lower() or normalized == label.lower():
+    """Matches `raw` against a TextChoices' values, display labels or
+    _CHOICE_ALIASES, ignoring case/punctuation - so "In Stock", "IN_STOCK"
+    and "in-stock" all import the same."""
+    normalized = _normalize_label(raw)
+    for value, label in choices.choices:
+        if normalized in (_normalize_label(value), _normalize_label(label)):
             return value
+    alias = _CHOICE_ALIASES.get(normalized)
+    return alias if alias in choices.values else None
+
+
+def _choice_error(column: str, raw: str, choices) -> ValueError:
+    return ValueError(f'{column} "{raw}" must be one of {", ".join(choices.labels)}.')
+
+
+def _parse_whole_number(raw: str, column: str) -> int | None:
+    """None for a blank-ish cell (the sheet leaves "Min. Qty Desired" empty
+    or writes "None"); accepts "3.0", which is how Excel sometimes saves 3."""
+    value = raw.strip()
+    if _normalize_label(value) in _BLANK_NUMBER_CELLS:
+        return None
+    try:
+        number = float(value)
+    except ValueError:
+        number = -1
+    if number < 0 or number != int(number):
+        raise ValueError(f"{column} must be a whole number, 0 or more.")
+    return int(number)
+
+
+def _parse_date_cell(raw: str):
+    """The sheet's "Last Updated" - ISO from this app's own export, or
+    whatever date format Excel re-saved it in. None if it can't be read,
+    which only turns off the conflict warning for that row."""
+    value = raw.strip()
+    if not value:
+        return None
+    for fmt in ("%Y-%m-%d", "%Y-%m-%d %H:%M:%S", "%Y/%m/%d", "%m/%d/%Y", "%d/%m/%Y", "%d-%m-%Y"):
+        try:
+            return datetime.datetime.strptime(value, fmt).date()
+        except ValueError:
+            continue
     return None
 
 
@@ -1390,281 +1715,459 @@ def _parse_specifications_cell(raw: str) -> list[dict[str, str]]:
     return specifications
 
 
-def _get_or_create_category_by_name(name: str, *, actor) -> Category:
-    """Case-insensitive get-or-create, scoped to actor's organization - a
-    typo-free but not-yet-existing category name in an imported sheet
-    creates the category on the fly rather than failing the row, the same
-    way an unrecognized tag name already does via _sync_tags. Not gated on
-    category.manage: creating components already lets a Member freely invent
-    new tags, so this keeps categories consistent with that rather than
-    silently failing rows for a Member who lacks that permission. Only ever
-    called at commit time (see _resolve_fields_for_apply) - a preview must
-    never write to the database, so during a dry run an unrecognized name is
-    compared/shown as plain text instead (see _build_field_changes)."""
-    category = Category.objects.filter(organization=actor.organization, name__iexact=name).first()
-    return category or create_category(actor=actor, name=name)
+def _parse_component_row(record: dict) -> tuple[dict, dict]:
+    """Parses one row (already keyed by _HEADER_ALIASES' canonical names)
+    into (fields, meta). `fields` uses the kwarg names create_component/
+    update_component expect, except category/location stay plain
+    `category_name`/`location_name` strings so parsing never writes to the
+    database - and ONLY for cells that are filled in: a blank cell is simply
+    absent, which is what makes "blank means leave the existing value alone"
+    work on an update. `meta` holds the columns that steer matching rather
+    than being saved (Athar ID, Last Updated). Raises ValueError on a
+    malformed cell."""
+    def cell(key: str) -> str:
+        return (record.get(key) or "").strip()
 
-
-def _parse_component_row(row: dict, *, actor) -> dict:
-    """Parses one CSV row into a dict using the same field names
-    create_component/update_component expect (plus "name", popped by the
-    caller) - but ONLY for cells that are actually filled in. A blank cell
-    is simply absent from the returned dict, which is what lets
-    _build_field_changes implement "blank means leave the existing value
-    alone" on an update while still meaning "use the normal default" on a
-    create. Category is kept as a plain `category_name` string, not
-    resolved to a Category instance, so parsing a row never writes to the
-    database - see _get_or_create_category_by_name. Raises ValueError on a
-    malformed cell (missing Name, non-numeric Quantity, an unrecognized
-    Status/Visibility, or a Specifications cell that isn't "Label: Value"
-    pairs)."""
-    name = (row.get("Name") or "").strip()
+    name = cell("name")
     if not name:
-        raise ValueError("Name is required.")
-    parsed: dict = {"name": name}
+        raise ValueError("Item/Name is required.")
+    fields: dict = {"name": name}
 
-    category_name = (row.get("Category") or "").strip()
-    if category_name:
-        parsed["category_name"] = category_name
+    for field, key in (
+        ("category_name", "category"),
+        ("location_name", "location"),
+        ("manufacturer", "manufacturer"),
+        ("part_number", "part_number"),
+        ("link", "link"),
+        ("summary", "summary"),
+        ("unit", "unit"),
+        ("inventory_notes", "notes"),
+    ):
+        if cell(key):
+            fields[field] = cell(key)
 
-    for field, column in (("manufacturer", "Manufacturer"), ("part_number", "Part Number"), ("link", "Link"), ("summary", "Summary")):
-        value = (row.get(column) or "").strip()
-        if value:
-            parsed[field] = value
+    if cell("quantity"):
+        quantity = _parse_whole_number(cell("quantity"), "Quantity")
+        if quantity is not None:
+            fields["quantity_available"] = quantity
+    if cell("min_quantity"):
+        min_quantity = _parse_whole_number(cell("min_quantity"), "Min. Qty Desired")
+        if min_quantity is not None:
+            fields["min_quantity"] = min_quantity
 
-    quantity_raw = (row.get("Quantity Available") or "").strip()
-    if quantity_raw:
-        if not quantity_raw.isdigit():
-            raise ValueError("Quantity Available must be a non-negative whole number.")
-        parsed["quantity_available"] = int(quantity_raw)
+    for field, key, column, choices in (
+        ("condition", "condition", "Condition", Component.Condition),
+        ("stock_status", "stock_status", "Stock Status", Component.StockStatus),
+        ("status", "status", "Engineering Status", Component.Status),
+        ("inventory_type", "inventory_type", "Inventory Type", Component.InventoryType),
+        ("visibility", "visibility", "Visibility", Visibility),
+    ):
+        raw = cell(key)
+        if raw:
+            resolved = _resolve_choice(raw, choices)
+            if resolved is None:
+                raise _choice_error(column, raw, choices)
+            fields[field] = resolved
 
-    status_raw = (row.get("Status") or "").strip()
+    status_raw = cell("status_any")
     if status_raw:
-        resolved_status = _resolve_choice(status_raw, Component.Status.choices)
-        if resolved_status is None:
-            raise ValueError(f'Status "{status_raw}" must be one of Certified, Testing, Deprecated.')
-        parsed["status"] = resolved_status
+        engineering = _resolve_choice(status_raw, Component.Status)
+        stock = _resolve_choice(status_raw, Component.StockStatus)
+        if engineering:
+            fields.setdefault("status", engineering)
+        elif stock:
+            fields.setdefault("stock_status", stock)
+        else:
+            raise ValueError(
+                f'Status "{status_raw}" must be a stock status ({", ".join(Component.StockStatus.labels)}) '
+                f'or an engineering status ({", ".join(Component.Status.labels)}).'
+            )
 
-    visibility_raw = (row.get("Visibility") or "").strip()
-    if visibility_raw:
-        resolved_visibility = _resolve_choice(visibility_raw, Visibility.choices)
-        if resolved_visibility is None:
-            raise ValueError(f'Visibility "{visibility_raw}" must be one of Public, Restricted.')
-        parsed["visibility"] = resolved_visibility
+    if cell("specifications"):
+        fields["specifications"] = _parse_specifications_cell(cell("specifications"))
+    if cell("tags"):
+        fields["tag_names"] = [tag.strip() for tag in cell("tags").split(",") if tag.strip()]
 
-    specifications_raw = (row.get("Specifications") or "").strip()
-    if specifications_raw:
-        parsed["specifications"] = _parse_specifications_cell(specifications_raw)
-
-    tags_raw = (row.get("Tags") or "").strip()
-    if tags_raw:
-        parsed["tag_names"] = [tag.strip() for tag in tags_raw.split(",") if tag.strip()]
-
-    return parsed
+    meta = {"athar_id": cell("athar_id"), "last_updated": _parse_date_cell(cell("last_updated"))}
+    return fields, meta
 
 
-# Maps a _parse_component_row field name to the key views.ComponentImportView's
-# response uses for it - only differs where the internal name carries a
-# "_name"/"_names" suffix that a display-only diff has no use for.
-_DIFF_FIELD_KEYS = {"category_name": "category", "tag_names": "tags"}
+# Maps a parsed field name to the key the import response's `changes` uses -
+# only differs where the internal name carries a "_name"/"_names" suffix.
+_DIFF_FIELD_KEYS = {"category_name": "category", "location_name": "location", "tag_names": "tags"}
 
-
-def _format_tags_for_diff(tag_names) -> str:
-    # Same normalization _sync_tags applies (strip/lowercase/dedupe), so a
-    # sheet's "Motor, Propulsion" and a stored ["motor", "propulsion"] read
-    # as identical rather than a spurious diff.
-    return ", ".join(sorted({name.strip().lower() for name in tag_names if name.strip()}))
-
-
-def _format_specifications_for_diff(specifications) -> str:
-    return "; ".join(f"{row['label']}: {row['value']}" for row in specifications)
+_CHOICE_FIELDS = {
+    "status": Component.Status,
+    "stock_status": Component.StockStatus,
+    "condition": Component.Condition,
+    "inventory_type": Component.InventoryType,
+    "visibility": Visibility,
+}
 
 
 def _new_field_display(field: str, value) -> str:
-    if field == "status":
-        return Component.Status(value).label
-    if field == "visibility":
-        return Visibility(value).label
+    if field in _CHOICE_FIELDS:
+        return _choice_label(_CHOICE_FIELDS[field], value)
     if field == "tag_names":
         return _format_tags_for_diff(value)
     if field == "specifications":
         return _format_specifications_for_diff(value)
-    if field == "quantity_available":
-        return str(value)
-    return value  # category_name, manufacturer, part_number, link, summary
+    if field in ("quantity_available", "min_quantity"):
+        return "" if value is None else str(value)
+    return value
 
 
 def _existing_field_display(field: str, existing: Component) -> str:
     if field == "category_name":
         return existing.category.name if existing.category else ""
+    if field == "location_name":
+        return existing.location.name if existing.location else ""
     if field == "tag_names":
         return _format_tags_for_diff([tag.name for tag in existing.tags.all()])
-    if field == "specifications":
-        return _format_specifications_for_diff(existing.specifications)
-    if field == "status":
-        return existing.get_status_display()
-    if field == "visibility":
-        return Visibility(existing.visibility).label
-    if field == "quantity_available":
-        return str(existing.quantity_available)
-    return getattr(existing, field)  # manufacturer, part_number, link, summary
+    if field in _CHOICE_FIELDS:
+        return _choice_label(_CHOICE_FIELDS[field], getattr(existing, field))
+    return _new_field_display(field, getattr(existing, field))
 
 
-def _build_field_changes(parsed: dict, existing: Component | None) -> dict[str, dict[str, str]]:
-    """Builds {field: {"old": str, "new": str}} for every field `parsed`
-    specifies (i.e. every non-blank cell besides Name) whose value actually
-    differs - `old` is always "" when `existing` is None (a new component),
-    letting a "create" row reuse the same shape a diff on an "update" row
-    uses. Comparison is case-insensitive so a same-value-different-case cell
-    (or a tag/category the sheet capitalizes differently) isn't reported as
-    a change."""
+def _build_field_changes(fields: dict, existing: Component | None) -> dict[str, dict[str, str]]:
+    """{field: {"old": str, "new": str}} for every field `fields` specifies
+    whose value actually differs - `old` is always "" for a new component.
+    Case-insensitive, so a same-value-different-case cell (or a tag/category
+    the sheet capitalizes differently) isn't reported as a change. Also
+    includes the stock status the write will derive on its own (see
+    _apply_stock_status_rule), so the preview never hides a change."""
     changes = {}
-    for field, value in parsed.items():
+    for field, value in fields.items():
+        if field == "name":
+            continue
         new_display = _new_field_display(field, value)
         old_display = _existing_field_display(field, existing) if existing is not None else ""
         if old_display.strip().lower() == new_display.strip().lower():
             continue
         changes[_DIFF_FIELD_KEYS.get(field, field)] = {"old": old_display, "new": new_display}
+
+    if "stock_status" not in fields:
+        if existing is None:
+            derived = derive_stock_status(fields.get("quantity_available", 0), fields.get("min_quantity"))
+            changes["stock_status"] = {"old": "", "new": Component.StockStatus(derived).label}
+        elif ("quantity_available" in fields or "min_quantity" in fields) and existing.stock_status in _AUTO_STOCK_STATUSES:
+            derived = derive_stock_status(
+                fields.get("quantity_available", existing.quantity_available),
+                fields.get("min_quantity", existing.min_quantity),
+                existing.stock_status,
+            )
+            if derived != existing.stock_status:
+                changes["stock_status"] = {
+                    "old": _choice_label(Component.StockStatus, existing.stock_status),
+                    "new": Component.StockStatus(derived).label,
+                }
     return changes
 
 
-def _classify_component_row(row: dict, *, actor) -> dict:
-    """Classifies one CSV row against the org's existing components, purely
-    in memory - see import_components_csv for how the result is used.
-    Matching is case-insensitive on Name, scoped to the org. Returns one of:
-      {"action": "error", "message": str}
-      {"action": "create", "name": str, "fields": dict, "changes": dict}
-      {"action": "update", "name": str, "component": Component, "fields": dict, "changes": dict}
-      {"action": "unchanged", "name": str}
-    `fields` is the exact kwargs shape create_component/update_component
-    expect, once _resolve_fields_for_apply swaps category_name for a real
-    Category - see that function's docstring for why that swap only ever
-    happens at commit time."""
+def _decode_csv_upload(csv_file) -> str:
+    """UTF-8 (with or without Excel's BOM) first; then Windows-1252, which is
+    what Excel's plain "CSV (Comma delimited)" save produces - so a sheet
+    saved either way imports, "–" dashes included."""
+    raw = csv_file.read()
+    for encoding in ("utf-8-sig", "cp1252"):
+        try:
+            return raw.decode(encoding)
+        except UnicodeDecodeError:
+            continue
+    raise ValidationError({"file": ['That file isn\'t a readable CSV - save it from Excel as "CSV UTF-8".']})
+
+
+def _read_import_records(text: str) -> list[tuple[int, dict]]:
+    """[(row_number, {canonical_key: cell})] for every non-blank data row.
+    Row numbers count the header as row 1, matching what the user sees in
+    Excel. The delimiter is sniffed from the header: Excel saves CSV with ";"
+    in locales that use "," as the decimal separator."""
+    first_line = text.split("\n", 1)[0]
     try:
-        parsed = _parse_component_row(row, actor=actor)
-    except ValueError as exc:
-        return {"action": "error", "message": str(exc)}
+        delimiter = csv.Sniffer().sniff(first_line, delimiters=",;\t").delimiter
+    except csv.Error:
+        delimiter = ","
+    reader = csv.reader(io.StringIO(text), delimiter=delimiter)
+    header = next(reader, None)
+    if header is None:
+        return []
+    columns = [_HEADER_ALIASES.get(_normalize_label(heading)) for heading in header]
+    if "name" not in columns:
+        raise ValidationError(
+            {"file": ['No "Item" or "Name" column found - the first row must be the column headers.']}
+        )
 
-    name = parsed.pop("name")
-    existing = Component.objects.filter(organization=actor.organization, name__iexact=name).first()
-    changes = _build_field_changes(parsed, existing)
+    records = []
+    for row_number, cells in enumerate(reader, start=2):
+        if not any(cell.strip() for cell in cells):
+            continue  # the sheet's empty trailing rows
+        record: dict[str, str] = {}
+        for key, cell in zip(columns, cells):
+            if key and not record.get(key):
+                record[key] = cell
+        records.append((row_number, record))
+    return records
 
-    if existing is None:
-        return {"action": "create", "name": name, "fields": {"name": name, **parsed}, "changes": changes}
 
+def _duplicate_key(entry: dict) -> tuple[str, str]:
+    fields = entry["fields"]
+    return fields["name"].strip().lower(), fields.get("location_name", "").strip().lower()
+
+
+def _merge_duplicate_entries(group: list[dict]) -> None:
+    """Folds every later row of a same-item-same-place group into the first:
+    quantities are added up, distinct notes joined, and any field the first
+    row left blank is taken from the later rows."""
+    first = group[0]["fields"]
+    quantities = [entry["fields"]["quantity_available"] for entry in group if "quantity_available" in entry["fields"]]
+    if quantities:
+        first["quantity_available"] = sum(quantities)
+    notes = []
+    for entry in group:
+        note = entry["fields"].get("inventory_notes", "")
+        if note and note not in notes:
+            notes.append(note)
+    if notes:
+        first["inventory_notes"] = "; ".join(notes)
+    for entry in group[1:]:
+        for field, value in entry["fields"].items():
+            first.setdefault(field, value)
+        entry["merged_into"] = group[0]["row"]
+    group[0]["warnings"].append(
+        f"Merged with row(s) {', '.join(str(entry['row']) for entry in group[1:])} - quantities added up."
+    )
+
+
+def _find_component_for_entry(entry: dict, *, actor, claimed: set, remaining_in_group: int):
+    """Returns (component or None, error message or None). An Athar ID
+    matches exactly that component. Otherwise a row matches on Item name
+    plus Grid Location (both case-insensitive), falling back to a same-named
+    component with no location yet, so a first sheet import attaches to
+    components that already existed on the website. `claimed` holds
+    components earlier rows already matched, which is what lets two
+    identical rows pair up with two identical components in order."""
+    organization_components = Component.objects.filter(organization=actor.organization).select_related(
+        "category", "location"
+    )
+    athar_id = entry["meta"]["athar_id"]
+    if athar_id:
+        try:
+            component = organization_components.filter(pk=uuid.UUID(athar_id)).first()
+        except ValueError:
+            component = None
+        if component is None:
+            return None, (
+                f'No component has Athar ID "{athar_id}" - it may have been deleted on the website. '
+                "Clear the Athar ID cell to import this row as a new component."
+            )
+        return component, None
+
+    fields = entry["fields"]
+    same_name = organization_components.filter(name__iexact=fields["name"]).exclude(pk__in=claimed).order_by("created_at")
+    location_name = fields.get("location_name", "")
+    if location_name:
+        candidates = list(same_name.filter(location__name__iexact=location_name)) or list(
+            same_name.filter(location__isnull=True)
+        )
+    else:
+        candidates = list(same_name)
+    if len(candidates) > remaining_in_group:
+        where = f' at "{location_name}"' if location_name else ""
+        return None, (
+            f'{len(candidates)} components named "{fields["name"]}"{where} already exist, so this row can\'t '
+            "tell which one it means. Export from the website and use its Athar ID column to match exactly."
+        )
+    return (candidates[0] if candidates else None), None
+
+
+def _classify_entry(entry: dict, *, actor, claimed: set, remaining_in_group: int, default_inventory_type: str) -> dict:
+    """One import row's outcome, purely in memory: {"action": "create"|
+    "update"|"unchanged"|"error", ...} - see import_components_csv."""
+    result = {"row": entry["row"], "name": entry["fields"]["name"], "warnings": entry["warnings"]}
+    component, error = _find_component_for_entry(
+        entry, actor=actor, claimed=claimed, remaining_in_group=remaining_in_group
+    )
+    if error:
+        return {**result, "action": "error", "message": error}
+
+    fields = dict(entry["fields"])
+    fields.pop("name")
+    if default_inventory_type and "inventory_type" not in fields and (component is None or not component.inventory_type):
+        fields["inventory_type"] = default_inventory_type
+
+    if component is None:
+        changes = _build_field_changes(fields, None)
+        return {**result, "action": "create", "changes": changes, "fields": {"name": entry["fields"]["name"], **fields}}
+
+    claimed.add(component.pk)
+    result["name"] = component.name
+    if entry["meta"]["athar_id"] and component.name.strip().lower() != entry["fields"]["name"].strip().lower():
+        fields["name"] = entry["fields"]["name"]  # renamed in the sheet
+    changes = _build_field_changes(fields, component)
+    if "name" in fields:
+        changes["name"] = {"old": component.name, "new": fields["name"]}
     if not changes:
-        return {"action": "unchanged", "name": existing.name}
-
+        return {**result, "action": "unchanged"}
     if not actor.has_permission("component.update"):
-        return {
-            "action": "error",
-            "message": f'"{name}" already exists and you don\'t have permission to update it.',
-        }
+        return {**result, "action": "error", "message": f'"{component.name}" already exists and you don\'t have permission to update it.'}
 
-    return {"action": "update", "name": existing.name, "component": existing, "fields": parsed, "changes": changes}
+    last_updated = entry["meta"]["last_updated"]
+    edited_on = timezone.localdate(component.updated_at)
+    if last_updated and edited_on > last_updated:
+        result["warnings"] = [
+            *result["warnings"],
+            f"Changed on the website on {edited_on.isoformat()}, after this row's Last Updated "
+            f"({last_updated.isoformat()}) - importing overwrites those website changes.",
+        ]
+    return {**result, "action": "update", "changes": changes, "component": component, "fields": fields}
 
 
-def _resolve_fields_for_apply(fields: dict, *, actor) -> dict:
-    """Only called once a row is actually being written (see
-    import_components_csv's commit=True branch) - swaps the preview-safe
-    `category_name` string for a real, possibly-just-created Category
-    instance. Every other field is already in the exact shape
-    create_component/update_component expect."""
+def _resolve_fields_for_apply(fields: dict, *, actor, request=None) -> dict:
+    """Only called once a row is actually being written - swaps the
+    preview-safe `category_name` string for a real, possibly just-created
+    ComponentCategory. `location_name` is resolved by create_component/
+    update_component themselves."""
     resolved = dict(fields)
     if "category_name" in resolved:
-        resolved["category"] = _get_or_create_category_by_name(resolved.pop("category_name"), actor=actor)
+        resolved["category"] = get_or_create_component_category(resolved.pop("category_name"), actor=actor, request=request)
     return resolved
 
 
-def import_components_csv(*, actor, request=None, csv_file, commit: bool) -> dict:
-    """Two-phase bulk import for components (see views.ComponentImportView
-    and component_import_template_rows below for the expected columns).
+def import_components_csv(
+    *, actor, request=None, csv_file, commit: bool, duplicates: str = "separate", default_inventory_type: str = ""
+) -> dict:
+    """Two-phase bulk import for components (see views.ComponentImportView).
 
     With commit=False (the frontend's first call, once the user picks a
-    file), this is a pure preview: every row is classified/diffed against
-    any existing component with the same name (case-insensitive, scoped to
-    the org) but NOTHING is written to the database - not even an
-    auto-created Category (see _get_or_create_category_by_name). The
-    frontend shows this preview and asks the user to confirm before
-    anything is actually applied.
+    file), this is a pure preview: every row is matched and diffed against
+    the organization's components but NOTHING is written - not even an
+    auto-created category or location. With commit=True the frontend
+    re-sends the identical file after the user confirms, and the rows are
+    applied through create_component/update_component, so audit logging,
+    tag sync and the stock-status rule stay identical to a normal edit.
 
-    With commit=True, the frontend re-sends the identical file after that
-    confirmation; matching rows are then actually created/updated through
-    create_component/update_component (so audit logging/tag sync/
-    file-in-text confirmation stay consistent with a normal single-component
-    write). A row with no changes from its existing match is always skipped,
-    and an errored row is always skipped, regardless of commit - there's
-    nothing meaningful to apply either way.
+    `duplicates` decides what happens to rows with the same Item and Grid
+    Location (and no Athar ID): "separate" keeps each as its own component
+    (paired, in order, with same-named components that already exist);
+    "merge" folds them into one row first (see _merge_duplicate_entries).
+    `default_inventory_type` is the tab the file came from - used for rows
+    with no Inventory Type cell, on new components and on existing ones that
+    don't have a type yet.
 
-    Returns {"rows": [{"row": int, "action": "create"|"update"|"unchanged"|
-    "error", "name"?: str, "changes"?: dict, "message"?: str}], "summary":
-    {"create": int, "update": int, "unchanged": int, "error": int}} plus,
-    when commit=True, "applied": {"created": int, "updated": int, "skipped":
-    int} - row numbers count the header as row 1, matching what the user
-    sees if they open the sheet in Excel/Sheets."""
-    # StringIO over a decoded read(), not TextIOWrapper(csv_file) directly -
-    # Django's UploadedFile doesn't reliably implement the raw binary-stream
-    # protocol TextIOWrapper expects. utf-8-sig strips Excel's BOM if present.
-    try:
-        text = csv_file.read().decode("utf-8-sig")
-    except UnicodeDecodeError:
-        raise ValidationError({"file": ["That file isn't a valid UTF-8 CSV."]})
-    reader = csv.DictReader(io.StringIO(text))
+    Returns {"rows": [{"row", "action": "create"|"update"|"unchanged"|
+    "error"|"merged", "name"?, "changes"?, "message"?, "warnings",
+    "merged_into"?}], "summary": {"create", "update", "unchanged", "error",
+    "merged", "duplicate_groups"}} plus, when commit=True, "applied":
+    {"created", "updated", "skipped"}."""
+    records = _read_import_records(_decode_csv_upload(csv_file))
 
-    rows: list[dict] = []
-    created = updated = skipped = 0
-    for row_number, row in enumerate(reader, start=2):
-        classification = _classify_component_row(row, actor=actor)
-        action = classification["action"]
-
-        if action == "error":
-            rows.append({"row": row_number, "action": "error", "message": classification["message"]})
+    entries = []
+    for row_number, record in records:
+        try:
+            fields, meta = _parse_component_row(record)
+        except ValueError as exc:
+            entries.append({"row": row_number, "error": str(exc)})
             continue
+        entries.append({"row": row_number, "fields": fields, "meta": meta, "warnings": []})
 
-        if action == "unchanged":
-            skipped += 1
-            rows.append({"row": row_number, "action": "unchanged", "name": classification["name"]})
-            continue
-
-        rows.append(
-            {"row": row_number, "action": action, "name": classification["name"], "changes": classification["changes"]}
-        )
-        if not commit:
-            continue
-
-        fields = _resolve_fields_for_apply(classification["fields"], actor=actor)
-        if action == "create":
-            create_component(actor=actor, request=request, **fields)
-            created += 1
+    groups: dict[tuple, list[dict]] = {}
+    for entry in entries:
+        if "fields" in entry and not entry["meta"]["athar_id"]:
+            groups.setdefault(_duplicate_key(entry), []).append(entry)
+    duplicate_groups = [group for group in groups.values() if len(group) > 1]
+    for group in duplicate_groups:
+        if duplicates == "merge":
+            _merge_duplicate_entries(group)
         else:
-            update_component(component=classification["component"], actor=actor, request=request, **fields)
+            for entry in group[1:]:
+                entry["warnings"].append(
+                    f"Same item and location as row {group[0]['row']} - kept as a separate component."
+                )
+
+    seen_ids: dict[str, int] = {}
+    for entry in entries:
+        athar_id = entry.get("meta", {}).get("athar_id", "").lower()
+        if athar_id and "merged_into" not in entry:
+            if athar_id in seen_ids:
+                entry["error"] = f"This Athar ID is also used on row {seen_ids[athar_id]} - each component can appear only once."
+            else:
+                seen_ids[athar_id] = entry["row"]
+
+    # Athar ID rows claim their components first, so name matching below can
+    # never hand an ID'd component to a different row.
+    claimed: set = set()
+    results: dict[int, dict] = {}
+    ordered = sorted(
+        (entry for entry in entries if "error" not in entry and "merged_into" not in entry),
+        key=lambda entry: (not entry["meta"]["athar_id"], entry["row"]),
+    )
+    position_in_group: dict[tuple, int] = {}
+    for entry in ordered:
+        remaining = 1
+        if not entry["meta"]["athar_id"] and duplicates != "merge":
+            key = _duplicate_key(entry)
+            index = position_in_group.get(key, 0)
+            position_in_group[key] = index + 1
+            remaining = len(groups[key]) - index
+        results[entry["row"]] = _classify_entry(
+            entry, actor=actor, claimed=claimed, remaining_in_group=remaining, default_inventory_type=default_inventory_type
+        )
+    for entry in entries:
+        if "error" in entry:
+            results[entry["row"]] = {"row": entry["row"], "action": "error", "message": entry["error"], "warnings": []}
+        elif "merged_into" in entry:
+            results[entry["row"]] = {
+                "row": entry["row"], "action": "merged", "name": entry["fields"]["name"],
+                "merged_into": entry["merged_into"], "warnings": [],
+            }
+
+    created = updated = 0
+    rows = []
+    for row_number in sorted(results):
+        result = results[row_number]
+        if commit and result["action"] == "create":
+            create_component(actor=actor, request=request, **{
+                "status": "", **_resolve_fields_for_apply(result["fields"], actor=actor, request=request)
+            })
+            created += 1
+        elif commit and result["action"] == "update":
+            update_component(
+                component=result["component"], actor=actor, request=request,
+                **_resolve_fields_for_apply(result["fields"], actor=actor, request=request),
+            )
             updated += 1
+        rows.append({key: value for key, value in result.items() if key not in ("fields", "component")})
 
-    result = {
-        "rows": rows,
-        "summary": {
-            "create": sum(1 for r in rows if r["action"] == "create"),
-            "update": sum(1 for r in rows if r["action"] == "update"),
-            "unchanged": sum(1 for r in rows if r["action"] == "unchanged"),
-            "error": sum(1 for r in rows if r["action"] == "error"),
-        },
-    }
+    summary = {action: sum(1 for row in rows if row["action"] == action) for action in ("create", "update", "unchanged", "error", "merged")}
+    summary["duplicate_groups"] = len(duplicate_groups)
+    response = {"rows": rows, "summary": summary}
     if commit:
-        result["applied"] = {"created": created, "updated": updated, "skipped": skipped}
-    return result
+        response["applied"] = {"created": created, "updated": updated, "skipped": summary["unchanged"]}
+    return response
 
 
-def component_import_template_rows():
-    """Header row + one example row for views.ComponentImportTemplateView -
-    matches import_components_csv's expected columns exactly, and the
-    example row doubles as inline documentation for the Specifications
-    cell's "Label: Value; Label: Value" format."""
-    yield [
-        "Name", "Category", "Manufacturer", "Part Number", "Link", "Quantity Available", "Status", "Visibility",
-        "Tags", "Summary", "Specifications",
-    ]
-    yield [
-        "Example: Brushless Motor", "Propulsion", "T-Motor", "MN5212-KV340", "https://example.com/product",
-        "4", "Testing", "Public", "motor, propulsion", "Short description of the component.",
-        "KV: 340; Weight: 238g",
-    ]
+def inventory_summary(components: QuerySet) -> dict:
+    """The inventory sheet's Summary tab: totals per stock status, and per
+    category broken down by stock status. "UNTRACKED" counts components
+    whose stock was never set (they predate inventory tracking)."""
+    statuses = [*Component.StockStatus.values, "UNTRACKED"]
+
+    def empty_counts() -> dict:
+        return {status: 0 for status in statuses}
+
+    totals = empty_counts()
+    by_category: dict = {}
+    for row in components.order_by().values("category__name", "stock_status").annotate(count=Count("id")):
+        status = row["stock_status"] or "UNTRACKED"
+        totals[status] += row["count"]
+        category = by_category.setdefault(row["category__name"], {"total": 0, "by_status": empty_counts()})
+        category["total"] += row["count"]
+        category["by_status"][status] += row["count"]
+    return {
+        "total": sum(totals.values()),
+        "by_status": totals,
+        "by_category": [
+            {"category": name, **counts}
+            for name, counts in sorted(by_category.items(), key=lambda item: (item[0] is None, (item[0] or "").lower()))
+        ],
+    }

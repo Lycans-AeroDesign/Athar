@@ -49,6 +49,7 @@ from dataclasses import dataclass, field
 from django.contrib.contenttypes.models import ContentType
 from django.core.files import File
 from django.db import transaction
+from django.utils.text import slugify
 
 from accounts.models import User
 from files.models import StoredFile
@@ -61,6 +62,7 @@ from knowledge.models import (
     Category,
     Component,
     ComponentAttachment,
+    ComponentCategory,
     Document,
     Failure,
     FailureAttachment,
@@ -72,6 +74,7 @@ from knowledge.models import (
     RestrictedAccessGrant,
     Sop,
     SopAttachment,
+    StorageLocation,
     Tag,
     Test,
     TestAttachment,
@@ -123,6 +126,8 @@ _DELETE_SPECS = [
     (Sop, "organization"),
     (Failure, "organization"),
     (Component, "organization"),
+    (ComponentCategory, "organization"),
+    (StorageLocation, "organization"),
     (Project, "organization"),
     (Tag, "organization"),
     (Category, "organization"),
@@ -238,21 +243,87 @@ def _restore_projects(ctx, zf, tags_by_id) -> dict[uuid.UUID, Project]:
     return projects_by_id
 
 
-def _restore_components(ctx, zf, categories_by_id, tags_by_id) -> dict[uuid.UUID, Component]:
+def _restore_component_categories(ctx, zf) -> dict[uuid.UUID, ComponentCategory] | None:
+    """None for an archive made before components had their own category
+    list - _restore_components then rebuilds one from each row's category
+    name instead."""
+    if "component_categories.csv" not in zf.namelist():
+        return None
+    categories_by_id = {}
+    for row in _read_csv_rows(zf, "component_categories.csv"):
+        category = ComponentCategory.objects.create(
+            id=_uuid_or_none(row["id"]),
+            organization=ctx.organization,
+            name=row["name"],
+            slug=row["slug"],
+            description=row["description"],
+        )
+        categories_by_id[category.id] = category
+    ctx.summary.created["component_categories"] = len(categories_by_id)
+    return categories_by_id
+
+
+def _restore_storage_locations(ctx, zf) -> dict[uuid.UUID, StorageLocation]:
+    locations_by_id = {}
+    for row in _read_csv_rows(zf, "storage_locations.csv"):
+        location = StorageLocation.objects.create(
+            id=_uuid_or_none(row["id"]),
+            organization=ctx.organization,
+            name=row["name"],
+            description=row["description"],
+        )
+        locations_by_id[location.id] = location
+    ctx.summary.created["storage_locations"] = len(locations_by_id)
+    return locations_by_id
+
+
+def _legacy_component_category(ctx, name: str, cache: dict) -> ComponentCategory | None:
+    if not name:
+        return None
+    key = name.strip().lower()
+    if key not in cache:
+        cache[key] = ComponentCategory.objects.filter(organization=ctx.organization, name__iexact=name).first() or (
+            ComponentCategory.objects.create(organization=ctx.organization, name=name, slug=slugify(name)[:120] or "item")
+        )
+    return cache[key]
+
+
+def _restore_components(
+    ctx, zf, component_categories_by_id, locations_by_id, tags_by_id, files_by_id
+) -> dict[uuid.UUID, Component]:
     components_by_id = {}
+    legacy_categories: dict = {}
     for row in _read_csv_rows(zf, "components.csv"):
+        if component_categories_by_id is None:
+            category = _legacy_component_category(ctx, row.get("category", ""), legacy_categories)
+        else:
+            category = component_categories_by_id.get(_uuid_or_none(row["category_id"]))
+        # .get(): the inventory columns (and quantity/link/photo) are absent
+        # from archives made before they were backed up.
+        min_quantity = row.get("min_quantity", "")
         component = Component.objects.create(
             id=_uuid_or_none(row["id"]),
             organization=ctx.organization,
             name=row["name"],
-            category=categories_by_id.get(_uuid_or_none(row["category_id"])),
+            category=category,
+            photo=files_by_id.get(_uuid_or_none(row.get("photo_id", ""))),
             manufacturer=row["manufacturer"],
             part_number=row["part_number"],
+            link=row.get("link", ""),
+            quantity_available=_int_or_default(row.get("quantity_available", "")),
             status=row["status"],
+            inventory_type=row.get("inventory_type", ""),
+            location=locations_by_id.get(_uuid_or_none(row.get("location_id", ""))),
+            unit=row.get("unit", ""),
+            condition=row.get("condition", ""),
+            stock_status=row.get("stock_status", ""),
+            min_quantity=int(min_quantity) if min_quantity else None,
+            inventory_notes=row.get("inventory_notes", ""),
             summary=row["summary"],
             specifications=json.loads(row["specifications"]) if row["specifications"] else [],
             visibility=row["visibility"],
             created_by_id=ctx.user_id(row["created_by_id"]),
+            updated_by_id=ctx.user_id(row.get("updated_by_id", "")),
         )
         _set_tags(component, ctx, row, tags_by_id)
         components_by_id[component.id] = component
@@ -718,12 +789,17 @@ def restore_org_backup_archive(organization, archive_file) -> RestoreSummary:
     with zipfile.ZipFile(archive_file) as zf:
         tags_by_id = _restore_tags(ctx, zf)
         categories_by_id = _restore_categories(ctx, zf)
+        # Files before components: a component's photo points at one.
+        files_by_id = _restore_files(ctx, zf)
         projects_by_id = _restore_projects(ctx, zf, tags_by_id)
-        components_by_id = _restore_components(ctx, zf, categories_by_id, tags_by_id)
+        component_categories_by_id = _restore_component_categories(ctx, zf)
+        locations_by_id = _restore_storage_locations(ctx, zf)
+        components_by_id = _restore_components(
+            ctx, zf, component_categories_by_id, locations_by_id, tags_by_id, files_by_id
+        )
         _restore_failures(ctx, zf, components_by_id, projects_by_id)
         _restore_sops(ctx, zf, categories_by_id, tags_by_id)
         _restore_tests(ctx, zf, projects_by_id, tags_by_id)
-        files_by_id = _restore_files(ctx, zf)
         _restore_documents(ctx, zf, categories_by_id, tags_by_id, files_by_id)
         course_categories_by_id = _restore_course_categories(ctx, zf)
         courses_by_id = _restore_courses(ctx, zf, course_categories_by_id, files_by_id)

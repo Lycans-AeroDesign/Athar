@@ -2,7 +2,7 @@
 
 This document describes the rules and conventions to follow when developing in this project (`backend/` Django + `frontend/` Next.js). Please read and adhere to these guidelines before submitting changes.
 
-Most of this reflects conventions already in active use (DRF views, migrations, i18n, permission gating, RBAC, ...). One section (§3.4, a shared `core` app with common model base classes) still describes policy for infrastructure that doesn't exist yet, committed to in [`docs/VISION.md` §32](docs/VISION.md#32-technology-stack) — it's written now so the convention is established from the first PR that adds it, rather than retrofitted later. That section says so explicitly.
+Everything here reflects conventions already in active use (DRF views, migrations, i18n, permission gating, RBAC, the shared `core` model base classes, ...).
 
 ---
 
@@ -86,6 +86,7 @@ Follow the [Angular commit message conventions](https://github.com/angular/angul
   - Example: `0015_manual_populate_display_name_from_profile.py`
 - Commit migration files together with the model changes that require them. Don't delete or rewrite migrations already applied in shared/production databases — use `squashmigrations` only by team agreement.
 - CI runs `makemigrations --check --dry-run` — a PR with model changes but no matching migration will fail.
+- **Keep data updates and schema changes on the same table in separate migrations.** Postgres refuses to alter a table that has pending row updates in the same transaction (`cannot ALTER TABLE ... because it has pending trigger events`), and each migration runs in one transaction. When a change needs both — e.g. moving a FK to a new model — split it: generated schema migration → `_manual_` data migration → schema migration. See `knowledge/migrations/0003`–`0005` (moving `Component.category` to `ComponentCategory`).
 
 ### 3.3 Utils and services
 
@@ -95,12 +96,12 @@ Follow the [Angular commit message conventions](https://github.com/angular/angul
 
 ### 3.4 Model base classes (UUID primary keys + timestamps)
 
-*Policy for once a shared `backend/core` app exists with `TimeStampedModel`/`UUIDv7PrimaryKeyModel` base classes.*
+`backend/core/models.py` provides three abstract base classes — use them for every new model:
 
-- New models should use UUID primary keys, not auto-incrementing integers — the knowledge graph's relationship model (§34 of `docs/VISION.md`) links objects across apps by ID, and UUIDs avoid cross-app ID collisions and make IDs safe to expose in URLs/APIs.
-- Don't declare `id` manually on app models without a reviewed exception.
-- Use `TimeStampedModel` for models needing `created_at`/`updated_at`; use the bare UUID PK base for ones that don't.
-- Until `core` exists: define an explicit UUID `id` field and `created_at`/`updated_at` fields by hand, following the same shape, so migrating to the shared base class later is a no-op.
+- **`UUIDPrimaryKeyModel`** — a UUID primary key. New models use UUID primary keys, not auto-incrementing integers — the knowledge graph's relationship model (§34 of `docs/VISION.md`) links objects across apps by ID, and UUIDs avoid cross-app ID collisions and make IDs safe to expose in URLs/APIs. Keys are **uuid7** (`uuid.uuid7`, Python 3.14 stdlib): time-ordered, so new rows append to the end of the primary-key index instead of scattering across it. Use `uuid.uuid7` for any hand-declared UUID key too — but keep `uuid.uuid4` where you need *randomness* (e.g. a short random suffix: a uuid7's leading hex digits are its timestamp).
+- **`TimeStampedModel`** — `created_at`/`updated_at`. Use it for any model that needs them.
+- **`OrganizationScopedModel`** — the `organization` FK. Use it for every tenant-owned model, but *not* for models only ever reached through an already-scoped parent (attachments, `Answer`, `ArticleRevision`, ...) — a redundant FK there is a sync risk, not extra isolation.
+- Don't declare `id` manually on new models without a reviewed exception. Older models (most of `knowledge`, `accounts`, `rbac`) predate `core` and hand-roll the same fields in the same shape; they aren't being retrofitted, but new models shouldn't copy that.
 
 ### 3.5 Reuse existing code
 

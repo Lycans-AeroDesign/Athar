@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project state
 
-This is Athar (أثر), an open-source, self-hosted Knowledge Management System for student AeroDesign teams — see [`README.md`](README.md) for the product pitch and [`docs/VISION.md`](docs/VISION.md) for the full spec/roadmap. Authentication, RBAC, organization settings, i18n, and the Knowledge module (articles, Q&A, categories/tags, attachments, cross-linking, search, activity feed, invitation-code registration) are built and have real test coverage. Engineering-domain areas (projects, components, failures, SOPs) haven't started yet. Backend and frontend are fully integrated — verify current behavior against the actual code/tests rather than assuming a feature is a stub.
+This is Athar (أثر), an open-source, self-hosted Knowledge Management System for student AeroDesign teams — see [`README.md`](README.md) for the product pitch and [`docs/VISION.md`](docs/VISION.md) for the full spec/roadmap. Authentication, RBAC, organization settings, i18n, the Knowledge module (articles, Q&A, categories/tags, attachments, cross-linking, search, activity feed, invitation-code registration), the engineering domain (projects, components with workshop inventory and CSV sync, failures, SOPs, tests, documents), the Training Center, and org backups are built and have real test coverage. Backend and frontend are fully integrated — verify current behavior against the actual code/tests rather than assuming a feature is a stub.
 
 **Primary dev workflow is Docker Compose** (`docker compose up` — see the [README Quickstart](README.md#quickstart-docker)); the bare `uv run`/`npm run dev` commands below work standalone too, but most day-to-day work in this repo happens against the running containers (`docker compose exec backend ...`, `docker compose restart frontend`, etc.).
 
@@ -12,7 +12,7 @@ For contribution conventions (commit format, migrations, i18n, permission gating
 
 ## Backend (`backend/`)
 
-Django 6.1 project managed with `uv`, targeting Python 3.14 (pinned in `.python-version`). Apps: `accounts` (auth, users, invitation codes), `rbac` (roles/permissions), `organization` (org settings/branding), `knowledge` (articles, Q&A, categories, tags, relations, attachments, search), `files` (generic auth-gated file storage), `audit` (action log). No shared `core` app yet — see `CONTRIBUTING.md` §3.4 for the model-base-class convention that applies until one exists.
+Django 6.1 project managed with `uv`, targeting Python 3.14 (pinned in `.python-version`). Apps: `core` (shared abstract model base classes, health check, whole-instance backup commands), `accounts` (auth, users, invitation codes), `rbac` (roles/permissions), `organization` (org settings/branding), `knowledge` (articles, Q&A, categories, tags, relations, attachments, search, and the engineering domain incl. component inventory), `training` (courses, lessons, enrollment, progress), `files` (generic auth-gated file storage), `audit` (action log), `backups` (org-scoped backup/restore via Celery). New models use `core`'s base classes — see `CONTRIBUTING.md` §3.4.
 
 Commands (run from `backend/`, or prefix with `docker compose exec backend` to run inside the container):
 ```bash

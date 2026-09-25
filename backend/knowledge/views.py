@@ -30,6 +30,7 @@ from .models import (
     Category,
     Component,
     ComponentAttachment,
+    ComponentCategory,
     Document,
     Failure,
     FailureAttachment,
@@ -41,6 +42,7 @@ from .models import (
     RestrictedAccessGrant,
     Sop,
     SopAttachment,
+    StorageLocation,
     Tag,
     Test,
     TestAttachment,
@@ -61,6 +63,8 @@ from .serializers import (
     CategorySerializer,
     CategoryWriteSerializer,
     ComponentAttachmentSerializer,
+    ComponentCategorySerializer,
+    ComponentCategoryWriteSerializer,
     ComponentDetailSerializer,
     ComponentListSerializer,
     ComponentWriteSerializer,
@@ -88,6 +92,8 @@ from .serializers import (
     SopDetailSerializer,
     SopListSerializer,
     SopWriteSerializer,
+    StorageLocationSerializer,
+    StorageLocationWriteSerializer,
     TagSerializer,
     TagWriteSerializer,
     TestAttachmentSerializer,
@@ -1217,22 +1223,51 @@ COMPONENT_ORDERING_FIELDS = {
     "status": "status",
     "quantity_available": "quantity_available",
     "visibility": "visibility",
+    "inventory_type": "inventory_type",
+    "location": "location__name",
+    "unit": "unit",
+    "condition": "condition",
+    "stock_status": "stock_status",
+    "min_quantity": "min_quantity",
     "created_at": "created_at",
     "updated_at": "updated_at",
 }
 
+# The select_related/prefetch_related every component list/export needs.
+_COMPONENT_LIST_RELATED = ("category", "location", "created_by", "updated_by", "photo")
+
+
+def _uuid_param(request, name: str):
+    """A ?name=<uuid> filter value, or a 400 - a malformed id would otherwise
+    500 on the UUID column lookup."""
+    raw = request.query_params.get(name, "").strip()
+    if not raw:
+        return None
+    try:
+        return uuid.UUID(raw)
+    except ValueError:
+        raise ValidationError({name: ["Must be a valid id."]})
+
 
 def _filter_and_order_components(queryset, request):
-    """Shared ?category=/?status=/?q=/?ordering= handling for
-    ComponentListCreateView.get and ComponentExportView.get, so "export"
-    keeps meaning "export what I'm currently looking at" (filtered AND
-    sorted) as the table view grows its own column sort."""
-    category_id = request.query_params.get("category")
+    """Shared filter/?q=/?ordering= handling for ComponentListCreateView.get,
+    ComponentExportView.get and ComponentInventorySummaryView.get, so
+    "export" and the summary keep meaning "what I'm currently looking at".
+    ?stock_status= takes a comma-separated list (the "Needs ordering" view is
+    MISSING,ON_ORDER); every other filter takes one value."""
+    category_id = _uuid_param(request, "category")
     if category_id:
         queryset = queryset.filter(category_id=category_id)
-    status_param = request.query_params.get("status")
-    if status_param:
-        queryset = queryset.filter(status=status_param)
+    location_id = _uuid_param(request, "location")
+    if location_id:
+        queryset = queryset.filter(location_id=location_id)
+    for param in ("status", "inventory_type", "condition"):
+        value = request.query_params.get(param)
+        if value:
+            queryset = queryset.filter(**{param: value})
+    stock_statuses = [value for value in request.query_params.get("stock_status", "").split(",") if value.strip()]
+    if stock_statuses:
+        queryset = queryset.filter(stock_status__in=[value.strip() for value in stock_statuses])
     query = request.query_params.get("q", "").strip()
     if query:
         queryset = search.search_filter(queryset, query, "component")
@@ -1248,14 +1283,15 @@ class ComponentListCreateView(APIView):
     @extend_schema(
         tags=["Engineering"],
         summary=(
-            "List components (optional ?category=<id>, ?status=, ?q=<search name/summary/manufacturer/part "
-            "number>, ?ordering=<field, \"-\"-prefixed for descending - see COMPONENT_ORDERING_FIELDS>)"
+            "List components (optional ?category=<id>, ?location=<id>, ?status=, ?inventory_type=, ?condition=, "
+            "?stock_status=<comma-separated>, ?q=<search name/summary/manufacturer/part number/notes>, "
+            "?ordering=<field, \"-\"-prefixed for descending - see COMPONENT_ORDERING_FIELDS>)"
         ),
         responses={200: ComponentListSerializer(many=True), **COMMON_ERRORS},
     )
     def get(self, request):
         queryset = services.visible_components_for(request.user).select_related(
-            "category", "created_by"
+            *_COMPONENT_LIST_RELATED
         ).prefetch_related("tags")
         queryset = _filter_and_order_components(queryset, request)
         return paginated_response(request, queryset, ComponentListSerializer)
@@ -1273,26 +1309,38 @@ class ComponentListCreateView(APIView):
         return Response(ComponentDetailSerializer(component).data, status=status.HTTP_201_CREATED)
 
 
+def _csv_response(filename: str) -> HttpResponse:
+    """A CSV download that Excel opens correctly: the UTF-8 byte-order mark
+    is what tells Excel the file is UTF-8 - without it, "–" dashes and any
+    Arabic text show up garbled."""
+    response = HttpResponse(content_type="text/csv; charset=utf-8")
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    response.write("\ufeff")
+    return response
+
+
 class ComponentExportView(APIView):
-    """CSV export for the Components list page - same ?category=/?status=/
-    ?q=/?ordering= as ComponentListCreateView.get, so "export" means "export
-    what I'm currently looking at", not always the whole org's inventory."""
+    """CSV export for the Components list page - same filters/?q=/?ordering=
+    as ComponentListCreateView.get, so "export" means "export what I'm
+    currently looking at", not always the whole org's inventory. Laid out to
+    paste straight back into the workshop inventory sheet - see
+    services.INVENTORY_CSV_COLUMNS."""
 
     permission_classes = [require_permission("component.read")]
 
     @extend_schema(
         tags=["Engineering"],
-        summary="Export visible components as CSV (optional ?category=<id>, ?status=, ?q=, ?ordering=, same as the list endpoint)",
+        summary="Export visible components as CSV (same filters and ?ordering= as the list endpoint)",
         responses={200: OpenApiResponse(description="CSV file (text/csv)."), **COMMON_ERRORS},
     )
     def get(self, request):
         queryset = services.visible_components_for(request.user).select_related(
-            "category", "created_by"
+            *_COMPONENT_LIST_RELATED
         ).prefetch_related("tags")
         queryset = _filter_and_order_components(queryset, request)
 
-        response = HttpResponse(content_type="text/csv")
-        response["Content-Disposition"] = 'attachment; filename="components.csv"'
+        inventory_type = request.query_params.get("inventory_type", "").lower()
+        response = _csv_response(f"inventory-{inventory_type}.csv" if inventory_type else "components.csv")
         writer = csv.writer(response)
         for row in services.component_csv_rows(queryset):
             writer.writerow(row)
@@ -1313,8 +1361,7 @@ class ComponentImportTemplateView(APIView):
         responses={200: OpenApiResponse(description="CSV file (text/csv)."), **COMMON_ERRORS},
     )
     def get(self, request):
-        response = HttpResponse(content_type="text/csv")
-        response["Content-Disposition"] = 'attachment; filename="components-template.csv"'
+        response = _csv_response("components-template.csv")
         writer = csv.writer(response)
         for row in services.component_import_template_rows():
             writer.writerow(row)
@@ -1338,14 +1385,15 @@ class ComponentImportView(APIView):
         tags=["Engineering"],
         summary=(
             "Preview (commit=false, the default) or apply (commit=true) a bulk CSV import of components "
-            "(multipart fields: file, commit)"
+            "(multipart fields: file, commit, duplicates=separate|merge, inventory_type=MECHANICAL|ELECTRICAL)"
         ),
         responses={
             200: OpenApiResponse(
                 description=(
-                    '{"rows": [{"row": int, "action": "create"|"update"|"unchanged"|"error", "name"?: str, '
-                    '"changes"?: object, "message"?: str}], "summary": {"create": int, "update": int, '
-                    '"unchanged": int, "error": int}, "applied"?: {"created": int, "updated": int, "skipped": int}}'
+                    '{"rows": [{"row": int, "action": "create"|"update"|"unchanged"|"error"|"merged", '
+                    '"name"?: str, "changes"?: object, "message"?: str, "warnings": [str], "merged_into"?: int}], '
+                    '"summary": {"create": int, "update": int, "unchanged": int, "error": int, "merged": int, '
+                    '"duplicate_groups": int}, "applied"?: {"created": int, "updated": int, "skipped": int}}'
                 )
             ),
             400: BAD_REQUEST,
@@ -1357,10 +1405,180 @@ class ComponentImportView(APIView):
         if uploaded_file is None:
             raise ValidationError({"file": ["This field is required."]})
         commit = str(request.data.get("commit", "")).strip().lower() in ("true", "1")
+        duplicates = str(request.data.get("duplicates", "separate")).strip().lower() or "separate"
+        if duplicates not in ("separate", "merge"):
+            raise ValidationError({"duplicates": ['Must be "separate" or "merge".']})
+        inventory_type = str(request.data.get("inventory_type", "")).strip().upper()
+        if inventory_type and inventory_type not in Component.InventoryType.values:
+            raise ValidationError({"inventory_type": [f"Must be one of {', '.join(Component.InventoryType.values)}."]})
         result = services.import_components_csv(
-            actor=request.user, request=request, csv_file=uploaded_file, commit=commit
+            actor=request.user,
+            request=request,
+            csv_file=uploaded_file,
+            commit=commit,
+            duplicates=duplicates,
+            default_inventory_type=inventory_type,
         )
         return Response(result)
+
+
+class ComponentInventorySummaryView(APIView):
+    """The inventory sheet's Summary tab, live - counts per stock status and
+    per category, over the same filters as the list (so "Mechanical only"
+    is just ?inventory_type=MECHANICAL)."""
+
+    permission_classes = [require_permission("component.read")]
+
+    @extend_schema(
+        tags=["Engineering"],
+        summary="Inventory totals by stock status and by category (same filters as the component list)",
+        responses={
+            200: OpenApiResponse(
+                description=(
+                    '{"total": int, "by_status": {"IN_STOCK": int, ..., "UNTRACKED": int}, '
+                    '"by_category": [{"category": str|null, "total": int, "by_status": {...}}]}'
+                )
+            ),
+            **COMMON_ERRORS,
+        },
+    )
+    def get(self, request):
+        queryset = _filter_and_order_components(services.visible_components_for(request.user), request)
+        return Response(services.inventory_summary(queryset))
+
+
+class ComponentCategoryListView(APIView):
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [require_permission("category.manage")()]
+        return [require_permission("component.read")()]
+
+    @extend_schema(
+        tags=["Engineering"],
+        summary="List component categories",
+        responses={200: ComponentCategorySerializer(many=True), **COMMON_ERRORS},
+    )
+    def get(self, request):
+        queryset = ComponentCategory.objects.filter(organization=request.user.organization).annotate(
+            component_count=Count("components")
+        )
+        return paginated_response(request, queryset, ComponentCategorySerializer)
+
+    @extend_schema(
+        tags=["Engineering"],
+        summary="Create a component category (requires category.manage)",
+        request=ComponentCategoryWriteSerializer,
+        responses={201: ComponentCategorySerializer, 400: BAD_REQUEST, **COMMON_ERRORS},
+    )
+    def post(self, request):
+        serializer = ComponentCategoryWriteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        if ComponentCategory.objects.filter(
+            organization=request.user.organization, name__iexact=serializer.validated_data["name"].strip()
+        ).exists():
+            raise ValidationError({"name": ["A component category with this name already exists."]})
+        category = services.create_component_category(actor=request.user, request=request, **serializer.validated_data)
+        return Response(ComponentCategorySerializer(category).data, status=status.HTTP_201_CREATED)
+
+
+class ComponentCategoryDetailView(APIView):
+    permission_classes = [require_permission("category.manage")]
+
+    @extend_schema(
+        tags=["Engineering"],
+        summary="Rename/update a component category (requires category.manage)",
+        request=ComponentCategoryWriteSerializer,
+        responses={200: ComponentCategorySerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
+    )
+    def patch(self, request, pk):
+        category = get_object_or_404(ComponentCategory, pk=pk, organization=request.user.organization)
+        serializer = ComponentCategoryWriteSerializer(category, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        name = serializer.validated_data.get("name", "").strip()
+        if name and ComponentCategory.objects.filter(
+            organization=request.user.organization, name__iexact=name
+        ).exclude(pk=category.pk).exists():
+            raise ValidationError({"name": ["A component category with this name already exists."]})
+        category = services.update_component_category(
+            category=category, actor=request.user, request=request, **serializer.validated_data
+        )
+        return Response(ComponentCategorySerializer(category).data)
+
+    @extend_schema(
+        tags=["Engineering"],
+        summary="Delete a component category (requires category.manage; its components become uncategorized)",
+        responses={204: OpenApiResponse(description="Deleted."), 404: NOT_FOUND, **COMMON_ERRORS},
+    )
+    def delete(self, request, pk):
+        category = get_object_or_404(ComponentCategory, pk=pk, organization=request.user.organization)
+        services.delete_component_category(category=category, actor=request.user, request=request)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class StorageLocationListView(APIView):
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [require_permission("category.manage")()]
+        return [require_permission("component.read")()]
+
+    @extend_schema(
+        tags=["Engineering"],
+        summary="List workshop storage locations",
+        responses={200: StorageLocationSerializer(many=True), **COMMON_ERRORS},
+    )
+    def get(self, request):
+        queryset = StorageLocation.objects.filter(organization=request.user.organization).annotate(
+            component_count=Count("components")
+        )
+        return paginated_response(request, queryset, StorageLocationSerializer)
+
+    @extend_schema(
+        tags=["Engineering"],
+        summary="Create a storage location (requires category.manage)",
+        request=StorageLocationWriteSerializer,
+        responses={201: StorageLocationSerializer, 400: BAD_REQUEST, **COMMON_ERRORS},
+    )
+    def post(self, request):
+        serializer = StorageLocationWriteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        if StorageLocation.objects.filter(
+            organization=request.user.organization, name__iexact=serializer.validated_data["name"].strip()
+        ).exists():
+            raise ValidationError({"name": ["A location with this name already exists."]})
+        location = services.create_storage_location(actor=request.user, request=request, **serializer.validated_data)
+        return Response(StorageLocationSerializer(location).data, status=status.HTTP_201_CREATED)
+
+
+class StorageLocationDetailView(APIView):
+    permission_classes = [require_permission("category.manage")]
+
+    @extend_schema(
+        tags=["Engineering"],
+        summary=(
+            "Rename/update a storage location (requires category.manage). Renaming it to another location's "
+            "name merges the two - the returned location is the one that remains."
+        ),
+        request=StorageLocationWriteSerializer,
+        responses={200: StorageLocationSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
+    )
+    def patch(self, request, pk):
+        location = get_object_or_404(StorageLocation, pk=pk, organization=request.user.organization)
+        serializer = StorageLocationWriteSerializer(location, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        location = services.update_storage_location(
+            location=location, actor=request.user, request=request, **serializer.validated_data
+        )
+        return Response(StorageLocationSerializer(location).data)
+
+    @extend_schema(
+        tags=["Engineering"],
+        summary="Delete a storage location (requires category.manage; its components lose their location)",
+        responses={204: OpenApiResponse(description="Deleted."), 404: NOT_FOUND, **COMMON_ERRORS},
+    )
+    def delete(self, request, pk):
+        location = get_object_or_404(StorageLocation, pk=pk, organization=request.user.organization)
+        services.delete_storage_location(location=location, actor=request.user, request=request)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class ComponentDetailView(APIView):

@@ -168,8 +168,11 @@ class Command(BaseCommand):
         categories = {c.slug: c for c in Category.objects.filter(organization=organization)}
         avionics_cat = categories.get("avionics")
         propulsion_cat = categories.get("propulsion")
-        structures_cat = categories.get("structures")
         testing_cat = categories.get("testing-qa")
+        # Components have their own category list (see ComponentCategory).
+        avionics_parts = services.get_or_create_component_category("Avionics", actor=head)
+        propulsion_parts = services.get_or_create_component_category("Propulsion", actor=head)
+        structures_parts = services.get_or_create_component_category("Structures", actor=head)
 
         today = datetime.date.today()
 
@@ -191,10 +194,16 @@ class Command(BaseCommand):
         flight_controller = services.create_component(
             actor=head,
             name="Pixhawk 6X Flight Controller",
-            category=avionics_cat,
+            category=avionics_parts,
             manufacturer="Holybro",
             part_number="PIX6X",
             status=Component.Status.CERTIFIED,
+            inventory_type=Component.InventoryType.ELECTRICAL,
+            location_name="Avionics Cabinet -> Drawer 1",
+            quantity_available=2,
+            unit="each",
+            condition=Component.Condition.GOOD,
+            min_quantity=1,
             summary="Primary flight controller running ArduPilot - handles stabilization, navigation, and telemetry.",
             specifications=[
                 {"label": "Processor", "value": "STM32H753, dual-core"},
@@ -206,10 +215,17 @@ class Command(BaseCommand):
         motor = services.create_component(
             actor=mentor,
             name="T-Motor MN5212 KV340",
-            category=propulsion_cat,
+            category=propulsion_parts,
             manufacturer="T-Motor",
             part_number="MN5212-340",
             status=Component.Status.TESTING,
+            inventory_type=Component.InventoryType.ELECTRICAL,
+            location_name="Motors, ESCs and BECs Box",
+            quantity_available=1,
+            unit="each",
+            condition=Component.Condition.NEW,
+            min_quantity=2,
+            inventory_notes="Spare ordered for the competition build.",
             summary="Primary propulsion motor, paired with a 17x6 propeller.",
             specifications=[
                 {"label": "KV Rating", "value": "340 KV"},
@@ -220,10 +236,15 @@ class Command(BaseCommand):
         battery = services.create_component(
             actor=mentor,
             name="4S 6000mAh LiPo Battery",
-            category=propulsion_cat,
+            category=propulsion_parts,
             manufacturer="Tattu",
             part_number="TA-4S-6000",
             status=Component.Status.TESTING,
+            inventory_type=Component.InventoryType.ELECTRICAL,
+            location_name="LiPo Safe Bag Shelf",
+            quantity_available=4,
+            unit="each",
+            condition=Component.Condition.GOOD,
             summary="Main flight battery pack - see the safety-critical handling SOP before use.",
             specifications=[{"label": "Capacity", "value": "6000mAh"}, {"label": "Discharge Rate", "value": "25C"}],
             tag_names=["propulsion", "safety-critical"],
@@ -231,9 +252,14 @@ class Command(BaseCommand):
         wing_spar = services.create_component(
             actor=member,
             name="Carbon Fiber Wing Spar",
-            category=structures_cat,
+            category=structures_parts,
             manufacturer="In-house",
             status=Component.Status.CERTIFIED,
+            inventory_type=Component.InventoryType.MECHANICAL,
+            location_name="Fuselage Box -> Carbon Fiber",
+            quantity_available=0,
+            unit="each",
+            stock_status=Component.StockStatus.ON_ORDER,
             summary="Primary structural spar for the Falcon airframe's main wing.",
             tag_names=["structures"],
         )

@@ -19,6 +19,7 @@ from .models import (
     Bookmark,
     Category,
     Component,
+    ComponentCategory,
     Document,
     Failure,
     KnowledgeRelation,
@@ -27,6 +28,7 @@ from .models import (
     QuestionAttachment,
     RestrictedAccessGrant,
     Sop,
+    StorageLocation,
     Tag,
     Test,
 )
@@ -1743,7 +1745,8 @@ class EngineeringDomainTests(KnowledgeTestCase):
 
         response = self.client.get(reverse("knowledge-component-export"), **self._auth(member_access))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response["Content-Type"], "text/csv")
+        self.assertEqual(response["Content-Type"], "text/csv; charset=utf-8")
+        self.assertTrue(response.getvalue().startswith("\ufeff".encode()))  # BOM - Excel reads it as UTF-8
         body = response.getvalue().decode()
         self.assertIn("Certified Widget", body)
         self.assertIn("Testing Widget", body)
@@ -1764,13 +1767,9 @@ class EngineeringDomainTests(KnowledgeTestCase):
         _, member_access = self._login_with_role("compimporttemplate@example.com", "Member")
         response = self.client.get(reverse("knowledge-component-import-template"), **self._auth(member_access))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response["Content-Type"], "text/csv")
-        header = response.getvalue().decode().splitlines()[0]
-        self.assertEqual(
-            header,
-            "Name,Category,Manufacturer,Part Number,Link,Quantity Available,Status,Visibility,Tags,Summary,"
-            "Specifications",
-        )
+        self.assertEqual(response["Content-Type"], "text/csv; charset=utf-8")
+        header = response.getvalue().decode("utf-8-sig").splitlines()[0]
+        self.assertEqual(header.split(","), services.INVENTORY_CSV_COLUMNS)
 
     def _import_csv(self, access, csv_content: str, *, commit: bool):
         # A fresh SimpleUploadedFile per call - reusing one instance across
@@ -1811,7 +1810,10 @@ class EngineeringDomainTests(KnowledgeTestCase):
         response = self._import_csv(mentor_access, csv_content, commit=False)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data["summary"], {"create": 1, "update": 1, "unchanged": 1, "error": 1})
+        self.assertEqual(
+            response.data["summary"],
+            {"create": 1, "update": 1, "unchanged": 1, "error": 1, "merged": 0, "duplicate_groups": 0},
+        )
         self.assertNotIn("applied", response.data)
         rows_by_row_number = {row["row"]: row for row in response.data["rows"]}
         self.assertEqual(rows_by_row_number[2]["action"], "create")
@@ -1829,7 +1831,9 @@ class EngineeringDomainTests(KnowledgeTestCase):
         # quantity/status change, and not the auto-created "Propulsion" category.
         self.assertFalse(Component.objects.filter(organization=self.organization, name="Brushless Motor").exists())
         self.assertEqual(Component.objects.get(organization=self.organization, name="ESC 40A").quantity_available, 2)
-        self.assertFalse(Category.objects.filter(organization=self.organization, name__iexact="Propulsion").exists())
+        self.assertFalse(
+            ComponentCategory.objects.filter(organization=self.organization, name__iexact="Propulsion").exists()
+        )
 
     def test_component_import_commit_applies_changes_and_leaves_blank_cells_alone(self):
         _, mentor_access = self._login_with_role("compimportcommit@example.com", "Mentor")
@@ -1857,7 +1861,11 @@ class EngineeringDomainTests(KnowledgeTestCase):
         self.assertEqual(created.quantity_available, 4)
         self.assertEqual(created.specifications, [{"label": "KV", "value": "340"}, {"label": "Weight", "value": "238g"}])
         self.assertCountEqual([tag.name for tag in created.tags.all()], ["motor", "propulsion"])
-        self.assertEqual(created.category, Category.objects.get(organization=self.organization, name__iexact="Propulsion"))
+        self.assertEqual(
+            created.category, ComponentCategory.objects.get(organization=self.organization, name__iexact="Propulsion")
+        )
+        # Components' categories are their own list - nothing leaks into the knowledge categories.
+        self.assertFalse(Category.objects.filter(organization=self.organization, name__iexact="Propulsion").exists())
 
         updated = Component.objects.get(organization=self.organization, name="ESC 40A")
         self.assertEqual(updated.quantity_available, 5)
@@ -2942,3 +2950,341 @@ class CrossOrgAccessGrantAndBookmarkTests(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(Bookmark.objects.count(), 0)
+
+
+# The workshop inventory sheet's own layout, verbatim headers - including its
+# duplicate "Scissors"/"Wrench" rows (same item, same place) and en-dashes.
+MECHANICAL_SHEET_CSV = (
+    "Category,Item,Grid Location,Quantity,Unit,Condition,Status,Min. Qty Desired,Notes,Last Updated,Updated By\n"
+    "Power Tools,Mini Drill Kit,Total Mini Drill Kit,1,set,New,In Stock,,Main mini drill kit,2026-09-20,Initial Import\n"
+    "Hand Tools,Scissors,Fuselage Box -> Hand Tools,1,each,Good,In Stock,,\"Loose, from hand tools shelf\",2026-09-20,Initial Import\n"
+    "Hand Tools,Scissors,Fuselage Box -> Hand Tools,2,each,Good,In Stock,,\"Loose, from hand tools shelf\",2026-09-20,Initial Import\n"
+    "Hand Tools,Screwdriver – Phillips,Fuselage Box -> Hand Tools,1,each,Good,In Stock,None,,2026-09-20,Initial Import\n"
+    "Hand Tools,Cutter / Utility Knife,Fuselage Box -> Hand Tools,2,each,Good,Low Stock,,,2026-09-20,Initial Import\n"
+    "Wood & Sheet Goods,Balsa Sheet 2mm,Wood Rack,0,sheet,,Missing / Need to Order,5,,2026-09-20,Initial Import\n"
+    ",,,,,,,,,,\n"
+)
+
+
+class ComponentInventoryTests(KnowledgeTestCase):
+    """Workshop inventory on components - the fields, the automatic stock
+    status, and syncing with the inventory spreadsheet through CSV."""
+
+    def _import(self, access, content, *, commit, encoding="utf-8", **options):
+        upload = SimpleUploadedFile("inventory.csv", content.encode(encoding), content_type="text/csv")
+        return self.client.post(
+            reverse("knowledge-component-import"),
+            {"file": upload, "commit": "true" if commit else "false", **options},
+            format="multipart",
+            **self._auth(access),
+        )
+
+    def _create(self, access, **payload):
+        response = self.client.post(
+            reverse("knowledge-component-list-create"), payload, format="json", **self._auth(access)
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
+        return Component.objects.get(pk=response.data["id"])
+
+    def _patch(self, access, component, **payload):
+        response = self.client.patch(
+            reverse("knowledge-component-detail", args=[component.pk]), payload, format="json", **self._auth(access)
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        component.refresh_from_db()
+        return response
+
+    def _export(self, access, query=""):
+        response = self.client.get(reverse("knowledge-component-export") + query, **self._auth(access))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        return response.getvalue().decode("utf-8-sig")
+
+    # --- fields and stock status ------------------------------------------------
+
+    def test_stock_status_is_derived_from_quantity_unless_set_by_hand(self):
+        user, mentor_access = self._login_with_role("stockderive@example.com", "Mentor")
+        drill = self._create(mentor_access, name="Drill", quantity_available=3, min_quantity=2)
+        self.assertEqual(drill.stock_status, Component.StockStatus.IN_STOCK)
+        self.assertEqual(drill.updated_by, user)
+
+        self._patch(mentor_access, drill, quantity_available=1)
+        self.assertEqual(drill.stock_status, Component.StockStatus.LOW_STOCK)  # below the minimum
+        self._patch(mentor_access, drill, quantity_available=0)
+        self.assertEqual(drill.stock_status, Component.StockStatus.MISSING)
+
+        self._patch(mentor_access, drill, stock_status="ON_ORDER")
+        self._patch(mentor_access, drill, quantity_available=5)
+        self.assertEqual(drill.stock_status, Component.StockStatus.ON_ORDER)  # a person's call - kept
+
+        self._patch(mentor_access, drill, stock_status="")  # back to automatic
+        self.assertEqual(drill.stock_status, Component.StockStatus.IN_STOCK)
+
+    def test_manual_low_stock_without_a_minimum_survives_quantity_changes(self):
+        _, mentor_access = self._login_with_role("stocklow@example.com", "Mentor")
+        tape = self._create(mentor_access, name="Tape", quantity_available=3, stock_status="LOW_STOCK")
+        self._patch(mentor_access, tape, quantity_available=2)
+        self.assertEqual(tape.stock_status, Component.StockStatus.LOW_STOCK)
+
+    def test_location_is_set_by_name_created_on_the_fly_and_cleared_with_blank(self):
+        _, mentor_access = self._login_with_role("locname@example.com", "Mentor")
+        saw = self._create(mentor_access, name="Hand Saw", location_name="Fuselage Box -> Hand Tools")
+        hammer = self._create(mentor_access, name="Hammer", location_name="fuselage box -> hand tools")
+        self.assertEqual(saw.location_id, hammer.location_id)  # case-insensitive - one location
+        self.assertEqual(StorageLocation.objects.filter(organization=self.organization).count(), 1)
+
+        response = self._patch(mentor_access, saw, location_name="")
+        self.assertIsNone(saw.location)
+        self.assertIsNone(response.data["location"])
+
+    def test_component_category_from_another_organization_is_rejected(self):
+        _, mentor_access = self._login_with_role("catcross@example.com", "Mentor")
+        other_org = create_test_organization(name="Other Workshop")
+        foreign = ComponentCategory.objects.create(organization=other_org, name="Power Tools", slug="power-tools")
+        response = self.client.post(
+            reverse("knowledge-component-list-create"),
+            {"name": "Drill", "category_id": str(foreign.pk)},
+            format="json",
+            **self._auth(mentor_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_list_filters_by_inventory_type_location_and_stock_statuses(self):
+        _, mentor_access = self._login_with_role("invfilter@example.com", "Mentor")
+        self._create(mentor_access, name="Drill", inventory_type="MECHANICAL", quantity_available=1, location_name="Box A")
+        self._create(mentor_access, name="Balsa", inventory_type="MECHANICAL", quantity_available=0)
+        self._create(mentor_access, name="Motor", inventory_type="ELECTRICAL", quantity_available=2, stock_status="ON_ORDER")
+        url = reverse("knowledge-component-list-create")
+
+        def names(query):
+            response = self.client.get(url + query, **self._auth(mentor_access))
+            return sorted(c["name"] for c in response.data["results"])
+
+        self.assertEqual(names("?inventory_type=MECHANICAL"), ["Balsa", "Drill"])
+        self.assertEqual(names("?stock_status=MISSING,ON_ORDER"), ["Balsa", "Motor"])
+        location = StorageLocation.objects.get(organization=self.organization, name="Box A")
+        self.assertEqual(names(f"?location={location.pk}"), ["Drill"])
+        response = self.client.get(url + "?location=not-a-uuid", **self._auth(mentor_access))
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_inventory_summary_counts_by_status_and_category(self):
+        _, mentor_access = self._login_with_role("invsummary@example.com", "Mentor")
+        response = self._import(mentor_access, MECHANICAL_SHEET_CSV, commit=True, inventory_type="MECHANICAL")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self._create(mentor_access, name="Motor", inventory_type="ELECTRICAL", quantity_available=1)
+
+        response = self.client.get(
+            reverse("knowledge-component-inventory-summary") + "?inventory_type=MECHANICAL", **self._auth(mentor_access)
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["total"], 6)
+        self.assertEqual(response.data["by_status"]["IN_STOCK"], 4)
+        self.assertEqual(response.data["by_status"]["LOW_STOCK"], 1)
+        self.assertEqual(response.data["by_status"]["MISSING"], 1)
+        hand_tools = next(row for row in response.data["by_category"] if row["category"] == "Hand Tools")
+        self.assertEqual(hand_tools["total"], 4)
+        self.assertEqual(hand_tools["by_status"]["LOW_STOCK"], 1)
+
+    # --- importing the sheet ------------------------------------------------------
+
+    def test_sheet_tab_imports_as_is_with_its_own_headers_and_labels(self):
+        _, mentor_access = self._login_with_role("sheetimport@example.com", "Mentor")
+        response = self._import(mentor_access, MECHANICAL_SHEET_CSV, commit=True, inventory_type="MECHANICAL")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertEqual(response.data["summary"]["error"], 0, response.data["rows"])
+        self.assertEqual(response.data["summary"]["duplicate_groups"], 1)
+        self.assertEqual(response.data["applied"]["created"], 6)  # both Scissors rows kept, blank row skipped
+
+        balsa = Component.objects.get(organization=self.organization, name="Balsa Sheet 2mm")
+        self.assertEqual(balsa.inventory_type, Component.InventoryType.MECHANICAL)
+        self.assertEqual(balsa.stock_status, Component.StockStatus.MISSING)
+        self.assertEqual(balsa.min_quantity, 5)
+        self.assertEqual(balsa.unit, "sheet")
+        self.assertEqual(balsa.location.name, "Wood Rack")
+        self.assertEqual(balsa.category.name, "Wood & Sheet Goods")
+        self.assertEqual(balsa.status, "")  # no engineering status for a workshop material
+
+        phillips = Component.objects.get(organization=self.organization, name="Screwdriver – Phillips")
+        self.assertIsNone(phillips.min_quantity)  # "None" cell
+        self.assertEqual(phillips.condition, Component.Condition.GOOD)
+        cutter = Component.objects.get(organization=self.organization, name="Cutter / Utility Knife")
+        self.assertEqual(cutter.stock_status, Component.StockStatus.LOW_STOCK)
+        self.assertEqual(cutter.inventory_notes, "")
+
+        scissors = Component.objects.filter(organization=self.organization, name="Scissors").order_by("quantity_available")
+        self.assertEqual([c.quantity_available for c in scissors], [1, 2])
+
+        # The sheet's categories never reach the knowledge category list.
+        self.assertFalse(Category.objects.filter(organization=self.organization, name="Hand Tools").exists())
+
+    def test_reimporting_the_same_sheet_changes_nothing_even_with_duplicate_rows(self):
+        _, mentor_access = self._login_with_role("sheetreimport@example.com", "Mentor")
+        self._import(mentor_access, MECHANICAL_SHEET_CSV, commit=True, inventory_type="MECHANICAL")
+
+        response = self._import(mentor_access, MECHANICAL_SHEET_CSV, commit=True, inventory_type="MECHANICAL")
+
+        self.assertEqual(response.data["applied"], {"created": 0, "updated": 0, "skipped": 6}, response.data["rows"])
+        self.assertEqual(Component.objects.filter(organization=self.organization, name="Scissors").count(), 2)
+
+    def test_duplicate_rows_can_be_merged_with_quantities_added(self):
+        _, mentor_access = self._login_with_role("sheetmerge@example.com", "Mentor")
+        response = self._import(mentor_access, MECHANICAL_SHEET_CSV, commit=True, duplicates="merge")
+
+        self.assertEqual(response.data["summary"]["merged"], 1)
+        rows = {row["row"]: row for row in response.data["rows"]}
+        self.assertEqual(rows[4]["action"], "merged")
+        self.assertEqual(rows[4]["merged_into"], 3)
+        self.assertTrue(rows[3]["warnings"])
+        scissors = Component.objects.get(organization=self.organization, name="Scissors")
+        self.assertEqual(scissors.quantity_available, 3)
+        self.assertEqual(scissors.inventory_notes, "Loose, from hand tools shelf")
+
+    def test_first_import_attaches_to_existing_component_without_a_location(self):
+        _, mentor_access = self._login_with_role("sheetattach@example.com", "Mentor")
+        drill = self._create(mentor_access, name="Mini Drill Kit", manufacturer="Total")
+
+        self._import(mentor_access, MECHANICAL_SHEET_CSV, commit=True)
+
+        drill.refresh_from_db()
+        self.assertEqual(drill.location.name, "Total Mini Drill Kit")
+        self.assertEqual(drill.manufacturer, "Total")  # not in the sheet - untouched
+        self.assertEqual(Component.objects.filter(organization=self.organization, name="Mini Drill Kit").count(), 1)
+
+    def test_ambiguous_name_match_asks_for_athar_id(self):
+        _, mentor_access = self._login_with_role("sheetambig@example.com", "Mentor")
+        self._create(mentor_access, name="Wrench", location_name="Box A")
+        self._create(mentor_access, name="Wrench", location_name="Box B")
+
+        response = self._import(mentor_access, "Item,Quantity\nWrench,3\n", commit=False)
+
+        row = response.data["rows"][0]
+        self.assertEqual(row["action"], "error")
+        self.assertIn("Athar ID", row["message"])
+
+    def test_status_cell_accepts_both_stock_and_engineering_values(self):
+        _, mentor_access = self._login_with_role("sheetstatus@example.com", "Mentor")
+        csv_content = "Item,Status\nOld Heat Gun,Retired / Broken\nESC 40A,Certified\nThing,Sparkly\n"
+        response = self._import(mentor_access, csv_content, commit=True)
+
+        errors = [row for row in response.data["rows"] if row["action"] == "error"]
+        self.assertEqual([row["row"] for row in errors], [4])
+        self.assertIn("Sparkly", errors[0]["message"])
+        heat_gun = Component.objects.get(organization=self.organization, name="Old Heat Gun")
+        self.assertEqual(heat_gun.stock_status, Component.StockStatus.RETIRED)
+        esc = Component.objects.get(organization=self.organization, name="ESC 40A")
+        self.assertEqual(esc.status, Component.Status.CERTIFIED)
+
+    def test_excel_semicolon_csv_in_windows_1252_imports(self):
+        _, mentor_access = self._login_with_role("sheetexcel@example.com", "Mentor")
+        csv_content = "Item;Grid Location;Quantity\nScrewdriver – Slotted;Fuselage Box;1\n"
+        response = self._import(mentor_access, csv_content, commit=True, encoding="cp1252")
+        self.assertEqual(response.data["applied"]["created"], 1, response.data)
+        self.assertTrue(Component.objects.filter(name="Screwdriver – Slotted").exists())
+
+    def test_file_without_an_item_column_is_rejected(self):
+        _, mentor_access = self._login_with_role("sheetnohead@example.com", "Mentor")
+        response = self._import(mentor_access, "Foo,Bar\n1,2\n", commit=False)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_invalid_import_options_are_rejected(self):
+        _, mentor_access = self._login_with_role("sheetopts@example.com", "Mentor")
+        response = self._import(mentor_access, "Item\nX\n", commit=False, duplicates="sometimes")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        response = self._import(mentor_access, "Item\nX\n", commit=False, inventory_type="PLUMBING")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    # --- exporting and the round trip ------------------------------------------------
+
+    def test_export_uses_the_sheet_layout_and_labels(self):
+        _, mentor_access = self._login_with_role("sheetexport@example.com", "Mentor")
+        self._import(mentor_access, MECHANICAL_SHEET_CSV, commit=True, inventory_type="MECHANICAL")
+
+        lines = self._export(mentor_access, "?inventory_type=MECHANICAL&ordering=name").splitlines()
+
+        self.assertEqual(lines[0].split(","), services.INVENTORY_CSV_COLUMNS)
+        balsa = next(line for line in lines if "Balsa Sheet 2mm" in line)
+        self.assertIn("Missing / Need to Order", balsa)
+        self.assertIn(",Mechanical,", balsa)
+        self.assertEqual(balsa.split(",")[0], str(Component.objects.get(name="Balsa Sheet 2mm").pk))
+
+    def test_export_then_reimport_is_a_no_op(self):
+        _, mentor_access = self._login_with_role("sheetroundtrip@example.com", "Mentor")
+        self._import(mentor_access, MECHANICAL_SHEET_CSV, commit=True, inventory_type="MECHANICAL")
+        self._create(
+            mentor_access, name="Pixhawk", inventory_type="ELECTRICAL", quantity_available=2, tag_names=["Avionics"],
+            specifications=[{"label": "IMU", "value": "Triple"}], summary="Line one\nLine two", status="CERTIFIED",
+        )
+
+        response = self._import(mentor_access, self._export(mentor_access), commit=False)
+
+        self.assertEqual(response.data["summary"]["unchanged"], 7, response.data["rows"])
+        self.assertEqual(response.data["summary"]["create"] + response.data["summary"]["update"], 0)
+
+    def test_athar_id_matches_exactly_even_after_a_rename_in_the_sheet(self):
+        _, mentor_access = self._login_with_role("sheetid@example.com", "Mentor")
+        drill = self._create(mentor_access, name="Drill", quantity_available=1)
+
+        csv_content = f"Athar ID,Item,Quantity\n{drill.pk},Cordless Drill (Old),2\n"
+        response = self._import(mentor_access, csv_content, commit=True)
+
+        self.assertEqual(response.data["applied"]["updated"], 1, response.data)
+        drill.refresh_from_db()
+        self.assertEqual(drill.name, "Cordless Drill (Old)")
+        self.assertEqual(drill.quantity_available, 2)
+
+    def test_unknown_or_repeated_athar_id_is_an_error(self):
+        _, mentor_access = self._login_with_role("sheetbadid@example.com", "Mentor")
+        drill = self._create(mentor_access, name="Drill")
+        csv_content = (
+            "Athar ID,Item,Quantity\n"
+            "00000000-0000-0000-0000-000000000000,Ghost,1\n"
+            f"{drill.pk},Drill,2\n"
+            f"{drill.pk},Drill,3\n"
+        )
+        response = self._import(mentor_access, csv_content, commit=False)
+        actions = [row["action"] for row in response.data["rows"]]
+        self.assertEqual(actions, ["error", "update", "error"])
+
+    def test_website_edit_after_the_sheets_last_updated_warns_before_overwriting(self):
+        _, mentor_access = self._login_with_role("sheetconflict@example.com", "Mentor")
+        drill = self._create(mentor_access, name="Drill", quantity_available=1)
+
+        csv_content = f"Athar ID,Item,Quantity,Last Updated\n{drill.pk},Drill,4,2020-01-01\n"
+        response = self._import(mentor_access, csv_content, commit=False)
+
+        row = response.data["rows"][0]
+        self.assertEqual(row["action"], "update")
+        self.assertTrue(any("overwrites" in warning for warning in row["warnings"]))
+
+    # --- categories and locations ---------------------------------------------------
+
+    def test_component_categories_and_locations_are_admin_managed_but_readable_by_members(self):
+        _, member_access = self._login_with_role("invlistmember@example.com", "Member")
+        _, admin_access = self._login_with_role("invlistadmin@example.com", "Organization Admin")
+        for list_name in ("knowledge-component-category-list", "knowledge-storage-location-list"):
+            url = reverse(list_name)
+            self.assertEqual(self.client.get(url, **self._auth(member_access)).status_code, status.HTTP_200_OK)
+            response = self.client.post(url, {"name": "Shelf 1"}, format="json", **self._auth(member_access))
+            self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+            response = self.client.post(url, {"name": "Shelf 1"}, format="json", **self._auth(admin_access))
+            self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+            response = self.client.post(url, {"name": "shelf 1"}, format="json", **self._auth(admin_access))
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)  # duplicate, any case
+
+    def test_renaming_a_location_onto_another_merges_them(self):
+        _, mentor_access = self._login_with_role("locmergementor@example.com", "Mentor")
+        _, admin_access = self._login_with_role("locmergeadmin@example.com", "Organization Admin")
+        typo = self._create(mentor_access, name="Hammer", location_name="Fuselage box").location
+        right = self._create(mentor_access, name="Saw", location_name="Fuselage Box -> Hand Tools").location
+
+        response = self.client.patch(
+            reverse("knowledge-storage-location-detail", args=[typo.pk]),
+            {"name": "fuselage box -> hand tools"},
+            format="json",
+            **self._auth(admin_access),
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["id"], str(right.pk))
+        self.assertEqual(response.data["component_count"], 2)
+        self.assertFalse(StorageLocation.objects.filter(pk=typo.pk).exists())

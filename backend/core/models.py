@@ -4,14 +4,14 @@ from django.db import models
 
 
 class UUIDPrimaryKeyModel(models.Model):
-    """Shared UUID pk base - see CONTRIBUTING.md §3.4, which reserves this
-    app/pattern for exactly this ("*Policy for once a shared `backend/core`
-    app exists*"). Uses uuid4, matching every model that already hand-rolled
-    this field before this app existed; CONTRIBUTING §3.4 anticipates a
-    future uuid7 variant, which is an unrelated, separate improvement (sort-
-    ordering pk churn, not multi-tenancy) - not bundled into this pass."""
+    """Shared UUID pk base - see CONTRIBUTING.md §3.4. uuid7, not uuid4: its
+    leading 48 bits are a millisecond timestamp, so new keys land at the end
+    of the primary-key B-tree instead of at random positions (fewer page
+    splits, better cache locality as tables grow) and sort by creation time.
+    Rows created before the switch keep their uuid4 ids - nothing depends on
+    the version. Python 3.14's stdlib provides uuid.uuid7()."""
 
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
 
     class Meta:
         abstract = True

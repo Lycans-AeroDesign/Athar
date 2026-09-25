@@ -27,7 +27,7 @@ SEARCH_FIELDS: dict[str, tuple[str, tuple[str, ...]]] = {
     "article": ("title", ("excerpt", "content")),
     "question": ("title", ("body",)),
     "project": ("name", ("description",)),
-    "component": ("name", ("summary", "manufacturer", "part_number")),
+    "component": ("name", ("summary", "manufacturer", "part_number", "inventory_notes")),
     "failure": ("title", ("summary", "root_cause")),
     "sop": ("title", ("content",)),
     "test": ("title", ("objective", "results", "conclusion")),

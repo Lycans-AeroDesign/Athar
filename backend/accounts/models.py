@@ -43,7 +43,7 @@ class UserManager(BaseUserManager):
 
 
 class User(AbstractBaseUser):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
     # Every user belongs to exactly one organization (not core.OrganizationScopedModel -
     # User isn't reached "through" an org the way Article/etc. are; it's the
     # membership edge itself). Multi-org membership (one login, several
@@ -153,7 +153,7 @@ class InvitationCode(models.Model):
     controls whether registration is allowed at all, not what role the
     registrant gets."""
 
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
     # Which org a registrant using this code joins - see accounts.services.register_user.
     organization = models.ForeignKey(
         "organization.Organization", on_delete=models.CASCADE, related_name="invitation_codes"

@@ -5,7 +5,7 @@ from django.db import models
 
 
 class Permission(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
     codename = models.CharField(max_length=100, unique=True)
     description = models.CharField(max_length=255, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -25,7 +25,7 @@ class Role(models.Model):
     "article.read" means) is platform-wide; only which permissions bundle
     into which named role, per org, varies."""
 
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
     organization = models.ForeignKey(
         "organization.Organization", on_delete=models.CASCADE, related_name="roles"
     )
@@ -47,7 +47,7 @@ class Role(models.Model):
 
 
 class RolePermission(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
     role = models.ForeignKey(Role, on_delete=models.CASCADE)
     permission = models.ForeignKey(Permission, on_delete=models.CASCADE)
     granted_at = models.DateTimeField(auto_now_add=True)
@@ -63,7 +63,7 @@ class RolePermission(models.Model):
 
 
 class UserRole(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="user_roles"
     )

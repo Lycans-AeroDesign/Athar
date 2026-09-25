@@ -35,6 +35,7 @@ from knowledge.models import (
     Category,
     Component,
     ComponentAttachment,
+    ComponentCategory,
     Document,
     Failure,
     FailureAttachment,
@@ -46,6 +47,7 @@ from knowledge.models import (
     RestrictedAccessGrant,
     Sop,
     SopAttachment,
+    StorageLocation,
     Tag,
     Test,
     TestAttachment,
@@ -271,8 +273,27 @@ def _export_specs(organization):
             ],
         ),
         (
+            ComponentCategory.objects.filter(organization=organization),
+            "component_categories.csv",
+            [
+                ("id", lambda o: _s(o.id)),
+                ("name", lambda o: o.name),
+                ("slug", lambda o: o.slug),
+                ("description", lambda o: o.description),
+            ],
+        ),
+        (
+            StorageLocation.objects.filter(organization=organization),
+            "storage_locations.csv",
+            [
+                ("id", lambda o: _s(o.id)),
+                ("name", lambda o: o.name),
+                ("description", lambda o: o.description),
+            ],
+        ),
+        (
             Component.objects.filter(organization=organization)
-            .select_related("category", "created_by")
+            .select_related("category", "location", "created_by", "updated_by")
             .prefetch_related("tags"),
             "components.csv",
             [
@@ -280,9 +301,21 @@ def _export_specs(organization):
                 ("name", lambda o: o.name),
                 ("category_id", lambda o: _s(o.category_id)),
                 ("category", lambda o: _s(o.category and o.category.name)),
+                ("photo_id", lambda o: _s(o.photo_id)),
                 ("manufacturer", lambda o: o.manufacturer),
                 ("part_number", lambda o: o.part_number),
+                ("link", lambda o: o.link),
+                ("quantity_available", lambda o: _s(o.quantity_available)),
                 ("status", lambda o: o.status),
+                ("inventory_type", lambda o: o.inventory_type),
+                ("location_id", lambda o: _s(o.location_id)),
+                ("location", lambda o: _s(o.location and o.location.name)),
+                ("unit", lambda o: o.unit),
+                ("condition", lambda o: o.condition),
+                ("stock_status", lambda o: o.stock_status),
+                ("min_quantity", lambda o: _s(o.min_quantity)),
+                ("inventory_notes", lambda o: o.inventory_notes),
+                ("updated_by_id", lambda o: _s(o.updated_by_id)),
                 ("summary", lambda o: o.summary),
                 ("specifications", lambda o: _json(o.specifications)),
                 ("visibility", lambda o: o.visibility),

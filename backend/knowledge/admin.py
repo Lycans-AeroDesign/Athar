@@ -7,12 +7,14 @@ from .models import (
     Bookmark,
     Category,
     Component,
+    ComponentCategory,
     Document,
     Failure,
     Project,
     Question,
     RestrictedAccessGrant,
     Sop,
+    StorageLocation,
     Tag,
     Test,
 )
@@ -58,10 +60,22 @@ class ProjectAdmin(admin.ModelAdmin):
     list_filter = ["status", "visibility"]
 
 
+@admin.register(ComponentCategory)
+class ComponentCategoryAdmin(admin.ModelAdmin):
+    list_display = ["name", "slug", "organization"]
+
+
+@admin.register(StorageLocation)
+class StorageLocationAdmin(admin.ModelAdmin):
+    list_display = ["name", "organization"]
+
+
 @admin.register(Component)
 class ComponentAdmin(admin.ModelAdmin):
-    list_display = ["name", "category", "status", "visibility", "manufacturer", "updated_at"]
-    list_filter = ["status", "visibility", "category"]
+    list_display = [
+        "name", "category", "inventory_type", "location", "quantity_available", "stock_status", "status", "updated_at",
+    ]
+    list_filter = ["inventory_type", "stock_status", "condition", "status", "visibility", "category"]
 
 
 @admin.register(Failure)

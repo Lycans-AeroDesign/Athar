@@ -25,7 +25,7 @@ PERMISSION_CATALOGUE = [
     ("article.publish", "Publish articles"),
     ("article.delete", "Delete articles"),
     ("article.archive", "Archive published articles"),
-    ("category.manage", "Add and delete knowledge categories"),
+    ("category.manage", "Add and delete knowledge categories, component categories and storage locations"),
     ("tag.manage", "Delete knowledge tags"),
     ("failure.read", "View failure reports"),
     ("failure.create", "Report failures"),

@@ -325,6 +325,52 @@ export interface ProjectDetail extends ProjectSummary {
 
 export type ComponentStatus = "CERTIFIED" | "TESTING" | "DEPRECATED";
 
+/** The workshop inventory sheet's two tabs. */
+export type InventoryType = "MECHANICAL" | "ELECTRICAL";
+export type ComponentCondition = "NEW" | "GOOD" | "FAIR" | "WORN" | "NEEDS_REPAIR" | "BROKEN";
+/** IN_STOCK/LOW_STOCK/MISSING follow the quantity automatically unless set by
+ * hand; ON_ORDER/RETIRED are only ever set by a person - see
+ * backend/knowledge/services.py's derive_stock_status. */
+export type StockStatus = "IN_STOCK" | "LOW_STOCK" | "MISSING" | "ON_ORDER" | "RETIRED";
+
+/** Components' own category list - separate from the knowledge Category. */
+export interface ComponentCategory {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  component_count: number;
+}
+
+export interface ComponentCategoryRef {
+  id: string;
+  name: string;
+  slug: string;
+}
+
+/** Where a component lives in the workshop (the sheet's "Grid Location"). */
+export interface StorageLocation {
+  id: string;
+  name: string;
+  description: string;
+  component_count: number;
+}
+
+export interface StorageLocationRef {
+  id: string;
+  name: string;
+}
+
+export interface InventorySummaryCounts {
+  total: number;
+  /** Keyed by StockStatus, plus UNTRACKED for components whose stock was never set. */
+  by_status: Record<StockStatus | "UNTRACKED", number>;
+}
+
+export interface InventorySummary extends InventorySummaryCounts {
+  by_category: (InventorySummaryCounts & { category: string | null })[];
+}
+
 export interface ComponentSpecRow {
   label: string;
   value: string;
@@ -333,7 +379,7 @@ export interface ComponentSpecRow {
 export interface ComponentSummary {
   id: string;
   name: string;
-  category: Category | null;
+  category: ComponentCategoryRef | null;
   photo: StoredFileRef | null;
   manufacturer: string;
   part_number: string;
@@ -341,17 +387,27 @@ export interface ComponentSummary {
   link: string;
   /** Workshop inventory count on hand. */
   quantity_available: number;
-  status: ComponentStatus;
+  /** Engineering status - "" when not applicable (e.g. a workshop tool). */
+  status: ComponentStatus | "";
+  inventory_type: InventoryType | "";
+  location: StorageLocationRef | null;
+  unit: string;
+  condition: ComponentCondition | "";
+  /** "" = inventory never tracked for this component. */
+  stock_status: StockStatus | "";
+  min_quantity: number | null;
   specifications: ComponentSpecRow[];
   visibility: Visibility;
   tags: Tag[];
   created_by: KnowledgeAuthor | null;
+  updated_by: KnowledgeAuthor | null;
   created_at: string;
   updated_at: string;
 }
 
 export interface ComponentDetail extends ComponentSummary {
   summary: string;
+  inventory_notes: string;
   contributors: KnowledgeAuthor[];
   restricted_to: AccessGrant[];
   bookmark_id: string | null;

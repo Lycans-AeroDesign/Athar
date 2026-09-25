@@ -2,21 +2,14 @@
 
 import { useTranslations } from "next-intl";
 
+import { EngineeringStatusPill, StockStatusPill } from "@/components/engineering/ComponentBadges";
 import { ComponentPhotoCell } from "@/components/engineering/ComponentPhotoCell";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { Icon } from "@/components/ui/Icon";
 import { Link } from "@/i18n/navigation";
 import type { ComponentOrdering } from "@/lib/api/engineering";
-import type { ComponentStatus, ComponentSummary } from "@/lib/api/types";
-
-// Mirrors page.tsx's STATUS_CLASSES - kept as its own copy (3 entries) rather
-// than a shared import, since page.tsx renders this component and importing
-// back from page.tsx would create a circular import for something this small.
-const STATUS_CLASSES: Record<ComponentStatus, string> = {
-  CERTIFIED: "bg-primary-container text-on-primary-container",
-  TESTING: "bg-tertiary-container text-on-tertiary-container",
-  DEPRECATED: "bg-error-container text-on-error-container",
-};
+import type { ComponentSummary } from "@/lib/api/types";
+import { CONDITION_ICONS } from "@/lib/optionIcons";
 
 interface ComponentsTableProps {
   components: ComponentSummary[];
@@ -24,14 +17,16 @@ interface ComponentsTableProps {
   onOrderingChange: (ordering: ComponentOrdering) => void;
 }
 
-// Column set/formatting matches this table's original hand-rolled markup
-// 1:1 - see backend/knowledge/views.py's COMPONENT_ORDERING_FIELDS for the
-// field names this must stay in sync with. Photo and tags have no sortable
-// field (a FK/M2M with no natural order), so they're plain, non-interactive
-// columns.
+// See backend/knowledge/views.py's COMPONENT_ORDERING_FIELDS for the field
+// names this must stay in sync with. Photo and tags have no sortable field
+// (a FK/M2M with no natural order), so they're plain, non-interactive
+// columns. Inventory columns come right after the name - the order the
+// workshop inventory sheet puts them in.
 export function ComponentsTable({ components, ordering, onOrderingChange }: ComponentsTableProps) {
   const t = useTranslations("engineering.component");
-  const statusT = useTranslations("engineering.componentStatus");
+  const conditionT = useTranslations("engineering.componentCondition");
+  const inventoryTypeT = useTranslations("engineering.inventoryType");
+  const muted = "font-body-md text-body-md text-on-surface-variant";
 
   const columns: DataTableColumn<ComponentSummary>[] = [
     {
@@ -57,16 +52,64 @@ export function ComponentsTable({ components, ordering, onOrderingChange }: Comp
     {
       field: "category",
       labelKey: "colCategory",
+      render: (component) => <span className={muted}>{component.category?.name || t("noValue")}</span>,
+    },
+    {
+      field: "location",
+      labelKey: "colLocation",
+      cellClassName: "max-w-[220px] truncate",
+      render: (component) => <span className={muted}>{component.location?.name || t("noValue")}</span>,
+    },
+    {
+      field: "quantity_available",
+      labelKey: "colQuantity",
       render: (component) => (
-        <span className="font-body-md text-body-md text-on-surface-variant">{component.category?.name || t("noValue")}</span>
+        <span className={`font-mono-sm text-mono-sm ${component.quantity_available > 0 ? "text-on-surface-variant" : "text-error"}`}>
+          {component.quantity_available}
+          {component.unit && <span className="ms-1 font-body-md text-body-md">{component.unit}</span>}
+        </span>
       ),
+    },
+    {
+      field: "stock_status",
+      labelKey: "colStockStatus",
+      render: (component) =>
+        component.stock_status ? <StockStatusPill status={component.stock_status} /> : <span className={muted}>{t("noValue")}</span>,
+    },
+    {
+      field: "condition",
+      labelKey: "colCondition",
+      render: (component) =>
+        component.condition ? (
+          <span className={`inline-flex items-center gap-1 ${muted}`}>
+            <Icon
+              name={CONDITION_ICONS[component.condition].icon}
+              size={14}
+              className={CONDITION_ICONS[component.condition].iconClassName}
+            />
+            {conditionT(component.condition)}
+          </span>
+        ) : (
+          <span className={muted}>{t("noValue")}</span>
+        ),
+    },
+    {
+      field: "inventory_type",
+      labelKey: "colInventoryType",
+      render: (component) => (
+        <span className={muted}>{component.inventory_type ? inventoryTypeT(component.inventory_type) : t("noValue")}</span>
+      ),
+    },
+    {
+      field: "status",
+      labelKey: "colStatus",
+      render: (component) =>
+        component.status ? <EngineeringStatusPill status={component.status} /> : <span className={muted}>{t("noValue")}</span>,
     },
     {
       field: "manufacturer",
       labelKey: "colManufacturer",
-      render: (component) => (
-        <span className="font-body-md text-body-md text-on-surface-variant">{component.manufacturer || t("noValue")}</span>
-      ),
+      render: (component) => <span className={muted}>{component.manufacturer || t("noValue")}</span>,
     },
     {
       field: "part_number",
@@ -76,37 +119,15 @@ export function ComponentsTable({ components, ordering, onOrderingChange }: Comp
       ),
     },
     {
-      field: "status",
-      labelKey: "colStatus",
-      render: (component) => (
-        <span
-          className={`font-label-caps text-label-caps uppercase rounded-full px-2.5 py-1 ${STATUS_CLASSES[component.status]}`}
-        >
-          {statusT(component.status)}
-        </span>
-      ),
-    },
-    {
-      field: "quantity_available",
-      labelKey: "colQuantity",
-      render: (component) => (
-        <span className="font-mono-sm text-mono-sm text-on-surface-variant">{component.quantity_available}</span>
-      ),
-    },
-    {
       field: "visibility",
       labelKey: "colVisibility",
-      render: (component) => (
-        <span className="font-body-md text-body-md text-on-surface-variant">{t(`visibility${component.visibility}`)}</span>
-      ),
+      render: (component) => <span className={muted}>{t(`visibility${component.visibility}`)}</span>,
     },
     {
       labelKey: "colTags",
       cellClassName: "max-w-[220px] truncate",
       render: (component) => (
-        <span className="font-body-md text-body-md text-on-surface-variant">
-          {component.tags.map((tag) => tag.name).join(", ") || t("noValue")}
-        </span>
+        <span className={muted}>{component.tags.map((tag) => tag.name).join(", ") || t("noValue")}</span>
       ),
     },
   ];

@@ -4,6 +4,7 @@ from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
+from django.db.models.functions import Lower
 
 from core.models import OrganizationScopedModel, TimeStampedModel, UUIDPrimaryKeyModel
 from files.models import StoredFile
@@ -30,7 +31,7 @@ class Category(models.Model):
     taxonomy). Adding a nullable `parent` self-FK later is additive and
     doesn't require touching existing rows."""
 
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
     organization = models.ForeignKey("organization.Organization", on_delete=models.CASCADE, related_name="+")
     name = models.CharField(max_length=100)
     slug = models.SlugField(max_length=120)
@@ -49,7 +50,7 @@ class Category(models.Model):
 
 
 class Tag(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
     organization = models.ForeignKey("organization.Organization", on_delete=models.CASCADE, related_name="+")
     # Normalized (stripped/lowercased) in services._sync_tags before saving.
     name = models.CharField(max_length=50)
@@ -71,7 +72,7 @@ class Article(models.Model):
         REJECTED = "REJECTED", "Rejected"
         ARCHIVED = "ARCHIVED", "Archived"
 
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
     organization = models.ForeignKey("organization.Organization", on_delete=models.CASCADE, related_name="+")
     title = models.CharField(max_length=200)
     slug = models.SlugField(max_length=220)
@@ -111,7 +112,7 @@ class ArticleRevision(models.Model):
     revision history is the one thing genuinely expensive to retrofit once
     real articles exist without it."""
 
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
     article = models.ForeignKey(Article, on_delete=models.CASCADE, related_name="revisions")
     title = models.CharField(max_length=200)
     content = models.TextField(blank=True)
@@ -134,7 +135,7 @@ class Question(models.Model):
         SOLVED = "SOLVED", "Solved"
         CLOSED = "CLOSED", "Closed"
 
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
     organization = models.ForeignKey("organization.Organization", on_delete=models.CASCADE, related_name="+")
     title = models.CharField(max_length=200)
     body = models.TextField(blank=True)  # markdown source
@@ -173,7 +174,7 @@ class Question(models.Model):
 
 
 class Answer(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
     question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name="answers")
     body = models.TextField(blank=True)
     author = models.ForeignKey(
@@ -203,7 +204,7 @@ class KnowledgeRelation(models.Model):
     value ("RELATED") for now; distinct values (USED_IN, INVOLVED_IN, ...)
     arrive once Component/Project/Failure are real models to relate to."""
 
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
     # Not "owned" by exactly one side (it references source/target
     # generically), so it needs its own organization FK rather than
     # inheriting scoping from a parent - see services.create_relation, which
@@ -256,7 +257,7 @@ class ArticleAttachment(models.Model):
     here since `files` has no such precedent and a per-model join table is
     simpler with only two owning models."""
 
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
     article = models.ForeignKey(Article, on_delete=models.CASCADE, related_name="attachments")
     file = models.ForeignKey(StoredFile, on_delete=models.CASCADE, related_name="+")
     uploaded_by = models.ForeignKey(
@@ -272,7 +273,7 @@ class ArticleAttachment(models.Model):
 
 
 class QuestionAttachment(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
     question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name="attachments")
     file = models.ForeignKey(StoredFile, on_delete=models.CASCADE, related_name="+")
     uploaded_by = models.ForeignKey(
@@ -306,7 +307,7 @@ class Project(models.Model):
         ON_HOLD = "ON_HOLD", "On Hold"
         COMPLETED = "COMPLETED", "Completed"
 
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
     organization = models.ForeignKey("organization.Organization", on_delete=models.CASCADE, related_name="+")
     name = models.CharField(max_length=200)
     description = models.TextField(blank=True)  # markdown source
@@ -326,17 +327,87 @@ class Project(models.Model):
         return self.name
 
 
+class ComponentCategory(UUIDPrimaryKeyModel, OrganizationScopedModel, TimeStampedModel):
+    """Components' own category list - parallel to (deliberately not shared
+    with) Category above, same reasoning as training.CourseCategory: a
+    workshop inventory's "Hand Tools"/"Screws & Nuts" have no business in an
+    Article's category picker, and vice versa."""
+
+    name = models.CharField(max_length=100)
+    slug = models.SlugField(max_length=120)
+    description = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        ordering = ["name"]
+        verbose_name_plural = "component categories"
+        unique_together = [("organization", "name"), ("organization", "slug")]
+
+    def __str__(self):
+        return self.name
+
+
+class StorageLocation(UUIDPrimaryKeyModel, OrganizationScopedModel, TimeStampedModel):
+    """Where a component physically lives in the workshop (the inventory
+    sheet's "Grid Location", e.g. "Fuselage Box -> Hand Tools"). A managed
+    list rather than free text on Component so the same place is spelled one
+    way everywhere and the list page can filter by it - created on the fly
+    by name from the editor and from CSV import, and renamed/merged from
+    Settings. Flat: a "Box -> Shelf" path is just part of the name."""
+
+    name = models.CharField(max_length=150)
+    description = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        ordering = ["name"]
+        constraints = [
+            models.UniqueConstraint(
+                models.F("organization"), Lower("name"), name="unique_storage_location_name_ci"
+            )
+        ]
+
+    def __str__(self):
+        return self.name
+
+
 class Component(models.Model):
     class Status(models.TextChoices):
         CERTIFIED = "CERTIFIED", "Certified"
         TESTING = "TESTING", "Testing"
         DEPRECATED = "DEPRECATED", "Deprecated"
 
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    class InventoryType(models.TextChoices):
+        """The inventory sheet's two tabs."""
+
+        MECHANICAL = "MECHANICAL", "Mechanical"
+        ELECTRICAL = "ELECTRICAL", "Electrical"
+
+    class Condition(models.TextChoices):
+        NEW = "NEW", "New"
+        GOOD = "GOOD", "Good"
+        FAIR = "FAIR", "Fair"
+        WORN = "WORN", "Worn"
+        NEEDS_REPAIR = "NEEDS_REPAIR", "Needs Repair"
+        BROKEN = "BROKEN", "Broken"
+
+    class StockStatus(models.TextChoices):
+        """Labels match the inventory sheet's own Status dropdown exactly, so
+        an export pastes back into the sheet without breaking its data
+        validation or conditional colors. IN_STOCK/LOW_STOCK/MISSING follow
+        the quantity automatically unless set explicitly (see
+        services.derive_stock_status); ON_ORDER/RETIRED are only ever set by
+        a person and never overwritten."""
+
+        IN_STOCK = "IN_STOCK", "In Stock"
+        LOW_STOCK = "LOW_STOCK", "Low Stock"
+        MISSING = "MISSING", "Missing / Need to Order"
+        ON_ORDER = "ON_ORDER", "On Order"
+        RETIRED = "RETIRED", "Retired / Broken"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
     organization = models.ForeignKey("organization.Organization", on_delete=models.CASCADE, related_name="+")
     name = models.CharField(max_length=200)
     category = models.ForeignKey(
-        Category, null=True, blank=True, on_delete=models.SET_NULL, related_name="components"
+        ComponentCategory, null=True, blank=True, on_delete=models.SET_NULL, related_name="components"
     )
     # One representative image (a card thumbnail/hero shot), distinct from
     # ComponentAttachment's own file gallery below - same single-FK,
@@ -351,7 +422,23 @@ class Component(models.Model):
     # tracking exists yet); whoever edits the component just updates this
     # number directly.
     quantity_available = models.PositiveIntegerField(default=0)
-    status = models.CharField(max_length=20, choices=Status.choices, default=Status.TESTING)
+    # Engineering status. Blank = not applicable, e.g. a workshop tool
+    # imported from the inventory sheet, where "Testing" would be meaningless.
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.TESTING, blank=True)
+    # --- Workshop inventory (mirrors the inventory sheet's columns) ---
+    inventory_type = models.CharField(max_length=20, choices=InventoryType.choices, blank=True)
+    location = models.ForeignKey(
+        StorageLocation, null=True, blank=True, on_delete=models.SET_NULL, related_name="components"
+    )
+    # Free text (each/pair/set/box/ft/...) - the sheet's own Units list is
+    # team-extendable, so a fixed choice set would reject new units.
+    unit = models.CharField(max_length=30, blank=True)
+    condition = models.CharField(max_length=20, choices=Condition.choices, blank=True)
+    # Blank = inventory not tracked for this component (every component that
+    # predates these fields) - see services.derive_stock_status.
+    stock_status = models.CharField(max_length=20, choices=StockStatus.choices, blank=True)
+    min_quantity = models.PositiveIntegerField(null=True, blank=True)
+    inventory_notes = models.TextField(blank=True)
     summary = models.TextField(blank=True)  # markdown source
     # Ordered [{"label": "Processor", "value": "STM32H753..."}, ...] - a
     # component's meaningful spec keys vary entirely by category (a flight
@@ -362,6 +449,11 @@ class Component(models.Model):
     tags = models.ManyToManyField(Tag, blank=True, related_name="components")
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="created_components"
+    )
+    # The sheet's "Updated By" column - who last changed this component, by
+    # any path (editor or CSV import).
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -383,7 +475,7 @@ class Failure(models.Model):
         UNDER_INVESTIGATION = "UNDER_INVESTIGATION", "Under Investigation"
         RESOLVED = "RESOLVED", "Resolved"
 
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
     organization = models.ForeignKey("organization.Organization", on_delete=models.CASCADE, related_name="+")
     title = models.CharField(max_length=200)
     component = models.ForeignKey(
@@ -417,7 +509,7 @@ class Failure(models.Model):
 
 
 class Sop(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
     organization = models.ForeignKey("organization.Organization", on_delete=models.CASCADE, related_name="+")
     title = models.CharField(max_length=200)
     category = models.ForeignKey(Category, null=True, blank=True, on_delete=models.SET_NULL, related_name="sops")
@@ -471,7 +563,7 @@ class Test(models.Model):
         PARTIAL = "PARTIAL", "Partial"
         NOT_APPLICABLE = "NOT_APPLICABLE", "Not Applicable"
 
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
     organization = models.ForeignKey("organization.Organization", on_delete=models.CASCADE, related_name="+")
     title = models.CharField(max_length=200)
     test_type = models.CharField(max_length=20, choices=TestType.choices, default=TestType.OTHER)
@@ -540,7 +632,7 @@ class Document(models.Model):
         INTERNAL = "INTERNAL", "Internal"
         EXTERNAL = "EXTERNAL", "External"
 
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
     organization = models.ForeignKey("organization.Organization", on_delete=models.CASCADE, related_name="+")
     title = models.CharField(max_length=200)
     description = models.TextField(blank=True)
@@ -577,7 +669,7 @@ class Document(models.Model):
 
 
 class ProjectAttachment(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="attachments")
     file = models.ForeignKey(StoredFile, on_delete=models.CASCADE, related_name="+")
     uploaded_by = models.ForeignKey(
@@ -593,7 +685,7 @@ class ProjectAttachment(models.Model):
 
 
 class ComponentAttachment(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
     component = models.ForeignKey(Component, on_delete=models.CASCADE, related_name="attachments")
     file = models.ForeignKey(StoredFile, on_delete=models.CASCADE, related_name="+")
     uploaded_by = models.ForeignKey(
@@ -609,7 +701,7 @@ class ComponentAttachment(models.Model):
 
 
 class FailureAttachment(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
     failure = models.ForeignKey(Failure, on_delete=models.CASCADE, related_name="attachments")
     file = models.ForeignKey(StoredFile, on_delete=models.CASCADE, related_name="+")
     uploaded_by = models.ForeignKey(
@@ -625,7 +717,7 @@ class FailureAttachment(models.Model):
 
 
 class SopAttachment(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
     sop = models.ForeignKey(Sop, on_delete=models.CASCADE, related_name="attachments")
     file = models.ForeignKey(StoredFile, on_delete=models.CASCADE, related_name="+")
     uploaded_by = models.ForeignKey(
@@ -641,7 +733,7 @@ class SopAttachment(models.Model):
 
 
 class TestAttachment(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
     test = models.ForeignKey(Test, on_delete=models.CASCADE, related_name="attachments")
     file = models.ForeignKey(StoredFile, on_delete=models.CASCADE, related_name="+")
     uploaded_by = models.ForeignKey(

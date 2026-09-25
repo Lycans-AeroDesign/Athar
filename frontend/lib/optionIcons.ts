@@ -1,5 +1,6 @@
 import type {
   ArticleStatus,
+  ComponentCondition,
   ComponentStatus,
   CourseDifficulty,
   CourseResourceProvider,
@@ -8,8 +9,10 @@ import type {
   DocumentSource,
   FailureSeverity,
   FailureStatus,
+  InventoryType,
   LessonType,
   ProjectStatus,
+  StockStatus,
   TestPassFail,
   TestRunStatus,
   TestType,
@@ -51,6 +54,28 @@ export const COMPONENT_STATUS_ICONS: Record<ComponentStatus, OptionIcon> = {
   CERTIFIED: { icon: "verified" },
   TESTING: { icon: "science" },
   DEPRECATED: { icon: "block" },
+};
+
+export const INVENTORY_TYPE_ICONS: Record<InventoryType, OptionIcon> = {
+  MECHANICAL: { icon: "handyman" },
+  ELECTRICAL: { icon: "bolt" },
+};
+
+export const CONDITION_ICONS: Record<ComponentCondition, OptionIcon> = {
+  NEW: { icon: "auto_awesome" },
+  GOOD: { icon: "check_circle" },
+  FAIR: { icon: "timelapse" },
+  WORN: { icon: "hourglass" },
+  NEEDS_REPAIR: { icon: "build" },
+  BROKEN: { icon: "cancel", iconClassName: ERROR },
+};
+
+export const STOCK_STATUS_ICONS: Record<StockStatus, OptionIcon> = {
+  IN_STOCK: { icon: "check_circle" },
+  LOW_STOCK: { icon: "trending_down" },
+  MISSING: { icon: "shopping_cart", iconClassName: ERROR },
+  ON_ORDER: { icon: "local_shipping" },
+  RETIRED: { icon: "archive" },
 };
 
 export const FAILURE_SEVERITY_ICONS: Record<FailureSeverity, OptionIcon> = {
