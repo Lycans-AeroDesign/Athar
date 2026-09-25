@@ -1,3 +1,10 @@
+## [1.7.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.6.1...v1.7.0) (2026-09-25)
+
+### Features
+
+* **components:** add workshop inventory with two-way CSV sync, switch pks to uuid7 ([888a9c4](https://github.com/Lycans-AeroDesign/Athar/commit/888a9c4aeade68247379146c3e222c62b213e449))
+* **frontend:** add icons to dropdown options across forms and filters ([4c175b8](https://github.com/Lycans-AeroDesign/Athar/commit/4c175b81fe5f786c01b4f04f81cf175e812d31aa))
+
 ## [1.6.1](https://github.com/Lycans-AeroDesign/Athar/compare/v1.6.0...v1.6.1) (2026-09-24)
 
 ### Bug Fixes
