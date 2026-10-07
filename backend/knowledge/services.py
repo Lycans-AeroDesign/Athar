@@ -1243,6 +1243,71 @@ def create_relation(
     )
 
 
+def update_relation(
+    *, relation: KnowledgeRelation, actor, request=None, from_type: str, from_id, relation_type: str
+) -> KnowledgeRelation:
+    """Changes a relation's verb, as picked from the `from_type`/`from_id`
+    side (whichever end's page the caller is on) - re-normalized to the
+    canonical stored direction exactly like create_relation, since a reverse
+    verb can flip which end is stored as the source."""
+    source_type = relation.source_content_type.model
+    target_type = relation.target_content_type.model
+    if source_type == from_type and str(relation.source_object_id) == str(from_id):
+        this_type, this_side, other_type, other_side = source_type, relation.source, target_type, relation.target
+    elif target_type == from_type and str(relation.target_object_id) == str(from_id):
+        this_type, this_side, other_type, other_side = target_type, relation.target, source_type, relation.source
+    else:
+        raise ValidationError("from_type/from_id must be one end of this relation.")
+    if not (
+        _can_edit_relatable(actor, source_type, relation.source)
+        or _can_edit_relatable(actor, target_type, relation.target)
+    ):
+        raise PermissionDenied("You can only change related content on something you own (or have edit rights on).")
+
+    stored_relation_type, store_source, store_target = _normalized_relation_direction(
+        relation_type, this_type, this_side, other_type, other_side
+    )
+    store_source_ct = ContentType.objects.get_for_model(type(store_source))
+    store_target_ct = ContentType.objects.get_for_model(type(store_target))
+    duplicate = (
+        KnowledgeRelation.objects.filter(
+            source_content_type=store_source_ct,
+            source_object_id=store_source.pk,
+            target_content_type=store_target_ct,
+            target_object_id=store_target.pk,
+            relation_type=stored_relation_type,
+        )
+        .exclude(pk=relation.pk)
+        .exists()
+    )
+    if duplicate:
+        raise ValidationError("These two items are already linked that way.")
+
+    previous = relation.relation_type
+    relation.source_content_type = store_source_ct
+    relation.source_object_id = store_source.pk
+    relation.target_content_type = store_target_ct
+    relation.target_object_id = store_target.pk
+    relation.relation_type = stored_relation_type
+    relation.save(
+        update_fields=[
+            "source_content_type",
+            "source_object_id",
+            "target_content_type",
+            "target_object_id",
+            "relation_type",
+        ]
+    )
+    log_action(
+        actor=actor,
+        action="relation.update",
+        target=relation,
+        metadata={"from": previous, "to": stored_relation_type},
+        request=request,
+    )
+    return relation
+
+
 def _project_link_verb(model_name: str) -> str:
     """The canonical Project-->X verb for a project picked on X's creation
     form - the registry entry for (project, model_name), or the generic

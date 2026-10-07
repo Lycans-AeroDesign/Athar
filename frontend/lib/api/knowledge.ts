@@ -295,6 +295,20 @@ export function createRelation(payload: {
   });
 }
 
+/** Changes a link's relationship type, picked from `from_type`/`from_id`'s own
+ * side (whichever item's page the viewer is on) - so a reverse verb like
+ * USED_IN works the same as a forward one. */
+export function updateRelation(
+  id: string,
+  payload: { from_type: RelatableType; from_id: string; relation_type: string },
+): Promise<KnowledgeRelation> {
+  return apiJson<KnowledgeRelation>(`/api/v1/knowledge/relations/${id}/`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
 export function deleteRelation(id: string): Promise<void> {
   return apiVoid(`/api/v1/knowledge/relations/${id}/`, { method: "DELETE" });
 }

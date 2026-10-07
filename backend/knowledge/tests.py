@@ -3292,7 +3292,8 @@ class ComponentInventoryTests(KnowledgeTestCase):
 
 class CreationFlowTests(KnowledgeTestCase):
     """Creation-form extras (services.create_with_links): project link,
-    visibility inheritance, create-time relations and co-authors."""
+    visibility inheritance, create-time relations, co-authors, and editing
+    a relation's type."""
 
     def setUp(self):
         self.head, self.head_access = self._login_with_role("cf-head@example.com", "Subteam Head")
@@ -3431,6 +3432,42 @@ class CreationFlowTests(KnowledgeTestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertFalse(Question.objects.filter(title="Q").exists())
+
+    def test_update_relation_type_from_either_side(self):
+        project = self._project()
+        component = self.client.post(
+            reverse("knowledge-component-list-create"),
+            {"name": "Servo"},
+            format="json",
+            **self._auth(self.head_access),
+        ).data
+        relation = services.create_relation(
+            actor=self.head,
+            source_type="component",
+            source_id=component["id"],
+            target_type="project",
+            target_id=project["id"],
+        )
+        response = self.client.patch(
+            reverse("knowledge-relation-detail", args=[relation.id]),
+            {"from_type": "component", "from_id": component["id"], "relation_type": "USED_IN"},
+            format="json",
+            **self._auth(self.head_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["relation_label"], "USED_IN")
+        relation.refresh_from_db()
+        # Stored canonically: Project--USES-->Component.
+        self.assertEqual(relation.relation_type, "USES")
+        self.assertEqual(str(relation.source_object_id), project["id"])
+
+        response = self.client.patch(
+            reverse("knowledge-relation-detail", args=[relation.id]),
+            {"from_type": "component", "from_id": component["id"], "relation_type": "USED_IN"},
+            format="json",
+            **self._auth(self.member_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_co_authors_share_contribution_credit(self):
         co_author, _ = self._login_with_role("cf-score-co@example.com", "Member")

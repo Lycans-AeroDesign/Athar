@@ -3,16 +3,13 @@
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
+import { RelationPickerModal, RelationTypeModal } from "@/components/knowledge/RelationPicker";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Icon } from "@/components/ui/Icon";
-import { Modal } from "@/components/ui/Modal";
 import { Link } from "@/i18n/navigation";
-import { createRelation, deleteRelation, getRelations, searchKnowledge } from "@/lib/api/knowledge";
+import { createRelation, deleteRelation, getRelations, updateRelation } from "@/lib/api/knowledge";
 import type { KnowledgeRelation, RelatableType, SearchResult } from "@/lib/api/types";
-import {
-  RELATABLE_ICON as ICON_BY_TYPE,
-  RELATABLE_ROUTE_PREFIX as ROUTE_PREFIX,
-  relationshipChoicesFor,
-} from "@/lib/knowledgeTypes";
+import { RELATABLE_ICON as ICON_BY_TYPE, RELATABLE_ROUTE_PREFIX as ROUTE_PREFIX } from "@/lib/knowledgeTypes";
 
 interface RelatedContentProps {
   type: RelatableType;
@@ -25,7 +22,7 @@ interface RelatedContentProps {
 // #26's example: "Projects / Components / Tests / Failures / Articles /
 // SOPs / Documents" as labeled sub-sections rather than one flat chip row) -
 // same order CONTENT_TYPES uses everywhere else (search page, GlobalSearch).
-const GROUP_ORDER: RelatableType[] = [
+export const GROUP_ORDER: RelatableType[] = [
   "article",
   "question",
   "project",
@@ -36,7 +33,7 @@ const GROUP_ORDER: RelatableType[] = [
   "document",
 ];
 
-const GROUP_LABEL_KEYS: Record<RelatableType, string> = {
+export const GROUP_LABEL_KEYS: Record<RelatableType, string> = {
   article: "groupArticles",
   question: "groupQuestions",
   project: "groupProjects",
@@ -51,51 +48,24 @@ const GROUP_LABEL_KEYS: Record<RelatableType, string> = {
 // Component/Failure/Sop/Test/Document) - a light, self-contained cross-link
 // between Knowledge content. Rendered as a sticky sidebar panel (see the
 // caller's own layout - a `grid-cols-[1fr_320px]`-shaped page with this as
-// the right column), matching the "Related Knowledge" panel in
-// ref/athar_pixhawk_6x_component - grouped by type with a colored accent bar
-// per group rather than the earlier flat/inline chip row. The picker reuses
-// searchKnowledge() as-is, which already searches every relatable type.
-// Picking a result that has one or more semantic relationship types
-// available (relationshipChoicesFor) opens a second step to choose one;
-// picking a result with none just creates a plain generic "RELATED" link
-// immediately, same as before that existed.
+// the right column), grouped by type with a colored accent bar per group.
+// Adding goes through RelationPickerModal (search, then a relationship type
+// when the pair has any); each link can then have its relationship type
+// changed or be removed - both actions always visible (not hover-only) so
+// they work on touch screens too.
 export function RelatedContent({ type, id, canEdit }: RelatedContentProps) {
   const t = useTranslations("knowledge.relations");
   const [relations, setRelations] = useState<KnowledgeRelation[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState<SearchResult[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  // Set once a search result is clicked, if it has semantic relationship
-  // choices - the modal shows the verb picker instead of search while this
-  // is set, and clears back to null on close or "back".
-  const [pendingResult, setPendingResult] = useState<SearchResult | null>(null);
+  const [editing, setEditing] = useState<KnowledgeRelation | null>(null);
+  const [removing, setRemoving] = useState<KnowledgeRelation | null>(null);
 
   useEffect(() => {
     getRelations(type, id)
       .then(setRelations)
       .catch((err) => setError(err instanceof Error ? err.message : String(err)));
   }, [type, id]);
-
-  useEffect(() => {
-    const trimmed = query.trim();
-    if (!trimmed) return;
-    const handle = setTimeout(() => {
-      setIsSearching(true);
-      searchKnowledge(trimmed)
-        .then((data) => setResults(data.results.filter((result) => !(result.type === type && result.id === id))))
-        .finally(() => setIsSearching(false));
-    }, 300);
-    return () => clearTimeout(handle);
-  }, [query, type, id]);
-
-  function closePicker() {
-    setPickerOpen(false);
-    setQuery("");
-    setResults([]);
-    setPendingResult(null);
-  }
 
   async function handleAdd(result: SearchResult, relationType?: string) {
     setError(null);
@@ -107,19 +77,19 @@ export function RelatedContent({ type, id, canEdit }: RelatedContentProps) {
         target_id: result.id,
         relation_type: relationType,
       });
-      setRelations((prev) => [...(prev ?? []), relation]);
-      closePicker();
+      setRelations((prev) => [...(prev ?? []).filter((r) => r.id !== relation.id), relation]);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
   }
 
-  function handleResultClick(result: SearchResult) {
-    const choices = relationshipChoicesFor(type, result.type);
-    if (choices.length === 0) {
-      void handleAdd(result);
-    } else {
-      setPendingResult(result);
+  async function handleChangeType(relation: KnowledgeRelation, relationType: string) {
+    setError(null);
+    try {
+      const updated = await updateRelation(relation.id, { from_type: type, from_id: id, relation_type: relationType });
+      setRelations((prev) => (prev ?? []).map((r) => (r.id === updated.id ? updated : r)));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
     }
   }
 
@@ -172,20 +142,23 @@ export function RelatedContent({ type, id, canEdit }: RelatedContentProps) {
               </h4>
               <ul className="flex flex-col gap-0.5">
                 {group.relations.map((relation) => (
-                  <li key={relation.id} className="group relative">
+                  <li key={relation.id} className="group flex items-start gap-1">
                     <Link
                       href={`${ROUTE_PREFIX[relation.other_type]}/${relation.other_id}`}
-                      className="flex items-start gap-2 p-2 rounded-lg hover:bg-surface-variant transition-colors"
+                      className="flex min-w-0 flex-1 items-start gap-2 p-2 rounded-lg hover:bg-surface-variant transition-colors"
                     >
-                      <Icon name={ICON_BY_TYPE[relation.other_type]} size={16} className="text-on-surface-variant shrink-0 mt-0.5" />
+                      <Icon
+                        name={ICON_BY_TYPE[relation.other_type]}
+                        size={16}
+                        className="text-on-surface-variant shrink-0 mt-0.5"
+                      />
                       <span className="min-w-0 flex-1">
                         <span className="block font-body-md text-body-md text-on-surface truncate group-hover:text-primary transition-colors">
                           {relation.other_title}
                         </span>
                         {/* Only called out when it's more specific than the
                             generic fallback - keeps the common case (plain
-                            "Related") from looking noisier than it did
-                            before relation_label existed. */}
+                            "Related") from looking noisier than it needs to. */}
                         {relation.relation_label !== "RELATED" && (
                           <span className="block font-label-caps text-label-caps text-on-surface-variant">
                             {relation.relation_label}
@@ -194,14 +167,26 @@ export function RelatedContent({ type, id, canEdit }: RelatedContentProps) {
                       </span>
                     </Link>
                     {canEdit && (
-                      <button
-                        type="button"
-                        onClick={() => handleRemove(relation.id)}
-                        aria-label={t("removeButton")}
-                        className="absolute top-2 end-2 text-on-surface-variant hover:text-error opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <Icon name="close" size={14} />
-                      </button>
+                      <div className="flex shrink-0 items-center pt-1.5 lg:opacity-60 lg:group-hover:opacity-100 lg:focus-within:opacity-100 transition-opacity">
+                        <button
+                          type="button"
+                          onClick={() => setEditing(relation)}
+                          aria-label={t("changeTypeButton")}
+                          title={t("changeTypeButton")}
+                          className="p-1 rounded text-on-surface-variant hover:text-primary transition-colors"
+                        >
+                          <Icon name="edit" size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setRemoving(relation)}
+                          aria-label={t("removeButton")}
+                          title={t("removeButton")}
+                          className="p-1 rounded text-on-surface-variant hover:text-error transition-colors"
+                        >
+                          <Icon name="delete" size={14} />
+                        </button>
+                      </div>
                     )}
                   </li>
                 ))}
@@ -217,77 +202,39 @@ export function RelatedContent({ type, id, canEdit }: RelatedContentProps) {
         )}
       </div>
 
-      <Modal
+      <RelationPickerModal
         open={pickerOpen}
-        onOpenChange={(open) => (open ? setPickerOpen(true) : closePicker())}
-        title={pendingResult ? t("chooseRelationTypeTitle") : t("addButton")}
-      >
-        {pendingResult ? (
-          <div className="space-y-3">
-            <button
-              type="button"
-              onClick={() => setPendingResult(null)}
-              className="flex items-center gap-1 font-label-caps text-label-caps uppercase text-on-surface-variant hover:text-on-surface transition-colors"
-            >
-              <Icon name="arrow_back" size={14} />
-              {t("backToSearch")}
-            </button>
-            <p className="font-body-md text-body-md text-on-surface-variant">
-              {t("chooseRelationTypeDescription", { title: pendingResult.title })}
-            </p>
-            <ul className="space-y-1">
-              {relationshipChoicesFor(type, pendingResult.type).map(({ verb }) => (
-                <li key={verb}>
-                  <button
-                    type="button"
-                    onClick={() => handleAdd(pendingResult, verb)}
-                    className="w-full px-3 py-2 rounded-lg text-start font-body-md text-body-md text-on-surface hover:bg-surface-variant transition-colors"
-                  >
-                    {verb}
-                  </button>
-                </li>
-              ))}
-              <li className="border-t border-outline-variant pt-1">
-                <button
-                  type="button"
-                  onClick={() => handleAdd(pendingResult)}
-                  className="w-full px-3 py-2 rounded-lg text-start font-body-md text-body-md text-on-surface-variant hover:bg-surface-variant transition-colors"
-                >
-                  {t("genericRelatedOption")}
-                </button>
-              </li>
-            </ul>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            <input
-              className="block w-full px-4 py-2 font-body-md text-body-md text-on-surface bg-surface-container border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
-              placeholder={t("searchPlaceholder")}
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              autoFocus
-            />
-            {isSearching ? (
-              <p className="font-body-md text-body-md text-on-surface-variant">{t("searching")}</p>
-            ) : (
-              <ul className="space-y-1 max-h-[300px] overflow-y-auto">
-                {(query.trim() ? results : []).map((result) => (
-                  <li key={`${result.type}-${result.id}`}>
-                    <button
-                      type="button"
-                      onClick={() => handleResultClick(result)}
-                      className="flex w-full items-center gap-2 px-3 py-2 rounded-lg text-start hover:bg-surface-variant transition-colors"
-                    >
-                      <Icon name={ICON_BY_TYPE[result.type]} size={16} className="text-on-surface-variant shrink-0" />
-                      <span className="font-body-md text-body-md text-on-surface truncate">{result.title}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
-      </Modal>
+        onOpenChange={setPickerOpen}
+        sourceType={type}
+        sourceId={id}
+        excludeKeys={new Set(relations.map((r) => `${r.other_type}:${r.other_id}`))}
+        onPick={handleAdd}
+      />
+
+      {editing && (
+        <RelationTypeModal
+          open
+          onOpenChange={(open) => !open && setEditing(null)}
+          sourceType={type}
+          otherType={editing.other_type}
+          otherTitle={editing.other_title ?? ""}
+          current={editing.relation_label}
+          onPick={(relationType) => handleChangeType(editing, relationType)}
+        />
+      )}
+
+      <ConfirmModal
+        open={removing !== null}
+        onOpenChange={(open) => !open && setRemoving(null)}
+        title={t("removeConfirmTitle")}
+        description={t("removeConfirmDescription", { title: removing?.other_title ?? "" })}
+        confirmLabel={t("removeButton")}
+        danger
+        onConfirm={async () => {
+          if (removing) await handleRemove(removing.id);
+          setRemoving(null);
+        }}
+      />
     </aside>
   );
 }

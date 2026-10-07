@@ -594,7 +594,9 @@
       "groupTests": "Tests",
       "groupDocuments": "Documents",
       "changeTypeButton": "Change relationship",
-      "changeTypeTitle": "Change relationship"
+      "changeTypeTitle": "Change relationship",
+      "removeConfirmTitle": "Remove this link?",
+      "removeConfirmDescription": "\"{title}\" will no longer be linked here. The item itself isn't deleted."
     },
     "attachments": {
       "title": "Attachments",

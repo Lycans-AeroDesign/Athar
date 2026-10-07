@@ -529,6 +529,16 @@ class CreateRelationSerializer(serializers.Serializer):
     relation_type = serializers.CharField(default="RELATED")
 
 
+class UpdateRelationSerializer(serializers.Serializer):
+    """Input for PATCH /knowledge/relations/<id>/ - `from_type`/`from_id` name
+    whichever end the caller is viewing it from, so `relation_type` can be
+    either a forward or a reverse verb (see services.update_relation)."""
+
+    from_type = serializers.ChoiceField(choices=RELATABLE_TYPE_CHOICES)
+    from_id = serializers.UUIDField()
+    relation_type = serializers.CharField()
+
+
 class AccessGrantSerializer(serializers.ModelSerializer):
     granted_user = AuthorSerializer(read_only=True)
 

@@ -594,7 +594,9 @@
       "groupTests": "الاختبارات",
       "groupDocuments": "المستندات",
       "changeTypeButton": "تغيير العلاقة",
-      "changeTypeTitle": "تغيير العلاقة"
+      "changeTypeTitle": "تغيير العلاقة",
+      "removeConfirmTitle": "إزالة هذا الرابط؟",
+      "removeConfirmDescription": "لن يكون \"{title}\" مرتبطًا هنا بعد الآن. العنصر نفسه لن يُحذف."
     },
     "attachments": {
       "title": "المرفقات",

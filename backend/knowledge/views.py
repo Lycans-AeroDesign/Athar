@@ -71,6 +71,7 @@ from .serializers import (
     CreateAccessGrantSerializer,
     CreateBookmarkSerializer,
     CreateRelationSerializer,
+    UpdateRelationSerializer,
     DocumentDetailSerializer,
     DocumentListSerializer,
     DocumentWriteSerializer,
@@ -970,6 +971,30 @@ class RelationCreateView(APIView):
 
 class RelationDetailView(APIView):
     permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        tags=["Knowledge"],
+        summary="Change a related-content link's relationship type (as seen from from_type/from_id's side)",
+        request=UpdateRelationSerializer,
+        responses={200: KnowledgeRelationSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
+    )
+    def patch(self, request, pk):
+        relation = get_object_or_404(KnowledgeRelation, pk=pk, organization=request.user.organization)
+        serializer = UpdateRelationSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        relation = services.update_relation(
+            relation=relation,
+            actor=request.user,
+            request=request,
+            from_type=data["from_type"],
+            from_id=data["from_id"],
+            relation_type=data["relation_type"],
+        )
+        viewer_content_type = ContentType.objects.get(model=data["from_type"], app_label="knowledge")
+        return Response(
+            KnowledgeRelationSerializer(relation, context={"viewer": (viewer_content_type, data["from_id"])}).data
+        )
 
     @extend_schema(
         tags=["Knowledge"],
