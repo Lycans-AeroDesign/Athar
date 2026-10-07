@@ -225,6 +225,13 @@ def _set_tags(obj, ctx: _RestoreContext, row: dict, tags_by_id: dict) -> None:
     obj.tags.set([tags_by_id[i] for i in ids if i in tags_by_id])
 
 
+def _set_co_authors(obj, ctx: _RestoreContext, row: dict) -> None:
+    """Archives made before co-authors existed have no co_author_ids column -
+    row.get() makes that an empty list, not an error."""
+    ids = [ctx.user_id(v) for v in row.get("co_author_ids", "").split(";") if v]
+    obj.co_authors.set([i for i in ids if i is not None])
+
+
 def _restore_projects(ctx, zf, tags_by_id) -> dict[uuid.UUID, Project]:
     projects_by_id = {}
     for row in _read_csv_rows(zf, "projects.csv"):
@@ -471,6 +478,7 @@ def _restore_articles(ctx, zf, categories_by_id, tags_by_id) -> dict[uuid.UUID, 
             published_at=row["published_at"] or None,
         )
         _set_tags(article, ctx, row, tags_by_id)
+        _set_co_authors(article, ctx, row)
         articles_by_id[article.id] = article
     ctx.summary.created["articles"] = len(articles_by_id)
     return articles_by_id
@@ -506,6 +514,7 @@ def _restore_questions(ctx, zf, tags_by_id) -> dict[uuid.UUID, Question]:
             author_id=ctx.user_id(row["author_id"]),
         )
         _set_tags(question, ctx, row, tags_by_id)
+        _set_co_authors(question, ctx, row)
         questions_by_id[question.id] = question
     ctx.summary.created["questions"] = len(questions_by_id)
     return questions_by_id

@@ -36,6 +36,25 @@ OWNER_FIELD = {
     "test": "created_by",
 }
 
+# model_name -> a many-to-many of users who share ownership with OWNER_FIELD
+# (see Article.co_authors/Question.co_authors) - same visibility and edit
+# rights as the owner themselves.
+CO_OWNER_FIELD = {
+    "article": "co_authors",
+    "question": "co_authors",
+}
+
+
+def is_owner_of(viewer, model_name: str, instance) -> bool:
+    """The owner/creator, or (for types that have them) a co-author."""
+    owner_field = OWNER_FIELD.get(model_name)
+    if owner_field and getattr(instance, owner_field, None) == viewer:
+        return True
+    co_owner_field = CO_OWNER_FIELD.get(model_name)
+    if co_owner_field and instance.pk is not None:
+        return getattr(instance, co_owner_field).filter(pk=viewer.pk).exists()
+    return False
+
 # model_name -> permission codename(s) that let a non-owner see a RESTRICTED
 # instance of that type regardless of any grant - the pre-existing
 # moderation/publishing permissions each type already had before this rule
@@ -68,8 +87,7 @@ def is_privileged_for(viewer, model_name: str, instance) -> bool:
     this only ever covers the RESTRICTED rule."""
     if is_org_admin(viewer):
         return True
-    owner_field = OWNER_FIELD.get(model_name)
-    if owner_field and getattr(instance, owner_field, None) == viewer:
+    if is_owner_of(viewer, model_name, instance):
         return True
     return _has_override(viewer, model_name)
 
@@ -99,6 +117,9 @@ def exclude_inaccessible(queryset: QuerySet, viewer, model, model_name: str) -> 
         return queryset
     owner_field = OWNER_FIELD.get(model_name)
     owned = Q(**{owner_field: viewer}) if owner_field else Q(pk__in=[])
+    co_owner_field = CO_OWNER_FIELD.get(model_name)
+    if co_owner_field:
+        owned |= Q(pk__in=model.objects.filter(**{co_owner_field: viewer}).values("pk"))
     granted_ids = RestrictedAccessGrant.objects.filter(
         content_type=ContentType.objects.get_for_model(model),
         granted_user=viewer,

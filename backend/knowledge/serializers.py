@@ -297,12 +297,20 @@ class ArticleListSerializer(serializers.ModelSerializer):
 
 
 class ArticleDetailSerializer(ContributorsMixin, RestrictedAccessMixin, BookmarkMixin, ArticleListSerializer):
+    co_authors = AuthorSerializer(many=True, read_only=True)
     contributors = serializers.SerializerMethodField()
     restricted_to = serializers.SerializerMethodField()
     bookmark_id = serializers.SerializerMethodField()
 
     class Meta(ArticleListSerializer.Meta):
-        fields = [*ArticleListSerializer.Meta.fields, "content", "contributors", "restricted_to", "bookmark_id"]
+        fields = [
+            *ArticleListSerializer.Meta.fields,
+            "content",
+            "co_authors",
+            "contributors",
+            "restricted_to",
+            "bookmark_id",
+        ]
 
 
 class ArticleWriteSerializer(ProjectLinkMixin, serializers.ModelSerializer):
@@ -312,6 +320,9 @@ class ArticleWriteSerializer(ProjectLinkMixin, serializers.ModelSerializer):
         source="category", queryset=Category.objects.all(), allow_null=True, required=False
     )
     tag_names = serializers.ListField(child=serializers.CharField(), required=False)
+    co_author_ids = OrgScopedPrimaryKeyRelatedField(
+        source="co_authors", queryset=User.objects.all(), many=True, required=False, write_only=True
+    )
 
     class Meta:
         model = Article
@@ -322,6 +333,7 @@ class ArticleWriteSerializer(ProjectLinkMixin, serializers.ModelSerializer):
             "category_id",
             "tag_names",
             "visibility",
+            "co_author_ids",
             "project_id",
             "relations",
         ]
@@ -382,6 +394,7 @@ class QuestionListSerializer(serializers.ModelSerializer):
 
 
 class QuestionDetailSerializer(ContributorsMixin, RestrictedAccessMixin, BookmarkMixin, QuestionListSerializer):
+    co_authors = AuthorSerializer(many=True, read_only=True)
     answers = serializers.SerializerMethodField()
     contributors = serializers.SerializerMethodField()
     restricted_to = serializers.SerializerMethodField()
@@ -391,6 +404,7 @@ class QuestionDetailSerializer(ContributorsMixin, RestrictedAccessMixin, Bookmar
         fields = [
             *QuestionListSerializer.Meta.fields,
             "body",
+            "co_authors",
             "answers",
             "contributors",
             "restricted_to",
@@ -407,10 +421,13 @@ class QuestionDetailSerializer(ContributorsMixin, RestrictedAccessMixin, Bookmar
 
 class QuestionWriteSerializer(ProjectLinkMixin, serializers.ModelSerializer):
     tag_names = serializers.ListField(child=serializers.CharField(), required=False)
+    co_author_ids = OrgScopedPrimaryKeyRelatedField(
+        source="co_authors", queryset=User.objects.all(), many=True, required=False, write_only=True
+    )
 
     class Meta:
         model = Question
-        fields = ["title", "body", "tag_names", "visibility", "project_id", "relations"]
+        fields = ["title", "body", "tag_names", "visibility", "co_author_ids", "project_id", "relations"]
 
 
 class AcceptAnswerSerializer(serializers.Serializer):

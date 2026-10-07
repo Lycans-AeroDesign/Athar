@@ -1300,6 +1300,11 @@
     "visibilityPUBLIC": "Public",
     "visibilityRESTRICTED": "Restricted",
     "visibilityInherit": "Inherit from project ({visibility})",
+    "coAuthorsLabel": "Co-authors",
+    "coAuthorsPlaceholder": "Add a co-author...",
+    "coAuthorsLocked": "Only the author can change the co-authors.",
+    "removeCoAuthor": "Remove {name}",
+    "bylineWith": "with",
     "relatedEmpty": "Nothing linked yet - links are saved together with this item."
   }
 }

@@ -19,6 +19,7 @@ import { Markdown } from "@/components/ui/Markdown";
 import { MarkdownEditor } from "@/components/ui/MarkdownEditor";
 import { ShareButton } from "@/components/ui/ShareButton";
 import { TagChip } from "@/components/ui/TagChip";
+import { CoAuthorsByline } from "@/components/knowledge/CoAuthorsByline";
 import { Link, useRouter } from "@/i18n/navigation";
 import { formatRelativeTime } from "@/lib/datetime";
 import { formatPersonName } from "@/lib/format";
@@ -64,6 +65,9 @@ export default function QuestionDetailPage() {
   }
 
   const canManage = user?.id === question.author?.id || canModerate;
+  // Co-authors can edit the question and its attachments/related content,
+  // but closing, accepting and deleting stay with the author/moderators.
+  const canEdit = canManage || question.co_authors.some((coAuthor) => coAuthor.id === user?.id);
   const canAccept = canManage;
   const canPromote = canCreateArticle && question.status === "SOLVED" && !question.promoted_to_article;
   const authorName = formatPersonName(question.author);
@@ -152,13 +156,14 @@ export default function QuestionDetailPage() {
                 {t("askedBy", { name: authorName })}
               </Link>
             )}
+            <CoAuthorsByline coAuthors={question.co_authors} />
             <span>•</span>
             <span>{formatRelativeTime(question.created_at)}</span>
           </div>
           <div className="flex items-center gap-2">
             <BookmarkButton key={question.id} type="question" objectId={question.id} bookmarkId={question.bookmark_id} />
             <ShareButton title={question.title} />
-            {canManage && (
+            {canEdit && (
               <Link href={`/knowledge/questions/${question.id}/edit`}>
                 <IconButton icon="edit" variant="secondary" aria-label={t("editButton")} />
               </Link>
@@ -299,7 +304,7 @@ export default function QuestionDetailPage() {
         )}
       </div>
 
-      <Attachments type="question" id={question.id} canEdit={canManage} />
+      <Attachments type="question" id={question.id} canEdit={canEdit} />
 
       {question.status === "CLOSED" ? (
         <p className="font-body-md text-body-md text-on-surface-variant">{t("closedNotice")}</p>
@@ -332,7 +337,7 @@ export default function QuestionDetailPage() {
       />
     </div>
 
-    <RelatedContent type="question" id={question.id} canEdit={canManage} />
+    <RelatedContent type="question" id={question.id} canEdit={canEdit} />
     </div>
   );
 }

@@ -210,9 +210,10 @@ class RestoreJobTests(BackupJobTestCase):
 
     def test_restore_round_trips_ids_content_tags_relations_and_bookmarks(self):
         author, _ = self._login_with_role("restoreauthor@example.com", "Subteam Head")
-        _, admin_access = self._login_with_role("restoreadmin@example.com", "Organization Admin")
+        admin, admin_access = self._login_with_role("restoreadmin@example.com", "Organization Admin")
 
         project, article, tag = self._seed_content(author)
+        article.co_authors.add(admin)
         project_id, article_id, tag_id = project.id, article.id, tag.id
 
         backup_job = self._run_backup(admin_access)
@@ -245,6 +246,7 @@ class RestoreJobTests(BackupJobTestCase):
         restored_article = Article.objects.get(pk=article_id)
         self.assertEqual(restored_article.title, "Restorable Article")
         self.assertEqual(restored_article.author_id, author.id)
+        self.assertEqual(list(restored_article.co_authors.values_list("id", flat=True)), [admin.id])
 
         self.assertTrue(Bookmark.objects.filter(object_id=article_id, user=author).exists())
         self.assertTrue(

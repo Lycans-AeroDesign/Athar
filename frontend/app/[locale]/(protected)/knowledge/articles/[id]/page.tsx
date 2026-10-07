@@ -19,6 +19,7 @@ import { Markdown } from "@/components/ui/Markdown";
 import { Modal } from "@/components/ui/Modal";
 import { ShareButton } from "@/components/ui/ShareButton";
 import { TagChip } from "@/components/ui/TagChip";
+import { CoAuthorsByline } from "@/components/knowledge/CoAuthorsByline";
 import { Link, useRouter } from "@/i18n/navigation";
 import { formatDateTime } from "@/lib/datetime";
 import { formatPersonName } from "@/lib/format";
@@ -81,7 +82,9 @@ export default function ArticleDetailPage() {
     return <p className="font-body-md text-body-md text-on-surface-variant">{t("loading")}</p>;
   }
 
-  const isAuthor = user?.id === article.author?.id;
+  // Co-authors share the author's edit/submit rights (backend visibility.is_owner_of).
+  const isAuthor =
+    user?.id === article.author?.id || article.co_authors.some((coAuthor) => coAuthor.id === user?.id);
   const canEdit = isAuthor || canUpdateAny;
   // Archived is frozen even for someone who otherwise holds a blanket
   // article.update override - see update_article()'s own matching check in
@@ -248,6 +251,7 @@ export default function ArticleDetailPage() {
                 {t("byAuthor", { name: authorName })}
               </Link>
             )}
+            <CoAuthorsByline coAuthors={article.co_authors} />
             <span>{formatDateTime(article.updated_at)}</span>
           </div>
           {article.tags.length > 0 && (

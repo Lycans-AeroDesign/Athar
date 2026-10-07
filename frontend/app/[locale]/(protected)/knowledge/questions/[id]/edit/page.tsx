@@ -41,7 +41,10 @@ export default function EditQuestionPage() {
     return <p className="font-body-md text-body-md text-on-surface-variant">{t("loading")}</p>;
   }
 
-  const canEdit = user?.id === question.author?.id || canModerate;
+  const canEdit =
+    user?.id === question.author?.id ||
+    question.co_authors.some((coAuthor) => coAuthor.id === user?.id) ||
+    canModerate;
   if (!canEdit) {
     return <p className="font-body-md text-body-md text-on-surface-variant">{t("editPermissionRequired")}</p>;
   }

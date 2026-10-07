@@ -363,8 +363,15 @@ class SearchView(APIView):
 # RESTRICTED content the viewer isn't privileged for or granted on.
 def _contribution_handlers(request, user):
     return {
-        "article": (services.visible_articles_for(request.user).filter(author=user), ArticleListSerializer),
-        "question": (services.visible_questions_for(request.user).filter(author=user), QuestionListSerializer),
+        # Co-authored items count as the user's own contributions too.
+        "article": (
+            services.visible_articles_for(request.user).filter(Q(author=user) | Q(co_authors=user)).distinct(),
+            ArticleListSerializer,
+        ),
+        "question": (
+            services.visible_questions_for(request.user).filter(Q(author=user) | Q(co_authors=user)).distinct(),
+            QuestionListSerializer,
+        ),
         "answer": (
             Answer.objects.filter(author=user, question__in=services.visible_questions_for(request.user)),
             AnswerSerializer,
@@ -473,7 +480,9 @@ def _visible_instance_or_404(request, queryset_or_model, model_name: str, pk):
 
 def _visible_article_or_404(request, pk):
     article = get_object_or_404(
-        Article.objects.select_related("category", "author"), pk=pk, organization=request.user.organization
+        Article.objects.select_related("category", "author").prefetch_related("co_authors"),
+        pk=pk,
+        organization=request.user.organization,
     )
     is_privileged = visibility_rules.is_privileged_for(request.user, "article", article)
     # PUBLISHED + visible-to-viewer (not RESTRICTED, or RESTRICTED but the
@@ -490,7 +499,7 @@ def _visible_article_or_404(request, pk):
 
 
 def _visible_question_or_404(request, pk):
-    queryset = Question.objects.select_related("author").prefetch_related("tags", "answers__author")
+    queryset = Question.objects.select_related("author").prefetch_related("tags", "co_authors", "answers__author")
     return _visible_instance_or_404(request, queryset, "question", pk)
 
 
@@ -534,6 +543,7 @@ class ArticleListCreateView(APIView):
             "category", "author"
         ).prefetch_related("tags")
         can_review = request.user.has_permission("article.review") or request.user.has_permission("article.publish")
+        co_authored_ids = Article.objects.filter(co_authors=request.user).values("pk")
         if status_param == "ALL":
             # A reviewer/publisher sees every article regardless of status -
             # no further filtering needed. Everyone else sees every
@@ -541,7 +551,9 @@ class ArticleListCreateView(APIView):
             # RESTRICTED ones that aren't theirs) plus their own articles in
             # any other status, since those aren't discoverable by anyone else.
             if not can_review:
-                queryset = queryset.filter(Q(status=Article.Status.PUBLISHED) | Q(author=request.user))
+                queryset = queryset.filter(
+                    Q(status=Article.Status.PUBLISHED) | Q(author=request.user) | Q(pk__in=co_authored_ids)
+                )
                 published = queryset.filter(status=Article.Status.PUBLISHED)
                 accessible_published_ids = visibility_rules.exclude_inaccessible(
                     published, request.user, Article, "article"
@@ -556,7 +568,7 @@ class ArticleListCreateView(APIView):
         elif can_review:
             queryset = queryset.filter(status=status_param)
         else:
-            queryset = queryset.filter(status=status_param, author=request.user)
+            queryset = queryset.filter(status=status_param).filter(Q(author=request.user) | Q(pk__in=co_authored_ids))
         return paginated_response(request, queryset, ArticleListSerializer)
 
     @extend_schema(

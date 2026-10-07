@@ -17,7 +17,12 @@ from files.services import confirm_stored_files, confirm_stored_files_in_text
 
 from . import relationships
 from . import visibility as visibility_rules
-from .scoring import ACCEPTED_ANSWER_ACTION, ACCEPTED_ANSWER_POINTS, CONTRIBUTION_POINTS
+from .scoring import (
+    ACCEPTED_ANSWER_ACTION,
+    ACCEPTED_ANSWER_POINTS,
+    CO_AUTHOR_CREDITED_ACTIONS,
+    CONTRIBUTION_POINTS,
+)
 
 from .models import (
     Answer,
@@ -62,6 +67,13 @@ def _unique_slug(model, base: str, organization) -> str:
     return candidate
 
 
+def _require_co_owner_or_permission(*, actor, model_name: str, instance, codename: str, message: str) -> None:
+    """_require_owner_or_permission for types with co-authors - the author
+    or any co-author (see visibility.is_owner_of), or the override holder."""
+    if not (visibility_rules.is_owner_of(actor, model_name, instance) or actor.has_permission(codename)):
+        raise PermissionDenied(message)
+
+
 def _require_owner_or_permission(*, actor, owner, codename: str, message: str) -> None:
     """Shared "it's your own content, or you hold this override permission"
     guard - repeated identically across update/delete/accept/close/reopen for
@@ -81,6 +93,32 @@ def _sync_tags(obj, tag_names: list[str] | None) -> None:
     normalized = {name.strip().lower() for name in tag_names if name.strip()}
     tags = [Tag.objects.get_or_create(organization=obj.organization, name=name)[0] for name in normalized]
     obj.tags.set(tags)
+
+
+def _validated_co_authors(*, actor, owner, co_authors) -> list:
+    """Org-scoped (a co-author from another tenant would otherwise gain
+    access to this one's content via the RESTRICTED rule), deduplicated, and
+    never the owner themselves - they're already credited as the author."""
+    unique = {user.pk: user for user in co_authors}
+    for user in unique.values():
+        if user.organization_id != actor.organization_id:
+            raise ValidationError({"co_author_ids": [f"No user with id {user.pk}."]})
+    return [user for user in unique.values() if owner is None or user.pk != owner.pk]
+
+
+def _set_co_authors(*, obj, actor, co_authors, override_codename: str) -> None:
+    """None leaves the list untouched (same convention as _sync_tags). Only
+    the owner or an override-permission holder may change it - a co-author
+    can edit the content but not add/remove the other co-authors."""
+    if co_authors is None:
+        return
+    validated = _validated_co_authors(actor=actor, owner=obj.author, co_authors=co_authors)
+    if actor != obj.author and not actor.has_permission(override_codename):
+        current = set(obj.co_authors.values_list("pk", flat=True))
+        if current != {user.pk for user in validated}:
+            raise PermissionDenied("Only the author can change the co-author list.")
+        return
+    obj.co_authors.set(validated)
 
 
 def visible_articles_for(viewer) -> QuerySet[Article]:
@@ -189,6 +227,7 @@ def create_article(
     category=None,
     tag_names=None,
     visibility=Visibility.PUBLIC,
+    co_authors=None,
 ) -> Article:
     article = Article.objects.create(
         organization=actor.organization,
@@ -201,6 +240,7 @@ def create_article(
         visibility=visibility,
     )
     _sync_tags(article, tag_names)
+    _set_co_authors(obj=article, actor=actor, co_authors=co_authors, override_codename="article.update")
     ArticleRevision.objects.create(article=article, title=article.title, content=article.content, edited_by=actor)
     confirm_stored_files_in_text(content, organization=actor.organization)
     log_action(actor=actor, action="article.create", target=article, request=request)
@@ -208,7 +248,7 @@ def create_article(
 
 
 def update_article(*, article: Article, actor, request=None, **fields) -> Article:
-    is_owner = actor == article.author
+    is_owner = visibility_rules.is_owner_of(actor, "article", article)
     can_override = actor.has_permission("article.update")
     if not (is_owner or can_override):
         raise PermissionDenied("You can only edit your own article.")
@@ -221,11 +261,13 @@ def update_article(*, article: Article, actor, request=None, **fields) -> Articl
         raise PermissionDenied("A published article can only be edited by someone with article.update.")
 
     tag_names = fields.pop("tag_names", None)
+    co_authors = fields.pop("co_authors", None)
     content_changed = "title" in fields or "content" in fields
     for field, value in fields.items():
         setattr(article, field, value)
     article.save(update_fields=[*fields.keys(), "updated_at"])
     _sync_tags(article, tag_names)
+    _set_co_authors(obj=article, actor=actor, co_authors=co_authors, override_codename="article.update")
 
     if content_changed:
         ArticleRevision.objects.create(article=article, title=article.title, content=article.content, edited_by=actor)
@@ -237,8 +279,8 @@ def update_article(*, article: Article, actor, request=None, **fields) -> Articl
 
 
 def submit_article(*, article: Article, actor, request=None) -> Article:
-    if actor != article.author:
-        raise PermissionDenied("Only the author can submit their own draft for review.")
+    if not visibility_rules.is_owner_of(actor, "article", article):
+        raise PermissionDenied("Only the author or a co-author can submit their own draft for review.")
     if article.status not in (Article.Status.DRAFT, Article.Status.REJECTED):
         raise ValidationError("Only a draft or rejected article can be submitted for review.")
     article.status = Article.Status.IN_REVIEW
@@ -300,25 +342,29 @@ def delete_article(*, article: Article, actor, request=None) -> None:
     article.delete()
 
 
-def create_question(*, actor, request=None, title, body="", tag_names=None, visibility=Visibility.PUBLIC) -> Question:
+def create_question(
+    *, actor, request=None, title, body="", tag_names=None, visibility=Visibility.PUBLIC, co_authors=None
+) -> Question:
     question = Question.objects.create(
         organization=actor.organization, title=title, body=body, author=actor, visibility=visibility
     )
     _sync_tags(question, tag_names)
+    _set_co_authors(obj=question, actor=actor, co_authors=co_authors, override_codename="question.moderate")
     confirm_stored_files_in_text(body, organization=actor.organization)
     log_action(actor=actor, action="question.create", target=question, request=request)
     return question
 
 
 def update_question(*, question: Question, actor, request=None, **fields) -> Question:
-    _require_owner_or_permission(
-        actor=actor, owner=question.author, codename="question.moderate", message="You can only edit your own question."
-    )
+    if not (visibility_rules.is_owner_of(actor, "question", question) or actor.has_permission("question.moderate")):
+        raise PermissionDenied("You can only edit your own question.")
     tag_names = fields.pop("tag_names", None)
+    co_authors = fields.pop("co_authors", None)
     for field, value in fields.items():
         setattr(question, field, value)
     question.save(update_fields=[*fields.keys(), "updated_at"])
     _sync_tags(question, tag_names)
+    _set_co_authors(obj=question, actor=actor, co_authors=co_authors, override_codename="question.moderate")
     if "body" in fields:
         confirm_stored_files_in_text(fields["body"], organization=question.organization)
     log_action(actor=actor, action="question.update", target=question, request=request)
@@ -1112,7 +1158,7 @@ def _can_edit_relatable(actor, model_name: str, instance) -> bool:
     if model_name == "document":
         return actor == getattr(instance, "created_by", None) or actor.has_permission("document.update")
     codename = "article.update" if model_name == "article" else "question.moderate"
-    return actor == getattr(instance, "author", None) or actor.has_permission(codename)
+    return visibility_rules.is_owner_of(actor, model_name, instance) or actor.has_permission(codename)
 
 
 def _normalized_relation_direction(relation_type: str, source_type: str, source, target_type: str, target):
@@ -1392,9 +1438,10 @@ def bookmarks_for(viewer, content_type_name: str | None = None) -> QuerySet[Book
 
 
 def add_article_attachment(*, article: Article, file, actor, request=None) -> ArticleAttachment:
-    _require_owner_or_permission(
+    _require_co_owner_or_permission(
         actor=actor,
-        owner=article.author,
+        model_name="article",
+        instance=article,
         codename="article.update",
         message="You can only attach files to your own article.",
     )
@@ -1411,9 +1458,10 @@ def add_article_attachment(*, article: Article, file, actor, request=None) -> Ar
 
 
 def remove_article_attachment(*, attachment: ArticleAttachment, actor, request=None) -> None:
-    _require_owner_or_permission(
+    _require_co_owner_or_permission(
         actor=actor,
-        owner=attachment.article.author,
+        model_name="article",
+        instance=attachment.article,
         codename="article.update",
         message="You can only remove attachments from your own article.",
     )
@@ -1427,9 +1475,10 @@ def remove_article_attachment(*, attachment: ArticleAttachment, actor, request=N
 
 
 def add_question_attachment(*, question: Question, file, actor, request=None) -> QuestionAttachment:
-    _require_owner_or_permission(
+    _require_co_owner_or_permission(
         actor=actor,
-        owner=question.author,
+        model_name="question",
+        instance=question,
         codename="question.moderate",
         message="You can only attach files to your own question.",
     )
@@ -1446,9 +1495,10 @@ def add_question_attachment(*, question: Question, file, actor, request=None) ->
 
 
 def remove_question_attachment(*, attachment: QuestionAttachment, actor, request=None) -> None:
-    _require_owner_or_permission(
+    _require_co_owner_or_permission(
         actor=actor,
-        owner=attachment.question.author,
+        model_name="question",
+        instance=attachment.question,
         codename="question.moderate",
         message="You can only remove attachments from your own question.",
     )
@@ -1553,8 +1603,33 @@ def compute_contribution_scores_for(organization, *, since=None) -> dict:
     generic_logs = AuditLog.objects.filter(organization=organization, action__in=generic_actions, actor__isnull=False)
     if since is not None:
         generic_logs = generic_logs.filter(created_at__gte=since)
-    for actor_id, action in generic_logs.values_list("actor_id", "action"):
+    co_credited: list[tuple[str, str, object]] = []
+    for actor_id, action, target_id in generic_logs.values_list("actor_id", "action", "target_object_id"):
         scores[actor_id] = scores.get(actor_id, 0) + CONTRIBUTION_POINTS[action]
+        if action in CO_AUTHOR_CREDITED_ACTIONS and target_id:
+            co_credited.append((action, target_id, actor_id))
+
+    # Co-authors earn the same points as the actor for creating/publishing
+    # the item they share (see scoring.CO_AUTHOR_CREDITED_ACTIONS) - credited
+    # by the item's *current* co-author list, so someone added later still
+    # gets credit for the item, and someone removed stops getting it. Never
+    # double-credits the actor themselves.
+    co_author_models = {"article": Article, "question": Question}
+    for model_name, model in co_author_models.items():
+        target_ids = {target_id for action, target_id, _ in co_credited if CO_AUTHOR_CREDITED_ACTIONS[action] == model_name}
+        if not target_ids:
+            continue
+        co_authors_by_item: dict[str, list] = {}
+        for item_id, user_id in model.co_authors.through.objects.filter(
+            **{f"{model_name}_id__in": target_ids}
+        ).values_list(f"{model_name}_id", "user_id"):
+            co_authors_by_item.setdefault(str(item_id), []).append(user_id)
+        for action, target_id, actor_id in co_credited:
+            if CO_AUTHOR_CREDITED_ACTIONS[action] != model_name:
+                continue
+            for user_id in co_authors_by_item.get(str(target_id), []):
+                if user_id != actor_id:
+                    scores[user_id] = scores.get(user_id, 0) + CONTRIBUTION_POINTS[action]
 
     accept_logs = AuditLog.objects.filter(organization=organization, action=ACCEPTED_ANSWER_ACTION)
     if since is not None:

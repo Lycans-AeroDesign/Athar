@@ -81,6 +81,10 @@ def _tag_ids(obj) -> str:
     return ";".join(str(tag.id) for tag in obj.tags.all())
 
 
+def _co_author_ids(obj) -> str:
+    return ";".join(str(user.id) for user in obj.co_authors.all())
+
+
 def _content_type_name(obj) -> str:
     return obj.content_type.model
 
@@ -206,6 +210,7 @@ def _export_specs(organization):
                 ("tags", _tags),
                 ("author_id", lambda o: _s(o.author_id)),
                 ("author_email", lambda o: _s(o.author and o.author.email)),
+                ("co_author_ids", _co_author_ids),
                 ("created_at", lambda o: _s(o.created_at)),
                 ("updated_at", lambda o: _s(o.updated_at)),
                 ("published_at", lambda o: _s(o.published_at)),
@@ -227,7 +232,9 @@ def _export_specs(organization):
             ],
         ),
         (
-            Question.objects.filter(organization=organization).select_related("author").prefetch_related("tags"),
+            Question.objects.filter(organization=organization)
+            .select_related("author")
+            .prefetch_related("tags", "co_authors"),
             "questions.csv",
             [
                 ("id", lambda o: _s(o.id)),
@@ -239,6 +246,7 @@ def _export_specs(organization):
                 ("tags", _tags),
                 ("author_id", lambda o: _s(o.author_id)),
                 ("author_email", lambda o: _s(o.author and o.author.email)),
+                ("co_author_ids", _co_author_ids),
                 ("created_at", lambda o: _s(o.created_at)),
                 ("updated_at", lambda o: _s(o.updated_at)),
             ],

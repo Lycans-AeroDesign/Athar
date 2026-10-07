@@ -1300,6 +1300,11 @@
     "visibilityPUBLIC": "عام",
     "visibilityRESTRICTED": "مقيّد",
     "visibilityInherit": "وراثة من المشروع ({visibility})",
+    "coAuthorsLabel": "المؤلفون المشاركون",
+    "coAuthorsPlaceholder": "أضف مؤلفًا مشاركًا...",
+    "coAuthorsLocked": "يمكن للمؤلف فقط تغيير المؤلفين المشاركين.",
+    "removeCoAuthor": "إزالة {name}",
+    "bylineWith": "بمشاركة",
     "relatedEmpty": "لا توجد روابط بعد - تُحفظ الروابط مع هذا العنصر."
   }
 }

@@ -3292,7 +3292,7 @@ class ComponentInventoryTests(KnowledgeTestCase):
 
 class CreationFlowTests(KnowledgeTestCase):
     """Creation-form extras (services.create_with_links): project link,
-    visibility inheritance and create-time relations."""
+    visibility inheritance, create-time relations and co-authors."""
 
     def setUp(self):
         self.head, self.head_access = self._login_with_role("cf-head@example.com", "Subteam Head")
@@ -3388,6 +3388,70 @@ class CreationFlowTests(KnowledgeTestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertFalse(Question.objects.filter(title="Rolled back").exists())
 
+    def test_co_author_can_view_restricted_draft_and_edit_but_not_change_co_authors(self):
+        co_author, co_access = self._login_with_role("cf-co@example.com", "Member")
+        outsider, _ = self._login_with_role("cf-out@example.com", "Member")
+        article = self.client.post(
+            reverse("knowledge-article-list-create"),
+            {"title": "Joint", "content": "Body", "visibility": "RESTRICTED", "co_author_ids": [str(co_author.id)]},
+            format="json",
+            **self._auth(self.member_access),
+        ).data
+        self.assertEqual([u["id"] for u in article["co_authors"]], [str(co_author.id)])
+
+        response = self.client.get(reverse("knowledge-article-detail", args=[article["id"]]), **self._auth(co_access))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        response = self.client.patch(
+            reverse("knowledge-article-detail", args=[article["id"]]),
+            {"title": "Joint v2"},
+            format="json",
+            **self._auth(co_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        response = self.client.patch(
+            reverse("knowledge-article-detail", args=[article["id"]]),
+            {"co_author_ids": [str(co_author.id), str(outsider.id)]},
+            format="json",
+            **self._auth(co_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        # Listed among the co-author's own drafts.
+        response = self.client.get(reverse("knowledge-article-list-create"), {"status": "DRAFT"}, **self._auth(co_access))
+        self.assertIn(article["id"], {a["id"] for a in response.data["results"]})
+
+    def test_cross_org_co_author_is_rejected(self):
+        other_org = create_test_organization(name="Other")
+        stranger = User.objects.create_user(email="cf-stranger@example.com", password="x", organization=other_org)
+        response = self.client.post(
+            reverse("knowledge-question-list-create"),
+            {"title": "Q", "body": "?", "co_author_ids": [str(stranger.id)]},
+            format="json",
+            **self._auth(self.member_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(Question.objects.filter(title="Q").exists())
+
+    def test_co_authors_share_contribution_credit(self):
+        co_author, _ = self._login_with_role("cf-score-co@example.com", "Member")
+        self.client.post(
+            reverse("knowledge-question-list-create"),
+            {"title": "Shared Q", "body": "?", "co_author_ids": [str(co_author.id)]},
+            format="json",
+            **self._auth(self.member_access),
+        )
+        scores = services.compute_contribution_scores_for(self.organization)
+        # question.create = +1, credited to both the author and the co-author.
+        self.assertEqual(scores.get(self.member.id), 1)
+        self.assertEqual(scores.get(co_author.id), 1)
+
+        # Listed among the co-author's contributions too.
+        response = self.client.get(
+            reverse("knowledge-user-contributions", args=[co_author.id]), {"type": "question"},
+            **self._auth(self.member_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data["results"]), 1)
 
 
 class WriteSerializerScopingTests(APITestCase):

@@ -34,6 +34,17 @@ CONTRIBUTION_POINTS: dict[str, int] = {
     "document.create": 2,
 }
 
+# Actions whose points are also credited to the target item's co-authors
+# (Article.co_authors/Question.co_authors), on top of the actor - writing
+# something together earns both people the credit, not just whoever clicked
+# save. action -> the model it targets. Edits (article.update) aren't listed:
+# each co-author already earns those for their own edits as the actor.
+CO_AUTHOR_CREDITED_ACTIONS: dict[str, str] = {
+    "article.create": "article",
+    "article.publish": "article",
+    "question.create": "question",
+}
+
 # The one action scored by attributing to someone other than the audit
 # entry's own `actor` (see compute_contribution_score).
 ACCEPTED_ANSWER_ACTION = "question.accept_answer"

@@ -130,6 +130,7 @@ export function getArticle(id: string): Promise<ArticleDetail> {
 }
 
 export interface ArticleWritePayload extends ProjectLinkPayload {
+  co_author_ids?: string[];
   title?: string;
   excerpt?: string;
   content?: string;
@@ -207,6 +208,7 @@ export interface QuestionWritePayload extends ProjectLinkPayload {
   body?: string;
   tag_names?: string[];
   visibility?: Visibility;
+  co_author_ids?: string[];
 }
 
 export function createQuestion(payload: QuestionWritePayload & { title: string }): Promise<QuestionDetail> {

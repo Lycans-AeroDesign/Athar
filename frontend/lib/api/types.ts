@@ -214,6 +214,8 @@ export interface ArticleSummary {
 
 export interface ArticleDetail extends ArticleSummary {
   content: string;
+  /** Credited alongside `author`, with the same edit/visibility rights - see backend Article.co_authors. */
+  co_authors: KnowledgeAuthor[];
   /** Distinct authors of every create/update to this article - see AuthorSerializer/ContributorsMixin. */
   contributors: KnowledgeAuthor[];
   /** Who's been explicitly granted access, on top of the author - meaningful only when visibility is RESTRICTED. */
@@ -258,6 +260,7 @@ export interface QuestionSummary {
 
 export interface QuestionDetail extends QuestionSummary {
   body: string;
+  co_authors: KnowledgeAuthor[];
   answers: Answer[];
   contributors: KnowledgeAuthor[];
   restricted_to: AccessGrant[];

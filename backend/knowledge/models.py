@@ -93,6 +93,10 @@ class Article(models.Model):
         on_delete=models.SET_NULL,
         related_name="authored_articles",
     )
+    # Credited alongside `author` and treated as owners for editing and the
+    # RESTRICTED rule (see visibility.CO_OWNER_FIELD) - only the author (or an
+    # article.update holder) may change who's on this list.
+    co_authors = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, related_name="coauthored_articles")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     published_at = models.DateTimeField(null=True, blank=True)
@@ -151,6 +155,8 @@ class Question(models.Model):
         on_delete=models.SET_NULL,
         related_name="authored_questions",
     )
+    # Same co-ownership semantics as Article.co_authors.
+    co_authors = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, related_name="coauthored_questions")
     # A single nullable FK, not a boolean on Answer - this is what
     # *structurally* enforces "at most one accepted answer": there is no
     # schema state where two answers on the same question are both accepted.

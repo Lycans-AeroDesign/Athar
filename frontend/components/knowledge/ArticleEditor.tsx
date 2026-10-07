@@ -8,6 +8,7 @@ import { ChangedIndicator } from "@/components/ui/ChangedIndicator";
 import { Combobox } from "@/components/ui/Combobox";
 import { MarkdownEditor } from "@/components/ui/MarkdownEditor";
 import { TagInput } from "@/components/ui/TagInput";
+import { CoAuthorPicker } from "@/components/knowledge/CoAuthorPicker";
 import { PendingRelations, toRelationInputs, type PendingRelation } from "@/components/knowledge/PendingRelations";
 import { ProjectSelect } from "@/components/knowledge/ProjectSelect";
 import { effectiveVisibility, VisibilitySelect } from "@/components/knowledge/VisibilitySelect";
@@ -26,7 +27,8 @@ import {
   submitArticle,
   updateArticle,
 } from "@/lib/api/knowledge";
-import type { ArticleDetail, Category, Visibility } from "@/lib/api/types";
+import type { ArticleDetail, Category, KnowledgeAuthor, Visibility } from "@/lib/api/types";
+import { useAuth } from "@/lib/auth/AuthProvider";
 import { useHasPermission } from "@/lib/auth/permissions";
 
 interface ArticleEditorProps {
@@ -48,6 +50,8 @@ export function ArticleEditor({ article, onDirtyChange, initialProjectId = null 
   const commonT = useTranslations("common");
   const router = useRouter();
   const canPublish = useHasPermission("article.publish");
+  const canOverride = useHasPermission("article.update");
+  const { user } = useAuth();
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [title, setTitle] = useState(article?.title ?? "");
@@ -60,6 +64,7 @@ export function ArticleEditor({ article, onDirtyChange, initialProjectId = null 
   const [projectId, setProjectId] = useState<string | null>(initialProjectId);
   const [projectVisibility, setProjectVisibility] = useState<Visibility | null>(null);
   const [pendingRelations, setPendingRelations] = useState<PendingRelation[]>([]);
+  const [coAuthors, setCoAuthors] = useState<KnowledgeAuthor[]>(article?.co_authors ?? []);
   const [restrictedAccessDraft, setRestrictedAccessDraft] = useState<RestrictedAccessDraft>(
     EMPTY_RESTRICTED_ACCESS_DRAFT,
   );
@@ -67,6 +72,7 @@ export function ArticleEditor({ article, onDirtyChange, initialProjectId = null 
   const [error, setError] = useState<string | null>(null);
 
   const resolvedVisibility = effectiveVisibility(visibility, article ? null : projectVisibility);
+  const canEditCoAuthors = !article || article.author?.id === user?.id || canOverride;
 
   useEffect(() => {
     getCategories().then(setCategories);
@@ -79,6 +85,7 @@ export function ArticleEditor({ article, onDirtyChange, initialProjectId = null 
     category: categoryId !== (article?.category?.id ?? null),
     tags: tags.join(",") !== (article?.tags.map((tag) => tag.name).join(",") ?? ""),
     visibility: visibility !== (article?.visibility ?? null),
+    coAuthors: coAuthors.map((u) => u.id).join(",") !== (article?.co_authors ?? []).map((u) => u.id).join(","),
     project: !article && projectId !== initialProjectId,
     relations: pendingRelations.length > 0,
     restrictedAccess:
@@ -99,6 +106,7 @@ export function ArticleEditor({ article, onDirtyChange, initialProjectId = null 
       category_id: categoryId,
       tag_names: tags,
       ...(visibility ? { visibility } : {}),
+      ...(fieldChanged.coAuthors ? { co_author_ids: coAuthors.map((u) => u.id) } : {}),
       ...(isCreate ? { project_id: projectId, relations: toRelationInputs(pendingRelations) } : {}),
     };
   }
@@ -110,6 +118,7 @@ export function ArticleEditor({ article, onDirtyChange, initialProjectId = null 
     setCategoryId(article?.category?.id ?? null);
     setTags(article?.tags.map((tag) => tag.name) ?? []);
     setVisibility(article?.visibility ?? null);
+    setCoAuthors(article?.co_authors ?? []);
     setRestrictedAccessDraft(EMPTY_RESTRICTED_ACCESS_DRAFT);
     setError(null);
   }
@@ -195,6 +204,14 @@ export function ArticleEditor({ article, onDirtyChange, initialProjectId = null 
             />
           </ChangedIndicator>
         )}
+        <ChangedIndicator changed={fieldChanged.coAuthors}>
+          <CoAuthorPicker
+            value={coAuthors}
+            onChange={setCoAuthors}
+            authorId={article ? article.author?.id : user?.id}
+            canEdit={canEditCoAuthors}
+          />
+        </ChangedIndicator>
         {resolvedVisibility === "RESTRICTED" && (
           <ChangedIndicator changed={fieldChanged.restrictedAccess}>
             <RestrictedAccessPicker

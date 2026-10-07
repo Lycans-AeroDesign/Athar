@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { ChangedIndicator } from "@/components/ui/ChangedIndicator";
 import { MarkdownEditor } from "@/components/ui/MarkdownEditor";
 import { TagInput } from "@/components/ui/TagInput";
+import { CoAuthorPicker } from "@/components/knowledge/CoAuthorPicker";
 import { PendingRelations, toRelationInputs, type PendingRelation } from "@/components/knowledge/PendingRelations";
 import { ProjectSelect } from "@/components/knowledge/ProjectSelect";
 import {
@@ -18,7 +19,9 @@ import { effectiveVisibility, VisibilitySelect } from "@/components/knowledge/Vi
 import { useRouter } from "@/i18n/navigation";
 import { addAccessGrant, removeAccessGrant } from "@/lib/api/accessGrants";
 import { createQuestion, updateQuestion, type QuestionWritePayload } from "@/lib/api/knowledge";
-import type { QuestionDetail, Visibility } from "@/lib/api/types";
+import type { KnowledgeAuthor, QuestionDetail, Visibility } from "@/lib/api/types";
+import { useAuth } from "@/lib/auth/AuthProvider";
+import { useHasPermission } from "@/lib/auth/permissions";
 
 interface QuestionEditorProps {
   /** Omit to ask a new question; pass an existing one to edit it in place. */
@@ -34,6 +37,8 @@ interface QuestionEditorProps {
 export function QuestionEditor({ question, onDirtyChange, initialProjectId = null }: QuestionEditorProps) {
   const t = useTranslations("knowledge.question");
   const router = useRouter();
+  const { user } = useAuth();
+  const canModerate = useHasPermission("question.moderate");
 
   const [title, setTitle] = useState(question?.title ?? "");
   const [body, setBody] = useState(question?.body ?? "");
@@ -43,6 +48,7 @@ export function QuestionEditor({ question, onDirtyChange, initialProjectId = nul
   const [projectId, setProjectId] = useState<string | null>(initialProjectId);
   const [projectVisibility, setProjectVisibility] = useState<Visibility | null>(null);
   const [pendingRelations, setPendingRelations] = useState<PendingRelation[]>([]);
+  const [coAuthors, setCoAuthors] = useState<KnowledgeAuthor[]>(question?.co_authors ?? []);
   const [restrictedAccessDraft, setRestrictedAccessDraft] = useState<RestrictedAccessDraft>(
     EMPTY_RESTRICTED_ACCESS_DRAFT,
   );
@@ -50,12 +56,14 @@ export function QuestionEditor({ question, onDirtyChange, initialProjectId = nul
   const [error, setError] = useState<string | null>(null);
 
   const resolvedVisibility = effectiveVisibility(visibility, question ? null : projectVisibility);
+  const canEditCoAuthors = !question || question.author?.id === user?.id || canModerate;
 
   const fieldChanged = {
     title: title !== (question?.title ?? ""),
     body: body !== (question?.body ?? ""),
     tags: tags.join(",") !== (question?.tags.map((tag) => tag.name).join(",") ?? ""),
     visibility: visibility !== (question?.visibility ?? null),
+    coAuthors: coAuthors.map((u) => u.id).join(",") !== (question?.co_authors ?? []).map((u) => u.id).join(","),
     project: !question && projectId !== initialProjectId,
     relations: pendingRelations.length > 0,
     restrictedAccess:
@@ -74,6 +82,7 @@ export function QuestionEditor({ question, onDirtyChange, initialProjectId = nul
       body,
       tag_names: tags,
       ...(visibility ? { visibility } : {}),
+      ...(fieldChanged.coAuthors ? { co_author_ids: coAuthors.map((u) => u.id) } : {}),
       ...(isCreate ? { project_id: projectId, relations: toRelationInputs(pendingRelations) } : {}),
     };
   }
@@ -137,6 +146,14 @@ export function QuestionEditor({ question, onDirtyChange, initialProjectId = nul
             />
           </ChangedIndicator>
         )}
+        <ChangedIndicator changed={fieldChanged.coAuthors}>
+          <CoAuthorPicker
+            value={coAuthors}
+            onChange={setCoAuthors}
+            authorId={question ? question.author?.id : user?.id}
+            canEdit={canEditCoAuthors}
+          />
+        </ChangedIndicator>
         {resolvedVisibility === "RESTRICTED" && (
           <ChangedIndicator changed={fieldChanged.restrictedAccess}>
             <RestrictedAccessPicker

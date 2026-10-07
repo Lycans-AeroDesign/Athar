@@ -38,7 +38,10 @@ export default function EditArticlePage() {
     return <p className="font-body-md text-body-md text-on-surface-variant">{t("loading")}</p>;
   }
 
-  const canEdit = user?.id === article.author?.id || canUpdateAny;
+  const canEdit =
+    user?.id === article.author?.id ||
+    article.co_authors.some((coAuthor) => coAuthor.id === user?.id) ||
+    canUpdateAny;
   if (!canEdit) {
     return <p className="font-body-md text-body-md text-on-surface-variant">{t("editPermissionRequired")}</p>;
   }
