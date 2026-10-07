@@ -12,11 +12,13 @@ import {
   RestrictedAccessPicker,
   type RestrictedAccessDraft,
 } from "@/components/knowledge/RestrictedAccessPicker";
+import { PendingRelations, toRelationInputs, type PendingRelation } from "@/components/knowledge/PendingRelations";
+import { effectiveVisibility, VisibilitySelect } from "@/components/knowledge/VisibilitySelect";
 import { useRouter } from "@/i18n/navigation";
 import { addAccessGrant, removeAccessGrant } from "@/lib/api/accessGrants";
 import { createTest, getProjects, updateTest, type TestWritePayload } from "@/lib/api/engineering";
 import type { ProjectSummary, TestDetail, TestPassFail, TestRunStatus, TestType, Visibility } from "@/lib/api/types";
-import { TEST_PASS_FAIL_ICONS, TEST_STATUS_ICONS, TEST_TYPE_ICONS, VISIBILITY_ICONS } from "@/lib/optionIcons";
+import { TEST_PASS_FAIL_ICONS, TEST_STATUS_ICONS, TEST_TYPE_ICONS } from "@/lib/optionIcons";
 
 const TEST_TYPE_VALUES: TestType[] = [
   "FLIGHT",
@@ -31,9 +33,10 @@ const TEST_TYPE_VALUES: TestType[] = [
 ];
 const STATUS_VALUES: TestRunStatus[] = ["PLANNED", "IN_PROGRESS", "COMPLETED"];
 const PASS_FAIL_VALUES: TestPassFail[] = ["PASS", "FAIL", "PARTIAL", "NOT_APPLICABLE"];
-const VISIBILITY_VALUES: Visibility[] = ["PUBLIC", "RESTRICTED"];
 
 interface TestEditorProps {
+  /** Preselects the project on a new item (e.g. from a ?project= link). */
+  initialProjectId?: string | null;
   test?: TestDetail;
   onDirtyChange?: (dirty: boolean) => void;
 }
@@ -42,7 +45,7 @@ interface TestEditorProps {
 // backend/knowledge/models.py's Test docstring), so one Save action. Four
 // separate markdown bodies (configuration/procedure/results/conclusion)
 // collapsing the spec's fuller section breakdown, same precedent as Failure.
-export function TestEditor({ test, onDirtyChange }: TestEditorProps) {
+export function TestEditor({ test, onDirtyChange, initialProjectId = null }: TestEditorProps) {
   const t = useTranslations("engineering.test");
   const commonT = useTranslations("common");
   const testTypeT = useTranslations("engineering.testType");
@@ -53,7 +56,7 @@ export function TestEditor({ test, onDirtyChange }: TestEditorProps) {
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [title, setTitle] = useState(test?.title ?? "");
   const [testType, setTestType] = useState<TestType>(test?.test_type ?? "OTHER");
-  const [projectId, setProjectId] = useState<string | null>(test?.project?.id ?? null);
+  const [projectId, setProjectId] = useState<string | null>(test?.project?.id ?? initialProjectId);
   const [location, setLocation] = useState(test?.location ?? "");
   const [date, setDate] = useState<string | null>(test?.date ?? null);
   const [status, setStatus] = useState<TestRunStatus>(test?.status ?? "PLANNED");
@@ -63,17 +66,22 @@ export function TestEditor({ test, onDirtyChange }: TestEditorProps) {
   const [procedure, setProcedure] = useState(test?.procedure ?? "");
   const [results, setResults] = useState(test?.results ?? "");
   const [conclusion, setConclusion] = useState(test?.conclusion ?? "");
-  const [visibility, setVisibility] = useState<Visibility>(test?.visibility ?? "PUBLIC");
+  // null = not explicitly chosen (new item only): inherits the project's visibility if one is picked.
+  const [visibility, setVisibility] = useState<Visibility | null>(test?.visibility ?? null);
+  const [pendingRelations, setPendingRelations] = useState<PendingRelation[]>([]);
   const [restrictedAccessDraft, setRestrictedAccessDraft] = useState<RestrictedAccessDraft>(
     EMPTY_RESTRICTED_ACCESS_DRAFT,
   );
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const inheritVisibilityFrom: Visibility | null = test ? null : (projects.find((p) => p.id === projectId)?.visibility ?? null);
+  const resolvedVisibility = effectiveVisibility(visibility, inheritVisibilityFrom);
+
   useEffect(() => {
     // First page only (20 items) for this picker dropdown - same known
     // limitation as FailureEditor.tsx's own Component/Project pickers.
-    getProjects().then((data) => setProjects(data.results));
+    getProjects({ page_size: 100 }).then((data) => setProjects(data.results));
   }, []);
 
   const fieldChanged = {
@@ -89,7 +97,8 @@ export function TestEditor({ test, onDirtyChange }: TestEditorProps) {
     procedure: procedure !== (test?.procedure ?? ""),
     results: results !== (test?.results ?? ""),
     conclusion: conclusion !== (test?.conclusion ?? ""),
-    visibility: visibility !== (test?.visibility ?? "PUBLIC"),
+    visibility: visibility !== (test?.visibility ?? null),
+    relations: pendingRelations.length > 0,
     restrictedAccess:
       restrictedAccessDraft.pendingAdd.length > 0 || restrictedAccessDraft.pendingRemoveGrantIds.length > 0,
   };
@@ -114,7 +123,7 @@ export function TestEditor({ test, onDirtyChange }: TestEditorProps) {
       procedure,
       results,
       conclusion,
-      visibility,
+      ...(visibility ? { visibility } : {}),
     };
   }
 
@@ -131,7 +140,12 @@ export function TestEditor({ test, onDirtyChange }: TestEditorProps) {
     setIsSaving(true);
     setError(null);
     try {
-      const saved = test ? await updateTest(test.id, buildPayload()) : await createTest(buildPayload());
+      const saved = test
+        ? await updateTest(test.id, buildPayload())
+        : await createTest({
+            ...buildPayload(),
+            relations: toRelationInputs(pendingRelations),
+          });
       await syncRestrictedAccess(saved.id);
       router.push(`/tests/${saved.id}`);
     } catch (err) {
@@ -214,15 +228,15 @@ export function TestEditor({ test, onDirtyChange }: TestEditorProps) {
             />
           </ChangedIndicator>
         </div>
-        <ChangedIndicator changed={fieldChanged.visibility} className="w-48">
-          <Combobox
+        <ChangedIndicator changed={fieldChanged.visibility} className="w-56">
+          <VisibilitySelect
             placeholder={t("visibilityLabel")}
-            options={VISIBILITY_VALUES.map((value) => ({ value, label: t(`visibility${value}`), ...VISIBILITY_ICONS[value] }))}
             value={visibility}
-            onChange={(value) => setVisibility(value as Visibility)}
+            onChange={setVisibility}
+            inheritFrom={inheritVisibilityFrom}
           />
         </ChangedIndicator>
-        {visibility === "RESTRICTED" && (
+        {resolvedVisibility === "RESTRICTED" && (
           <ChangedIndicator changed={fieldChanged.restrictedAccess}>
             <RestrictedAccessPicker
               initialGrants={test?.restricted_to ?? []}
@@ -288,6 +302,12 @@ export function TestEditor({ test, onDirtyChange }: TestEditorProps) {
           />
         </ChangedIndicator>
       </div>
+
+      {!test && (
+        <ChangedIndicator changed={fieldChanged.relations}>
+          <PendingRelations sourceType="test" value={pendingRelations} onChange={setPendingRelations} />
+        </ChangedIndicator>
+      )}
 
       {error && (
         <p className="font-body-md text-body-md text-error" role="alert">

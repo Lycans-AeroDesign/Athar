@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { Can } from "@/components/auth/Can";
 import { QuestionEditor } from "@/components/knowledge/QuestionEditor";
+import { ProjectParam } from "@/components/knowledge/ProjectParam";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Icon } from "@/components/ui/Icon";
 import { Link, useRouter } from "@/i18n/navigation";
@@ -36,7 +37,9 @@ export default function NewQuestionPage() {
         permission="question.create"
         fallback={<p className="font-body-md text-body-md text-on-surface-variant">{t("createPermissionRequired")}</p>}
       >
-        <QuestionEditor onDirtyChange={setIsDirty} />
+        <ProjectParam>
+          {(projectId) => <QuestionEditor onDirtyChange={setIsDirty} initialProjectId={projectId} />}
+        </ProjectParam>
       </Can>
 
       <ConfirmModal

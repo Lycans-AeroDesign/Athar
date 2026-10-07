@@ -5,52 +5,59 @@ import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { ChangedIndicator } from "@/components/ui/ChangedIndicator";
-import { Combobox } from "@/components/ui/Combobox";
 import { MarkdownEditor } from "@/components/ui/MarkdownEditor";
 import { TagInput } from "@/components/ui/TagInput";
+import { PendingRelations, toRelationInputs, type PendingRelation } from "@/components/knowledge/PendingRelations";
+import { ProjectSelect } from "@/components/knowledge/ProjectSelect";
 import {
   EMPTY_RESTRICTED_ACCESS_DRAFT,
   RestrictedAccessPicker,
   type RestrictedAccessDraft,
 } from "@/components/knowledge/RestrictedAccessPicker";
+import { effectiveVisibility, VisibilitySelect } from "@/components/knowledge/VisibilitySelect";
 import { useRouter } from "@/i18n/navigation";
 import { addAccessGrant, removeAccessGrant } from "@/lib/api/accessGrants";
-import { createQuestion, updateQuestion } from "@/lib/api/knowledge";
+import { createQuestion, updateQuestion, type QuestionWritePayload } from "@/lib/api/knowledge";
 import type { QuestionDetail, Visibility } from "@/lib/api/types";
-import { VISIBILITY_ICONS } from "@/lib/optionIcons";
 
 interface QuestionEditorProps {
   /** Omit to ask a new question; pass an existing one to edit it in place. */
   question?: QuestionDetail;
   /** Reports whether the draft differs from `question` (or, for a new question, from empty) - lets the parent page's "Back" link confirm before discarding. */
   onDirtyChange?: (dirty: boolean) => void;
+  /** Preselects the project on a new question (e.g. from a ?project= link). */
+  initialProjectId?: string | null;
 }
 
 // Structured like ArticleEditor.tsx, simpler since asking/editing a question
 // has no draft/publish workflow - one Save action either way.
-export function QuestionEditor({ question, onDirtyChange }: QuestionEditorProps) {
+export function QuestionEditor({ question, onDirtyChange, initialProjectId = null }: QuestionEditorProps) {
   const t = useTranslations("knowledge.question");
   const router = useRouter();
 
   const [title, setTitle] = useState(question?.title ?? "");
   const [body, setBody] = useState(question?.body ?? "");
   const [tags, setTags] = useState<string[]>(question?.tags.map((tag) => tag.name) ?? []);
-  const [visibility, setVisibility] = useState<Visibility>(question?.visibility ?? "PUBLIC");
+  // null = not explicitly chosen (new question only): inherits the project's visibility if one is picked.
+  const [visibility, setVisibility] = useState<Visibility | null>(question?.visibility ?? null);
+  const [projectId, setProjectId] = useState<string | null>(initialProjectId);
+  const [projectVisibility, setProjectVisibility] = useState<Visibility | null>(null);
+  const [pendingRelations, setPendingRelations] = useState<PendingRelation[]>([]);
   const [restrictedAccessDraft, setRestrictedAccessDraft] = useState<RestrictedAccessDraft>(
     EMPTY_RESTRICTED_ACCESS_DRAFT,
   );
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Same per-field comparisons as the ternary this replaced (question ? ... :
-  // title.length > 0 || ...) - `?? ""`/`?? "PUBLIC"` against an unset
-  // question is equivalent to the empty-state branch, but named per-field so
-  // each drives its own ChangedIndicator dot below.
+  const resolvedVisibility = effectiveVisibility(visibility, question ? null : projectVisibility);
+
   const fieldChanged = {
     title: title !== (question?.title ?? ""),
     body: body !== (question?.body ?? ""),
     tags: tags.join(",") !== (question?.tags.map((tag) => tag.name).join(",") ?? ""),
-    visibility: visibility !== (question?.visibility ?? "PUBLIC"),
+    visibility: visibility !== (question?.visibility ?? null),
+    project: !question && projectId !== initialProjectId,
+    relations: pendingRelations.length > 0,
     restrictedAccess:
       restrictedAccessDraft.pendingAdd.length > 0 || restrictedAccessDraft.pendingRemoveGrantIds.length > 0,
   };
@@ -61,12 +68,22 @@ export function QuestionEditor({ question, onDirtyChange }: QuestionEditorProps)
     onDirtyChange?.(isDirty);
   }, [isDirty, onDirtyChange]);
 
+  function buildPayload(isCreate: boolean): QuestionWritePayload {
+    return {
+      title,
+      body,
+      tag_names: tags,
+      ...(visibility ? { visibility } : {}),
+      ...(isCreate ? { project_id: projectId, relations: toRelationInputs(pendingRelations) } : {}),
+    };
+  }
+
   async function syncRestrictedAccess(questionId: string) {
     for (const grantId of restrictedAccessDraft.pendingRemoveGrantIds) {
       await removeAccessGrant(grantId);
     }
-    for (const user of restrictedAccessDraft.pendingAdd) {
-      await addAccessGrant("question", questionId, user.id);
+    for (const grantee of restrictedAccessDraft.pendingAdd) {
+      await addAccessGrant("question", questionId, grantee.id);
     }
   }
 
@@ -75,8 +92,8 @@ export function QuestionEditor({ question, onDirtyChange }: QuestionEditorProps)
     setError(null);
     try {
       const saved = question
-        ? await updateQuestion(question.id, { title, body, tag_names: tags, visibility })
-        : await createQuestion({ title, body, tag_names: tags, visibility });
+        ? await updateQuestion(question.id, buildPayload(false))
+        : await createQuestion({ ...buildPayload(true), title });
       await syncRestrictedAccess(saved.id);
       router.push(`/knowledge/questions/${saved.id}`);
     } catch (err) {
@@ -100,20 +117,27 @@ export function QuestionEditor({ question, onDirtyChange }: QuestionEditorProps)
           <ChangedIndicator changed={fieldChanged.tags} className="flex-1 min-w-[200px]">
             <TagInput value={tags} onChange={setTags} placeholder={t("tagsPlaceholder")} className="w-full" />
           </ChangedIndicator>
-          <ChangedIndicator changed={fieldChanged.visibility} className="w-48">
-            <Combobox
+          <ChangedIndicator changed={fieldChanged.visibility} className="w-56">
+            <VisibilitySelect
               placeholder={t("visibilityLabel")}
-              options={(["PUBLIC", "RESTRICTED"] as Visibility[]).map((value) => ({
-                value,
-                label: t(`visibility${value}`),
-                ...VISIBILITY_ICONS[value],
-              }))}
               value={visibility}
-              onChange={(value) => setVisibility(value as Visibility)}
+              onChange={setVisibility}
+              inheritFrom={question ? null : projectVisibility}
             />
           </ChangedIndicator>
         </div>
-        {visibility === "RESTRICTED" && (
+        {!question && (
+          <ChangedIndicator changed={fieldChanged.project}>
+            <ProjectSelect
+              value={projectId}
+              onChange={(id, project) => {
+                setProjectId(id);
+                setProjectVisibility(project?.visibility ?? null);
+              }}
+            />
+          </ChangedIndicator>
+        )}
+        {resolvedVisibility === "RESTRICTED" && (
           <ChangedIndicator changed={fieldChanged.restrictedAccess}>
             <RestrictedAccessPicker
               initialGrants={question?.restricted_to ?? []}
@@ -132,6 +156,12 @@ export function QuestionEditor({ question, onDirtyChange }: QuestionEditorProps)
           relateFrom={question ? { type: "question", id: question.id } : undefined}
         />
       </ChangedIndicator>
+
+      {!question && (
+        <ChangedIndicator changed={fieldChanged.relations}>
+          <PendingRelations sourceType="question" value={pendingRelations} onChange={setPendingRelations} />
+        </ChangedIndicator>
+      )}
 
       {error && (
         <p className="font-body-md text-body-md text-error" role="alert">

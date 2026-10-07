@@ -3290,6 +3290,106 @@ class ComponentInventoryTests(KnowledgeTestCase):
         self.assertFalse(StorageLocation.objects.filter(pk=typo.pk).exists())
 
 
+class CreationFlowTests(KnowledgeTestCase):
+    """Creation-form extras (services.create_with_links): project link,
+    visibility inheritance and create-time relations."""
+
+    def setUp(self):
+        self.head, self.head_access = self._login_with_role("cf-head@example.com", "Subteam Head")
+        self.member, self.member_access = self._login_with_role("cf-member@example.com", "Member")
+
+    def _project(self, visibility="PUBLIC"):
+        return self.client.post(
+            reverse("knowledge-project-list-create"),
+            {"name": f"Project {visibility}", "visibility": visibility},
+            format="json",
+            **self._auth(self.head_access),
+        ).data
+
+    def test_article_inherits_project_visibility_and_grants_and_is_linked(self):
+        project = self._project("RESTRICTED")
+        grantee = User.objects.create_user(email="cf-grantee@example.com", password="x", organization=self.organization)
+        services.add_restricted_access(actor=self.head, content_type="project", object_id=project["id"], user_id=grantee.id)
+
+        response = self.client.post(
+            reverse("knowledge-article-list-create"),
+            {"title": "Child", "content": "Body", "project_id": project["id"]},
+            format="json",
+            **self._auth(self.head_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["visibility"], "RESTRICTED")
+        article = Article.objects.get(pk=response.data["id"])
+        self.assertTrue(RestrictedAccessGrant.objects.filter(object_id=article.pk, granted_user=grantee).exists())
+        relation = KnowledgeRelation.objects.get(target_object_id=article.pk)
+        self.assertEqual(str(relation.source_object_id), project["id"])
+        self.assertEqual(relation.relation_type, "DOCUMENTED_BY")
+
+    def test_explicit_visibility_overrides_project(self):
+        project = self._project("RESTRICTED")
+        response = self.client.post(
+            reverse("knowledge-article-list-create"),
+            {"title": "Public child", "content": "Body", "project_id": project["id"], "visibility": "PUBLIC"},
+            format="json",
+            **self._auth(self.head_access),
+        )
+        self.assertEqual(response.data["visibility"], "PUBLIC")
+        self.assertFalse(RestrictedAccessGrant.objects.filter(object_id=response.data["id"]).exists())
+
+    def test_failure_inherits_from_project_fk(self):
+        project = self._project("RESTRICTED")
+        response = self.client.post(
+            reverse("knowledge-failure-list-create"),
+            {"title": "Crash", "project_id": project["id"]},
+            format="json",
+            **self._auth(self.head_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["visibility"], "RESTRICTED")
+
+    def test_invisible_project_is_rejected_and_nothing_is_created(self):
+        project = self._project("RESTRICTED")
+        response = self.client.post(
+            reverse("knowledge-article-list-create"),
+            {"title": "Sneaky", "content": "Body", "project_id": project["id"]},
+            format="json",
+            **self._auth(self.member_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(Article.objects.filter(title="Sneaky").exists())
+
+    def test_create_time_relations_are_atomic(self):
+        target = self.client.post(
+            reverse("knowledge-article-list-create"),
+            {"title": "Target", "content": "Body"},
+            format="json",
+            **self._auth(self.member_access),
+        ).data
+        response = self.client.post(
+            reverse("knowledge-question-list-create"),
+            {"title": "Q", "body": "?", "relations": [{"target_type": "article", "target_id": target["id"]}]},
+            format="json",
+            **self._auth(self.member_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(KnowledgeRelation.objects.filter(source_object_id=response.data["id"]).count(), 1)
+
+        # An invalid verb rolls back the whole create, not just the relation.
+        response = self.client.post(
+            reverse("knowledge-question-list-create"),
+            {
+                "title": "Rolled back",
+                "body": "?",
+                "relations": [{"target_type": "article", "target_id": target["id"], "relation_type": "NOPE"}],
+            },
+            format="json",
+            **self._auth(self.member_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(Question.objects.filter(title="Rolled back").exists())
+
+
+
 class WriteSerializerScopingTests(APITestCase):
     """Foreign-key ids on every write serializer (project_id, component_id,
     category_id, file_id, co_author_ids) resolve only within the caller's

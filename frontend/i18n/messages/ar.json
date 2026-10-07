@@ -592,7 +592,9 @@
       "groupFailures": "الأعطال",
       "groupSops": "إجراءات التشغيل",
       "groupTests": "الاختبارات",
-      "groupDocuments": "المستندات"
+      "groupDocuments": "المستندات",
+      "changeTypeButton": "تغيير العلاقة",
+      "changeTypeTitle": "تغيير العلاقة"
     },
     "attachments": {
       "title": "المرفقات",
@@ -1290,5 +1292,14 @@
       "notePlaceholder": "ملاحظة (اختياري)",
       "addButton": "إضافة مرجع"
     }
+  },
+  "creation": {
+    "projectLabel": "المشروع",
+    "projectPlaceholder": "بدون مشروع",
+    "noProject": "بدون مشروع",
+    "visibilityPUBLIC": "عام",
+    "visibilityRESTRICTED": "مقيّد",
+    "visibilityInherit": "وراثة من المشروع ({visibility})",
+    "relatedEmpty": "لا توجد روابط بعد - تُحفظ الروابط مع هذا العنصر."
   }
 }

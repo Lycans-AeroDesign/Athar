@@ -12,6 +12,8 @@ import {
   RestrictedAccessPicker,
   type RestrictedAccessDraft,
 } from "@/components/knowledge/RestrictedAccessPicker";
+import { PendingRelations, toRelationInputs, type PendingRelation } from "@/components/knowledge/PendingRelations";
+import { effectiveVisibility, VisibilitySelect } from "@/components/knowledge/VisibilitySelect";
 import { useRouter } from "@/i18n/navigation";
 import { addAccessGrant, removeAccessGrant } from "@/lib/api/accessGrants";
 import { createFailure, getComponents, getProjects, updateFailure, type FailureWritePayload } from "@/lib/api/engineering";
@@ -23,13 +25,14 @@ import type {
   ProjectSummary,
   Visibility,
 } from "@/lib/api/types";
-import { FAILURE_SEVERITY_ICONS, FAILURE_STATUS_ICONS, VISIBILITY_ICONS } from "@/lib/optionIcons";
+import { FAILURE_SEVERITY_ICONS, FAILURE_STATUS_ICONS } from "@/lib/optionIcons";
 
 const SEVERITY_VALUES: FailureSeverity[] = ["LOW", "MEDIUM", "HIGH"];
 const STATUS_VALUES: FailureStatus[] = ["UNDER_INVESTIGATION", "RESOLVED"];
-const VISIBILITY_VALUES: Visibility[] = ["PUBLIC", "RESTRICTED"];
 
 interface FailureEditorProps {
+  /** Preselects the project on a new item (e.g. from a ?project= link). */
+  initialProjectId?: string | null;
   failure?: FailureDetail;
   onDirtyChange?: (dirty: boolean) => void;
 }
@@ -39,7 +42,7 @@ interface FailureEditorProps {
 // Four separate markdown bodies (summary/root cause/corrective/preventive)
 // instead of one - matches docs/VISION.md #16's field list and the
 // athar_failure_detail mockup's actual section breakdown.
-export function FailureEditor({ failure, onDirtyChange }: FailureEditorProps) {
+export function FailureEditor({ failure, onDirtyChange, initialProjectId = null }: FailureEditorProps) {
   const t = useTranslations("engineering.failure");
   const commonT = useTranslations("common");
   const severityT = useTranslations("engineering.failureSeverity");
@@ -50,7 +53,7 @@ export function FailureEditor({ failure, onDirtyChange }: FailureEditorProps) {
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [title, setTitle] = useState(failure?.title ?? "");
   const [componentId, setComponentId] = useState<string | null>(failure?.component?.id ?? null);
-  const [projectId, setProjectId] = useState<string | null>(failure?.project?.id ?? null);
+  const [projectId, setProjectId] = useState<string | null>(failure?.project?.id ?? initialProjectId);
   const [aircraft, setAircraft] = useState(failure?.aircraft ?? "");
   const [date, setDate] = useState<string | null>(failure?.date ?? null);
   const [severity, setSeverity] = useState<FailureSeverity>(failure?.severity ?? "MEDIUM");
@@ -59,19 +62,24 @@ export function FailureEditor({ failure, onDirtyChange }: FailureEditorProps) {
   const [rootCause, setRootCause] = useState(failure?.root_cause ?? "");
   const [correctiveAction, setCorrectiveAction] = useState(failure?.corrective_action ?? "");
   const [preventiveAction, setPreventiveAction] = useState(failure?.preventive_action ?? "");
-  const [visibility, setVisibility] = useState<Visibility>(failure?.visibility ?? "PUBLIC");
+  // null = not explicitly chosen (new item only): inherits the project's visibility if one is picked.
+  const [visibility, setVisibility] = useState<Visibility | null>(failure?.visibility ?? null);
+  const [pendingRelations, setPendingRelations] = useState<PendingRelation[]>([]);
   const [restrictedAccessDraft, setRestrictedAccessDraft] = useState<RestrictedAccessDraft>(
     EMPTY_RESTRICTED_ACCESS_DRAFT,
   );
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const inheritVisibilityFrom: Visibility | null = failure ? null : (projects.find((p) => p.id === projectId)?.visibility ?? null);
+  const resolvedVisibility = effectiveVisibility(visibility, inheritVisibilityFrom);
+
   useEffect(() => {
     // First page only (20 items) for these picker dropdowns - same known
     // limitation as the Components/Projects list pages before their own
     // Pagination controls were added, just not worth a paged combobox here too.
     getComponents().then((data) => setComponents(data.results));
-    getProjects().then((data) => setProjects(data.results));
+    getProjects({ page_size: 100 }).then((data) => setProjects(data.results));
   }, []);
 
   const fieldChanged = {
@@ -86,7 +94,8 @@ export function FailureEditor({ failure, onDirtyChange }: FailureEditorProps) {
     rootCause: rootCause !== (failure?.root_cause ?? ""),
     correctiveAction: correctiveAction !== (failure?.corrective_action ?? ""),
     preventiveAction: preventiveAction !== (failure?.preventive_action ?? ""),
-    visibility: visibility !== (failure?.visibility ?? "PUBLIC"),
+    visibility: visibility !== (failure?.visibility ?? null),
+    relations: pendingRelations.length > 0,
     restrictedAccess:
       restrictedAccessDraft.pendingAdd.length > 0 || restrictedAccessDraft.pendingRemoveGrantIds.length > 0,
   };
@@ -110,7 +119,7 @@ export function FailureEditor({ failure, onDirtyChange }: FailureEditorProps) {
       root_cause: rootCause,
       corrective_action: correctiveAction,
       preventive_action: preventiveAction,
-      visibility,
+      ...(visibility ? { visibility } : {}),
     };
   }
 
@@ -127,7 +136,12 @@ export function FailureEditor({ failure, onDirtyChange }: FailureEditorProps) {
     setIsSaving(true);
     setError(null);
     try {
-      const saved = failure ? await updateFailure(failure.id, buildPayload()) : await createFailure(buildPayload());
+      const saved = failure
+        ? await updateFailure(failure.id, buildPayload())
+        : await createFailure({
+            ...buildPayload(),
+            relations: toRelationInputs(pendingRelations),
+          });
       await syncRestrictedAccess(saved.id);
       router.push(`/failures/${saved.id}`);
     } catch (err) {
@@ -209,15 +223,15 @@ export function FailureEditor({ failure, onDirtyChange }: FailureEditorProps) {
             />
           </ChangedIndicator>
         </div>
-        <ChangedIndicator changed={fieldChanged.visibility} className="w-48">
-          <Combobox
+        <ChangedIndicator changed={fieldChanged.visibility} className="w-56">
+          <VisibilitySelect
             placeholder={t("visibilityLabel")}
-            options={VISIBILITY_VALUES.map((value) => ({ value, label: t(`visibility${value}`), ...VISIBILITY_ICONS[value] }))}
             value={visibility}
-            onChange={(value) => setVisibility(value as Visibility)}
+            onChange={setVisibility}
+            inheritFrom={inheritVisibilityFrom}
           />
         </ChangedIndicator>
-        {visibility === "RESTRICTED" && (
+        {resolvedVisibility === "RESTRICTED" && (
           <ChangedIndicator changed={fieldChanged.restrictedAccess}>
             <RestrictedAccessPicker
               initialGrants={failure?.restricted_to ?? []}
@@ -272,6 +286,12 @@ export function FailureEditor({ failure, onDirtyChange }: FailureEditorProps) {
           />
         </ChangedIndicator>
       </div>
+
+      {!failure && (
+        <ChangedIndicator changed={fieldChanged.relations}>
+          <PendingRelations sourceType="failure" value={pendingRelations} onChange={setPendingRelations} />
+        </ChangedIndicator>
+      )}
 
       {error && (
         <p className="font-body-md text-body-md text-error" role="alert">

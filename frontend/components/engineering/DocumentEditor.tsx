@@ -19,8 +19,11 @@ import { createDocument, updateDocument, type DocumentWritePayload } from "@/lib
 import { uploadFile } from "@/lib/api/files";
 import { getCategories } from "@/lib/api/knowledge";
 import type { Category, DocType, DocumentDetail, DocumentSource, Visibility } from "@/lib/api/types";
+import { PendingRelations, toRelationInputs, type PendingRelation } from "@/components/knowledge/PendingRelations";
+import { effectiveVisibility, VisibilitySelect } from "@/components/knowledge/VisibilitySelect";
+import { ProjectSelect } from "@/components/knowledge/ProjectSelect";
 import { useRouter } from "@/i18n/navigation";
-import { DOC_SOURCE_ICONS, DOC_TYPE_ICONS, VISIBILITY_ICONS } from "@/lib/optionIcons";
+import { DOC_SOURCE_ICONS, DOC_TYPE_ICONS } from "@/lib/optionIcons";
 
 const DOC_TYPE_VALUES: DocType[] = [
   "COMPETITION_REPORT",
@@ -35,9 +38,10 @@ const DOC_TYPE_VALUES: DocType[] = [
   "OTHER",
 ];
 const SOURCE_VALUES: DocumentSource[] = ["INTERNAL", "EXTERNAL"];
-const VISIBILITY_VALUES: Visibility[] = ["PUBLIC", "RESTRICTED"];
 
 interface DocumentEditorProps {
+  /** Preselects the project on a new item (e.g. from a ?project= link). */
+  initialProjectId?: string | null;
   document?: DocumentDetail;
   onDirtyChange?: (dirty: boolean) => void;
 }
@@ -48,7 +52,7 @@ interface DocumentEditorProps {
 // itself is a single primary attachment (not a list like Attachments.tsx),
 // uploaded standalone first via uploadFile then referenced by id on save -
 // same two-phase pattern as every other file relationship in this app.
-export function DocumentEditor({ document, onDirtyChange }: DocumentEditorProps) {
+export function DocumentEditor({ document, onDirtyChange, initialProjectId = null }: DocumentEditorProps) {
   const t = useTranslations("engineering.document");
   const commonT = useTranslations("common");
   const docTypeT = useTranslations("engineering.documentType");
@@ -65,7 +69,11 @@ export function DocumentEditor({ document, onDirtyChange }: DocumentEditorProps)
   const [url, setUrl] = useState(document?.url ?? "");
   const [categoryId, setCategoryId] = useState<string | null>(document?.category?.id ?? null);
   const [tags, setTags] = useState<string[]>(document?.tags.map((tag) => tag.name) ?? []);
-  const [visibility, setVisibility] = useState<Visibility>(document?.visibility ?? "PUBLIC");
+  // null = not explicitly chosen (new item only): inherits the project's visibility if one is picked.
+  const [visibility, setVisibility] = useState<Visibility | null>(document?.visibility ?? null);
+  const [pendingRelations, setPendingRelations] = useState<PendingRelation[]>([]);
+  const [linkProjectId, setLinkProjectId] = useState<string | null>(initialProjectId);
+  const [projectVisibility, setProjectVisibility] = useState<Visibility | null>(null);
   const [restrictedAccessDraft, setRestrictedAccessDraft] = useState<RestrictedAccessDraft>(
     EMPTY_RESTRICTED_ACCESS_DRAFT,
   );
@@ -75,6 +83,9 @@ export function DocumentEditor({ document, onDirtyChange }: DocumentEditorProps)
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const inheritVisibilityFrom: Visibility | null = document ? null : projectVisibility;
+  const resolvedVisibility = effectiveVisibility(visibility, inheritVisibilityFrom);
 
   useEffect(() => {
     getCategories().then(setCategories);
@@ -90,7 +101,9 @@ export function DocumentEditor({ document, onDirtyChange }: DocumentEditorProps)
     url: url !== (document?.url ?? ""),
     category: categoryId !== (document?.category?.id ?? null),
     tags: tags.join(",") !== (document?.tags.map((tag) => tag.name).join(",") ?? ""),
-    visibility: visibility !== (document?.visibility ?? "PUBLIC"),
+    visibility: visibility !== (document?.visibility ?? null),
+    relations: pendingRelations.length > 0,
+    linkProject: !document && linkProjectId !== initialProjectId,
     description: description !== (document?.description ?? ""),
     file: fileId !== (document?.file?.id ?? null),
     restrictedAccess:
@@ -130,7 +143,7 @@ export function DocumentEditor({ document, onDirtyChange }: DocumentEditorProps)
       file_id: fileId,
       category_id: categoryId,
       tag_names: tags,
-      visibility,
+      ...(visibility ? { visibility } : {}),
     };
   }
 
@@ -149,7 +162,11 @@ export function DocumentEditor({ document, onDirtyChange }: DocumentEditorProps)
     try {
       const saved = document
         ? await updateDocument(document.id, buildPayload())
-        : await createDocument(buildPayload());
+        : await createDocument({
+            ...buildPayload(),
+            project_id: linkProjectId,
+            relations: toRelationInputs(pendingRelations),
+          });
       await syncRestrictedAccess(saved.id);
       router.push(`/documents/${saved.id}`);
     } catch (err) {
@@ -241,12 +258,12 @@ export function DocumentEditor({ document, onDirtyChange }: DocumentEditorProps)
           <ChangedIndicator changed={fieldChanged.tags} className="flex-1 min-w-[200px]">
             <TagInput value={tags} onChange={setTags} placeholder={t("tagsPlaceholder")} className="w-full" />
           </ChangedIndicator>
-          <ChangedIndicator changed={fieldChanged.visibility} className="w-48">
-            <Combobox
+          <ChangedIndicator changed={fieldChanged.visibility} className="w-56">
+            <VisibilitySelect
               placeholder={t("visibilityLabel")}
-              options={VISIBILITY_VALUES.map((value) => ({ value, label: t(`visibility${value}`), ...VISIBILITY_ICONS[value] }))}
               value={visibility}
-              onChange={(value) => setVisibility(value as Visibility)}
+              onChange={setVisibility}
+              inheritFrom={inheritVisibilityFrom}
             />
           </ChangedIndicator>
         </div>
@@ -267,7 +284,18 @@ export function DocumentEditor({ document, onDirtyChange }: DocumentEditorProps)
             className="max-w-sm"
           />
         </ChangedIndicator>
-        {visibility === "RESTRICTED" && (
+        {!document && (
+          <ChangedIndicator changed={fieldChanged.linkProject}>
+            <ProjectSelect
+              value={linkProjectId}
+              onChange={(id, project) => {
+                setLinkProjectId(id);
+                setProjectVisibility(project?.visibility ?? null);
+              }}
+            />
+          </ChangedIndicator>
+        )}
+        {resolvedVisibility === "RESTRICTED" && (
           <ChangedIndicator changed={fieldChanged.restrictedAccess}>
             <RestrictedAccessPicker
               initialGrants={document?.restricted_to ?? []}
@@ -289,6 +317,12 @@ export function DocumentEditor({ document, onDirtyChange }: DocumentEditorProps)
           />
         </ChangedIndicator>
       </div>
+
+      {!document && (
+        <ChangedIndicator changed={fieldChanged.relations}>
+          <PendingRelations sourceType="document" value={pendingRelations} onChange={setPendingRelations} />
+        </ChangedIndicator>
+      )}
 
       {error && (
         <p className="font-body-md text-body-md text-error" role="alert">

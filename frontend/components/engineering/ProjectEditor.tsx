@@ -13,14 +13,15 @@ import {
   RestrictedAccessPicker,
   type RestrictedAccessDraft,
 } from "@/components/knowledge/RestrictedAccessPicker";
+import { PendingRelations, toRelationInputs, type PendingRelation } from "@/components/knowledge/PendingRelations";
+import { effectiveVisibility, VisibilitySelect } from "@/components/knowledge/VisibilitySelect";
 import { useRouter } from "@/i18n/navigation";
 import { addAccessGrant, removeAccessGrant } from "@/lib/api/accessGrants";
 import { createProject, updateProject, type ProjectWritePayload } from "@/lib/api/engineering";
 import type { ProjectDetail, ProjectStatus, Visibility } from "@/lib/api/types";
-import { PROJECT_STATUS_ICONS, VISIBILITY_ICONS } from "@/lib/optionIcons";
+import { PROJECT_STATUS_ICONS } from "@/lib/optionIcons";
 
 const STATUS_VALUES: ProjectStatus[] = ["ACTIVE", "ON_HOLD", "COMPLETED"];
-const VISIBILITY_VALUES: Visibility[] = ["PUBLIC", "RESTRICTED"];
 
 interface ProjectEditorProps {
   /** Omit to create a new project; pass an existing one to edit it in place. */
@@ -41,19 +42,25 @@ export function ProjectEditor({ project, onDirtyChange }: ProjectEditorProps) {
   const [description, setDescription] = useState(project?.description ?? "");
   const [status, setStatus] = useState<ProjectStatus>(project?.status ?? "ACTIVE");
   const [tags, setTags] = useState<string[]>(project?.tags.map((tag) => tag.name) ?? []);
-  const [visibility, setVisibility] = useState<Visibility>(project?.visibility ?? "PUBLIC");
+  // null = not explicitly chosen (new item only): inherits the project's visibility if one is picked.
+  const [visibility, setVisibility] = useState<Visibility | null>(project?.visibility ?? null);
+  const [pendingRelations, setPendingRelations] = useState<PendingRelation[]>([]);
   const [restrictedAccessDraft, setRestrictedAccessDraft] = useState<RestrictedAccessDraft>(
     EMPTY_RESTRICTED_ACCESS_DRAFT,
   );
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const inheritVisibilityFrom: Visibility | null = null;
+  const resolvedVisibility = effectiveVisibility(visibility, inheritVisibilityFrom);
+
   const fieldChanged = {
     name: name !== (project?.name ?? ""),
     description: description !== (project?.description ?? ""),
     status: status !== (project?.status ?? "ACTIVE"),
     tags: tags.join(",") !== (project?.tags.map((tag) => tag.name).join(",") ?? ""),
-    visibility: visibility !== (project?.visibility ?? "PUBLIC"),
+    visibility: visibility !== (project?.visibility ?? null),
+    relations: pendingRelations.length > 0,
     restrictedAccess:
       restrictedAccessDraft.pendingAdd.length > 0 || restrictedAccessDraft.pendingRemoveGrantIds.length > 0,
   };
@@ -65,7 +72,7 @@ export function ProjectEditor({ project, onDirtyChange }: ProjectEditorProps) {
   }, [isDirty, onDirtyChange]);
 
   function buildPayload(): ProjectWritePayload {
-    return { name, description, status, visibility, tag_names: tags };
+    return { name, description, status, ...(visibility ? { visibility } : {}), tag_names: tags };
   }
 
   async function syncRestrictedAccess(projectId: string) {
@@ -81,7 +88,12 @@ export function ProjectEditor({ project, onDirtyChange }: ProjectEditorProps) {
     setIsSaving(true);
     setError(null);
     try {
-      const saved = project ? await updateProject(project.id, buildPayload()) : await createProject(buildPayload());
+      const saved = project
+        ? await updateProject(project.id, buildPayload())
+        : await createProject({
+            ...buildPayload(),
+            relations: toRelationInputs(pendingRelations),
+          });
       await syncRestrictedAccess(saved.id);
       router.push(`/projects/${saved.id}`);
     } catch (err) {
@@ -113,16 +125,16 @@ export function ProjectEditor({ project, onDirtyChange }: ProjectEditorProps) {
               onChange={(value) => setStatus(value as ProjectStatus)}
             />
           </ChangedIndicator>
-          <ChangedIndicator changed={fieldChanged.visibility} className="w-48">
-            <Combobox
+          <ChangedIndicator changed={fieldChanged.visibility} className="w-56">
+            <VisibilitySelect
               placeholder={t("visibilityLabel")}
-              options={VISIBILITY_VALUES.map((value) => ({ value, label: t(`visibility${value}`), ...VISIBILITY_ICONS[value] }))}
               value={visibility}
-              onChange={(value) => setVisibility(value as Visibility)}
+              onChange={setVisibility}
+              inheritFrom={inheritVisibilityFrom}
             />
           </ChangedIndicator>
         </div>
-        {visibility === "RESTRICTED" && (
+        {resolvedVisibility === "RESTRICTED" && (
           <ChangedIndicator changed={fieldChanged.restrictedAccess}>
             <RestrictedAccessPicker
               initialGrants={project?.restricted_to ?? []}
@@ -141,6 +153,12 @@ export function ProjectEditor({ project, onDirtyChange }: ProjectEditorProps) {
           relateFrom={project ? { type: "project", id: project.id } : undefined}
         />
       </ChangedIndicator>
+
+      {!project && (
+        <ChangedIndicator changed={fieldChanged.relations}>
+          <PendingRelations sourceType="project" value={pendingRelations} onChange={setPendingRelations} />
+        </ChangedIndicator>
+      )}
 
       {error && (
         <p className="font-body-md text-body-md text-error" role="alert">

@@ -5,7 +5,15 @@
 // (draft/review-free but with its own file/url handling) to keep this split.
 
 import { apiJson, apiVoid } from "./client";
-import type { DocType, DocumentDetail, DocumentSource, DocumentSummary, Paginated, Visibility } from "./types";
+import type {
+  DocType,
+  DocumentDetail,
+  DocumentSource,
+  DocumentSummary,
+  Paginated,
+  ProjectLinkPayload,
+  Visibility,
+} from "./types";
 
 /** See backend/knowledge/views.py's DOCUMENT_ORDERING_FIELDS, the allowlist this must stay in sync with. */
 export type DocumentOrdering =
@@ -40,7 +48,7 @@ export function getDocument(id: string): Promise<DocumentDetail> {
   return apiJson<DocumentDetail>(`/api/v1/knowledge/documents/${id}/`);
 }
 
-export interface DocumentWritePayload {
+export interface DocumentWritePayload extends ProjectLinkPayload {
   title?: string;
   description?: string;
   doc_type?: DocType;

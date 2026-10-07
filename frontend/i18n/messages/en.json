@@ -592,7 +592,9 @@
       "groupFailures": "Failures",
       "groupSops": "SOPs",
       "groupTests": "Tests",
-      "groupDocuments": "Documents"
+      "groupDocuments": "Documents",
+      "changeTypeButton": "Change relationship",
+      "changeTypeTitle": "Change relationship"
     },
     "attachments": {
       "title": "Attachments",
@@ -1290,5 +1292,14 @@
       "notePlaceholder": "Note (optional)",
       "addButton": "Add Reference"
     }
+  },
+  "creation": {
+    "projectLabel": "Project",
+    "projectPlaceholder": "No project",
+    "noProject": "No project",
+    "visibilityPUBLIC": "Public",
+    "visibilityRESTRICTED": "Restricted",
+    "visibilityInherit": "Inherit from project ({visibility})",
+    "relatedEmpty": "Nothing linked yet - links are saved together with this item."
   }
 }

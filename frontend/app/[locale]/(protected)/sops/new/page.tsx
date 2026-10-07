@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { SopEditor } from "@/components/engineering/SopEditor";
+import { ProjectParam } from "@/components/knowledge/ProjectParam";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Icon } from "@/components/ui/Icon";
 import { Link, useRouter } from "@/i18n/navigation";
@@ -32,7 +33,9 @@ export default function NewSopPage() {
         {t("backToList")}
       </Link>
 
-      <SopEditor onDirtyChange={setIsDirty} />
+      <ProjectParam>
+        {(projectId) => <SopEditor onDirtyChange={setIsDirty} initialProjectId={projectId} />}
+      </ProjectParam>
 
       <ConfirmModal
         open={confirmLeaveOpen}

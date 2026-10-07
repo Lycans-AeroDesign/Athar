@@ -274,6 +274,28 @@ export type RelatableType =
   | "test"
   | "document";
 
+/** One related-content link chosen on a creation form, before the item exists -
+ * sent in the create request's `relations` list and saved in the same
+ * transaction as the item itself (see backend services.create_with_links). */
+export interface CreationRelationInput {
+  target_type: RelatableType;
+  target_id: string;
+  /** Omit for the generic "RELATED" link. */
+  relation_type?: string;
+}
+
+/** Create-only extras every relatable type's write payload accepts (ignored on update). */
+export interface CreationExtrasPayload {
+  relations?: CreationRelationInput[];
+}
+
+/** For types linked to a project by a relation rather than their own FK
+ * (Article/Question/Component/Sop/Document) - omitting `visibility` while
+ * setting this makes the new item inherit the project's visibility. */
+export interface ProjectLinkPayload extends CreationExtrasPayload {
+  project_id?: string | null;
+}
+
 export type SearchResult = { type: RelatableType; id: string; title: string; excerpt: string };
 
 export interface KnowledgeRelation {

@@ -13,16 +13,18 @@ import {
   RestrictedAccessPicker,
   type RestrictedAccessDraft,
 } from "@/components/knowledge/RestrictedAccessPicker";
+import { PendingRelations, toRelationInputs, type PendingRelation } from "@/components/knowledge/PendingRelations";
+import { effectiveVisibility, VisibilitySelect } from "@/components/knowledge/VisibilitySelect";
+import { ProjectSelect } from "@/components/knowledge/ProjectSelect";
 import { useRouter } from "@/i18n/navigation";
 import { addAccessGrant, removeAccessGrant } from "@/lib/api/accessGrants";
 import { createSop, updateSop, type SopWritePayload } from "@/lib/api/engineering";
 import { getCategories } from "@/lib/api/knowledge";
 import type { Category, SopDetail, Visibility } from "@/lib/api/types";
-import { VISIBILITY_ICONS } from "@/lib/optionIcons";
-
-const VISIBILITY_VALUES: Visibility[] = ["PUBLIC", "RESTRICTED"];
 
 interface SopEditorProps {
+  /** Preselects the project on a new item (e.g. from a ?project= link). */
+  initialProjectId?: string | null;
   sop?: SopDetail;
   onDirtyChange?: (dirty: boolean) => void;
 }
@@ -33,7 +35,7 @@ interface SopEditorProps {
 // callout on the detail page) while everything else - Purpose/Prerequisites/
 // Procedure/Verification/etc. from docs/VISION.md #15 - collapses into one
 // markdown `content` body, reusing MarkdownEditor exactly as Article does.
-export function SopEditor({ sop, onDirtyChange }: SopEditorProps) {
+export function SopEditor({ sop, onDirtyChange, initialProjectId = null }: SopEditorProps) {
   const t = useTranslations("engineering.sop");
   const commonT = useTranslations("common");
   const router = useRouter();
@@ -45,12 +47,19 @@ export function SopEditor({ sop, onDirtyChange }: SopEditorProps) {
   const [safetyNotes, setSafetyNotes] = useState(sop?.safety_notes ?? "");
   const [content, setContent] = useState(sop?.content ?? "");
   const [tags, setTags] = useState<string[]>(sop?.tags.map((tag) => tag.name) ?? []);
-  const [visibility, setVisibility] = useState<Visibility>(sop?.visibility ?? "PUBLIC");
+  // null = not explicitly chosen (new item only): inherits the project's visibility if one is picked.
+  const [visibility, setVisibility] = useState<Visibility | null>(sop?.visibility ?? null);
+  const [pendingRelations, setPendingRelations] = useState<PendingRelation[]>([]);
+  const [linkProjectId, setLinkProjectId] = useState<string | null>(initialProjectId);
+  const [projectVisibility, setProjectVisibility] = useState<Visibility | null>(null);
   const [restrictedAccessDraft, setRestrictedAccessDraft] = useState<RestrictedAccessDraft>(
     EMPTY_RESTRICTED_ACCESS_DRAFT,
   );
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const inheritVisibilityFrom: Visibility | null = sop ? null : projectVisibility;
+  const resolvedVisibility = effectiveVisibility(visibility, inheritVisibilityFrom);
 
   useEffect(() => {
     getCategories().then(setCategories);
@@ -63,7 +72,9 @@ export function SopEditor({ sop, onDirtyChange }: SopEditorProps) {
     safetyNotes: safetyNotes !== (sop?.safety_notes ?? ""),
     content: content !== (sop?.content ?? ""),
     tags: tags.join(",") !== (sop?.tags.map((tag) => tag.name).join(",") ?? ""),
-    visibility: visibility !== (sop?.visibility ?? "PUBLIC"),
+    visibility: visibility !== (sop?.visibility ?? null),
+    relations: pendingRelations.length > 0,
+    linkProject: !sop && linkProjectId !== initialProjectId,
     restrictedAccess:
       restrictedAccessDraft.pendingAdd.length > 0 || restrictedAccessDraft.pendingRemoveGrantIds.length > 0,
   };
@@ -81,7 +92,7 @@ export function SopEditor({ sop, onDirtyChange }: SopEditorProps) {
       mandatory,
       safety_notes: safetyNotes,
       content,
-      visibility,
+      ...(visibility ? { visibility } : {}),
       tag_names: tags,
     };
   }
@@ -99,7 +110,13 @@ export function SopEditor({ sop, onDirtyChange }: SopEditorProps) {
     setIsSaving(true);
     setError(null);
     try {
-      const saved = sop ? await updateSop(sop.id, buildPayload()) : await createSop(buildPayload());
+      const saved = sop
+        ? await updateSop(sop.id, buildPayload())
+        : await createSop({
+            ...buildPayload(),
+            project_id: linkProjectId,
+            relations: toRelationInputs(pendingRelations),
+          });
       await syncRestrictedAccess(saved.id);
       router.push(`/sops/${saved.id}`);
     } catch (err) {
@@ -142,16 +159,27 @@ export function SopEditor({ sop, onDirtyChange }: SopEditorProps) {
               <span className="font-body-md text-body-md text-on-surface">{t("mandatoryLabel")}</span>
             </label>
           </ChangedIndicator>
-          <ChangedIndicator changed={fieldChanged.visibility} className="w-48">
-            <Combobox
+          <ChangedIndicator changed={fieldChanged.visibility} className="w-56">
+            <VisibilitySelect
               placeholder={t("visibilityLabel")}
-              options={VISIBILITY_VALUES.map((value) => ({ value, label: t(`visibility${value}`), ...VISIBILITY_ICONS[value] }))}
               value={visibility}
-              onChange={(value) => setVisibility(value as Visibility)}
+              onChange={setVisibility}
+              inheritFrom={inheritVisibilityFrom}
             />
           </ChangedIndicator>
         </div>
-        {visibility === "RESTRICTED" && (
+        {!sop && (
+          <ChangedIndicator changed={fieldChanged.linkProject}>
+            <ProjectSelect
+              value={linkProjectId}
+              onChange={(id, project) => {
+                setLinkProjectId(id);
+                setProjectVisibility(project?.visibility ?? null);
+              }}
+            />
+          </ChangedIndicator>
+        )}
+        {resolvedVisibility === "RESTRICTED" && (
           <ChangedIndicator changed={fieldChanged.restrictedAccess}>
             <RestrictedAccessPicker
               initialGrants={sop?.restricted_to ?? []}
@@ -184,6 +212,12 @@ export function SopEditor({ sop, onDirtyChange }: SopEditorProps) {
           relateFrom={sop ? { type: "sop", id: sop.id } : undefined}
         />
       </ChangedIndicator>
+
+      {!sop && (
+        <ChangedIndicator changed={fieldChanged.relations}>
+          <PendingRelations sourceType="sop" value={pendingRelations} onChange={setPendingRelations} />
+        </ChangedIndicator>
+      )}
 
       {error && (
         <p className="font-body-md text-body-md text-error" role="alert">

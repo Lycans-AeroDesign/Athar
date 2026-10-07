@@ -9,6 +9,8 @@
 import { apiFetch, apiJson, apiUpload, apiVoid } from "./client";
 import type {
   ComponentCategory,
+  CreationExtrasPayload,
+  ProjectLinkPayload,
   ComponentCondition,
   ComponentDetail,
   ComponentStatus,
@@ -43,11 +45,13 @@ export function getProjects(filters?: {
   status?: ProjectStatus;
   q?: string;
   page?: number;
+  page_size?: number;
 }): Promise<Paginated<ProjectSummary>> {
   const params = new URLSearchParams();
   if (filters?.status) params.set("status", filters.status);
   if (filters?.q) params.set("q", filters.q);
   if (filters?.page) params.set("page", String(filters.page));
+  if (filters?.page_size) params.set("page_size", String(filters.page_size));
   const query = params.toString() ? `?${params.toString()}` : "";
   return apiJson<Paginated<ProjectSummary>>(`/api/v1/knowledge/projects/${query}`);
 }
@@ -56,7 +60,7 @@ export function getProject(id: string): Promise<ProjectDetail> {
   return apiJson<ProjectDetail>(`/api/v1/knowledge/projects/${id}/`);
 }
 
-export interface ProjectWritePayload {
+export interface ProjectWritePayload extends CreationExtrasPayload {
   name?: string;
   description?: string;
   status?: ProjectStatus;
@@ -163,7 +167,7 @@ export function getInventorySummary(filters?: ComponentFilters): Promise<Invento
   return apiJson<InventorySummary>(`/api/v1/knowledge/components/inventory-summary/${componentFilterParams(filters)}`);
 }
 
-export interface ComponentWritePayload {
+export interface ComponentWritePayload extends ProjectLinkPayload {
   name?: string;
   category_id?: string | null;
   photo_id?: string | null;
@@ -428,7 +432,7 @@ export function getFailure(id: string): Promise<FailureDetail> {
   return apiJson<FailureDetail>(`/api/v1/knowledge/failures/${id}/`);
 }
 
-export interface FailureWritePayload {
+export interface FailureWritePayload extends CreationExtrasPayload {
   title?: string;
   component_id?: string | null;
   project_id?: string | null;
@@ -500,7 +504,7 @@ export function getSop(id: string): Promise<SopDetail> {
   return apiJson<SopDetail>(`/api/v1/knowledge/sops/${id}/`);
 }
 
-export interface SopWritePayload {
+export interface SopWritePayload extends ProjectLinkPayload {
   title?: string;
   category_id?: string | null;
   mandatory?: boolean;
@@ -584,7 +588,7 @@ export function getTest(id: string): Promise<TestDetail> {
   return apiJson<TestDetail>(`/api/v1/knowledge/tests/${id}/`);
 }
 
-export interface TestWritePayload {
+export interface TestWritePayload extends CreationExtrasPayload {
   title?: string;
   test_type?: TestType;
   date?: string | null;

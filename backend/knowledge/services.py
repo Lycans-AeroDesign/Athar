@@ -6,6 +6,7 @@ import uuid
 
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied
+from django.db import transaction
 from django.db.models import Count, Q, QuerySet
 from django.utils import timezone
 from django.utils.text import slugify
@@ -1114,49 +1115,35 @@ def _can_edit_relatable(actor, model_name: str, instance) -> bool:
     return actor == getattr(instance, "author", None) or actor.has_permission(codename)
 
 
-def create_relation(
-    *, actor, request=None, source_type: str, source_id, target_type: str, target_id, relation_type="RELATED"
-) -> KnowledgeRelation:
-    # Both sides resolved within actor's own organization (see
-    # _resolve_relatable's own docstring) - this is what actually prevents a
-    # cross-org relation from ever being created, not a check after the fact.
-    source_model, source = _resolve_relatable(source_type, source_id, actor.organization)
-    target_model, target = _resolve_relatable(target_type, target_id, actor.organization)
-    # A RESTRICTED target the actor can't see gets the exact same "not
-    # found" as a nonexistent id - otherwise linking to a guessed id would
-    # both confirm it exists and echo its title back in the response.
-    if not visibility_rules.can_view_instance(actor, target_type, target):
-        raise ValidationError(f"No {target_type} with id {target_id}.")
-    if source_model is target_model and source.pk == target.pk:
+def _normalized_relation_direction(relation_type: str, source_type: str, source, target_type: str, target):
+    """(stored_relation_type, store_source, store_target) - the canonical
+    forward direction a relation is always *stored* in, given the verb the
+    caller picked from `source`'s own side (see relationships.py)."""
+    if relation_type == relationships.GENERIC_RELATED:
+        return relation_type, source, target
+    found = relationships.find_definition_for_creation(relation_type, source_type, target_type)
+    if found is None:
+        raise ValidationError(f"'{relation_type}' isn't a valid relationship between {source_type} and {target_type}.")
+    definition, is_reversed = found
+    if is_reversed:
+        return definition.name, target, source
+    return definition.name, source, target
+
+
+def _store_relation(*, actor, request, source_type: str, source, target_type: str, target, relation_type: str):
+    """The part of create_relation after both sides are resolved and every
+    access check has passed - shared with create_with_links, which applies
+    its own (creation-time) checks instead of create_relation's."""
+    if type(source) is type(target) and source.pk == target.pk:
         raise ValidationError("An item can't be related to itself.")
-
-    # Checked against the caller's own source (the item they're adding this
-    # relation FROM) before any canonical-direction normalization below -
-    # normalizing first would check edit rights on the wrong side whenever
-    # the caller picked the relation type from its reverse_name (e.g. adding
-    # "USED_IN" from a Component's own page, where the canonical direction is
-    # actually Project--USES-->Component).
-    if not _can_edit_relatable(actor, source_type, source):
-        raise PermissionDenied("You can only add related content to something you own (or have edit rights on).")
-
-    stored_relation_type = relation_type
-    store_source_model, store_source, store_target_model, store_target = source_model, source, target_model, target
-    if relation_type != relationships.GENERIC_RELATED:
-        found = relationships.find_definition_for_creation(relation_type, source_type, target_type)
-        if found is None:
-            raise ValidationError(
-                f"'{relation_type}' isn't a valid relationship between {source_type} and {target_type}."
-            )
-        definition, is_reversed = found
-        stored_relation_type = definition.name
-        if is_reversed:
-            store_source_model, store_source, store_target_model, store_target = target_model, target, source_model, source
-
+    stored_relation_type, store_source, store_target = _normalized_relation_direction(
+        relation_type, source_type, source, target_type, target
+    )
     relation, created = KnowledgeRelation.objects.get_or_create(
         organization=actor.organization,
-        source_content_type=ContentType.objects.get_for_model(store_source_model),
+        source_content_type=ContentType.objects.get_for_model(type(store_source)),
         source_object_id=store_source.pk,
-        target_content_type=ContentType.objects.get_for_model(store_target_model),
+        target_content_type=ContentType.objects.get_for_model(type(store_target)),
         target_object_id=store_target.pk,
         relation_type=stored_relation_type,
         defaults={"created_by": actor},
@@ -1174,6 +1161,131 @@ def create_relation(
             request=request,
         )
     return relation
+
+
+def create_relation(
+    *, actor, request=None, source_type: str, source_id, target_type: str, target_id, relation_type="RELATED"
+) -> KnowledgeRelation:
+    # Both sides resolved within actor's own organization (see
+    # _resolve_relatable's own docstring) - this is what actually prevents a
+    # cross-org relation from ever being created, not a check after the fact.
+    _, source = _resolve_relatable(source_type, source_id, actor.organization)
+    _, target = _resolve_relatable(target_type, target_id, actor.organization)
+    # A RESTRICTED target the actor can't see gets the exact same "not
+    # found" as a nonexistent id - otherwise linking to a guessed id would
+    # both confirm it exists and echo its title back in the response.
+    if not visibility_rules.can_view_instance(actor, target_type, target):
+        raise ValidationError(f"No {target_type} with id {target_id}.")
+
+    # Checked against the caller's own source (the item they're adding this
+    # relation FROM) before any canonical-direction normalization - normalizing
+    # first would check edit rights on the wrong side whenever the caller
+    # picked the relation type from its reverse_name (e.g. adding "USED_IN"
+    # from a Component's own page, where the canonical direction is actually
+    # Project--USES-->Component).
+    if not _can_edit_relatable(actor, source_type, source):
+        raise PermissionDenied("You can only add related content to something you own (or have edit rights on).")
+
+    return _store_relation(
+        actor=actor,
+        request=request,
+        source_type=source_type,
+        source=source,
+        target_type=target_type,
+        target=target,
+        relation_type=relation_type,
+    )
+
+
+def _project_link_verb(model_name: str) -> str:
+    """The canonical Project-->X verb for a project picked on X's creation
+    form - the registry entry for (project, model_name), or the generic
+    fallback if there isn't one."""
+    for verb, definition in relationships.definitions_for_pair("project", model_name):
+        if definition.source_type == "project":
+            return verb
+    return relationships.GENERIC_RELATED
+
+
+def _copy_restricted_grants(*, source, target, actor) -> None:
+    """Gives everyone explicitly granted access to `source` the same access
+    to `target` - used when a new item inherits RESTRICTED from its project,
+    so the project's audience can still see what's filed under it."""
+    source_ct = ContentType.objects.get_for_model(type(source))
+    target_ct = ContentType.objects.get_for_model(type(target))
+    for grant in RestrictedAccessGrant.objects.filter(content_type=source_ct, object_id=source.pk):
+        RestrictedAccessGrant.objects.get_or_create(
+            organization=actor.organization,
+            content_type=target_ct,
+            object_id=target.pk,
+            granted_user=grant.granted_user,
+            defaults={"granted_by": actor},
+        )
+
+
+def create_with_links(model_name: str, create_fn, *, actor, request=None, data: dict):
+    """Wraps a create_<type> service with the creation-form extras every
+    type's POST accepts, all applied in one transaction (so a failure in any
+    part leaves nothing half-created for a retry to duplicate):
+
+    - `link_project` (types with no `project` FK of their own): stored as a
+      canonical Project-->item relation, e.g. Project--DOCUMENTED_BY-->Article.
+    - visibility inheritance: when the request omits `visibility` and a
+      project is given (the FK or link_project), the item takes the
+      project's visibility; a RESTRICTED one also copies the project's
+      access grants. An explicit `visibility` always wins.
+    - `relations`: [{target_type, target_id, relation_type}] created from the
+      new item's side.
+
+    The creator is never edit-checked against the new item (they just made
+    it), but every project/target must still be one they can see."""
+    data = dict(data)
+    link_project = data.pop("link_project", None)
+    relations = data.pop("relations", None) or []
+    project = data.get("project") or link_project
+
+    if project is not None:
+        if project.organization_id != actor.organization_id or not visibility_rules.can_view_instance(
+            actor, "project", project
+        ):
+            raise ValidationError({"project_id": [f"No project with id {project.pk}."]})
+
+    inherited = "visibility" not in data and project is not None
+    if inherited:
+        data["visibility"] = project.visibility
+
+    resolved_targets = []
+    for entry in relations:
+        _, target = _resolve_relatable(entry["target_type"], entry["target_id"], actor.organization)
+        if not visibility_rules.can_view_instance(actor, entry["target_type"], target):
+            raise ValidationError(f"No {entry['target_type']} with id {entry['target_id']}.")
+        resolved_targets.append((entry, target))
+
+    with transaction.atomic():
+        instance = create_fn(actor=actor, request=request, **data)
+        if inherited and project.visibility == Visibility.RESTRICTED:
+            _copy_restricted_grants(source=project, target=instance, actor=actor)
+        if link_project is not None:
+            _store_relation(
+                actor=actor,
+                request=request,
+                source_type="project",
+                source=link_project,
+                target_type=model_name,
+                target=instance,
+                relation_type=_project_link_verb(model_name),
+            )
+        for entry, target in resolved_targets:
+            _store_relation(
+                actor=actor,
+                request=request,
+                source_type=model_name,
+                source=instance,
+                target_type=entry["target_type"],
+                target=target,
+                relation_type=entry.get("relation_type") or relationships.GENERIC_RELATED,
+            )
+    return instance
 
 
 def delete_relation(*, relation: KnowledgeRelation, actor, request=None) -> None:

@@ -12,6 +12,7 @@ import type {
   KnowledgeAuthor,
   KnowledgeRelation,
   LeaderboardEntry,
+  ProjectLinkPayload,
   Paginated,
   QuestionDetail,
   QuestionSummary,
@@ -128,7 +129,7 @@ export function getArticle(id: string): Promise<ArticleDetail> {
   return apiJson<ArticleDetail>(`/api/v1/knowledge/articles/${id}/`);
 }
 
-export interface ArticleWritePayload {
+export interface ArticleWritePayload extends ProjectLinkPayload {
   title?: string;
   excerpt?: string;
   content?: string;
@@ -201,9 +202,14 @@ export function getQuestion(id: string): Promise<QuestionDetail> {
   return apiJson<QuestionDetail>(`/api/v1/knowledge/questions/${id}/`);
 }
 
-export function createQuestion(
-  payload: { title: string; body?: string; tag_names?: string[]; visibility?: Visibility },
-): Promise<QuestionDetail> {
+export interface QuestionWritePayload extends ProjectLinkPayload {
+  title?: string;
+  body?: string;
+  tag_names?: string[];
+  visibility?: Visibility;
+}
+
+export function createQuestion(payload: QuestionWritePayload & { title: string }): Promise<QuestionDetail> {
   return apiJson<QuestionDetail>("/api/v1/knowledge/questions/", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -213,7 +219,7 @@ export function createQuestion(
 
 export function updateQuestion(
   id: string,
-  payload: { title?: string; body?: string; tag_names?: string[]; visibility?: Visibility },
+  payload: QuestionWritePayload,
 ): Promise<QuestionDetail> {
   return apiJson<QuestionDetail>(`/api/v1/knowledge/questions/${id}/`, {
     method: "PATCH",

@@ -15,6 +15,9 @@ import {
   RestrictedAccessPicker,
   type RestrictedAccessDraft,
 } from "@/components/knowledge/RestrictedAccessPicker";
+import { PendingRelations, toRelationInputs, type PendingRelation } from "@/components/knowledge/PendingRelations";
+import { effectiveVisibility, VisibilitySelect } from "@/components/knowledge/VisibilitySelect";
+import { ProjectSelect } from "@/components/knowledge/ProjectSelect";
 import { useRouter } from "@/i18n/navigation";
 import { addAccessGrant, removeAccessGrant } from "@/lib/api/accessGrants";
 import {
@@ -38,22 +41,17 @@ import type {
   Visibility,
 } from "@/lib/api/types";
 import { CONDITION_VALUES, INVENTORY_TYPE_VALUES, STOCK_STATUS_VALUES, UNIT_SUGGESTIONS } from "@/lib/inventory";
-import {
-  COMPONENT_STATUS_ICONS,
-  CONDITION_ICONS,
-  INVENTORY_TYPE_ICONS,
-  STOCK_STATUS_ICONS,
-  VISIBILITY_ICONS,
-} from "@/lib/optionIcons";
+import { COMPONENT_STATUS_ICONS, CONDITION_ICONS, INVENTORY_TYPE_ICONS, STOCK_STATUS_ICONS } from "@/lib/optionIcons";
 
 const STATUS_VALUES: ComponentStatus[] = ["CERTIFIED", "TESTING", "DEPRECATED"];
-const VISIBILITY_VALUES: Visibility[] = ["PUBLIC", "RESTRICTED"];
 
 const INPUT_CLASS =
   "block w-full px-4 py-2 font-body-md text-body-md text-on-surface bg-surface-container border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors";
 const FIELD_LABEL_CLASS = "block font-label-caps text-label-caps text-on-surface-variant uppercase mb-2";
 
 interface ComponentEditorProps {
+  /** Preselects the project on a new item (e.g. from a ?project= link). */
+  initialProjectId?: string | null;
   component?: ComponentDetail;
   onDirtyChange?: (dirty: boolean) => void;
 }
@@ -63,7 +61,7 @@ interface ComponentEditorProps {
 // `specifications` is the one thing with no equivalent elsewhere in the
 // app: a plain repeatable label/value row list, add/remove like TagInput
 // but keeping both sides of each pair instead of collapsing to one string.
-export function ComponentEditor({ component, onDirtyChange }: ComponentEditorProps) {
+export function ComponentEditor({ component, onDirtyChange, initialProjectId = null }: ComponentEditorProps) {
   const t = useTranslations("engineering.component");
   const commonT = useTranslations("common");
   const statusT = useTranslations("engineering.componentStatus");
@@ -99,12 +97,19 @@ export function ComponentEditor({ component, onDirtyChange }: ComponentEditorPro
   const [summary, setSummary] = useState(component?.summary ?? "");
   const [specs, setSpecs] = useState<ComponentSpecRow[]>(component?.specifications ?? []);
   const [tags, setTags] = useState<string[]>(component?.tags.map((tag) => tag.name) ?? []);
-  const [visibility, setVisibility] = useState<Visibility>(component?.visibility ?? "PUBLIC");
+  // null = not explicitly chosen (new item only): inherits the project's visibility if one is picked.
+  const [visibility, setVisibility] = useState<Visibility | null>(component?.visibility ?? null);
+  const [pendingRelations, setPendingRelations] = useState<PendingRelation[]>([]);
+  const [linkProjectId, setLinkProjectId] = useState<string | null>(initialProjectId);
+  const [projectVisibility, setProjectVisibility] = useState<Visibility | null>(null);
   const [restrictedAccessDraft, setRestrictedAccessDraft] = useState<RestrictedAccessDraft>(
     EMPTY_RESTRICTED_ACCESS_DRAFT,
   );
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const inheritVisibilityFrom: Visibility | null = component ? null : projectVisibility;
+  const resolvedVisibility = effectiveVisibility(visibility, inheritVisibilityFrom);
 
   useEffect(() => {
     getComponentCategories().then(setCategories);
@@ -144,7 +149,9 @@ export function ComponentEditor({ component, onDirtyChange }: ComponentEditorPro
     summary: summary !== (component?.summary ?? ""),
     specs: JSON.stringify(specs) !== JSON.stringify(component?.specifications ?? []),
     tags: tags.join(",") !== (component?.tags.map((tag) => tag.name).join(",") ?? ""),
-    visibility: visibility !== (component?.visibility ?? "PUBLIC"),
+    visibility: visibility !== (component?.visibility ?? null),
+    relations: pendingRelations.length > 0,
+    linkProject: !component && linkProjectId !== initialProjectId,
     restrictedAccess:
       restrictedAccessDraft.pendingAdd.length > 0 || restrictedAccessDraft.pendingRemoveGrantIds.length > 0,
   };
@@ -181,7 +188,7 @@ export function ComponentEditor({ component, onDirtyChange }: ComponentEditorPro
       inventory_notes: inventoryNotes,
       summary,
       specifications: specs.filter((row) => row.label.trim() || row.value.trim()),
-      visibility,
+      ...(visibility ? { visibility } : {}),
       tag_names: tags,
     };
     // Only sent when actually picked - left alone, the backend keeps an
@@ -205,7 +212,11 @@ export function ComponentEditor({ component, onDirtyChange }: ComponentEditorPro
     try {
       const saved = component
         ? await updateComponent(component.id, buildPayload())
-        : await createComponent(buildPayload());
+        : await createComponent({
+            ...buildPayload(),
+            project_id: linkProjectId,
+            relations: toRelationInputs(pendingRelations),
+          });
       await syncRestrictedAccess(saved.id);
       router.push(`/components/${saved.id}`);
     } catch (err) {
@@ -265,12 +276,12 @@ export function ComponentEditor({ component, onDirtyChange }: ComponentEditorPro
           <ChangedIndicator changed={fieldChanged.tags} className="flex-1 min-w-[200px]">
             <TagInput value={tags} onChange={setTags} placeholder={t("tagsPlaceholder")} className="w-full" />
           </ChangedIndicator>
-          <ChangedIndicator changed={fieldChanged.visibility} className="w-48">
-            <Combobox
+          <ChangedIndicator changed={fieldChanged.visibility} className="w-56">
+            <VisibilitySelect
               placeholder={t("visibilityLabel")}
-              options={VISIBILITY_VALUES.map((value) => ({ value, label: t(`visibility${value}`), ...VISIBILITY_ICONS[value] }))}
               value={visibility}
-              onChange={(value) => setVisibility(value as Visibility)}
+              onChange={setVisibility}
+              inheritFrom={inheritVisibilityFrom}
             />
           </ChangedIndicator>
         </div>
@@ -301,7 +312,18 @@ export function ComponentEditor({ component, onDirtyChange }: ComponentEditorPro
             />
           </ChangedIndicator>
         </div>
-        {visibility === "RESTRICTED" && (
+        {!component && (
+          <ChangedIndicator changed={fieldChanged.linkProject}>
+            <ProjectSelect
+              value={linkProjectId}
+              onChange={(id, project) => {
+                setLinkProjectId(id);
+                setProjectVisibility(project?.visibility ?? null);
+              }}
+            />
+          </ChangedIndicator>
+        )}
+        {resolvedVisibility === "RESTRICTED" && (
           <ChangedIndicator changed={fieldChanged.restrictedAccess}>
             <RestrictedAccessPicker
               initialGrants={component?.restricted_to ?? []}
@@ -485,6 +507,12 @@ export function ComponentEditor({ component, onDirtyChange }: ComponentEditorPro
           </div>
         )}
       </div>
+
+      {!component && (
+        <ChangedIndicator changed={fieldChanged.relations}>
+          <PendingRelations sourceType="component" value={pendingRelations} onChange={setPendingRelations} />
+        </ChangedIndicator>
+      )}
 
       {error && (
         <p className="font-body-md text-body-md text-error" role="alert">

@@ -194,6 +194,48 @@ class BookmarkMixin:
         return str(bookmark.id) if bookmark else None
 
 
+class CreationRelationSerializer(serializers.Serializer):
+    """One entry of a create request's `relations` list - same shape as
+    CreateRelationSerializer minus the source, which is the item being
+    created."""
+
+    target_type = serializers.ChoiceField(choices=RELATABLE_TYPE_CHOICES)
+    target_id = serializers.UUIDField()
+    relation_type = serializers.CharField(default="RELATED")
+
+
+class CreationExtrasMixin(serializers.Serializer):
+    """Create-only extras every relatable type's write serializer accepts -
+    see services.create_with_links for what each does. Silently dropped on
+    update (PATCH), where related content is managed through the relations
+    endpoints instead. Write serializers for types without their own
+    `project` FK additionally declare `project_id` with source="link_project"
+    (see ProjectLinkMixin)."""
+
+    relations = serializers.ListField(child=CreationRelationSerializer(), required=False, write_only=True)
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        if self.instance is not None:
+            attrs.pop("relations", None)
+            attrs.pop("link_project", None)
+        return attrs
+
+
+class ProjectLinkMixin(CreationExtrasMixin):
+    """For types linked to a project by a relation rather than an FK - the
+    project picked on the creation form becomes a Project-->item relation."""
+
+    project_id = OrgScopedPrimaryKeyRelatedField(
+        source="link_project",
+        queryset=Project.objects.all(),
+        visibility_model_name="project",
+        allow_null=True,
+        required=False,
+        write_only=True,
+    )
+
+
 class CategorySerializer(serializers.ModelSerializer):
     article_count = serializers.SerializerMethodField()
 
@@ -263,7 +305,7 @@ class ArticleDetailSerializer(ContributorsMixin, RestrictedAccessMixin, Bookmark
         fields = [*ArticleListSerializer.Meta.fields, "content", "contributors", "restricted_to", "bookmark_id"]
 
 
-class ArticleWriteSerializer(serializers.ModelSerializer):
+class ArticleWriteSerializer(ProjectLinkMixin, serializers.ModelSerializer):
     # No `status` field - status only changes via the dedicated submit/
     # publish endpoints (see views.py), keeping the state machine single-path.
     category_id = OrgScopedPrimaryKeyRelatedField(
@@ -273,7 +315,16 @@ class ArticleWriteSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Article
-        fields = ["title", "excerpt", "content", "category_id", "tag_names", "visibility"]
+        fields = [
+            "title",
+            "excerpt",
+            "content",
+            "category_id",
+            "tag_names",
+            "visibility",
+            "project_id",
+            "relations",
+        ]
 
 
 class AnswerSerializer(serializers.ModelSerializer):
@@ -354,12 +405,12 @@ class QuestionDetailSerializer(ContributorsMixin, RestrictedAccessMixin, Bookmar
         return AnswerSerializer(answers, many=True).data
 
 
-class QuestionWriteSerializer(serializers.ModelSerializer):
+class QuestionWriteSerializer(ProjectLinkMixin, serializers.ModelSerializer):
     tag_names = serializers.ListField(child=serializers.CharField(), required=False)
 
     class Meta:
         model = Question
-        fields = ["title", "body", "tag_names", "visibility"]
+        fields = ["title", "body", "tag_names", "visibility", "project_id", "relations"]
 
 
 class AcceptAnswerSerializer(serializers.Serializer):
@@ -525,12 +576,12 @@ class ProjectDetailSerializer(ContributorsMixin, RestrictedAccessMixin, Bookmark
         ]
 
 
-class ProjectWriteSerializer(serializers.ModelSerializer):
+class ProjectWriteSerializer(CreationExtrasMixin, serializers.ModelSerializer):
     tag_names = serializers.ListField(child=serializers.CharField(), required=False)
 
     class Meta:
         model = Project
-        fields = ["name", "description", "status", "visibility", "tag_names"]
+        fields = ["name", "description", "status", "visibility", "tag_names", "relations"]
 
 
 class ComponentCategorySerializer(serializers.ModelSerializer):
@@ -638,7 +689,7 @@ class ComponentDetailSerializer(ContributorsMixin, RestrictedAccessMixin, Bookma
         ]
 
 
-class ComponentWriteSerializer(serializers.ModelSerializer):
+class ComponentWriteSerializer(ProjectLinkMixin, serializers.ModelSerializer):
     category_id = OrgScopedPrimaryKeyRelatedField(
         source="category", queryset=ComponentCategory.objects.all(), allow_null=True, required=False
     )
@@ -676,6 +727,8 @@ class ComponentWriteSerializer(serializers.ModelSerializer):
             "specifications",
             "visibility",
             "tag_names",
+            "project_id",
+            "relations",
         ]
 
     def validate_specifications(self, value):
@@ -737,7 +790,7 @@ class FailureDetailSerializer(ContributorsMixin, RestrictedAccessMixin, Bookmark
         ]
 
 
-class FailureWriteSerializer(serializers.ModelSerializer):
+class FailureWriteSerializer(CreationExtrasMixin, serializers.ModelSerializer):
     component_id = OrgScopedPrimaryKeyRelatedField(
         source="component",
         queryset=Component.objects.all(),
@@ -768,6 +821,7 @@ class FailureWriteSerializer(serializers.ModelSerializer):
             "corrective_action",
             "preventive_action",
             "visibility",
+            "relations",
         ]
 
 
@@ -797,7 +851,7 @@ class SopDetailSerializer(ContributorsMixin, RestrictedAccessMixin, BookmarkMixi
         ]
 
 
-class SopWriteSerializer(serializers.ModelSerializer):
+class SopWriteSerializer(ProjectLinkMixin, serializers.ModelSerializer):
     category_id = OrgScopedPrimaryKeyRelatedField(
         source="category", queryset=Category.objects.all(), allow_null=True, required=False
     )
@@ -805,7 +859,17 @@ class SopWriteSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Sop
-        fields = ["title", "category_id", "mandatory", "safety_notes", "content", "visibility", "tag_names"]
+        fields = [
+            "title",
+            "category_id",
+            "mandatory",
+            "safety_notes",
+            "content",
+            "visibility",
+            "tag_names",
+            "project_id",
+            "relations",
+        ]
 
 
 class TestListSerializer(serializers.ModelSerializer):
@@ -851,7 +915,7 @@ class TestDetailSerializer(ContributorsMixin, RestrictedAccessMixin, BookmarkMix
         ]
 
 
-class TestWriteSerializer(serializers.ModelSerializer):
+class TestWriteSerializer(CreationExtrasMixin, serializers.ModelSerializer):
     project_id = OrgScopedPrimaryKeyRelatedField(
         source="project",
         queryset=Project.objects.all(),
@@ -878,6 +942,7 @@ class TestWriteSerializer(serializers.ModelSerializer):
             "conclusion",
             "visibility",
             "tag_names",
+            "relations",
         ]
 
 
@@ -975,7 +1040,7 @@ class DocumentDetailSerializer(ContributorsMixin, RestrictedAccessMixin, Bookmar
         ]
 
 
-class DocumentWriteSerializer(serializers.ModelSerializer):
+class DocumentWriteSerializer(ProjectLinkMixin, serializers.ModelSerializer):
     # Two-phase upload like every other file relationship in this app -
     # upload via files.upload first, then reference the returned id here
     # (see DocumentEditor.tsx), same pattern as the *AttachmentListView.post
@@ -1007,4 +1072,6 @@ class DocumentWriteSerializer(serializers.ModelSerializer):
             "category_id",
             "tag_names",
             "visibility",
+            "project_id",
+            "relations",
         ]

@@ -8,6 +8,9 @@ import { ChangedIndicator } from "@/components/ui/ChangedIndicator";
 import { Combobox } from "@/components/ui/Combobox";
 import { MarkdownEditor } from "@/components/ui/MarkdownEditor";
 import { TagInput } from "@/components/ui/TagInput";
+import { PendingRelations, toRelationInputs, type PendingRelation } from "@/components/knowledge/PendingRelations";
+import { ProjectSelect } from "@/components/knowledge/ProjectSelect";
+import { effectiveVisibility, VisibilitySelect } from "@/components/knowledge/VisibilitySelect";
 import {
   EMPTY_RESTRICTED_ACCESS_DRAFT,
   RestrictedAccessPicker,
@@ -25,13 +28,14 @@ import {
 } from "@/lib/api/knowledge";
 import type { ArticleDetail, Category, Visibility } from "@/lib/api/types";
 import { useHasPermission } from "@/lib/auth/permissions";
-import { VISIBILITY_ICONS } from "@/lib/optionIcons";
 
 interface ArticleEditorProps {
   /** Omit to create a new article; pass an existing one to edit it in place. */
   article?: ArticleDetail;
   /** Reports whether the draft differs from `article` (or, for a new article, from empty) - lets a parent page's own "Back" link confirm before discarding. */
   onDirtyChange?: (dirty: boolean) => void;
+  /** Preselects the project on a new article (e.g. from a project page's ?project= link). */
+  initialProjectId?: string | null;
 }
 
 // Structured like BrandingSettingsForm.tsx - local-state draft seeded from
@@ -39,7 +43,7 @@ interface ArticleEditorProps {
 // Unlike that form, there's no single "Save"/"Discard" pair: which action
 // buttons show depends on the article's current status and whether the
 // viewer holds article.publish (see buildActions below).
-export function ArticleEditor({ article, onDirtyChange }: ArticleEditorProps) {
+export function ArticleEditor({ article, onDirtyChange, initialProjectId = null }: ArticleEditorProps) {
   const t = useTranslations("knowledge.article");
   const commonT = useTranslations("common");
   const router = useRouter();
@@ -51,12 +55,18 @@ export function ArticleEditor({ article, onDirtyChange }: ArticleEditorProps) {
   const [content, setContent] = useState(article?.content ?? "");
   const [categoryId, setCategoryId] = useState<string | null>(article?.category?.id ?? null);
   const [tags, setTags] = useState<string[]>(article?.tags.map((tag) => tag.name) ?? []);
-  const [visibility, setVisibility] = useState<Visibility>(article?.visibility ?? "PUBLIC");
+  // null = not explicitly chosen (new article only): inherits the project's visibility if one is picked.
+  const [visibility, setVisibility] = useState<Visibility | null>(article?.visibility ?? null);
+  const [projectId, setProjectId] = useState<string | null>(initialProjectId);
+  const [projectVisibility, setProjectVisibility] = useState<Visibility | null>(null);
+  const [pendingRelations, setPendingRelations] = useState<PendingRelation[]>([]);
   const [restrictedAccessDraft, setRestrictedAccessDraft] = useState<RestrictedAccessDraft>(
     EMPTY_RESTRICTED_ACCESS_DRAFT,
   );
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const resolvedVisibility = effectiveVisibility(visibility, article ? null : projectVisibility);
 
   useEffect(() => {
     getCategories().then(setCategories);
@@ -68,7 +78,9 @@ export function ArticleEditor({ article, onDirtyChange }: ArticleEditorProps) {
     content: content !== (article?.content ?? ""),
     category: categoryId !== (article?.category?.id ?? null),
     tags: tags.join(",") !== (article?.tags.map((tag) => tag.name).join(",") ?? ""),
-    visibility: visibility !== (article?.visibility ?? "PUBLIC"),
+    visibility: visibility !== (article?.visibility ?? null),
+    project: !article && projectId !== initialProjectId,
+    relations: pendingRelations.length > 0,
     restrictedAccess:
       restrictedAccessDraft.pendingAdd.length > 0 || restrictedAccessDraft.pendingRemoveGrantIds.length > 0,
   };
@@ -79,14 +91,15 @@ export function ArticleEditor({ article, onDirtyChange }: ArticleEditorProps) {
     onDirtyChange?.(isDirty);
   }, [isDirty, onDirtyChange]);
 
-  function buildPayload(): ArticleWritePayload {
+  function buildPayload(isCreate: boolean): ArticleWritePayload {
     return {
       title,
       excerpt,
       content,
       category_id: categoryId,
       tag_names: tags,
-      visibility,
+      ...(visibility ? { visibility } : {}),
+      ...(isCreate ? { project_id: projectId, relations: toRelationInputs(pendingRelations) } : {}),
     };
   }
 
@@ -96,7 +109,7 @@ export function ArticleEditor({ article, onDirtyChange }: ArticleEditorProps) {
     setContent(article?.content ?? "");
     setCategoryId(article?.category?.id ?? null);
     setTags(article?.tags.map((tag) => tag.name) ?? []);
-    setVisibility(article?.visibility ?? "PUBLIC");
+    setVisibility(article?.visibility ?? null);
     setRestrictedAccessDraft(EMPTY_RESTRICTED_ACCESS_DRAFT);
     setError(null);
   }
@@ -114,7 +127,9 @@ export function ArticleEditor({ article, onDirtyChange }: ArticleEditorProps) {
     setIsSaving(true);
     setError(null);
     try {
-      const saved = article ? await updateArticle(article.id, buildPayload()) : await createArticle(buildPayload());
+      const saved = article
+        ? await updateArticle(article.id, buildPayload(false))
+        : await createArticle(buildPayload(true));
       await syncRestrictedAccess(saved.id);
       if (after) await after(saved.id);
       router.push(`/knowledge/articles/${saved.id}`);
@@ -152,16 +167,12 @@ export function ArticleEditor({ article, onDirtyChange }: ArticleEditorProps) {
           <ChangedIndicator changed={fieldChanged.tags} className="flex-1 min-w-[200px]">
             <TagInput value={tags} onChange={setTags} placeholder={t("tagsPlaceholder")} className="w-full" />
           </ChangedIndicator>
-          <ChangedIndicator changed={fieldChanged.visibility} className="w-48">
-            <Combobox
+          <ChangedIndicator changed={fieldChanged.visibility} className="w-56">
+            <VisibilitySelect
               placeholder={t("visibilityLabel")}
-              options={(["PUBLIC", "RESTRICTED"] as Visibility[]).map((value) => ({
-                value,
-                label: t(`visibility${value}`),
-                ...VISIBILITY_ICONS[value],
-              }))}
               value={visibility}
-              onChange={(value) => setVisibility(value as Visibility)}
+              onChange={setVisibility}
+              inheritFrom={article ? null : projectVisibility}
             />
           </ChangedIndicator>
         </div>
@@ -173,7 +184,18 @@ export function ArticleEditor({ article, onDirtyChange }: ArticleEditorProps) {
             onChange={(e) => setExcerpt(e.target.value)}
           />
         </ChangedIndicator>
-        {visibility === "RESTRICTED" && (
+        {!article && (
+          <ChangedIndicator changed={fieldChanged.project}>
+            <ProjectSelect
+              value={projectId}
+              onChange={(id, project) => {
+                setProjectId(id);
+                setProjectVisibility(project?.visibility ?? null);
+              }}
+            />
+          </ChangedIndicator>
+        )}
+        {resolvedVisibility === "RESTRICTED" && (
           <ChangedIndicator changed={fieldChanged.restrictedAccess}>
             <RestrictedAccessPicker
               initialGrants={article?.restricted_to ?? []}
@@ -192,6 +214,12 @@ export function ArticleEditor({ article, onDirtyChange }: ArticleEditorProps) {
           relateFrom={article ? { type: "article", id: article.id } : undefined}
         />
       </ChangedIndicator>
+
+      {!article && (
+        <ChangedIndicator changed={fieldChanged.relations}>
+          <PendingRelations sourceType="article" value={pendingRelations} onChange={setPendingRelations} />
+        </ChangedIndicator>
+      )}
 
       {error && (
         <p className="font-body-md text-body-md text-error" role="alert">

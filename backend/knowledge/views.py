@@ -568,7 +568,9 @@ class ArticleListCreateView(APIView):
     def post(self, request):
         serializer = ArticleWriteSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
-        article = services.create_article(actor=request.user, request=request, **serializer.validated_data)
+        article = services.create_with_links(
+            "article", services.create_article, actor=request.user, request=request, data=serializer.validated_data
+        )
         return Response(ArticleDetailSerializer(article).data, status=status.HTTP_201_CREATED)
 
 
@@ -729,7 +731,9 @@ class QuestionListCreateView(APIView):
     def post(self, request):
         serializer = QuestionWriteSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
-        question = services.create_question(actor=request.user, request=request, **serializer.validated_data)
+        question = services.create_with_links(
+            "question", services.create_question, actor=request.user, request=request, data=serializer.validated_data
+        )
         return Response(QuestionDetailSerializer(question).data, status=status.HTTP_201_CREATED)
 
 
@@ -1094,7 +1098,9 @@ class ProjectListCreateView(APIView):
     def post(self, request):
         serializer = ProjectWriteSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
-        project = services.create_project(actor=request.user, request=request, **serializer.validated_data)
+        project = services.create_with_links(
+            "project", services.create_project, actor=request.user, request=request, data=serializer.validated_data
+        )
         return Response(ProjectDetailSerializer(project).data, status=status.HTTP_201_CREATED)
 
 
@@ -1305,7 +1311,9 @@ class ComponentListCreateView(APIView):
     def post(self, request):
         serializer = ComponentWriteSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
-        component = services.create_component(actor=request.user, request=request, **serializer.validated_data)
+        component = services.create_with_links(
+            "component", services.create_component, actor=request.user, request=request, data=serializer.validated_data
+        )
         return Response(ComponentDetailSerializer(component).data, status=status.HTTP_201_CREATED)
 
 
@@ -1732,7 +1740,9 @@ class FailureListCreateView(APIView):
     def post(self, request):
         serializer = FailureWriteSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
-        failure = services.create_failure(actor=request.user, request=request, **serializer.validated_data)
+        failure = services.create_with_links(
+            "failure", services.create_failure, actor=request.user, request=request, data=serializer.validated_data
+        )
         return Response(FailureDetailSerializer(failure).data, status=status.HTTP_201_CREATED)
 
 
@@ -1864,7 +1874,9 @@ class SopListCreateView(APIView):
     def post(self, request):
         serializer = SopWriteSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
-        sop = services.create_sop(actor=request.user, request=request, **serializer.validated_data)
+        sop = services.create_with_links(
+            "sop", services.create_sop, actor=request.user, request=request, data=serializer.validated_data
+        )
         return Response(SopDetailSerializer(sop).data, status=status.HTTP_201_CREATED)
 
 
@@ -2014,7 +2026,9 @@ class TestListCreateView(APIView):
     def post(self, request):
         serializer = TestWriteSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
-        test = services.create_test(actor=request.user, request=request, **serializer.validated_data)
+        test = services.create_with_links(
+            "test", services.create_test, actor=request.user, request=request, data=serializer.validated_data
+        )
         return Response(TestDetailSerializer(test).data, status=status.HTTP_201_CREATED)
 
 
@@ -2168,7 +2182,9 @@ class DocumentListCreateView(APIView):
     def post(self, request):
         serializer = DocumentWriteSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
-        document = services.create_document(actor=request.user, request=request, **serializer.validated_data)
+        document = services.create_with_links(
+            "document", services.create_document, actor=request.user, request=request, data=serializer.validated_data
+        )
         return Response(DocumentDetailSerializer(document).data, status=status.HTTP_201_CREATED)
 
 
