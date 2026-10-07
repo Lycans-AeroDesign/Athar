@@ -3288,3 +3288,105 @@ class ComponentInventoryTests(KnowledgeTestCase):
         self.assertEqual(response.data["id"], str(right.pk))
         self.assertEqual(response.data["component_count"], 2)
         self.assertFalse(StorageLocation.objects.filter(pk=typo.pk).exists())
+
+
+class WriteSerializerScopingTests(APITestCase):
+    """Foreign-key ids on every write serializer (project_id, component_id,
+    category_id, file_id, co_author_ids) resolve only within the caller's
+    own organization - and, for projects/components, only to rows the caller
+    can see - on update as well as create (see serializers.OrgScopedPrimaryKeyRelatedField)."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.org_a = create_test_organization(name="Scope Org A")
+        cls.org_b = create_test_organization(name="Scope Org B")
+
+    def _login_with_role(self, email, role_name, organization):
+        user = User.objects.create_user(email=email, password="password123", organization=organization)
+        Role.objects.get(organization=organization, name=role_name).user_roles.create(user=user)
+        response = self.client.post(reverse("auth-login"), {"email": email, "password": "password123"}, format="json")
+        return user, response.data["access"]
+
+    def _auth(self, access_token):
+        return {"HTTP_AUTHORIZATION": f"Bearer {access_token}"}
+
+    def setUp(self):
+        self.a_head, self.a_access = self._login_with_role("scope-a@example.com", "Subteam Head", self.org_a)
+        self.b_head, self.b_access = self._login_with_role("scope-b@example.com", "Subteam Head", self.org_b)
+        self.a_project = Project.objects.create(organization=self.org_a, name="A project", created_by=self.a_head)
+        self.a_component = Component.objects.create(organization=self.org_a, name="A servo", created_by=self.a_head)
+        self.a_category = Category.objects.create(organization=self.org_a, name="A cat", slug="a-cat")
+
+    def test_failure_update_rejects_another_orgs_project(self):
+        failure = self.client.post(
+            reverse("knowledge-failure-list-create"), {"title": "B crash"}, format="json", **self._auth(self.b_access)
+        ).data
+        response = self.client.patch(
+            reverse("knowledge-failure-detail", args=[failure["id"]]),
+            {"project_id": str(self.a_project.id)},
+            format="json",
+            **self._auth(self.b_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIsNone(Failure.objects.get(pk=failure["id"]).project_id)
+
+    def test_test_update_rejects_another_orgs_project(self):
+        test = self.client.post(
+            reverse("knowledge-test-list-create"), {"title": "B test"}, format="json", **self._auth(self.b_access)
+        ).data
+        response = self.client.patch(
+            reverse("knowledge-test-detail", args=[test["id"]]),
+            {"project_id": str(self.a_project.id)},
+            format="json",
+            **self._auth(self.b_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIsNone(Test.objects.get(pk=test["id"]).project_id)
+
+    def test_create_rejects_another_orgs_component_and_category(self):
+        response = self.client.post(
+            reverse("knowledge-failure-list-create"),
+            {"title": "B crash", "component_id": str(self.a_component.id)},
+            format="json",
+            **self._auth(self.b_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        response = self.client.post(
+            reverse("knowledge-article-list-create"),
+            {"title": "B article", "content": "x", "category_id": str(self.a_category.id)},
+            format="json",
+            **self._auth(self.b_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(Failure.objects.filter(organization=self.org_b).exists())
+        self.assertFalse(Article.objects.filter(organization=self.org_b).exists())
+
+    def test_restricted_project_hidden_unless_already_linked(self):
+        restricted = Project.objects.create(
+            organization=self.org_a, name="Secret", created_by=self.a_head, visibility="RESTRICTED"
+        )
+        mentor, mentor_access = self._login_with_role("scope-mentor@example.com", "Mentor", self.org_a)
+        failure = Failure.objects.create(organization=self.org_a, title="Linked", created_by=self.a_head)
+
+        # Can't link a RESTRICTED project the mentor can't see...
+        response = self.client.patch(
+            reverse("knowledge-failure-detail", args=[failure.id]),
+            {"project_id": str(restricted.id)},
+            format="json",
+            **self._auth(mentor_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        # ...but re-submitting a link that's already there is fine.
+        failure.project = restricted
+        failure.save()
+        response = self.client.patch(
+            reverse("knowledge-failure-detail", args=[failure.id]),
+            {"title": "Linked v2", "project_id": str(restricted.id)},
+            format="json",
+            **self._auth(mentor_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        failure.refresh_from_db()
+        self.assertEqual(failure.title, "Linked v2")
+        self.assertEqual(failure.project_id, restricted.id)

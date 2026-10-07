@@ -6,6 +6,7 @@ from files.models import StoredFile
 from files.serializers import StoredFileSerializer
 
 from . import relationships, services
+from . import visibility as visibility_rules
 from .models import (
     Answer,
     Article,
@@ -39,6 +40,45 @@ from .models import (
 # own private _RELATABLE_TYPES before access grants/bookmarks needed the
 # same list.
 RELATABLE_TYPE_CHOICES = ["article", "question", "project", "component", "failure", "sop", "test", "document"]
+
+
+class OrgScopedPrimaryKeyRelatedField(serializers.PrimaryKeyRelatedField):
+    """PrimaryKeyRelatedField that only resolves ids within the requesting
+    user's own organization - an id from another tenant gets the same
+    "does not exist" error as a made-up one, so it can't be used to attach
+    (or probe for) another organization's rows. With `visibility_model_name`
+    it additionally hides RESTRICTED rows the requester can't see (see
+    knowledge/visibility.py), same "does not exist" error.
+
+    Needs context["request"]; without it nothing resolves (fails closed)."""
+
+    def __init__(self, *, visibility_model_name: str | None = None, **kwargs):
+        self.visibility_model_name = visibility_model_name
+        super().__init__(**kwargs)
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        request = self.context.get("request")
+        if request is None or not request.user.is_authenticated:
+            return queryset.none()
+        queryset = queryset.filter(organization=request.user.organization)
+        if self.visibility_model_name:
+            queryset = visibility_rules.exclude_inaccessible(
+                queryset, request.user, queryset.model, self.visibility_model_name
+            )
+        return queryset
+
+    def to_internal_value(self, data):
+        # Re-submitting an item's *existing* link unchanged is always allowed,
+        # even to a RESTRICTED row the editor can't see - edit forms send
+        # every field back, and failing the whole save over a link the
+        # editor never touched would lock them out of editing the item.
+        instance = getattr(self.root, "instance", None)
+        if self.visibility_model_name and instance is not None:
+            current = getattr(instance, self.source, None)
+            if current is not None and str(current.pk) == str(data):
+                return current
+        return super().to_internal_value(data)
 
 
 class AuthorSerializer(serializers.ModelSerializer):
@@ -226,7 +266,7 @@ class ArticleDetailSerializer(ContributorsMixin, RestrictedAccessMixin, Bookmark
 class ArticleWriteSerializer(serializers.ModelSerializer):
     # No `status` field - status only changes via the dedicated submit/
     # publish endpoints (see views.py), keeping the state machine single-path.
-    category_id = serializers.PrimaryKeyRelatedField(
+    category_id = OrgScopedPrimaryKeyRelatedField(
         source="category", queryset=Category.objects.all(), allow_null=True, required=False
     )
     tag_names = serializers.ListField(child=serializers.CharField(), required=False)
@@ -599,13 +639,13 @@ class ComponentDetailSerializer(ContributorsMixin, RestrictedAccessMixin, Bookma
 
 
 class ComponentWriteSerializer(serializers.ModelSerializer):
-    category_id = serializers.PrimaryKeyRelatedField(
+    category_id = OrgScopedPrimaryKeyRelatedField(
         source="category", queryset=ComponentCategory.objects.all(), allow_null=True, required=False
     )
     # Same two-phase "upload via files.upload, then attach by id" flow as
     # accounts.MeUpdateSerializer.profile_picture_id - see
     # validate_photo_id below for the matching org-ownership check.
-    photo_id = serializers.PrimaryKeyRelatedField(
+    photo_id = OrgScopedPrimaryKeyRelatedField(
         source="photo", queryset=StoredFile.objects.all(), allow_null=True, required=False
     )
     # By name, not id: typing a place that doesn't exist yet creates it (see
@@ -698,11 +738,19 @@ class FailureDetailSerializer(ContributorsMixin, RestrictedAccessMixin, Bookmark
 
 
 class FailureWriteSerializer(serializers.ModelSerializer):
-    component_id = serializers.PrimaryKeyRelatedField(
-        source="component", queryset=Component.objects.all(), allow_null=True, required=False
+    component_id = OrgScopedPrimaryKeyRelatedField(
+        source="component",
+        queryset=Component.objects.all(),
+        visibility_model_name="component",
+        allow_null=True,
+        required=False,
     )
-    project_id = serializers.PrimaryKeyRelatedField(
-        source="project", queryset=Project.objects.all(), allow_null=True, required=False
+    project_id = OrgScopedPrimaryKeyRelatedField(
+        source="project",
+        queryset=Project.objects.all(),
+        visibility_model_name="project",
+        allow_null=True,
+        required=False,
     )
 
     class Meta:
@@ -750,7 +798,7 @@ class SopDetailSerializer(ContributorsMixin, RestrictedAccessMixin, BookmarkMixi
 
 
 class SopWriteSerializer(serializers.ModelSerializer):
-    category_id = serializers.PrimaryKeyRelatedField(
+    category_id = OrgScopedPrimaryKeyRelatedField(
         source="category", queryset=Category.objects.all(), allow_null=True, required=False
     )
     tag_names = serializers.ListField(child=serializers.CharField(), required=False)
@@ -804,8 +852,12 @@ class TestDetailSerializer(ContributorsMixin, RestrictedAccessMixin, BookmarkMix
 
 
 class TestWriteSerializer(serializers.ModelSerializer):
-    project_id = serializers.PrimaryKeyRelatedField(
-        source="project", queryset=Project.objects.all(), allow_null=True, required=False
+    project_id = OrgScopedPrimaryKeyRelatedField(
+        source="project",
+        queryset=Project.objects.all(),
+        visibility_model_name="project",
+        allow_null=True,
+        required=False,
     )
     tag_names = serializers.ListField(child=serializers.CharField(), required=False)
 
@@ -928,10 +980,10 @@ class DocumentWriteSerializer(serializers.ModelSerializer):
     # upload via files.upload first, then reference the returned id here
     # (see DocumentEditor.tsx), same pattern as the *AttachmentListView.post
     # endpoints rather than a raw file field on create.
-    file_id = serializers.PrimaryKeyRelatedField(
+    file_id = OrgScopedPrimaryKeyRelatedField(
         source="file", queryset=StoredFile.objects.all(), allow_null=True, required=False
     )
-    category_id = serializers.PrimaryKeyRelatedField(
+    category_id = OrgScopedPrimaryKeyRelatedField(
         source="category", queryset=Category.objects.all(), allow_null=True, required=False
     )
     tag_names = serializers.ListField(child=serializers.CharField(), required=False)

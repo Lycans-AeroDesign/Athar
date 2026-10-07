@@ -566,7 +566,7 @@ class ArticleListCreateView(APIView):
         responses={201: ArticleDetailSerializer, 400: BAD_REQUEST, **COMMON_ERRORS},
     )
     def post(self, request):
-        serializer = ArticleWriteSerializer(data=request.data)
+        serializer = ArticleWriteSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         article = services.create_article(actor=request.user, request=request, **serializer.validated_data)
         return Response(ArticleDetailSerializer(article).data, status=status.HTTP_201_CREATED)
@@ -597,7 +597,7 @@ class ArticleDetailView(APIView):
     )
     def patch(self, request, pk):
         article = get_object_or_404(Article, pk=pk, organization=request.user.organization)
-        serializer = ArticleWriteSerializer(article, data=request.data, partial=True)
+        serializer = ArticleWriteSerializer(article, data=request.data, partial=True, context={"request": request})
         serializer.is_valid(raise_exception=True)
         article = services.update_article(
             article=article, actor=request.user, request=request, **serializer.validated_data
@@ -727,7 +727,7 @@ class QuestionListCreateView(APIView):
         responses={201: QuestionDetailSerializer, 400: BAD_REQUEST, **COMMON_ERRORS},
     )
     def post(self, request):
-        serializer = QuestionWriteSerializer(data=request.data)
+        serializer = QuestionWriteSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         question = services.create_question(actor=request.user, request=request, **serializer.validated_data)
         return Response(QuestionDetailSerializer(question).data, status=status.HTTP_201_CREATED)
@@ -756,7 +756,7 @@ class QuestionDetailView(APIView):
     )
     def patch(self, request, pk):
         question = get_object_or_404(Question, pk=pk, organization=request.user.organization)
-        serializer = QuestionWriteSerializer(question, data=request.data, partial=True)
+        serializer = QuestionWriteSerializer(question, data=request.data, partial=True, context={"request": request})
         serializer.is_valid(raise_exception=True)
         question = services.update_question(
             question=question, actor=request.user, request=request, **serializer.validated_data
@@ -1092,7 +1092,7 @@ class ProjectListCreateView(APIView):
         responses={201: ProjectDetailSerializer, 400: BAD_REQUEST, **COMMON_ERRORS},
     )
     def post(self, request):
-        serializer = ProjectWriteSerializer(data=request.data)
+        serializer = ProjectWriteSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         project = services.create_project(actor=request.user, request=request, **serializer.validated_data)
         return Response(ProjectDetailSerializer(project).data, status=status.HTTP_201_CREATED)
@@ -1121,7 +1121,7 @@ class ProjectDetailView(APIView):
     )
     def patch(self, request, pk):
         project = get_object_or_404(Project, pk=pk, organization=request.user.organization)
-        serializer = ProjectWriteSerializer(project, data=request.data, partial=True)
+        serializer = ProjectWriteSerializer(project, data=request.data, partial=True, context={"request": request})
         serializer.is_valid(raise_exception=True)
         project = services.update_project(project=project, actor=request.user, request=request, **serializer.validated_data)
         return Response(ProjectDetailSerializer(project).data)
@@ -1730,7 +1730,7 @@ class FailureListCreateView(APIView):
         responses={201: FailureDetailSerializer, 400: BAD_REQUEST, **COMMON_ERRORS},
     )
     def post(self, request):
-        serializer = FailureWriteSerializer(data=request.data)
+        serializer = FailureWriteSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         failure = services.create_failure(actor=request.user, request=request, **serializer.validated_data)
         return Response(FailureDetailSerializer(failure).data, status=status.HTTP_201_CREATED)
@@ -1759,7 +1759,7 @@ class FailureDetailView(APIView):
     )
     def patch(self, request, pk):
         failure = get_object_or_404(Failure, pk=pk, organization=request.user.organization)
-        serializer = FailureWriteSerializer(failure, data=request.data, partial=True)
+        serializer = FailureWriteSerializer(failure, data=request.data, partial=True, context={"request": request})
         serializer.is_valid(raise_exception=True)
         failure = services.update_failure(failure=failure, actor=request.user, request=request, **serializer.validated_data)
         return Response(FailureDetailSerializer(failure).data)
@@ -1862,7 +1862,7 @@ class SopListCreateView(APIView):
         responses={201: SopDetailSerializer, 400: BAD_REQUEST, **COMMON_ERRORS},
     )
     def post(self, request):
-        serializer = SopWriteSerializer(data=request.data)
+        serializer = SopWriteSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         sop = services.create_sop(actor=request.user, request=request, **serializer.validated_data)
         return Response(SopDetailSerializer(sop).data, status=status.HTTP_201_CREATED)
@@ -1889,7 +1889,7 @@ class SopDetailView(APIView):
     )
     def patch(self, request, pk):
         sop = get_object_or_404(Sop, pk=pk, organization=request.user.organization)
-        serializer = SopWriteSerializer(sop, data=request.data, partial=True)
+        serializer = SopWriteSerializer(sop, data=request.data, partial=True, context={"request": request})
         serializer.is_valid(raise_exception=True)
         sop = services.update_sop(sop=sop, actor=request.user, request=request, **serializer.validated_data)
         return Response(SopDetailSerializer(sop).data)
@@ -2012,7 +2012,7 @@ class TestListCreateView(APIView):
         responses={201: TestDetailSerializer, 400: BAD_REQUEST, **COMMON_ERRORS},
     )
     def post(self, request):
-        serializer = TestWriteSerializer(data=request.data)
+        serializer = TestWriteSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         test = services.create_test(actor=request.user, request=request, **serializer.validated_data)
         return Response(TestDetailSerializer(test).data, status=status.HTTP_201_CREATED)
@@ -2041,7 +2041,7 @@ class TestDetailView(APIView):
     )
     def patch(self, request, pk):
         test = get_object_or_404(Test, pk=pk, organization=request.user.organization)
-        serializer = TestWriteSerializer(test, data=request.data, partial=True)
+        serializer = TestWriteSerializer(test, data=request.data, partial=True, context={"request": request})
         serializer.is_valid(raise_exception=True)
         test = services.update_test(test=test, actor=request.user, request=request, **serializer.validated_data)
         return Response(TestDetailSerializer(test).data)
@@ -2166,7 +2166,7 @@ class DocumentListCreateView(APIView):
         responses={201: DocumentDetailSerializer, 400: BAD_REQUEST, **COMMON_ERRORS},
     )
     def post(self, request):
-        serializer = DocumentWriteSerializer(data=request.data)
+        serializer = DocumentWriteSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         document = services.create_document(actor=request.user, request=request, **serializer.validated_data)
         return Response(DocumentDetailSerializer(document).data, status=status.HTTP_201_CREATED)
@@ -2195,7 +2195,7 @@ class DocumentDetailView(APIView):
     )
     def patch(self, request, pk):
         document = get_object_or_404(Document, pk=pk, organization=request.user.organization)
-        serializer = DocumentWriteSerializer(document, data=request.data, partial=True)
+        serializer = DocumentWriteSerializer(document, data=request.data, partial=True, context={"request": request})
         serializer.is_valid(raise_exception=True)
         document = services.update_document(
             document=document, actor=request.user, request=request, **serializer.validated_data
