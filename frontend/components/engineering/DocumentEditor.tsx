@@ -19,10 +19,12 @@ import { createDocument, updateDocument, type DocumentWritePayload } from "@/lib
 import { uploadFile } from "@/lib/api/files";
 import { getCategories } from "@/lib/api/knowledge";
 import type { Category, DocType, DocumentDetail, DocumentSource, Visibility } from "@/lib/api/types";
+import { SavingOverlay } from "@/components/ui/SavingOverlay";
 import { PendingRelations, toRelationInputs, type PendingRelation } from "@/components/knowledge/PendingRelations";
 import { effectiveVisibility, VisibilitySelect } from "@/components/knowledge/VisibilitySelect";
 import { ProjectSelect } from "@/components/knowledge/ProjectSelect";
 import { useRouter } from "@/i18n/navigation";
+import { useSaveOnce } from "@/lib/useSaveOnce";
 import { DOC_SOURCE_ICONS, DOC_TYPE_ICONS } from "@/lib/optionIcons";
 
 const DOC_TYPE_VALUES: DocType[] = [
@@ -81,7 +83,7 @@ export function DocumentEditor({ document, onDirtyChange, initialProjectId = nul
   const [fileId, setFileId] = useState<string | null>(document?.file?.id ?? null);
   const [fileName, setFileName] = useState(document?.file?.original_filename ?? "");
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
+  const { isSaving, run } = useSaveOnce();
   const [error, setError] = useState<string | null>(null);
 
   const inheritVisibilityFrom: Visibility | null = document ? null : projectVisibility;
@@ -157,21 +159,25 @@ export function DocumentEditor({ document, onDirtyChange, initialProjectId = nul
   }
 
   async function handleSave() {
-    setIsSaving(true);
     setError(null);
     try {
-      const saved = document
-        ? await updateDocument(document.id, buildPayload())
-        : await createDocument({
-            ...buildPayload(),
-            project_id: linkProjectId,
-            relations: toRelationInputs(pendingRelations),
-          });
-      await syncRestrictedAccess(saved.id);
-      router.push(`/documents/${saved.id}`);
+      await run(async ({ createdId, markCreated }) => {
+        // An earlier attempt may have created the item and then failed on a
+        // follow-up step - update that one instead of creating a duplicate.
+        const existingId = document?.id ?? createdId;
+        const saved = existingId
+          ? await updateDocument(existingId, buildPayload())
+          : await createDocument({
+              ...buildPayload(),
+              project_id: linkProjectId,
+              relations: toRelationInputs(pendingRelations),
+            });
+        markCreated(saved.id);
+        await syncRestrictedAccess(saved.id);
+        router.push(`/documents/${saved.id}`);
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
-      setIsSaving(false);
     }
   }
 
@@ -323,6 +329,7 @@ export function DocumentEditor({ document, onDirtyChange, initialProjectId = nul
           <PendingRelations sourceType="document" value={pendingRelations} onChange={setPendingRelations} />
         </ChangedIndicator>
       )}
+      <SavingOverlay open={isSaving} />
 
       {error && (
         <p className="font-body-md text-body-md text-error" role="alert">
@@ -331,7 +338,7 @@ export function DocumentEditor({ document, onDirtyChange, initialProjectId = nul
       )}
 
       <div className="flex items-center gap-3">
-        <Button onClick={handleSave} disabled={isSaving || !title.trim() || (!!document && !isDirty)}>
+        <Button onClick={handleSave} loading={isSaving} disabled={!title.trim() || (!!document && !isDirty)}>
           {isSaving ? commonT("saving") : commonT("save")}
         </Button>
       </div>

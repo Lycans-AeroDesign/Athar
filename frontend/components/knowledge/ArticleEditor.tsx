@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { ChangedIndicator } from "@/components/ui/ChangedIndicator";
 import { Combobox } from "@/components/ui/Combobox";
 import { MarkdownEditor } from "@/components/ui/MarkdownEditor";
+import { SavingOverlay } from "@/components/ui/SavingOverlay";
 import { TagInput } from "@/components/ui/TagInput";
 import { CoAuthorPicker } from "@/components/knowledge/CoAuthorPicker";
 import { PendingRelations, toRelationInputs, type PendingRelation } from "@/components/knowledge/PendingRelations";
@@ -30,6 +31,7 @@ import {
 import type { ArticleDetail, Category, KnowledgeAuthor, Visibility } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { useHasPermission } from "@/lib/auth/permissions";
+import { useSaveOnce } from "@/lib/useSaveOnce";
 
 interface ArticleEditorProps {
   /** Omit to create a new article; pass an existing one to edit it in place. */
@@ -68,7 +70,7 @@ export function ArticleEditor({ article, onDirtyChange, initialProjectId = null 
   const [restrictedAccessDraft, setRestrictedAccessDraft] = useState<RestrictedAccessDraft>(
     EMPTY_RESTRICTED_ACCESS_DRAFT,
   );
-  const [isSaving, setIsSaving] = useState(false);
+  const { isSaving, run } = useSaveOnce();
   const [error, setError] = useState<string | null>(null);
 
   const resolvedVisibility = effectiveVisibility(visibility, article ? null : projectVisibility);
@@ -133,18 +135,22 @@ export function ArticleEditor({ article, onDirtyChange, initialProjectId = null 
   }
 
   async function saveAndThen(after?: (id: string) => Promise<unknown>) {
-    setIsSaving(true);
     setError(null);
     try {
-      const saved = article
-        ? await updateArticle(article.id, buildPayload(false))
-        : await createArticle(buildPayload(true));
-      await syncRestrictedAccess(saved.id);
-      if (after) await after(saved.id);
-      router.push(`/knowledge/articles/${saved.id}`);
+      await run(async ({ createdId, markCreated }) => {
+        // An earlier attempt may have created the article and then failed on a
+        // follow-up step - update that one instead of creating a duplicate.
+        const existingId = article?.id ?? createdId;
+        const saved = existingId
+          ? await updateArticle(existingId, buildPayload(false))
+          : await createArticle(buildPayload(true));
+        markCreated(saved.id);
+        await syncRestrictedAccess(saved.id);
+        if (after) await after(saved.id);
+        router.push(`/knowledge/articles/${saved.id}`);
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
-      setIsSaving(false);
     }
   }
 
@@ -252,20 +258,25 @@ export function ArticleEditor({ article, onDirtyChange, initialProjectId = null 
             {commonT("discard")}
           </Button>
         )}
-        <Button onClick={() => saveAndThen()} disabled={isSaving || !title.trim() || (!!article && !isDirty)}>
+        <Button
+          onClick={() => saveAndThen()}
+          loading={isSaving}
+          disabled={!title.trim() || (!!article && !isDirty)}
+        >
           {saveLabel}
         </Button>
         {canSubmitForReview && (
-          <Button onClick={() => saveAndThen(submitArticle)} disabled={isSaving || !title.trim()}>
+          <Button onClick={() => saveAndThen(submitArticle)} loading={isSaving} disabled={!title.trim()}>
             {t("submitForReview")}
           </Button>
         )}
         {canPublishNow && (
-          <Button onClick={() => saveAndThen(publishArticle)} disabled={isSaving || !title.trim()}>
+          <Button onClick={() => saveAndThen(publishArticle)} loading={isSaving} disabled={!title.trim()}>
             {t("publish")}
           </Button>
         )}
       </div>
+      <SavingOverlay open={isSaving} />
     </div>
   );
 }

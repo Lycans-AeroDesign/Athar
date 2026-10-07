@@ -1307,6 +1307,8 @@
     "coAuthorsLocked": "Only the author can change the co-authors.",
     "removeCoAuthor": "Remove {name}",
     "bylineWith": "with",
-    "relatedEmpty": "Nothing linked yet - links are saved together with this item."
+    "relatedEmpty": "Nothing linked yet - links are saved together with this item.",
+    "savingTitle": "Saving...",
+    "savingHint": "Please keep this page open."
   }
 }

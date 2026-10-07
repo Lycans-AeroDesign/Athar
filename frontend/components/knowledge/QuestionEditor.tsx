@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { ChangedIndicator } from "@/components/ui/ChangedIndicator";
 import { MarkdownEditor } from "@/components/ui/MarkdownEditor";
+import { SavingOverlay } from "@/components/ui/SavingOverlay";
 import { TagInput } from "@/components/ui/TagInput";
 import { CoAuthorPicker } from "@/components/knowledge/CoAuthorPicker";
 import { PendingRelations, toRelationInputs, type PendingRelation } from "@/components/knowledge/PendingRelations";
@@ -22,6 +23,7 @@ import { createQuestion, updateQuestion, type QuestionWritePayload } from "@/lib
 import type { KnowledgeAuthor, QuestionDetail, Visibility } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { useHasPermission } from "@/lib/auth/permissions";
+import { useSaveOnce } from "@/lib/useSaveOnce";
 
 interface QuestionEditorProps {
   /** Omit to ask a new question; pass an existing one to edit it in place. */
@@ -52,7 +54,7 @@ export function QuestionEditor({ question, onDirtyChange, initialProjectId = nul
   const [restrictedAccessDraft, setRestrictedAccessDraft] = useState<RestrictedAccessDraft>(
     EMPTY_RESTRICTED_ACCESS_DRAFT,
   );
-  const [isSaving, setIsSaving] = useState(false);
+  const { isSaving, run } = useSaveOnce();
   const [error, setError] = useState<string | null>(null);
 
   const resolvedVisibility = effectiveVisibility(visibility, question ? null : projectVisibility);
@@ -97,17 +99,21 @@ export function QuestionEditor({ question, onDirtyChange, initialProjectId = nul
   }
 
   async function handleSave() {
-    setIsSaving(true);
     setError(null);
     try {
-      const saved = question
-        ? await updateQuestion(question.id, buildPayload(false))
-        : await createQuestion({ ...buildPayload(true), title });
-      await syncRestrictedAccess(saved.id);
-      router.push(`/knowledge/questions/${saved.id}`);
+      await run(async ({ createdId, markCreated }) => {
+        // An earlier attempt may have created the question and then failed on
+        // a follow-up step - update that one instead of creating a duplicate.
+        const existingId = question?.id ?? createdId;
+        const saved = existingId
+          ? await updateQuestion(existingId, buildPayload(false))
+          : await createQuestion({ ...buildPayload(true), title });
+        markCreated(saved.id);
+        await syncRestrictedAccess(saved.id);
+        router.push(`/knowledge/questions/${saved.id}`);
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
-      setIsSaving(false);
     }
   }
 
@@ -187,10 +193,11 @@ export function QuestionEditor({ question, onDirtyChange, initialProjectId = nul
       )}
 
       <div className="flex items-center gap-3">
-        <Button onClick={handleSave} disabled={isSaving || !title.trim() || (!!question && !isDirty)}>
+        <Button onClick={handleSave} loading={isSaving} disabled={!title.trim() || (!!question && !isDirty)}>
           {question ? (isSaving ? t("saving") : t("save")) : isSaving ? t("asking") : t("askButton")}
         </Button>
       </div>
+      <SavingOverlay open={isSaving} />
     </div>
   );
 }

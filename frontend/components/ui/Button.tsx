@@ -19,19 +19,32 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
    * noise. Keyboard users still get a ring. Defaults to true (the
    * accessible-by-default behavior every other Button keeps). */
   focusRing?: boolean;
+  /** Shows a spinner in front of the label and disables the button (with
+   * aria-busy) - for an in-flight async action like a save. */
+  loading?: boolean;
 }
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
-  { variant = "primary", focusRing = true, className, ...props },
+  { variant = "primary", focusRing = true, loading = false, className, disabled, children, ...props },
   ref,
 ) {
   return (
     <button
       ref={ref}
+      disabled={disabled || loading}
+      aria-busy={loading || undefined}
       className={`inline-flex items-center justify-center gap-1 py-2 px-4 rounded-lg font-label-caps text-label-caps uppercase transition-colors duration-150 focus:outline-none ${
         focusRing ? "focus:ring-2 focus:ring-offset-2" : "focus-visible:ring-2 focus-visible:ring-offset-2"
       } disabled:opacity-60 disabled:cursor-not-allowed ${VARIANT_CLASSES[variant]} ${className ?? ""}`}
       {...props}
-    />
+    >
+      {loading && (
+        <span
+          aria-hidden
+          className="h-3.5 w-3.5 shrink-0 rounded-full border-2 border-current border-t-transparent animate-spin"
+        />
+      )}
+      {children}
+    </button>
   );
 });

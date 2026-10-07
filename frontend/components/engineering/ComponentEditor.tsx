@@ -15,10 +15,12 @@ import {
   RestrictedAccessPicker,
   type RestrictedAccessDraft,
 } from "@/components/knowledge/RestrictedAccessPicker";
+import { SavingOverlay } from "@/components/ui/SavingOverlay";
 import { PendingRelations, toRelationInputs, type PendingRelation } from "@/components/knowledge/PendingRelations";
 import { effectiveVisibility, VisibilitySelect } from "@/components/knowledge/VisibilitySelect";
 import { ProjectSelect } from "@/components/knowledge/ProjectSelect";
 import { useRouter } from "@/i18n/navigation";
+import { useSaveOnce } from "@/lib/useSaveOnce";
 import { addAccessGrant, removeAccessGrant } from "@/lib/api/accessGrants";
 import {
   createComponent,
@@ -105,7 +107,7 @@ export function ComponentEditor({ component, onDirtyChange, initialProjectId = n
   const [restrictedAccessDraft, setRestrictedAccessDraft] = useState<RestrictedAccessDraft>(
     EMPTY_RESTRICTED_ACCESS_DRAFT,
   );
-  const [isSaving, setIsSaving] = useState(false);
+  const { isSaving, run } = useSaveOnce();
   const [error, setError] = useState<string | null>(null);
 
   const inheritVisibilityFrom: Visibility | null = component ? null : projectVisibility;
@@ -207,21 +209,25 @@ export function ComponentEditor({ component, onDirtyChange, initialProjectId = n
   }
 
   async function handleSave() {
-    setIsSaving(true);
     setError(null);
     try {
-      const saved = component
-        ? await updateComponent(component.id, buildPayload())
-        : await createComponent({
-            ...buildPayload(),
-            project_id: linkProjectId,
-            relations: toRelationInputs(pendingRelations),
-          });
-      await syncRestrictedAccess(saved.id);
-      router.push(`/components/${saved.id}`);
+      await run(async ({ createdId, markCreated }) => {
+        // An earlier attempt may have created the item and then failed on a
+        // follow-up step - update that one instead of creating a duplicate.
+        const existingId = component?.id ?? createdId;
+        const saved = existingId
+          ? await updateComponent(existingId, buildPayload())
+          : await createComponent({
+              ...buildPayload(),
+              project_id: linkProjectId,
+              relations: toRelationInputs(pendingRelations),
+            });
+        markCreated(saved.id);
+        await syncRestrictedAccess(saved.id);
+        router.push(`/components/${saved.id}`);
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
-      setIsSaving(false);
     }
   }
 
@@ -513,6 +519,7 @@ export function ComponentEditor({ component, onDirtyChange, initialProjectId = n
           <PendingRelations sourceType="component" value={pendingRelations} onChange={setPendingRelations} />
         </ChangedIndicator>
       )}
+      <SavingOverlay open={isSaving} />
 
       {error && (
         <p className="font-body-md text-body-md text-error" role="alert">
@@ -521,7 +528,7 @@ export function ComponentEditor({ component, onDirtyChange, initialProjectId = n
       )}
 
       <div className="flex items-center gap-3">
-        <Button onClick={handleSave} disabled={isSaving || !name.trim() || (!!component && !isDirty)}>
+        <Button onClick={handleSave} loading={isSaving} disabled={!name.trim() || (!!component && !isDirty)}>
           {isSaving ? commonT("saving") : commonT("save")}
         </Button>
       </div>
