@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { SideNav } from "@/components/layout/SideNav";
 import { TopBar } from "@/components/layout/TopBar";
 import { ProductTourAutostart } from "@/components/onboarding/ProductTourAutostart";
+import { PolicyGate } from "@/components/policies/PolicyGate";
 import { LoadingScreen } from "@/components/ui/LoadingScreen";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { useAuth } from "@/lib/auth/AuthProvider";
@@ -44,18 +45,22 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    // h-dvh, not h-screen - see SideNav.tsx's own comment on the same
-    // mobile-viewport issue; this wrapper sets the height SideNav's h-dvh
-    // sits inside, so it needs to match rather than reintroduce the gap.
-    <div className="bg-background text-on-background flex h-dvh overflow-hidden">
-      <ProductTourAutostart openMobileNav={openMobileNav} closeMobileNav={closeMobileNav} />
-      <SideNav open={mobileNavOpen} onClose={closeMobileNav} />
-      <div className="flex-1 flex flex-col lg:ms-64 overflow-hidden bg-background">
-        <TopBar onOpenMenu={openMobileNav} onCloseMenu={closeMobileNav} />
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-10 bg-background">
-          <div className="max-w-[1200px] mx-auto space-y-8">{children}</div>
-        </main>
+    // PolicyGate renders a blocking "accept the updated policies" screen
+    // instead of the shell while any published policy is unaccepted.
+    <PolicyGate>
+      {/* h-dvh, not h-screen - see SideNav.tsx's own comment on the same
+          mobile-viewport issue; this wrapper sets the height SideNav's h-dvh
+          sits inside, so it needs to match rather than reintroduce the gap. */}
+      <div className="bg-background text-on-background flex h-dvh overflow-hidden">
+        <ProductTourAutostart openMobileNav={openMobileNav} closeMobileNav={closeMobileNav} />
+        <SideNav open={mobileNavOpen} onClose={closeMobileNav} />
+        <div className="flex-1 flex flex-col lg:ms-64 overflow-hidden bg-background">
+          <TopBar onOpenMenu={openMobileNav} onCloseMenu={closeMobileNav} />
+          <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-10 bg-background">
+            <div className="max-w-[1200px] mx-auto space-y-8">{children}</div>
+          </main>
+        </div>
       </div>
-    </div>
+    </PolicyGate>
   );
 }

@@ -76,6 +76,7 @@ INSTALLED_APPS = [
     "knowledge",
     "training",
     "backups",
+    "policies",
 ]
 
 AUTH_USER_MODEL = "accounts.User"
@@ -246,7 +247,8 @@ CORS_ALLOW_CREDENTIALS = True
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        # JWTAuthentication + the policy-acceptance gate - see policies/authentication.py.
+        "policies.authentication.PolicyEnforcingJWTAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",

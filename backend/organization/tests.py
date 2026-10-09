@@ -12,6 +12,7 @@ from rest_framework.throttling import ScopedRateThrottle
 from core.testing import create_test_organization
 from accounts.models import User
 from files.models import StoredFile
+from policies.models import PolicyAcceptance, PolicyVersion
 from rbac.models import Role
 
 from .models import Organization, OrganizationSettings
@@ -135,6 +136,11 @@ class OrganizationSettingsTests(APITestCase):
         admin_access = self.client.post(
             reverse("auth-login"), {"email": "logoadmin@example.com", "password": "password123"}, format="json"
         ).data["access"]
+        # The bootstrap org starts with published policies (see
+        # policies/migrations/0002) - accept them, as a real admin would
+        # before using the app.
+        for version in PolicyVersion.objects.filter(organization=public_organization, is_current=True):
+            PolicyAcceptance.objects.create(version=version, user=admin)
 
         logo_file = StoredFile.objects.create(
             organization=public_organization,
@@ -256,6 +262,24 @@ class OrganizationCreateTests(APITestCase):
         # Doesn't auto-login the caller (see the view's own docstring) - the
         # response is the created admin, not a token pair.
         self.assertNotIn("access", response.data)
+
+    def test_new_organization_starts_with_the_default_policies(self):
+        self.client.post(
+            reverse("organization-create"),
+            {"name": "Policy Org", "admin_email": "founder@policyorg.example", "admin_password": "somepassword123"},
+            format="json",
+        )
+        organization = Organization.objects.get(name="Policy Org")
+        current = PolicyVersion.objects.filter(organization=organization, is_current=True)
+        self.assertEqual(set(current.values_list("kind", flat=True)), {"PRIVACY", "CONFIDENTIALITY"})
+        self.assertTrue(all(version.version == 1 for version in current))
+
+        # The founding admin has to accept them like everyone else.
+        access = self.client.post(
+            reverse("auth-login"), {"email": "founder@policyorg.example", "password": "somepassword123"}, format="json"
+        ).data["access"]
+        response = self.client.get(reverse("knowledge-article-list-create"), HTTP_AUTHORIZATION=f"Bearer {access}")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_organization_registration_disabled_returns_404(self):
         with self.settings(ENABLE_ORGANIZATION_REGISTRATION=False):

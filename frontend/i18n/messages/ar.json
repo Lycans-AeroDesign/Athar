@@ -124,7 +124,8 @@
     "logout": "تسجيل الخروج",
     "logoutConfirmTitle": "تسجيل الخروج؟",
     "logoutConfirmDescription": "ستحتاج إلى تسجيل الدخول مرة أخرى للوصول إلى {orgName}.",
-    "logoutConfirmAction": "تسجيل الخروج"
+    "logoutConfirmAction": "تسجيل الخروج",
+    "policies": "السياسات"
   },
   "tour": {
     "next": "التالي",
@@ -201,6 +202,7 @@
       "permissions": "الأدوار والصلاحيات",
       "users": "المستخدمون",
       "invitations": "الدعوات",
+      "policies": "السياسات",
       "audit": "سجل التدقيق",
       "backups": "النسخ الاحتياطي"
     },
@@ -365,6 +367,21 @@
       "deleteConfirmTitle": "حذف \"{name}\"؟",
       "deleteConfirmBody": "ستفقد المكوّنات المحفوظة هنا موقعها. لا يمكن التراجع عن ذلك.",
       "mergeHint": "إعادة تسميته باسم موقع آخر تدمج الموقعين."
+    },
+    "policies": {
+      "description": "اكتب سياسات مؤسستك هنا. الحفظ يُبقي مسودة خاصة؛ والنشر يجعلها الإصدار الحالي، ويجب على كل عضو - بما فيهم أنت - الموافقة عليها قبل المتابعة. كل إصدار جديد يُنشر يتطلب موافقة جديدة.",
+      "kindPRIVACY": "سياسة الخصوصية",
+      "kindCONFIDENTIALITY": "اتفاقية السرية",
+      "currentVersion": "الإصدار {version}، نُشر في {date} · وافق عليه {accepted} من {members} عضوًا",
+      "notPublished": "لم تُنشر بعد - لا يُطلب من الأعضاء الموافقة على أي شيء.",
+      "unpublishedChanges": "تغييرات غير منشورة",
+      "titlePlaceholder": "العنوان",
+      "contentPlaceholder": "اكتب نص السياسة (يدعم Markdown)...",
+      "saveDraft": "حفظ المسودة",
+      "publish": "نشر",
+      "saveBeforePublish": "احفظ المسودة قبل النشر.",
+      "publishConfirmTitle": "نشر هذه السياسة؟",
+      "publishConfirmBody": "سيتعين على كل عضو، بما فيهم أنت، الموافقة على هذا الإصدار قبل متابعة استخدام التطبيق."
     }
   },
   "account": {
@@ -1333,5 +1350,15 @@
     "relatedEmpty": "لا توجد روابط بعد - تُحفظ الروابط مع هذا العنصر.",
     "savingTitle": "جارٍ الحفظ...",
     "savingHint": "يرجى إبقاء هذه الصفحة مفتوحة."
+  },
+  "policies": {
+    "gateTitle": "يرجى مراجعة سياساتنا والموافقة عليها",
+    "gateDescription": "نُشرت هذه السياسات أو حُدّثت منذ آخر موافقة لك. يجب أن توافق عليها لمتابعة استخدام التطبيق.",
+    "versionLine": "الإصدار {version} · نُشر في {date}",
+    "acceptCheckbox": "قرأت {title} وأوافق عليها",
+    "acceptAndContinue": "موافقة ومتابعة",
+    "declineAndLogout": "رفض وتسجيل الخروج",
+    "pageTitle": "السياسات",
+    "noneYet": "لم تُنشر أي سياسات بعد."
   }
 }

@@ -10,6 +10,7 @@ import { InventoryListManager } from "@/components/engineering/InventoryListMana
 import { CategorySettingsForm } from "@/components/settings/CategorySettingsForm";
 import { GeneralSettingsForm } from "@/components/settings/GeneralSettingsForm";
 import { InvitationsSettingsForm } from "@/components/settings/InvitationsSettingsForm";
+import { PoliciesSettingsForm } from "@/components/settings/PoliciesSettingsForm";
 import { RolesSettingsForm } from "@/components/settings/RolesSettingsForm";
 import { UsersSettingsForm } from "@/components/settings/UsersSettingsForm";
 import { CourseCategoryManager } from "@/components/training/CourseCategoryManager";
@@ -17,7 +18,7 @@ import { useHasPermission } from "@/lib/auth/permissions";
 import { useOrganization } from "@/lib/organization/OrganizationProvider";
 
 // Only General, Branding, Categories, Roles & Permissions, Users,
-// Invitations, Audit Log, and Backups are implemented - the Stitch reference
+// Invitations, Policies, Audit Log, and Backups are implemented - the Stitch reference
 // (ref/athar_general_settings) also shows Authentication/Teams/Visibility/
 // Notifications/Storage tabs, but those aren't wired to a real backend yet,
 // so they're left out rather than shown as non-functional placeholders.
@@ -28,6 +29,7 @@ const ALL_TAB_IDS = [
   "permissions",
   "users",
   "invitations",
+  "policies",
   "audit",
   "backups",
 ] as const;
@@ -64,6 +66,8 @@ export default function SettingsPage() {
   // roles above (and the same permission General's own edit gate uses,
   // since "who can back up this org's data" is exactly "who administers it").
   const canManageBackups = canEditGeneral;
+  // The /policies/manage/ endpoints require organization.manage too.
+  const canManagePolicies = canEditGeneral;
 
   const visibleTabs = ALL_TAB_IDS.filter(
     (tabId) =>
@@ -72,6 +76,7 @@ export default function SettingsPage() {
       (tabId !== "categories" || canManageCategories || canManageTrainingCategories) &&
       (tabId !== "users" || canManageUsers) &&
       (tabId !== "invitations" || canManageInvitations) &&
+      (tabId !== "policies" || canManagePolicies) &&
       (tabId !== "audit" || canReadAudit) &&
       (tabId !== "backups" || canManageBackups),
   );
@@ -117,6 +122,8 @@ export default function SettingsPage() {
         <InvitationsSettingsForm />
       ) : activeTab === "audit" ? (
         <AuditLogSettingsForm />
+      ) : activeTab === "policies" ? (
+        <PoliciesSettingsForm />
       ) : activeTab === "backups" ? (
         <BackupsSettingsForm />
       ) : !settings ? (

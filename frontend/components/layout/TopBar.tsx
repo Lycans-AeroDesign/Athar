@@ -102,6 +102,7 @@ export function TopBar({ onOpenMenu, onCloseMenu }: TopBarProps) {
           items={[
             { label: t("myAccount"), icon: "account", onSelect: () => router.push("/account") },
             { label: t("settings"), icon: "settings", onSelect: () => router.push("/settings") },
+            { label: t("policies"), icon: "gavel", onSelect: () => router.push("/policies") },
             ...(settings?.product_tour_enabled
               ? [{ label: t("takeTour"), icon: "travel_explore", onSelect: handleStartTour }]
               : []),

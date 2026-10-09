@@ -124,7 +124,8 @@
     "logout": "Logout",
     "logoutConfirmTitle": "Log out?",
     "logoutConfirmDescription": "You'll need to log in again to access {orgName}.",
-    "logoutConfirmAction": "Log out"
+    "logoutConfirmAction": "Log out",
+    "policies": "Policies"
   },
   "tour": {
     "next": "Next",
@@ -201,6 +202,7 @@
       "permissions": "Roles & Permissions",
       "users": "Users",
       "invitations": "Invitations",
+      "policies": "Policies",
       "audit": "Audit Log",
       "backups": "Backups"
     },
@@ -365,6 +367,21 @@
       "deleteConfirmTitle": "Delete \"{name}\"?",
       "deleteConfirmBody": "Components stored here will lose their location. This can't be undone.",
       "mergeHint": "Renaming it to another location's name merges the two."
+    },
+    "policies": {
+      "description": "Write your organization's policies here. Saving keeps a private draft; publishing makes it the current version, and every member - you included - must accept it before continuing. Each new published version has to be accepted again.",
+      "kindPRIVACY": "Privacy policy",
+      "kindCONFIDENTIALITY": "Confidentiality agreement",
+      "currentVersion": "Version {version}, published {date} · accepted by {accepted} of {members} members",
+      "notPublished": "Not published yet - members aren't asked to accept anything.",
+      "unpublishedChanges": "Unpublished changes",
+      "titlePlaceholder": "Title",
+      "contentPlaceholder": "Write the policy text (Markdown supported)...",
+      "saveDraft": "Save draft",
+      "publish": "Publish",
+      "saveBeforePublish": "Save the draft before publishing.",
+      "publishConfirmTitle": "Publish this policy?",
+      "publishConfirmBody": "Every member, including you, will have to accept this version before they can keep using the app."
     }
   },
   "account": {
@@ -1333,5 +1350,15 @@
     "relatedEmpty": "Nothing linked yet - links are saved together with this item.",
     "savingTitle": "Saving...",
     "savingHint": "Please keep this page open."
+  },
+  "policies": {
+    "gateTitle": "Please review and accept our policies",
+    "gateDescription": "These policies were published or updated since you last accepted them. You need to accept them to keep using the app.",
+    "versionLine": "Version {version} · published {date}",
+    "acceptCheckbox": "I have read and accept the {title}",
+    "acceptAndContinue": "Accept and continue",
+    "declineAndLogout": "Decline and log out",
+    "pageTitle": "Policies",
+    "noneYet": "No policies have been published yet."
   }
 }

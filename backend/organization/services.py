@@ -67,6 +67,7 @@ def create_organization(
     admin_user); mirrors RegisterView's own shape (create, don't auto-login -
     the caller still logs in separately, same as invitation-based registration)."""
     from accounts.models import User
+    from policies.services import seed_default_policies
     from rbac.models import Role
 
     organization = Organization.objects.create(name=name, slug=_unique_org_slug(name))
@@ -83,6 +84,10 @@ def create_organization(
     )
     admin_role = Role.objects.get(organization=organization, name="Organization Admin")
     admin_role.user_roles.create(user=admin)
+    # Starter Privacy Policy + Confidentiality Agreement - every member,
+    # including this admin, accepts them on first sign-in; the admin can
+    # edit and republish them from Settings > Policies.
+    seed_default_policies(organization, published_by=admin)
 
     log_action(actor=admin, action="organization.create", target=organization, request=request)
     return organization, admin

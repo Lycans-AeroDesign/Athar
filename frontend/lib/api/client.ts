@@ -65,7 +65,28 @@ export async function apiFetch(
     return apiFetch(path, options, true);
   }
 
+  if (res.status === 403) void notifyIfPolicyRequired(res.clone());
+
   return res;
+}
+
+/** Fired on `window` when any API call is refused because the user has a
+ * policy to accept (e.g. an admin published a new version mid-session) -
+ * PolicyGate listens for it and re-checks. */
+export const POLICY_REQUIRED_EVENT = "athar:policy-acceptance-required";
+
+/** The 403 body `code` for that - see backend/policies/authentication.py. */
+export const POLICY_ACCEPTANCE_REQUIRED = "policy_acceptance_required";
+
+async function notifyIfPolicyRequired(res: Response): Promise<void> {
+  try {
+    const body = await res.json();
+    if (body?.code === POLICY_ACCEPTANCE_REQUIRED && typeof window !== "undefined") {
+      window.dispatchEvent(new Event(POLICY_REQUIRED_EVENT));
+    }
+  } catch {
+    // Not JSON - not a policy refusal.
+  }
 }
 
 /** Thrown by apiJson/apiVoid (and loginRequest) instead of a plain Error so

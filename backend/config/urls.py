@@ -13,6 +13,7 @@ v1_patterns = [
     path("knowledge/", include("knowledge.urls")),
     path("training/", include("training.urls")),
     path("backups/", include("backups.urls")),
+    path("policies/", include("policies.urls")),
 ]
 
 urlpatterns = [
