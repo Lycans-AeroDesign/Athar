@@ -1,3 +1,10 @@
+## [1.9.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.8.0...v1.9.0) (2026-10-09)
+
+### Features
+
+* **accounts:** add admin-generated one-time password reset links ([c34fe86](https://github.com/Lycans-AeroDesign/Athar/commit/c34fe869c637b1d4b71be7aa4bf28384e8b61c31))
+* **policies:** require members to accept privacy and confidentiality policies ([baa72f8](https://github.com/Lycans-AeroDesign/Athar/commit/baa72f89bf337ee9d014918604316dff47d8fbf5))
+
 ## [1.8.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.7.0...v1.8.0) (2026-10-09)
 
 ### Features
