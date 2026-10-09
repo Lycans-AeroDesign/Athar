@@ -7,7 +7,7 @@ import { defaultLocale, localePrefix, locales } from "@/i18n/request";
 // Documented cross-repo naming contract - not worth a shared env var for one string.
 const REFRESH_COOKIE_NAME = "refresh_token";
 
-const PUBLIC_PATHS = ["/login", "/register"];
+const PUBLIC_PATHS = ["/login", "/register", "/reset-password"];
 
 const handleIntl = createIntlMiddleware({
   locales,

@@ -182,3 +182,26 @@ class InvitationCodeSerializer(serializers.ModelSerializer):
 class InvitationCodeCreateSerializer(serializers.Serializer):
     max_uses = serializers.IntegerField(default=1, min_value=1)
     expires_at = serializers.DateTimeField(required=False, allow_null=True, default=None)
+
+
+class PasswordResetLinkSerializer(serializers.Serializer):
+    """Response of generating a reset link - `token` is the only time the raw
+    token is ever available (only its hash is stored); the frontend turns it
+    into the shareable link."""
+
+    token = serializers.CharField(read_only=True)
+    expires_at = serializers.DateTimeField(read_only=True)
+    email = serializers.EmailField(read_only=True)
+
+
+class PasswordResetTokenSerializer(serializers.Serializer):
+    token = serializers.CharField(max_length=128)
+
+
+class PasswordResetCheckResponseSerializer(serializers.Serializer):
+    email = serializers.EmailField(read_only=True)
+    expires_at = serializers.DateTimeField(read_only=True)
+
+
+class PasswordResetConfirmSerializer(PasswordResetTokenSerializer):
+    password = serializers.CharField(write_only=True, min_length=8)

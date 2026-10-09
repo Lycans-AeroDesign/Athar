@@ -1,0 +1,176 @@
+"use client";
+
+import { useTranslations } from "next-intl";
+import { useEffect, useState, type FormEvent } from "react";
+
+import { BrandMark } from "@/components/ui/BrandMark";
+import { FloatingLabelInput } from "@/components/ui/FloatingLabelInput";
+import { Link } from "@/i18n/navigation";
+import { ApiError, apiUrl } from "@/lib/api/client";
+import { checkPasswordResetLink, confirmPasswordReset } from "@/lib/api/passwordReset";
+import { useOrganization } from "@/lib/organization/OrganizationProvider";
+
+// Matches accounts/serializers.py's PasswordResetConfirmSerializer.password min_length=8.
+const MIN_PASSWORD_LENGTH = 8;
+
+type Status = "checking" | "invalid" | "ready" | "done";
+
+interface FieldErrors {
+  password?: string;
+  confirm?: string;
+}
+
+// Public page an admin-generated one-time link points at (Settings > Users >
+// Reset link). The token is in the URL fragment (#...) rather than the path
+// or query string, so it's never sent to - or logged by - any server; it's
+// only ever sent in a POST body to the reset API. Same card layout as the
+// login page.
+export default function ResetPasswordPage() {
+  const t = useTranslations("auth");
+  const { settings } = useOrganization();
+
+  const [token] = useState(() => (typeof window === "undefined" ? "" : window.location.hash.slice(1)));
+  const [status, setStatus] = useState<Status>("checking");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    const check = token ? checkPasswordResetLink(token) : Promise.reject(new Error("missing token"));
+    check
+      .then((link) => {
+        setEmail(link.email);
+        setStatus("ready");
+      })
+      .catch(() => setStatus("invalid"));
+  }, [token]);
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+    const errors: FieldErrors = {};
+    if (!password) errors.password = t("fieldRequired");
+    else if (password.length < MIN_PASSWORD_LENGTH) errors.password = t("passwordTooShort", { min: MIN_PASSWORD_LENGTH });
+    if (password && confirm !== password) errors.confirm = t("reset.mismatch");
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+
+    setIsSubmitting(true);
+    try {
+      await confirmPasswordReset(token, password);
+      setStatus("done");
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 404) {
+        setStatus("invalid");
+      } else if (err instanceof ApiError && err.fields.password) {
+        setFieldErrors({ password: err.fields.password });
+      } else if (err instanceof ApiError && err.status === 429) {
+        setError(t("login.rateLimited"));
+      } else {
+        setError(err instanceof Error ? err.message : String(err));
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  return (
+    <main className="bg-surface text-on-surface font-body-md text-body-md min-h-screen flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-8 shadow-[0_1px_3px_0_rgba(0,0,0,0.05)]">
+          <div className="flex flex-col items-center mb-8 text-center">
+            {settings?.logo_url ? (
+              // eslint-disable-next-line @next/next/no-img-element -- external backend URL, not a local asset next/image can optimize.
+              <img src={apiUrl(settings.logo_url)} alt={settings.name} className="h-16 w-16 mb-4 object-contain" />
+            ) : (
+              <BrandMark className="h-16 w-16 mb-4" />
+            )}
+            <h1 className="font-headline-lg text-headline-lg text-on-surface">{t("reset.title")}</h1>
+            {status === "ready" && (
+              <p className="font-body-md text-body-md text-on-surface-variant mt-2">{t("reset.subtitle", { email })}</p>
+            )}
+          </div>
+
+          {status === "checking" && (
+            <p className="text-center font-body-md text-body-md text-on-surface-variant" role="status">
+              {t("reset.checking")}
+            </p>
+          )}
+
+          {status === "invalid" && (
+            <p className="text-center font-body-md text-body-md text-error" role="alert">
+              {t("reset.invalid")}
+            </p>
+          )}
+
+          {status === "done" && (
+            <p className="text-center font-body-md text-body-md text-on-surface" role="status">
+              {t("reset.success")}
+            </p>
+          )}
+
+          {status === "ready" && (
+            // method="post" so a pre-hydration native submit never puts the password in the URL.
+            <form className="space-y-6" method="post" noValidate onSubmit={handleSubmit}>
+              {/* Lets password managers associate the new password with the right account. */}
+              <input type="text" name="username" autoComplete="username" value={email} readOnly hidden />
+              <div className="space-y-1">
+                <FloatingLabelInput
+                  autoComplete="new-password"
+                  error={fieldErrors.password}
+                  icon="lock"
+                  id="new-password"
+                  label={t("reset.newPasswordLabel")}
+                  name="new-password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    setFieldErrors((prev) => ({ ...prev, password: undefined }));
+                  }}
+                />
+                <FloatingLabelInput
+                  autoComplete="new-password"
+                  error={fieldErrors.confirm}
+                  icon="lock"
+                  id="confirm-password"
+                  label={t("reset.confirmPasswordLabel")}
+                  name="confirm-password"
+                  type="password"
+                  value={confirm}
+                  onChange={(e) => {
+                    setConfirm(e.target.value);
+                    setFieldErrors((prev) => ({ ...prev, confirm: undefined }));
+                  }}
+                />
+              </div>
+
+              {error && (
+                <p className="font-body-md text-body-md text-error" role="alert">
+                  {error}
+                </p>
+              )}
+
+              <button
+                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-lg bg-primary font-label-caps text-label-caps text-on-primary hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors duration-150 uppercase shadow-[0_1px_3px_0_rgba(0,0,0,0.05)] disabled:opacity-60 disabled:cursor-not-allowed"
+                disabled={isSubmitting}
+                type="submit"
+              >
+                {isSubmitting ? t("reset.submitting") : t("reset.submit")}
+              </button>
+            </form>
+          )}
+
+          <p className="text-center font-body-md text-body-md text-on-surface-variant mt-6">
+            <Link href="/login" className="text-primary hover:underline">
+              {t("reset.backToLogin")}
+            </Link>
+          </p>
+        </div>
+      </div>
+    </main>
+  );
+}

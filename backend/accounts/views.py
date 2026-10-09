@@ -23,10 +23,27 @@ from .serializers import (
     InvitationCodeCreateSerializer,
     InvitationCodeSerializer,
     MeUpdateSerializer,
+    PasswordResetCheckResponseSerializer,
+    PasswordResetConfirmSerializer,
+    PasswordResetLinkSerializer,
+    PasswordResetTokenSerializer,
     RegisterSerializer,
     UserSerializer,
+    check_password_strength,
 )
-from .services import create_invitation_code, register_user, revoke_invitation_code, update_own_profile
+from .services import (
+    create_invitation_code,
+    create_password_reset_link,
+    get_valid_password_reset_link,
+    register_user,
+    reset_password_with_link,
+    revoke_invitation_code,
+    update_own_profile,
+)
+
+# Same response for a token that never existed, was already used, was
+# replaced by a newer link, or expired - see get_valid_password_reset_link.
+INVALID_RESET_LINK = {"detail": "This reset link is invalid or has expired."}
 
 
 def _set_refresh_cookie(response: Response, refresh_token: str) -> None:
@@ -225,3 +242,79 @@ class InvitationCodeRevokeView(APIView):
         invitation = get_object_or_404(InvitationCode, pk=pk, organization=request.user.organization)
         invitation = revoke_invitation_code(invitation=invitation, actor=request.user, request=request)
         return Response(InvitationCodeSerializer(invitation).data)
+
+
+class UserPasswordResetLinkView(APIView):
+    permission_classes = [require_permission("user.manage")]
+
+    @extend_schema(
+        tags=["Auth"],
+        summary=(
+            "Generate a one-time password reset link for a user in your organization (valid 24h; "
+            "replaces any earlier unused link; not for yourself or anyone with access you don't have)"
+        ),
+        request=None,
+        responses={201: PasswordResetLinkSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
+    )
+    def post(self, request, pk):
+        user = get_object_or_404(User, pk=pk, organization=request.user.organization)
+        link, token = create_password_reset_link(user=user, actor=request.user, request=request)
+        return Response(
+            PasswordResetLinkSerializer({"token": token, "expires_at": link.expires_at, "email": user.email}).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class PasswordResetCheckView(APIView):
+    """Token in the POST body rather than the URL so it never lands in access logs."""
+
+    permission_classes = [AllowAny]
+    authentication_classes = []
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "auth"
+
+    @extend_schema(
+        tags=["Auth"],
+        summary="Check a password reset link before showing the new-password form",
+        request=PasswordResetTokenSerializer,
+        responses={
+            200: PasswordResetCheckResponseSerializer,
+            404: OpenApiResponse(description="The link is invalid, used, replaced, or expired."),
+        },
+    )
+    def post(self, request):
+        serializer = PasswordResetTokenSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        link = get_valid_password_reset_link(serializer.validated_data["token"])
+        if link is None:
+            return Response(INVALID_RESET_LINK, status=status.HTTP_404_NOT_FOUND)
+        return Response(
+            PasswordResetCheckResponseSerializer({"email": link.user.email, "expires_at": link.expires_at}).data
+        )
+
+
+class PasswordResetConfirmView(APIView):
+    permission_classes = [AllowAny]
+    authentication_classes = []
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "auth"
+
+    @extend_schema(
+        tags=["Auth"],
+        summary="Set a new password using a one-time reset link (signs the user out everywhere)",
+        request=PasswordResetConfirmSerializer,
+        responses={
+            204: OpenApiResponse(description="Password changed."),
+            400: OpenApiResponse(description="The new password doesn't meet the password rules."),
+            404: OpenApiResponse(description="The link is invalid, used, replaced, or expired."),
+        },
+    )
+    def post(self, request):
+        serializer = PasswordResetConfirmSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        link = get_valid_password_reset_link(serializer.validated_data["token"])
+        if link is None:
+            return Response(INVALID_RESET_LINK, status=status.HTTP_404_NOT_FOUND)
+        check_password_strength(serializer.validated_data["password"], user=link.user)
+        reset_password_with_link(link=link, password=serializer.validated_data["password"], request=request)
+        return Response(status=status.HTTP_204_NO_CONTENT)

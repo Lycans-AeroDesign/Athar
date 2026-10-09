@@ -6,8 +6,11 @@ from .views import (
     LoginView,
     LogoutView,
     MeView,
+    PasswordResetCheckView,
+    PasswordResetConfirmView,
     RefreshView,
     RegisterView,
+    UserPasswordResetLinkView,
 )
 
 urlpatterns = [
@@ -18,4 +21,11 @@ urlpatterns = [
     path("me/", MeView.as_view(), name="auth-me"),
     path("invitations/", InvitationCodeListCreateView.as_view(), name="auth-invitation-list-create"),
     path("invitations/<uuid:pk>/revoke/", InvitationCodeRevokeView.as_view(), name="auth-invitation-revoke"),
+    path(
+        "users/<uuid:pk>/password-reset-link/",
+        UserPasswordResetLinkView.as_view(),
+        name="auth-user-password-reset-link",
+    ),
+    path("password-reset/check/", PasswordResetCheckView.as_view(), name="auth-password-reset-check"),
+    path("password-reset/confirm/", PasswordResetConfirmView.as_view(), name="auth-password-reset-confirm"),
 ]

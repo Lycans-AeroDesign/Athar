@@ -1,5 +1,6 @@
 from unittest.mock import patch
 
+from django.conf import settings
 from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
 
@@ -11,9 +12,9 @@ from rest_framework.throttling import ScopedRateThrottle
 
 from core.testing import create_test_organization
 from files.models import StoredFile
-from rbac.models import Role
+from rbac.models import Permission, Role
 
-from .models import InvitationCode, User
+from .models import InvitationCode, PasswordResetLink, User
 
 
 class AuthFlowTests(APITestCase):
@@ -511,3 +512,123 @@ class InvitationCodeAdminTests(APITestCase):
             format="json",
         )
         self.assertEqual(register_response.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+class PasswordResetLinkTests(APITestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.organization = create_test_organization()
+
+    def _user(self, email, role_name=None, password="OldPassw0rd!x", organization=None):
+        user = User.objects.create_user(email=email, password=password, organization=organization or self.organization)
+        if role_name:
+            Role.objects.get(organization=user.organization, name=role_name).user_roles.create(user=user)
+        return user
+
+    def _login(self, email, password="OldPassw0rd!x"):
+        return self.client.post(reverse("auth-login"), {"email": email, "password": password}, format="json")
+
+    def _auth(self, email, password="OldPassw0rd!x"):
+        return {"HTTP_AUTHORIZATION": f"Bearer {self._login(email, password).data['access']}"}
+
+    def _generate(self, admin_email, target):
+        return self.client.post(
+            reverse("auth-user-password-reset-link", args=[target.id]), format="json", **self._auth(admin_email)
+        )
+
+    def setUp(self):
+        self.admin = self._user("reset-admin@example.com", "Organization Admin")
+        self.member = self._user("reset-member@example.com", "Member")
+
+    def test_full_reset_flow_and_link_is_single_use(self):
+        response = self._generate(self.admin.email, self.member)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        token = response.data["token"]
+        self.assertEqual(response.data["email"], self.member.email)
+        # Only the hash is stored.
+        self.assertFalse(PasswordResetLink.objects.filter(token_hash=token).exists())
+
+        response = self.client.post(reverse("auth-password-reset-check"), {"token": token}, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["email"], self.member.email)
+
+        # An existing session is revoked by the reset.
+        old_refresh = self._login(self.member.email).cookies[settings.JWT_REFRESH_COOKIE_NAME].value
+
+        response = self.client.post(
+            reverse("auth-password-reset-confirm"), {"token": token, "password": "BrandNewPassw0rd!"}, format="json"
+        )
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(self._login(self.member.email, "BrandNewPassw0rd!").status_code, status.HTTP_200_OK)
+        self.assertNotEqual(self._login(self.member.email).status_code, status.HTTP_200_OK)
+
+        self.client.cookies[settings.JWT_REFRESH_COOKIE_NAME] = old_refresh
+        self.assertEqual(self.client.post(reverse("auth-refresh")).status_code, status.HTTP_401_UNAUTHORIZED)
+
+        # Used once - now dead.
+        response = self.client.post(
+            reverse("auth-password-reset-confirm"), {"token": token, "password": "AnotherPassw0rd!"}, format="json"
+        )
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_new_link_replaces_old_and_expired_or_bogus_links_fail(self):
+        first = self._generate(self.admin.email, self.member).data["token"]
+        second = self._generate(self.admin.email, self.member).data["token"]
+        check = reverse("auth-password-reset-check")
+        self.assertEqual(self.client.post(check, {"token": first}, format="json").status_code, 404)
+        self.assertEqual(self.client.post(check, {"token": second}, format="json").status_code, 200)
+        self.assertEqual(self.client.post(check, {"token": "not-a-real-token"}, format="json").status_code, 404)
+
+        PasswordResetLink.objects.filter(user=self.member).update(expires_at=timezone.now())
+        self.assertEqual(self.client.post(check, {"token": second}, format="json").status_code, 404)
+
+    def test_weak_password_is_rejected_and_link_stays_usable(self):
+        token = self._generate(self.admin.email, self.member).data["token"]
+        response = self.client.post(
+            reverse("auth-password-reset-confirm"), {"token": token, "password": "12345678"}, format="json"
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        response = self.client.post(reverse("auth-password-reset-check"), {"token": token}, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_generation_requires_user_manage_and_same_org(self):
+        response = self._generate(self.member.email, self.admin)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        other_org = create_test_organization(name="Elsewhere")
+        stranger = self._user("reset-stranger@example.com", "Member", organization=other_org)
+        response = self._generate(self.admin.email, stranger)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_cannot_reset_self_blocked_or_more_privileged_users(self):
+        self.assertEqual(self._generate(self.admin.email, self.admin).status_code, status.HTTP_403_FORBIDDEN)
+
+        blocked = self._user("reset-blocked@example.com", "Member")
+        blocked.is_active = False
+        blocked.save()
+        self.assertEqual(self._generate(self.admin.email, blocked).status_code, status.HTTP_400_BAD_REQUEST)
+
+        # A user.manage holder without the admin's other permissions can't
+        # take over the admin's account.
+        manager_role = Role.objects.create(organization=self.organization, name="User Manager")
+        manager_role.permissions.add(Permission.objects.get(codename="user.manage"))
+        manager = self._user("reset-manager@example.com")
+        manager_role.user_roles.create(user=manager)
+        self.assertEqual(self._generate(manager.email, self.admin).status_code, status.HTTP_403_FORBIDDEN)
+
+    # Same pattern as AuthFlowTests' login throttle test: throttling is off in
+    # tests, so re-enable a tight "auth" rate to prove both public reset
+    # endpoints actually engage it (they're unauthenticated, so the limit is
+    # keyed on the client IP).
+    @patch.dict(ScopedRateThrottle.THROTTLE_RATES, {"auth": "3/min"})
+    def test_public_reset_endpoints_are_rate_limited(self):
+        for url_name, body in (
+            ("auth-password-reset-check", {"token": "guess"}),
+            ("auth-password-reset-confirm", {"token": "guess", "password": "SomePassw0rd!"}),
+        ):
+            cache.clear()
+            for _ in range(3):
+                response = self.client.post(reverse(url_name), body, format="json")
+                self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+            response = self.client.post(reverse(url_name), body, format="json")
+            self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS, url_name)

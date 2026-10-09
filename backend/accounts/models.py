@@ -12,6 +12,7 @@ username_validator = RegexValidator(
     "Usernames can only contain letters, numbers, dots, underscores, and hyphens (3-30 characters).",
 )
 
+from core.models import OrganizationScopedModel, TimeStampedModel, UUIDPrimaryKeyModel
 from rbac.models import Permission
 
 # Excludes visually-ambiguous characters (0/O, 1/I) since these are meant to
@@ -182,3 +183,26 @@ class InvitationCode(models.Model):
         if self.expires_at is not None and self.expires_at <= timezone.now():
             return False
         return True
+
+
+class PasswordResetLink(UUIDPrimaryKeyModel, OrganizationScopedModel, TimeStampedModel):
+    """A one-time link an admin generates for a user who can't log in - the
+    admin hands it over themselves (no email involved). Only a SHA-256 hash
+    of the token is stored, so the link can't be recovered from the
+    database; the raw token is shown once, when it's generated. See
+    accounts.services.create_password_reset_link / reset_password_with_link."""
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="password_reset_links")
+    token_hash = models.CharField(max_length=64, unique=True)
+    created_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    expires_at = models.DateTimeField()
+    used_at = models.DateTimeField(null=True, blank=True)
+    # Set when a newer link is generated for the same user, or the password
+    # is reset through any link - only the latest unused link ever works.
+    revoked_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def is_valid(self) -> bool:
+        return self.used_at is None and self.revoked_at is None and self.expires_at > timezone.now()

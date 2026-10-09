@@ -66,6 +66,19 @@
       "error": "Couldn't create your account. Check your details and try again.",
       "hasAccount": "Already have an account?",
       "loginLink": "Login"
+    },
+    "reset": {
+      "title": "Set a new password",
+      "subtitle": "For {email}",
+      "checking": "Checking your link...",
+      "invalid": "This reset link is invalid, has already been used, or has expired. Ask an admin for a new one.",
+      "newPasswordLabel": "New password",
+      "confirmPasswordLabel": "Confirm new password",
+      "mismatch": "Passwords don't match.",
+      "submit": "Set password",
+      "submitting": "Saving...",
+      "success": "Your password has been changed. You can now log in with it.",
+      "backToLogin": "Back to login"
     }
   },
   "nav": {
@@ -266,7 +279,17 @@
       "unblockAction": "Unblock",
       "selfHint": "This is you",
       "blockConfirmTitle": "Block this user?",
-      "blockConfirmBody": "{email} will be signed out immediately and won't be able to log back in until unblocked."
+      "blockConfirmBody": "{email} will be signed out immediately and won't be able to log back in until unblocked.",
+      "resetLinkAction": "Reset link",
+      "resetLinkConfirmTitle": "Generate a password reset link?",
+      "resetLinkConfirmBody": "You'll get a one-time link that lets {email} set a new password. Any earlier unused link for them stops working.",
+      "resetLinkConfirm": "Generate link",
+      "resetLinkTitle": "Password reset link",
+      "resetLinkBody": "Send this link to {email} yourself - for example in a direct message. Anyone with the link can set a new password for this account.",
+      "resetLinkCopy": "Copy",
+      "resetLinkExpires": "Expires {time}. It works once, and signs them out everywhere when used.",
+      "resetLinkOnce": "This link won't be shown again - generate a new one if it's lost.",
+      "resetLinkDone": "Done"
     },
     "invitations": {
       "title": "Invitation Codes",
