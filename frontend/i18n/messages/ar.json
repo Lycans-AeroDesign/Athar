@@ -1359,6 +1359,8 @@
     "acceptAndContinue": "موافقة ومتابعة",
     "declineAndLogout": "رفض وتسجيل الخروج",
     "pageTitle": "السياسات",
-    "noneYet": "لم تُنشر أي سياسات بعد."
+    "noneYet": "لم تُنشر أي سياسات بعد.",
+    "progress": "تمت الموافقة على {accepted} من {total}",
+    "remainingHint": "للمتابعة، يجب أيضًا الموافقة على:"
   }
 }

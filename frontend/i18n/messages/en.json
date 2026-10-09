@@ -1359,6 +1359,8 @@
     "acceptAndContinue": "Accept and continue",
     "declineAndLogout": "Decline and log out",
     "pageTitle": "Policies",
-    "noneYet": "No policies have been published yet."
+    "noneYet": "No policies have been published yet.",
+    "progress": "{accepted} of {total} accepted",
+    "remainingHint": "To continue, you also need to accept:"
   }
 }

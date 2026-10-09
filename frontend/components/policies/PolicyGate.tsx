@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/Button";
+import { Icon } from "@/components/ui/Icon";
 import { LoadingScreen } from "@/components/ui/LoadingScreen";
 import { Markdown } from "@/components/ui/Markdown";
 import { useRouter } from "@/i18n/navigation";
@@ -19,6 +20,10 @@ import { formatDateTime } from "@/lib/datetime";
 // backend/policies/authentication.py); this is the UX for it. Re-checks when
 // any API call is refused for that reason mid-session (POLICY_REQUIRED_EVENT,
 // dispatched from lib/api/client.ts) - e.g. an admin published a new version.
+// With several policies pending, it guides the user through all of them: a
+// progress stepper up top, auto-scroll to the next unaccepted one after each
+// checkbox, and a footer hint naming what's still missing - people would
+// otherwise tick the first one and not notice the rest below the fold.
 export function PolicyGate({ children }: { children: ReactNode }) {
   const t = useTranslations("policies");
   const { logout } = useAuth();
@@ -53,7 +58,23 @@ export function PolicyGate({ children }: { children: ReactNode }) {
   if (pending === null) return <LoadingScreen />;
   if (pending.length === 0) return <>{children}</>;
 
-  const allChecked = pending.every((policy) => checked.has(policy.id));
+  const remaining = pending.filter((policy) => !checked.has(policy.id));
+  const allChecked = remaining.length === 0;
+
+  function scrollToPolicy(id: string) {
+    document.getElementById(`policy-${id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function toggle(id: string, isChecked: boolean) {
+    const next = new Set(checked);
+    if (isChecked) next.add(id);
+    else next.delete(id);
+    setChecked(next);
+    if (isChecked) {
+      const nextPending = pending!.find((policy) => !next.has(policy.id));
+      if (nextPending) scrollToPolicy(nextPending.id);
+    }
+  }
 
   async function handleAccept() {
     setIsSubmitting(true);
@@ -86,11 +107,45 @@ export function PolicyGate({ children }: { children: ReactNode }) {
             {t("gateTitle")}
           </h1>
           <p className="font-body-md text-body-md text-on-surface-variant mt-1">{t("gateDescription")}</p>
+          {pending.length > 1 && (
+            <div className="mt-4 space-y-2">
+              <p className="font-label-caps text-label-caps uppercase text-on-surface-variant">
+                {t("progress", { accepted: pending.length - remaining.length, total: pending.length })}
+              </p>
+              <ol className="flex flex-wrap gap-2">
+                {pending.map((policy, index) => {
+                  const done = checked.has(policy.id);
+                  return (
+                    <li key={policy.id}>
+                      <button
+                        type="button"
+                        onClick={() => scrollToPolicy(policy.id)}
+                        className={`flex items-center gap-2 rounded-full border px-3 py-1 font-body-md text-body-md transition-colors ${
+                          done
+                            ? "border-primary bg-primary-container text-on-primary-container"
+                            : "border-outline-variant text-on-surface hover:bg-surface-variant"
+                        }`}
+                      >
+                        <span
+                          className={`flex h-5 w-5 items-center justify-center rounded-full text-xs ${
+                            done ? "bg-primary text-on-primary" : "bg-surface-variant text-on-surface-variant"
+                          }`}
+                        >
+                          {done ? <Icon name="check" size={12} /> : index + 1}
+                        </span>
+                        {policy.title}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ol>
+            </div>
+          )}
         </div>
 
         <div className="flex-1 overflow-y-auto p-6 space-y-8">
           {pending.map((policy) => (
-            <section key={policy.id} className="space-y-3">
+            <section key={policy.id} id={`policy-${policy.id}`} className="space-y-3 scroll-mt-6">
               <div>
                 <h2 className="font-body-lg text-body-lg font-semibold text-on-surface">{policy.title}</h2>
                 <p className="font-label-caps text-label-caps uppercase text-on-surface-variant">
@@ -100,17 +155,16 @@ export function PolicyGate({ children }: { children: ReactNode }) {
               <div className="rounded-lg border border-outline-variant bg-surface p-4 max-h-80 overflow-y-auto">
                 <Markdown content={policy.content} />
               </div>
-              <label className="flex items-start gap-3 cursor-pointer">
+              <label
+                className={`flex items-start gap-3 cursor-pointer rounded-lg border p-3 transition-colors ${
+                  checked.has(policy.id) ? "border-primary bg-primary-container/40" : "border-outline-variant"
+                }`}
+              >
                 <input
                   type="checkbox"
                   className="mt-1 h-4 w-4 accent-primary"
                   checked={checked.has(policy.id)}
-                  onChange={(e) => {
-                    const next = new Set(checked);
-                    if (e.target.checked) next.add(policy.id);
-                    else next.delete(policy.id);
-                    setChecked(next);
-                  }}
+                  onChange={(e) => toggle(policy.id, e.target.checked)}
                 />
                 <span className="font-body-md text-body-md text-on-surface">
                   {t("acceptCheckbox", { title: policy.title })}
@@ -124,6 +178,24 @@ export function PolicyGate({ children }: { children: ReactNode }) {
           {error && (
             <p className="font-body-md text-body-md text-error" role="alert">
               {error}
+            </p>
+          )}
+          {!allChecked && pending.length > 1 && (
+            <p className="flex flex-wrap items-center gap-x-1 font-body-md text-body-md text-on-surface-variant">
+              <Icon name="info" size={16} className="shrink-0" />
+              <span>{t("remainingHint")}</span>
+              {remaining.map((policy, index) => (
+                <span key={policy.id}>
+                  <button
+                    type="button"
+                    onClick={() => scrollToPolicy(policy.id)}
+                    className="font-semibold text-primary underline underline-offset-2"
+                  >
+                    {policy.title}
+                  </button>
+                  {index < remaining.length - 1 && ","}
+                </span>
+              ))}
             </p>
           )}
           <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
