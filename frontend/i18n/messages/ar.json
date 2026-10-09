@@ -291,7 +291,10 @@
       "resetLinkCopy": "نسخ",
       "resetLinkExpires": "ينتهي في {time}. يعمل مرة واحدة، ويسجّل خروجه من كل الأجهزة عند استخدامه.",
       "resetLinkOnce": "لن يظهر هذا الرابط مرة أخرى - أنشئ رابطًا جديدًا إذا فُقد.",
-      "resetLinkDone": "تم"
+      "resetLinkDone": "تم",
+      "searchPlaceholder": "ابحث بالاسم أو البريد الإلكتروني أو الدور...",
+      "noMatches": "لا يوجد مستخدمون مطابقون لبحثك.",
+      "actionsMenuLabel": "إجراءات {email}"
     },
     "invitations": {
       "title": "رموز الدعوة",

@@ -291,7 +291,10 @@
       "resetLinkCopy": "Copy",
       "resetLinkExpires": "Expires {time}. It works once, and signs them out everywhere when used.",
       "resetLinkOnce": "This link won't be shown again - generate a new one if it's lost.",
-      "resetLinkDone": "Done"
+      "resetLinkDone": "Done",
+      "searchPlaceholder": "Search by name, email or role...",
+      "noMatches": "No users match your search.",
+      "actionsMenuLabel": "Actions for {email}"
     },
     "invitations": {
       "title": "Invitation Codes",

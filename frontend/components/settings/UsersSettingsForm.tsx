@@ -6,6 +6,8 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Icon } from "@/components/ui/Icon";
+import { IconButton } from "@/components/ui/IconButton";
+import { Menu, type MenuEntry } from "@/components/ui/Menu";
 import { Modal } from "@/components/ui/Modal";
 import { getPathname } from "@/i18n/navigation";
 import { createPasswordResetLink, passwordResetUrl } from "@/lib/api/passwordReset";
@@ -17,9 +19,10 @@ import { formatDateTime } from "@/lib/datetime";
 // Rendered only when the viewer has user.manage (see settings/page.tsx),
 // same gate RolesSettingsForm's own user-assignment section and
 // InvitationsSettingsForm use. Structured like InvitationsSettingsForm.tsx:
-// fetch-all list, per-row action, ConfirmModal for the destructive one -
-// block goes through it (danger), unblock is a direct action (like
-// RolesSettingsForm's "Undo delete" button). The viewer's own row never
+// fetch-all list (filtered client-side by the search box), per-row actions in
+// a "..." Menu, ConfirmModal for the destructive one - block goes through it
+// (danger), unblock is a direct action (like RolesSettingsForm's "Undo
+// delete" button). The viewer's own row never
 // shows a block/unblock control - see rbac.services.set_user_active's
 // matching backend guard against self-block.
 export function UsersSettingsForm() {
@@ -36,6 +39,7 @@ export function UsersSettingsForm() {
   // The generated link - shown once, in a modal; only its hash is stored server-side.
   const [resetLink, setResetLink] = useState<{ email: string; url: string; expiresAt: string } | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     getUsers().then(setUsers);
@@ -90,6 +94,27 @@ export function UsersSettingsForm() {
     }
   }
 
+  const query = search.trim().toLowerCase();
+  const visibleUsers = !users
+    ? null
+    : query
+      ? users.filter((user) =>
+          [user.email, user.username ?? "", user.first_name, user.last_name, `${user.first_name} ${user.last_name}`, user.title, ...user.roles]
+            .some((field) => field.toLowerCase().includes(query)),
+        )
+      : users;
+
+  function actionsFor(user: User): MenuEntry[] {
+    if (!user.is_active) {
+      return [{ label: t("unblockAction"), icon: "check_circle", onSelect: () => handleUnblock(user) }];
+    }
+    return [
+      { label: t("resetLinkAction"), icon: "link", onSelect: () => setResetTarget(user) },
+      { type: "separator" },
+      { label: t("blockAction"), icon: "block", danger: true, onSelect: () => setBlockTarget(user) },
+    ];
+  }
+
   async function handleCopyResetLink() {
     if (!resetLink) return;
     await navigator.clipboard.writeText(resetLink.url);
@@ -104,11 +129,29 @@ export function UsersSettingsForm() {
           <p className="font-body-md text-body-md text-on-surface-variant mt-1">{t("description")}</p>
         </div>
 
-        {!users ? (
+        <div className="relative">
+          <Icon
+            name="search"
+            size={18}
+            className="absolute start-3 top-1/2 -translate-y-1/2 text-outline pointer-events-none"
+          />
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={t("searchPlaceholder")}
+            aria-label={t("searchPlaceholder")}
+            className="block w-full h-10 ps-10 pe-4 py-2 font-body-md text-body-md text-on-surface bg-surface-container border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
+          />
+        </div>
+
+        {!visibleUsers ? (
           <p className="font-body-md text-body-md text-on-surface-variant">{commonT("loading")}</p>
+        ) : visibleUsers.length === 0 ? (
+          <p className="font-body-md text-body-md text-on-surface-variant">{t("noMatches")}</p>
         ) : (
           <ul className="space-y-1">
-            {users.map((user) => {
+            {visibleUsers.map((user) => {
               const isSelf = user.id === viewer?.id;
               return (
                 <li
@@ -139,37 +182,17 @@ export function UsersSettingsForm() {
                       {t("selfHint")}
                     </span>
                   ) : (
-                    <div className="shrink-0 flex items-center gap-4">
-                      {user.is_active && (
-                        <button
-                          type="button"
-                          onClick={() => setResetTarget(user)}
+                    <Menu
+                      trigger={
+                        <IconButton
+                          icon="more_vert"
+                          aria-label={t("actionsMenuLabel", { email: user.email })}
                           disabled={workingId === user.id}
-                          className="font-label-caps text-label-caps uppercase text-on-surface-variant hover:text-primary transition-colors"
-                        >
-                          {t("resetLinkAction")}
-                        </button>
-                      )}
-                      {user.is_active ? (
-                        <button
-                          type="button"
-                          onClick={() => setBlockTarget(user)}
-                          disabled={workingId === user.id}
-                          className="font-label-caps text-label-caps uppercase text-on-surface-variant hover:text-error transition-colors"
-                        >
-                          {t("blockAction")}
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => handleUnblock(user)}
-                          disabled={workingId === user.id}
-                          className="font-label-caps text-label-caps uppercase text-on-surface-variant hover:text-primary transition-colors"
-                        >
-                          {t("unblockAction")}
-                        </button>
-                      )}
-                    </div>
+                          className="shrink-0"
+                        />
+                      }
+                      items={actionsFor(user)}
+                    />
                   )}
                 </li>
               );
