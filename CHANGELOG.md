@@ -1,3 +1,9 @@
+## [1.10.1](https://github.com/Lycans-AeroDesign/Athar/compare/v1.10.0...v1.10.1) (2026-10-09)
+
+### Bug Fixes
+
+* **deps:** update dependencies to patch security advisories ([2868027](https://github.com/Lycans-AeroDesign/Athar/commit/2868027dc295a0299c761e9997d3cb5a9b302c41))
+
 ## [1.10.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.9.0...v1.10.0) (2026-10-09)
 
 ### Features
