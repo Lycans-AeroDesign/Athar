@@ -1,3 +1,11 @@
+## [1.10.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.9.0...v1.10.0) (2026-10-09)
+
+### Features
+
+* **accounts:** email password reset links and add self-service forgot-password ([37e3bb3](https://github.com/Lycans-AeroDesign/Athar/commit/37e3bb3c69ed98eca03bb4bffabb1a12a527c02a))
+* **policies:** guide members through accepting every pending policy ([71dd9c5](https://github.com/Lycans-AeroDesign/Athar/commit/71dd9c5dd2665202a7ffa8ee62cc249faa575715))
+* **settings:** add user search and a per-user actions menu ([881e9ae](https://github.com/Lycans-AeroDesign/Athar/commit/881e9aee79dbefe76b3b013c8ae8b287d1885f38))
+
 ## [1.9.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.8.0...v1.9.0) (2026-10-09)
 
 ### Features
