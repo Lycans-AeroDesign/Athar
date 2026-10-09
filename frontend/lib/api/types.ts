@@ -154,6 +154,8 @@ export interface OrganizationSettings {
   product_tour_enabled: boolean;
   /** Instance-wide (not per-org) - mirrors the backend's ENABLE_ORGANIZATION_REGISTRATION setting. Controls whether the register page's "create a new organization" tab is shown. */
   organization_registration_enabled: boolean;
+  /** Instance-wide - mirrors the backend's EMAIL_ENABLED (an SMTP server is configured). Controls whether admins can email password reset links. */
+  email_enabled: boolean;
   updated_at: string;
 }
 

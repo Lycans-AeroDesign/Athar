@@ -48,7 +48,8 @@
       "rateLimited": "Too many login attempts. Please wait a moment and try again.",
       "credit": "Developed by Lycans AeroDesign Team",
       "needAccount": "Don't have an account?",
-      "registerLink": "Register"
+      "registerLink": "Register",
+      "forgotPassword": "Forgot password?"
     },
     "register": {
       "tagline": "Knowledge that never graduates.",
@@ -71,14 +72,25 @@
       "title": "Set a new password",
       "subtitle": "For {email}",
       "checking": "Checking your link...",
-      "invalid": "This reset link is invalid, has already been used, or has expired. Ask an admin for a new one.",
+      "invalid": "This reset link is invalid, has already been used, or has expired.",
       "newPasswordLabel": "New password",
       "confirmPasswordLabel": "Confirm new password",
       "mismatch": "Passwords don't match.",
       "submit": "Set password",
       "submitting": "Saving...",
       "success": "Your password has been changed. You can now log in with it.",
-      "backToLogin": "Back to login"
+      "backToLogin": "Back to login",
+      "requestNew": "Request a new link"
+    },
+    "forgot": {
+      "title": "Forgot your password?",
+      "subtitle": "Enter your account's email and we'll send you a link to set a new password.",
+      "submit": "Send reset link",
+      "submitting": "Sending...",
+      "sent": "If an account exists for {email}, a reset link is on its way. It expires in 24 hours - check your spam folder if you don't see it.",
+      "askAdmin": "Password reset emails aren't set up for this workspace. Ask one of your team admins to send you a reset link.",
+      "error": "Something went wrong. Please try again.",
+      "rateLimited": "Too many requests. Please wait a moment and try again."
     }
   },
   "nav": {
@@ -294,7 +306,10 @@
       "resetLinkDone": "Done",
       "searchPlaceholder": "Search by name, email or role...",
       "noMatches": "No users match your search.",
-      "actionsMenuLabel": "Actions for {email}"
+      "actionsMenuLabel": "Actions for {email}",
+      "resetLinkSendEmail": "Also email the link to {email}",
+      "resetLinkEmailSent": "Emailed the link to {email}. You can also copy it below.",
+      "resetLinkEmailFailed": "The email couldn't be sent - copy the link below and send it yourself."
     },
     "invitations": {
       "title": "Invitation Codes",

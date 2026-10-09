@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 import { Button } from "./Button";
 import { Modal } from "./Modal";
@@ -15,6 +15,8 @@ interface ConfirmModalProps {
   cancelLabel?: string;
   danger?: boolean;
   onConfirm: () => void | Promise<void>;
+  /** Optional extra content (e.g. an option checkbox) shown under the description. */
+  children?: ReactNode;
 }
 
 // Reusable "are you sure?" dialog for destructive/important actions
@@ -28,6 +30,7 @@ export function ConfirmModal({
   cancelLabel,
   danger = false,
   onConfirm,
+  children,
 }: ConfirmModalProps) {
   const t = useTranslations("common");
   const [isConfirming, setIsConfirming] = useState(false);
@@ -62,6 +65,8 @@ export function ConfirmModal({
           </Button>
         </>
       }
-    />
+    >
+      {children}
+    </Modal>
   );
 }

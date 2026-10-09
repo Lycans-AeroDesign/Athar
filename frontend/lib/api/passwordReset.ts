@@ -5,11 +5,35 @@ export interface PasswordResetLink {
   token: string;
   expires_at: string;
   email: string;
+  /** Whether the backend emailed the link to the user (only when `email` options were passed). */
+  email_sent: boolean;
 }
 
-/** Requires user.manage; not for yourself, a blocked user, or anyone with access you don't have. */
-export function createPasswordResetLink(userId: string): Promise<PasswordResetLink> {
-  return apiJson<PasswordResetLink>(`/api/v1/auth/users/${userId}/password-reset-link/`, { method: "POST" });
+/** Requires user.manage; not for yourself, a blocked user, or anyone with access you don't have.
+ * With `email`, the backend also emails `${linkBase}#<token>` to the user - `linkBase` must be on
+ * this app's own origin (the backend checks it against CORS_ALLOWED_ORIGINS). */
+export function createPasswordResetLink(
+  userId: string,
+  email?: { linkBase: string; language: string },
+): Promise<PasswordResetLink> {
+  return apiJson<PasswordResetLink>(`/api/v1/auth/users/${userId}/password-reset-link/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(
+      email ? { send_email: true, link_base: email.linkBase, language: email.language } : { send_email: false },
+    ),
+  });
+}
+
+/** Public "forgot password" - resolves the same way whether or not the email has an account
+ * (the backend looks it up and sends the email in the background). Rejects with a 400 ApiError
+ * when email isn't configured on the server, 429 when rate limited. */
+export function requestPasswordReset(email: string, linkBase: string, language: string): Promise<void> {
+  return apiVoid("/api/v1/auth/password-reset/request/", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, link_base: linkBase, language }),
+  });
 }
 
 /** Public. The token goes in the POST body (never the URL) so it can't land in access logs.

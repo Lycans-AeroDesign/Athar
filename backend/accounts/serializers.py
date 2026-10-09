@@ -1,3 +1,6 @@
+from urllib.parse import urlsplit
+
+from django.conf import settings
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
@@ -184,6 +187,47 @@ class InvitationCodeCreateSerializer(serializers.Serializer):
     expires_at = serializers.DateTimeField(required=False, allow_null=True, default=None)
 
 
+def validate_reset_link_base(value: str) -> str:
+    """A reset link we email must point at this app's own frontend - one of
+    the trusted origins in CORS_ALLOWED_ORIGINS - never anywhere else."""
+    parts = urlsplit(value)
+    if f"{parts.scheme}://{parts.netloc}" not in settings.CORS_ALLOWED_ORIGINS or parts.query or parts.fragment:
+        raise serializers.ValidationError("Must be a reset page on this app's own address.")
+    return value
+
+
+class PasswordResetLinkCreateSerializer(serializers.Serializer):
+    """Optional body of generating a reset link. With `send_email`, the
+    backend emails `link_base` + "#<token>" to the user - `link_base` is the
+    frontend's localized /reset-password URL (the frontend owns its routes),
+    and must sit on one of the trusted frontend origins (CORS_ALLOWED_ORIGINS)
+    so the email can never point anywhere else."""
+
+    send_email = serializers.BooleanField(default=False)
+    link_base = serializers.URLField(required=False, max_length=500)
+    language = serializers.ChoiceField(choices=["en", "ar"], default="en")
+
+    def validate_link_base(self, value):
+        return validate_reset_link_base(value)
+
+    def validate(self, attrs):
+        if attrs["send_email"]:
+            if not settings.EMAIL_ENABLED:
+                raise serializers.ValidationError({"send_email": "Email isn't configured on this server."})
+            if not attrs.get("link_base"):
+                raise serializers.ValidationError({"link_base": "Required when sending the link by email."})
+        return attrs
+
+
+class PasswordResetRequestSerializer(serializers.Serializer):
+    """Self-service "forgot password" request from the login page -
+    `link_base` is the frontend's localized /reset-password URL, as above."""
+
+    email = serializers.EmailField(max_length=254)
+    link_base = serializers.URLField(max_length=500, validators=[validate_reset_link_base])
+    language = serializers.ChoiceField(choices=["en", "ar"], default="en")
+
+
 class PasswordResetLinkSerializer(serializers.Serializer):
     """Response of generating a reset link - `token` is the only time the raw
     token is ever available (only its hash is stored); the frontend turns it
@@ -192,6 +236,7 @@ class PasswordResetLinkSerializer(serializers.Serializer):
     token = serializers.CharField(read_only=True)
     expires_at = serializers.DateTimeField(read_only=True)
     email = serializers.EmailField(read_only=True)
+    email_sent = serializers.BooleanField(read_only=True)
 
 
 class PasswordResetTokenSerializer(serializers.Serializer):

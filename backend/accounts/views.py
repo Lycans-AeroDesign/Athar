@@ -25,6 +25,8 @@ from .serializers import (
     MeUpdateSerializer,
     PasswordResetCheckResponseSerializer,
     PasswordResetConfirmSerializer,
+    PasswordResetLinkCreateSerializer,
+    PasswordResetRequestSerializer,
     PasswordResetLinkSerializer,
     PasswordResetTokenSerializer,
     RegisterSerializer,
@@ -37,6 +39,7 @@ from .services import (
     get_valid_password_reset_link,
     register_user,
     reset_password_with_link,
+    send_password_reset_email,
     revoke_invitation_code,
     update_own_profile,
 )
@@ -251,16 +254,30 @@ class UserPasswordResetLinkView(APIView):
         tags=["Auth"],
         summary=(
             "Generate a one-time password reset link for a user in your organization (valid 24h; "
-            "replaces any earlier unused link; not for yourself or anyone with access you don't have)"
+            "replaces any earlier unused link; not for yourself or anyone with access you don't have), "
+            "optionally emailing it to the user"
         ),
-        request=None,
+        request=PasswordResetLinkCreateSerializer,
         responses={201: PasswordResetLinkSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def post(self, request, pk):
         user = get_object_or_404(User, pk=pk, organization=request.user.organization)
+        options = PasswordResetLinkCreateSerializer(data=request.data)
+        options.is_valid(raise_exception=True)
         link, token = create_password_reset_link(user=user, actor=request.user, request=request)
+        email_sent = False
+        if options.validated_data["send_email"]:
+            email_sent = send_password_reset_email(
+                user=user,
+                url=f"{options.validated_data['link_base']}#{token}",
+                language=options.validated_data["language"],
+                actor=request.user,
+                request=request,
+            )
         return Response(
-            PasswordResetLinkSerializer({"token": token, "expires_at": link.expires_at, "email": user.email}).data,
+            PasswordResetLinkSerializer(
+                {"token": token, "expires_at": link.expires_at, "email": user.email, "email_sent": email_sent}
+            ).data,
             status=status.HTTP_201_CREATED,
         )
 
@@ -291,6 +308,44 @@ class PasswordResetCheckView(APIView):
         return Response(
             PasswordResetCheckResponseSerializer({"email": link.user.email, "expires_at": link.expires_at}).data
         )
+
+
+class PasswordResetRequestView(APIView):
+    """Login page's "Forgot password?". Always answers 202 for a well-formed
+    request, whether or not the email has an account - the lookup and the
+    email happen in a Celery task, so neither the response nor its timing
+    reveals which addresses are registered."""
+
+    permission_classes = [AllowAny]
+    authentication_classes = []
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "auth"
+
+    @extend_schema(
+        tags=["Auth"],
+        summary="Request a password reset email (self-service; same response whether or not the account exists)",
+        request=PasswordResetRequestSerializer,
+        responses={
+            202: OpenApiResponse(description="If an active account has this email, a reset link is on its way."),
+            400: OpenApiResponse(description="Invalid input, or email isn't configured on this server."),
+        },
+    )
+    def post(self, request):
+        from .tasks import request_password_reset
+
+        if not settings.EMAIL_ENABLED:
+            return Response(
+                {"detail": "Email isn't configured on this server - ask an admin for a reset link."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        serializer = PasswordResetRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        request_password_reset.delay(
+            serializer.validated_data["email"],
+            serializer.validated_data["link_base"],
+            serializer.validated_data["language"],
+        )
+        return Response(status=status.HTTP_202_ACCEPTED)
 
 
 class PasswordResetConfirmView(APIView):

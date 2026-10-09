@@ -348,6 +348,7 @@ ENABLE_REGISTRATION = env.bool("ENABLE_REGISTRATION", default=True)
 ENABLE_ORGANIZATION_REGISTRATION = env.bool("ENABLE_ORGANIZATION_REGISTRATION", default=True)
 
 
+
 # Celery (background jobs - backups.tasks.generate_org_backup on demand, plus
 # files.tasks.delete_unconfirmed_files on the schedule below)
 # https://docs.celeryq.dev/en/stable/userguide/configuration.html
@@ -382,8 +383,32 @@ CELERY_BEAT_SCHEDULE = {
 # Email
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
 
+# Outgoing email (password reset links today) - plain SMTP, so any provider
+# works (Resend: EMAIL_HOST=smtp.resend.com, EMAIL_HOST_USER=resend,
+# EMAIL_HOST_PASSWORD=<API key>). Unset EMAIL_HOST means email is off:
+# EMAIL_ENABLED is False, the UI hides "send by email", and anything that
+# does get sent is just printed to the backend's console log instead.
+# (Read into lowercase locals - Django 6.1 refuses the old uppercase
+# EMAIL_HOST/... settings alongside MAILERS.)
+_email_host = env("EMAIL_HOST", default="")
+EMAIL_ENABLED = bool(_email_host)
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="Athar <noreply@localhost>")
+
 MAILERS = {
-    "default": {
-        "BACKEND": "django.core.mail.backends.console.EmailBackend",
-    },
+    "default": (
+        {
+            "BACKEND": "django.core.mail.backends.smtp.EmailBackend",
+            "OPTIONS": {
+                "host": _email_host,
+                "port": env.int("EMAIL_PORT", default=587),
+                "username": env("EMAIL_HOST_USER", default=""),
+                "password": env("EMAIL_HOST_PASSWORD", default=""),
+                "use_tls": env.bool("EMAIL_USE_TLS", default=True),
+                "use_ssl": env.bool("EMAIL_USE_SSL", default=False),
+                "timeout": env.int("EMAIL_TIMEOUT", default=10),
+            },
+        }
+        if EMAIL_ENABLED
+        else {"BACKEND": "django.core.mail.backends.console.EmailBackend"}
+    ),
 }

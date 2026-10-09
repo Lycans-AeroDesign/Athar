@@ -136,6 +136,11 @@ function LoginForm() {
                   setFieldErrors((prev) => ({ ...prev, password: undefined }));
                 }}
               />
+              <div className="flex justify-end">
+                <Link href="/forgot-password" className="font-body-md text-body-md text-primary hover:underline">
+                  {t("login.forgotPassword")}
+                </Link>
+              </div>
             </div>
 
             {error && (

@@ -15,6 +15,7 @@ import { getUsers, setUserActive } from "@/lib/api/rbac";
 import type { User } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { formatDateTime } from "@/lib/datetime";
+import { useOrganization } from "@/lib/organization/OrganizationProvider";
 
 // Rendered only when the viewer has user.manage (see settings/page.tsx),
 // same gate RolesSettingsForm's own user-assignment section and
@@ -30,6 +31,8 @@ export function UsersSettingsForm() {
   const commonT = useTranslations("common");
   const { user: viewer } = useAuth();
   const locale = useLocale();
+  const { settings: orgSettings } = useOrganization();
+  const emailEnabled = orgSettings?.email_enabled ?? false;
 
   const [users, setUsers] = useState<User[] | null>(null);
   const [blockTarget, setBlockTarget] = useState<User | null>(null);
@@ -37,7 +40,16 @@ export function UsersSettingsForm() {
   const [error, setError] = useState<string | null>(null);
   const [resetTarget, setResetTarget] = useState<User | null>(null);
   // The generated link - shown once, in a modal; only its hash is stored server-side.
-  const [resetLink, setResetLink] = useState<{ email: string; url: string; expiresAt: string } | null>(null);
+  const [resetLink, setResetLink] = useState<{
+    email: string;
+    url: string;
+    expiresAt: string;
+    emailRequested: boolean;
+    emailSent: boolean;
+  } | null>(null);
+  // "Also email the link" option in the confirm dialog - on by default when
+  // the server can send email (orgSettings.email_enabled).
+  const [sendEmail, setSendEmail] = useState(true);
   const [linkCopied, setLinkCopied] = useState(false);
   const [search, setSearch] = useState("");
 
@@ -78,12 +90,18 @@ export function UsersSettingsForm() {
     setWorkingId(resetTarget.id);
     setError(null);
     try {
-      const link = await createPasswordResetLink(resetTarget.id);
       const path = getPathname({ href: "/reset-password", locale });
+      const emailRequested = emailEnabled && sendEmail;
+      const link = await createPasswordResetLink(
+        resetTarget.id,
+        emailRequested ? { linkBase: `${window.location.origin}${path}`, language: locale } : undefined,
+      );
       setResetLink({
         email: link.email,
         url: passwordResetUrl(window.location.origin, path, link.token),
         expiresAt: link.expires_at,
+        emailRequested,
+        emailSent: link.email_sent,
       });
       setLinkCopied(false);
     } catch (err) {
@@ -109,7 +127,14 @@ export function UsersSettingsForm() {
       return [{ label: t("unblockAction"), icon: "check_circle", onSelect: () => handleUnblock(user) }];
     }
     return [
-      { label: t("resetLinkAction"), icon: "link", onSelect: () => setResetTarget(user) },
+      {
+        label: t("resetLinkAction"),
+        icon: "link",
+        onSelect: () => {
+          setSendEmail(true);
+          setResetTarget(user);
+        },
+      },
       { type: "separator" },
       { label: t("blockAction"), icon: "block", danger: true, onSelect: () => setBlockTarget(user) },
     ];
@@ -224,7 +249,21 @@ export function UsersSettingsForm() {
         description={resetTarget ? t("resetLinkConfirmBody", { email: resetTarget.email }) : ""}
         confirmLabel={t("resetLinkConfirm")}
         onConfirm={handleGenerateResetLink}
-      />
+      >
+        {emailEnabled && resetTarget && (
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              className="mt-1 h-4 w-4 accent-primary"
+              checked={sendEmail}
+              onChange={(e) => setSendEmail(e.target.checked)}
+            />
+            <span className="font-body-md text-body-md text-on-surface">
+              {t("resetLinkSendEmail", { email: resetTarget.email })}
+            </span>
+          </label>
+        )}
+      </ConfirmModal>
 
       <Modal
         open={resetLink !== null}
@@ -239,6 +278,21 @@ export function UsersSettingsForm() {
       >
         {resetLink && (
           <div className="space-y-3">
+            {resetLink.emailRequested &&
+              (resetLink.emailSent ? (
+                <p className="flex items-center gap-2 rounded-lg bg-secondary-container text-on-secondary-container px-3 py-2 font-body-md text-body-md">
+                  <Icon name="mail" size={16} className="shrink-0" />
+                  {t("resetLinkEmailSent", { email: resetLink.email })}
+                </p>
+              ) : (
+                <p
+                  role="alert"
+                  className="flex items-center gap-2 rounded-lg bg-error-container text-on-error-container px-3 py-2 font-body-md text-body-md"
+                >
+                  <Icon name="report_problem" size={16} className="shrink-0" />
+                  {t("resetLinkEmailFailed")}
+                </p>
+              ))}
             <div className="flex items-stretch gap-2">
               <input
                 readOnly

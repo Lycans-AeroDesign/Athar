@@ -30,6 +30,9 @@ class OrganizationSettingsSerializer(serializers.ModelSerializer):
     # dedicated endpoint. See OrganizationCreateView, which is the one that
     # actually enforces this server-side.
     organization_registration_enabled = serializers.SerializerMethodField()
+    # Same idea, mirrors settings.EMAIL_ENABLED - lets the Users tab offer
+    # "email the reset link" only when the server can actually send email.
+    email_enabled = serializers.SerializerMethodField()
 
     class Meta:
         model = OrganizationSettings
@@ -46,6 +49,7 @@ class OrganizationSettingsSerializer(serializers.ModelSerializer):
             "secondary_color_dark",
             "product_tour_enabled",
             "organization_registration_enabled",
+            "email_enabled",
             "updated_at",
         ]
 
@@ -57,6 +61,9 @@ class OrganizationSettingsSerializer(serializers.ModelSerializer):
 
     def get_organization_registration_enabled(self, obj: OrganizationSettings) -> bool:
         return django_settings.ENABLE_ORGANIZATION_REGISTRATION
+
+    def get_email_enabled(self, obj: OrganizationSettings) -> bool:
+        return django_settings.EMAIL_ENABLED
 
 
 class OrganizationCreateSerializer(serializers.Serializer):

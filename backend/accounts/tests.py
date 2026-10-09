@@ -1,9 +1,11 @@
 from unittest.mock import patch
 
 from django.conf import settings
+from django.core import mail
 from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
 
+from django.test import override_settings
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework import status
@@ -632,3 +634,157 @@ class PasswordResetLinkTests(APITestCase):
                 self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
             response = self.client.post(reverse(url_name), body, format="json")
             self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS, url_name)
+
+
+    def _generate_with_email(self, body):
+        return self.client.post(
+            reverse("auth-user-password-reset-link", args=[self.member.id]),
+            body,
+            format="json",
+            **self._auth(self.admin.email),
+        )
+
+    @override_settings(
+        EMAIL_ENABLED=True,
+        MAILERS={"default": {"BACKEND": "django.core.mail.backends.locmem.EmailBackend"}},
+        CORS_ALLOWED_ORIGINS=["http://app.example.com"],
+    )
+    def test_link_can_be_emailed_to_the_user(self):
+        response = self._generate_with_email(
+            {"send_email": True, "link_base": "http://app.example.com/ar/reset-password", "language": "ar"}
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(response.data["email_sent"])
+        self.assertEqual(len(mail.outbox), 1)
+        message = mail.outbox[0]
+        self.assertEqual(message.to, [self.member.email])
+        link = f"http://app.example.com/ar/reset-password#{response.data['token']}"
+        self.assertIn(link, message.body)
+        self.assertIn(link, message.alternatives[0][0])
+        self.assertIn('dir="rtl"', message.alternatives[0][0])
+
+    @override_settings(
+        EMAIL_ENABLED=True,
+        MAILERS={"default": {"BACKEND": "django.core.mail.backends.locmem.EmailBackend"}},
+        CORS_ALLOWED_ORIGINS=["http://app.example.com"],
+    )
+    def test_emailed_link_must_point_at_a_trusted_origin(self):
+        for link_base in (
+            "http://evil.example.com/en/reset-password",
+            "http://app.example.com/en/reset-password?next=x",
+        ):
+            response = self._generate_with_email({"send_email": True, "link_base": link_base})
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST, link_base)
+        self.assertEqual(len(mail.outbox), 0)
+        # A rejected request creates no link either.
+        self.assertFalse(PasswordResetLink.objects.filter(user=self.member).exists())
+
+    @override_settings(EMAIL_ENABLED=False, CORS_ALLOWED_ORIGINS=["http://app.example.com"])
+    def test_cannot_request_email_when_email_is_not_configured(self):
+        response = self._generate_with_email(
+            {"send_email": True, "link_base": "http://app.example.com/en/reset-password"}
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    @override_settings(EMAIL_ENABLED=True, CORS_ALLOWED_ORIGINS=["http://app.example.com"])
+    def test_send_failure_still_returns_the_link(self):
+        with patch("django.core.mail.EmailMultiAlternatives.send", side_effect=OSError("smtp down")):
+            response = self._generate_with_email(
+                {"send_email": True, "link_base": "http://app.example.com/en/reset-password"}
+            )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertFalse(response.data["email_sent"])
+        self.assertTrue(response.data["token"])
+
+
+    def _request_reset(self, email):
+        return self.client.post(
+            reverse("auth-password-reset-request"),
+            {"email": email, "link_base": "http://app.example.com/en/reset-password"},
+            format="json",
+        )
+
+    @override_settings(
+        EMAIL_ENABLED=True,
+        MAILERS={"default": {"BACKEND": "django.core.mail.backends.locmem.EmailBackend"}},
+        CORS_ALLOWED_ORIGINS=["http://app.example.com"],
+    )
+    def test_self_service_request_emails_a_working_link(self):
+        response = self._request_reset(self.member.email.upper())
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, [self.member.email])
+        self.assertIn("We received a request", mail.outbox[0].body)
+        link = PasswordResetLink.objects.get(user=self.member)
+        self.assertIsNone(link.created_by)
+
+        token = mail.outbox[0].body.split("reset-password#", 1)[1].split()[0]
+        response = self.client.post(
+            reverse("auth-password-reset-confirm"), {"token": token, "password": "BrandNewPassw0rd!"}, format="json"
+        )
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+    @override_settings(
+        EMAIL_ENABLED=True,
+        MAILERS={"default": {"BACKEND": "django.core.mail.backends.locmem.EmailBackend"}},
+        CORS_ALLOWED_ORIGINS=["http://app.example.com"],
+    )
+    def test_self_service_request_does_not_reveal_accounts_and_has_a_cooldown(self):
+        blocked = self._user("reset-blocked2@example.com", "Member")
+        blocked.is_active = False
+        blocked.save()
+        for email in ("nobody@example.com", blocked.email):
+            response = self._request_reset(email)
+            self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+        self.assertEqual(len(mail.outbox), 0)
+
+        self._request_reset(self.member.email)
+        self.assertEqual(self._request_reset(self.member.email).status_code, status.HTTP_202_ACCEPTED)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(PasswordResetLink.objects.filter(user=self.member).count(), 1)
+
+    @override_settings(EMAIL_ENABLED=False, CORS_ALLOWED_ORIGINS=["http://app.example.com"])
+    def test_self_service_request_needs_email_configured(self):
+        self.assertEqual(self._request_reset(self.member.email).status_code, status.HTTP_400_BAD_REQUEST)
+
+    @override_settings(EMAIL_ENABLED=True, CORS_ALLOWED_ORIGINS=["http://app.example.com"])
+    def test_self_service_request_rejects_foreign_link_base(self):
+        response = self.client.post(
+            reverse("auth-password-reset-request"),
+            {"email": self.member.email, "link_base": "http://evil.example.com/en/reset-password"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+    @override_settings(
+        EMAIL_ENABLED=True,
+        MAILERS={"default": {"BACKEND": "django.core.mail.backends.locmem.EmailBackend"}},
+        CORS_ALLOWED_ORIGINS=["http://app.example.com"],
+    )
+    def test_email_embeds_the_org_logo_and_athar_footer(self):
+        from organization.models import OrganizationSettings
+
+        png = b"\x89PNG\r\n\x1a\n" + b"\x00" * 16
+        org_settings = OrganizationSettings.load(self.organization)
+        org_settings.logo = StoredFile.objects.create(
+            organization=self.organization,
+            file=SimpleUploadedFile("logo.png", png, content_type="image/png"),
+            original_filename="logo.png",
+            content_type="image/png",
+        )
+        org_settings.save()
+
+        self._generate_with_email({"send_email": True, "link_base": "http://app.example.com/en/reset-password"})
+        message = mail.outbox[0].message()
+        types = [part.get_content_type() for part in message.walk()]
+        self.assertEqual(types, ["multipart/alternative", "text/plain", "multipart/related", "text/html", "image/png"])
+        logo = next(part for part in message.walk() if part.get_content_type() == "image/png")
+        self.assertEqual(logo["Content-ID"], "<org-logo>")
+        self.assertEqual(logo.get_content(), png)
+        html = mail.outbox[0].alternatives[0][0]
+        self.assertIn('src="cid:org-logo"', html)
+        self.assertIn("Sent by Athar", html)
+        self.assertIn('href="http://app.example.com"', html)
+        self.assertNotIn("github.com", html)
+        self.assertIn("Sent by Athar", mail.outbox[0].body)
