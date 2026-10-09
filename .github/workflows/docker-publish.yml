@@ -1,8 +1,15 @@
 # Builds and pushes the backend/frontend prod images to GHCR.
 #
-# Runs automatically when a semver tag (v1.2.3) is pushed - that's the normal
-# release path: `git tag v1.2.3 && git push origin v1.2.3`. Can also be run
-# manually from the Actions tab for a one-off/test build.
+# Normal path: after the Release workflow cuts a version, run this manually
+# from the Actions tab and leave "tag" blank - it finds the newest vX.Y.Z
+# release tag and builds that tag's code (not the branch head, which may
+# already have unreleased commits on it). Pass a tag (e.g. v1.7.0) to rebuild
+# an older release instead. Also runs automatically when a semver tag is
+# pushed by something allowed to trigger workflows (see release.yml's
+# RELEASE_TOKEN note).
+#
+# `latest` only moves when the newest release is being built, so rebuilding
+# an old version never rolls `latest` back.
 #
 # NEXT_PUBLIC_API_URL is left empty by default - docker-compose.prod.yml's
 # bundled nginx already proxies both the frontend and `/api/` under one
@@ -23,9 +30,9 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Image tag to publish (in addition to latest) - manual runs only"
+        description: "Release tag to build, e.g. v1.7.0 - leave blank for the latest release"
         required: false
-        default: "manual"
+        default: ""
       next_public_api_url:
         description: "Bake in an absolute NEXT_PUBLIC_API_URL for this build (leave blank for the normal same-origin/bundled-nginx setup)"
         required: false
@@ -39,7 +46,10 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
+      # Full history + tags, so the newest release tag can be found and checked out.
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - uses: docker/setup-buildx-action@v4
 
@@ -47,14 +57,38 @@ jobs:
         id: repo
         run: echo "name=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
 
-      - name: Determine image version tag
+      - name: Resolve release tag and check it out
         id: version
+        env:
+          INPUT_TAG: ${{ github.event.inputs.tag }}
         run: |
-          if [ "${{ github.event_name }}" = "push" ]; then
-            echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
-          else
-            echo "tag=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
+          latest="$(git tag --list 'v*.*.*' --sort=-v:refname | head -n 1)"
+          if [ -z "$latest" ]; then
+            echo "::error::No vX.Y.Z release tags found - run the Release workflow first."
+            exit 1
           fi
+
+          if [ "${{ github.event_name }}" = "push" ]; then
+            tag="${GITHUB_REF_NAME}"
+          elif [ -n "$INPUT_TAG" ]; then
+            tag="$INPUT_TAG"
+          else
+            tag="$latest"
+          fi
+
+          if ! git rev-parse -q --verify "refs/tags/${tag}" > /dev/null; then
+            echo "::error::Tag '${tag}' doesn't exist. Leave the input blank to build the latest release (${latest})."
+            exit 1
+          fi
+          git checkout --quiet --detach "refs/tags/${tag}"
+
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          if [ "$tag" = "$latest" ]; then
+            echo "is_latest=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_latest=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "### Publishing ${tag} (latest release: ${latest})" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Log in to GHCR
         uses: docker/login-action@v4
@@ -78,7 +112,7 @@ jobs:
           push: true
           tags: |
             ghcr.io/${{ steps.repo.outputs.name }}-backend:${{ steps.version.outputs.tag }}
-            ghcr.io/${{ steps.repo.outputs.name }}-backend:latest
+            ${{ steps.version.outputs.is_latest == 'true' && format('ghcr.io/{0}-backend:latest', steps.repo.outputs.name) || '' }}
           cache-from: type=gha,scope=backend-prod
           cache-to: type=gha,scope=backend-prod,mode=max
 
@@ -92,7 +126,7 @@ jobs:
             NEXT_PUBLIC_API_URL=${{ github.event.inputs.next_public_api_url }}
           tags: |
             ghcr.io/${{ steps.repo.outputs.name }}-frontend:${{ steps.version.outputs.tag }}
-            ghcr.io/${{ steps.repo.outputs.name }}-frontend:latest
+            ${{ steps.version.outputs.is_latest == 'true' && format('ghcr.io/{0}-frontend:latest', steps.repo.outputs.name) || '' }}
           cache-from: |
             type=gha,scope=frontend-prod
             type=gha,scope=frontend-ci
