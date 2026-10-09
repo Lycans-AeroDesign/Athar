@@ -1,3 +1,16 @@
+## [1.8.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.7.0...v1.8.0) (2026-10-09)
+
+### Features
+
+* **knowledge:** add co-authors to articles and questions ([5ffca8d](https://github.com/Lycans-AeroDesign/Athar/commit/5ffca8d8ede788a2d2f868c8a706f7f7978098ea))
+* **knowledge:** add project picker, visibility inheritance and related content to creation forms ([6261712](https://github.com/Lycans-AeroDesign/Athar/commit/626171224ae067e654372cfb7c6694ea7fd49349))
+* **knowledge:** edit and remove related-content links ([2a41afc](https://github.com/Lycans-AeroDesign/Athar/commit/2a41afc96102257071413bfe12c01928d34b7912))
+
+### Bug Fixes
+
+* **frontend:** prevent duplicate creates on repeated save clicks ([7a12e53](https://github.com/Lycans-AeroDesign/Athar/commit/7a12e53d540b71706538cabe005619dfa3360089))
+* **knowledge:** scope write-serializer foreign keys to the caller's organization ([f7a5918](https://github.com/Lycans-AeroDesign/Athar/commit/f7a59189ecd124a0db1cc20c6c2efa2f68aae644))
+
 ## [1.7.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.6.1...v1.7.0) (2026-09-25)
 
 ### Features
