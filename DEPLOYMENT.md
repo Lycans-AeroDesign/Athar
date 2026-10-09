@@ -49,13 +49,33 @@ This creates a root `.env` with a random `SECRET_KEY` and `POSTGRES_PASSWORD` al
 | `DOMAIN` | your real domain, e.g. `athar.example.com` | nginx's `server_name` and the certificate's domain — required |
 | `LETSENCRYPT_EMAIL` | an email you actually check | Let's Encrypt sends expiry/renewal-problem notices here — required |
 | `ALLOWED_HOSTS` | same domain, e.g. `athar.example.com` | Django rejects requests for any host not listed here — required |
-| `CORS_ALLOWED_ORIGINS` | `https://athar.example.com` | required |
+| `CORS_ALLOWED_ORIGINS` | `https://athar.example.com` | required — exact scheme + host, no trailing slash; emailed password reset links are only ever sent to an address on this list |
 | `IMAGE_TAG` | a published tag, e.g. `v1.0.0`, or `latest` | which GHCR image build to pull — see step 1 |
 | `ENABLE_REGISTRATION` | `True` or `False` | your call — whether public self-signup (via invitation code) should be open |
 | `ENABLE_ORGANIZATION_REGISTRATION` | `True` or `False` | your call — whether the public "Create a Team" self-service signup (a brand-new org, not joining yours) should be open; most single-team deployments want this `False` |
 | `AWS_STORAGE_BUCKET_NAME` + the 4 `AWS_*` vars below it | only if using S3/R2/B2/MinIO | optional — leave blank to keep local-disk storage |
+| `EMAIL_HOST` + the `EMAIL_*`/`DEFAULT_FROM_EMAIL` vars below it | your SMTP provider's settings | optional — see [Outgoing email](#outgoing-email-optional) below; leave `EMAIL_HOST` blank to keep email off |
 
 `NEXT_PUBLIC_API_URL` in this file is **not** used in production at all — the published frontend image ships with it empty (see [Publish the images](#2-publish-the-images-once-before-first-deploy) above), relying on `DOMAIN` (and the bundled nginx) instead. Everything else in `.env` (`POSTGRES_*`, `JWT_*`, `NGINX_PORT`/`NGINX_SSL_PORT`, `SECRET_KEY`) is already either generated for you or fine to leave at its default.
+
+### Outgoing email (optional)
+
+Email is used for password resets: admins can email a reset link from **Settings → Users**, and members can use **Forgot password?** on the login page. With `EMAIL_HOST` blank, email is off — both options are hidden, and admins copy reset links by hand instead. Any SMTP provider works; for example, with [Resend](https://resend.com):
+
+```env
+EMAIL_HOST=smtp.resend.com
+EMAIL_PORT=587
+EMAIL_HOST_USER=resend
+EMAIL_HOST_PASSWORD=<your Resend API key>
+EMAIL_USE_TLS=True
+EMAIL_USE_SSL=False
+DEFAULT_FROM_EMAIL=Your Team <noreply@mail.example.com>
+```
+
+- `DEFAULT_FROM_EMAIL` must be on a domain you've verified with your provider (SPF/DKIM DNS records), or messages are rejected or land in spam.
+- **Use port 587 (STARTTLS) or 465 (SSL), never 25.** Most clouds block outbound port 25 — Google Cloud blocks it on every VM, with no exception process. For 465, set `EMAIL_PORT=465`, `EMAIL_USE_TLS=False`, `EMAIL_USE_SSL=True`. No firewall rule is needed: outbound traffic is allowed by default.
+- `celery-worker` must be running — it sends the **Forgot password?** emails in the background (so the response never reveals whether an account exists).
+- After changing these, restart the backend services so they pick them up: `docker compose -f docker-compose.prod.yml up -d backend celery-worker`.
 
 ## 5. First deploy — one-time certificate bootstrap
 
@@ -74,6 +94,7 @@ After it finishes successfully, everything is up and `https://<your-domain>` is 
 Publish a new tag on GitHub first (step 2), set `IMAGE_TAG` in `.env` to it (or leave as `latest` to always track the newest push), then:
 
 ```bash
+git pull   # docker-compose.prod.yml itself can change between versions (e.g. new env vars it passes through)
 docker compose -f docker-compose.prod.yml pull
 docker compose -f docker-compose.prod.yml up -d
 ```
@@ -91,6 +112,8 @@ Check `docker compose -f docker-compose.prod.yml logs -f` for startup issues, an
 
 - **`nano`/`dig`: command not found** — minimal cloud VM images (e.g. GCE's `ubuntu-minimal` family) often ship without either. Use `vi` in place of `nano`, and in place of `dig` for checking DNS propagation: `getent hosts <your-domain>`, or `curl -s "https://dns.google/resolve?name=<your-domain>&type=A"` if you want to bypass the server's own resolver cache.
 - **`docker compose` hangs, then SSH stops responding entirely** — almost always the out-of-memory case described in Prerequisites above, not an actual hang. Check the VM's serial console output (cloud console → Logs → serial port, doesn't need SSH) for `Under memory pressure` / OOM-killer messages. Recovery is a hard reset of the instance (safe — nothing on disk is lost) followed by adding swap before retrying.
+- **No "email the link" checkbox in Settings → Users, or Forgot password? says to ask an admin** — the backend isn't seeing `EMAIL_HOST`. Check it's set in `.env`, that you've `git pull`ed a `docker-compose.prod.yml` that passes the `EMAIL_*` vars through, then `docker compose -f docker-compose.prod.yml up -d backend celery-worker`.
+- **Reset emails don't arrive** — check `docker compose -f docker-compose.prod.yml logs backend celery-worker | grep -i -A5 "password reset email"` for the SMTP error (wrong credentials, unverified sender domain, or a blocked port — see [Outgoing email](#outgoing-email-optional)). **Forgot password?** returning a 400 instead usually means `CORS_ALLOWED_ORIGINS` doesn't exactly match the address you're browsing.
 
 ## Not using this exact setup?
 
