@@ -339,7 +339,7 @@
     },
     "backups": {
       "title": "Backups",
-      "description": "Export all of your organization's data and uploaded files as a downloadable archive. Runs in the background - this can take a while for a large organization.",
+      "description": "Export all of your organization's data - members, roles, settings, content, and uploaded files - as a downloadable archive. Runs in the background - this can take a while for a large organization.",
       "createButton": "Create Backup",
       "emptyState": "No backups yet.",
       "statusPENDING": "Pending",
@@ -350,12 +350,20 @@
       "downloadButton": "Download",
       "restoreButton": "Restore",
       "restoreConfirmTitle": "Restore this backup?",
-      "restoreConfirmDescription": "This replaces ALL of your organization's current content - articles, questions, documents, projects, components, failures, SOPs, tests, tags, categories, relations, bookmarks, and attachments - with the contents of this backup. Members, roles, and invitation codes are not affected. This cannot be undone.",
+      "restoreConfirmDescription": "This replaces ALL of your organization's current data - members, roles, invitation codes, settings and branding, policies, and every piece of content and file - with the contents of this backup. Members who aren't in the backup are deactivated. Your own account stays active and keeps admin access. This cannot be undone.",
       "restoreConfirmButton": "Wipe and restore",
       "restoresTitle": "Restore History",
       "restoresEmptyState": "No restores yet.",
       "restoreSummaryOrphanedUsers": "{count} reference(s) to since-deleted users were cleared.",
-      "restoreSummaryMissingFiles": "{count} file(s) referenced by the backup could not be found and were skipped."
+      "restoreSummaryMissingFiles": "{count} file(s) referenced by the backup could not be found and were skipped.",
+      "sensitiveNote": "Backups include members' password hashes so a restore can bring every account back as it was. Store downloaded archives as securely as you would a password database.",
+      "uploadButton": "Restore from File",
+      "uploadHint": "Restore from a backup .zip you downloaded earlier - for example after moving to a new server.",
+      "uploadConfirmTitle": "Restore from \"{name}\"?",
+      "uploading": "Uploading {percent}%",
+      "restoreFromUpload": "From uploaded file {name}",
+      "restoreSummaryDeactivatedUsers": "{count, plural, one {# member who isn't in the backup was deactivated.} other {# members who aren't in the backup were deactivated.}}",
+      "restoreSummaryUsersWithoutPassword": "{count, plural, one {# member was restored without a password (older backup) and needs a password reset link.} other {# members were restored without a password (older backup) and need password reset links.}}"
     },
     "componentCategories": {
       "title": "Component Categories",

@@ -5,6 +5,14 @@ the same archive, so memory use stays flat regardless of how much data or
 how many files the org has - nothing here ever loads a whole table or a
 whole file into memory at once.
 
+The archive is meant to be enough to rebuild the organization from scratch
+(see restore.py) - including users' password hashes, so restored members
+log in with their existing passwords. That makes every archive as sensitive
+as the database itself: treat it like a credentials dump, not just a
+content export. Hashes only, never anything reversible - and is_staff/
+is_superuser are never exported (those are instance-operator flags, not
+org data, and restore must never be able to grant them).
+
 Each model's exported columns are an explicit whitelist (not "every field
 the model happens to have") so a new, possibly sensitive field added to a
 model later doesn't silently end up in every org's backup without a
@@ -53,6 +61,7 @@ from knowledge.models import (
     TestAttachment,
 )
 from organization.models import OrganizationSettings
+from policies.models import PolicyAcceptance, PolicyDraft, PolicyVersion
 from rbac.models import Role, RolePermission, UserRole
 from training.models import (
     Course,
@@ -87,6 +96,11 @@ def _co_author_ids(obj) -> str:
 
 def _content_type_name(obj) -> str:
     return obj.content_type.model
+
+
+def _audit_target_type(obj) -> str:
+    content_type = obj.target_content_type
+    return f"{content_type.app_label}.{content_type.model}" if content_type else ""
 
 
 def _json(value) -> str:
@@ -129,7 +143,11 @@ def _export_specs(organization):
                 ("first_name", lambda o: o.first_name),
                 ("last_name", lambda o: o.last_name),
                 ("title", lambda o: o.title),
+                ("profile_picture_id", lambda o: _s(o.profile_picture_id)),
                 ("is_active", lambda o: _s(o.is_active)),
+                ("password", lambda o: o.password),
+                ("last_login", lambda o: _s(o.last_login)),
+                ("preferences", lambda o: _json(o.preferences)),
                 ("date_joined", lambda o: _s(o.date_joined)),
             ],
         ),
@@ -141,6 +159,8 @@ def _export_specs(organization):
                 ("name", lambda o: o.name),
                 ("description", lambda o: o.description),
                 ("is_system", lambda o: _s(o.is_system)),
+                ("created_at", lambda o: _s(o.created_at)),
+                ("updated_at", lambda o: _s(o.updated_at)),
             ],
         ),
         (
@@ -148,8 +168,11 @@ def _export_specs(organization):
             "user_roles.csv",
             [
                 ("id", lambda o: _s(o.id)),
+                ("user_id", lambda o: _s(o.user_id)),
                 ("user_email", lambda o: o.user.email),
+                ("role_id", lambda o: _s(o.role_id)),
                 ("role_name", lambda o: o.role.name),
+                ("granted_by_id", lambda o: _s(o.granted_by_id)),
                 ("granted_at", lambda o: _s(o.granted_at)),
             ],
         ),
@@ -158,8 +181,10 @@ def _export_specs(organization):
             "role_permissions.csv",
             [
                 ("id", lambda o: _s(o.id)),
+                ("role_id", lambda o: _s(o.role_id)),
                 ("role_name", lambda o: o.role.name),
                 ("permission_codename", lambda o: o.permission.codename),
+                ("granted_by_id", lambda o: _s(o.granted_by_id)),
                 ("granted_at", lambda o: _s(o.granted_at)),
             ],
         ),
@@ -173,6 +198,7 @@ def _export_specs(organization):
                 ("uses_count", lambda o: _s(o.uses_count)),
                 ("expires_at", lambda o: _s(o.expires_at)),
                 ("revoked_at", lambda o: _s(o.revoked_at)),
+                ("created_by_id", lambda o: _s(o.created_by_id)),
                 ("created_at", lambda o: _s(o.created_at)),
             ],
         ),
@@ -184,12 +210,13 @@ def _export_specs(organization):
                 ("name", lambda o: o.name),
                 ("slug", lambda o: o.slug),
                 ("description", lambda o: o.description),
+                ("created_at", lambda o: _s(o.created_at)),
             ],
         ),
         (
             Tag.objects.filter(organization=organization),
             "tags.csv",
-            [("id", lambda o: _s(o.id)), ("name", lambda o: o.name)],
+            [("id", lambda o: _s(o.id)), ("name", lambda o: o.name), ("created_at", lambda o: _s(o.created_at))],
         ),
         (
             Article.objects.filter(organization=organization)
@@ -247,6 +274,8 @@ def _export_specs(organization):
                 ("author_id", lambda o: _s(o.author_id)),
                 ("author_email", lambda o: _s(o.author and o.author.email)),
                 ("co_author_ids", _co_author_ids),
+                ("accepted_answer_id", lambda o: _s(o.accepted_answer_id)),
+                ("promoted_to_article_id", lambda o: _s(o.promoted_to_article_id)),
                 ("created_at", lambda o: _s(o.created_at)),
                 ("updated_at", lambda o: _s(o.updated_at)),
             ],
@@ -261,6 +290,7 @@ def _export_specs(organization):
                 ("author_id", lambda o: _s(o.author_id)),
                 ("author_email", lambda o: _s(o.author and o.author.email)),
                 ("created_at", lambda o: _s(o.created_at)),
+                ("updated_at", lambda o: _s(o.updated_at)),
             ],
         ),
         (
@@ -288,6 +318,8 @@ def _export_specs(organization):
                 ("name", lambda o: o.name),
                 ("slug", lambda o: o.slug),
                 ("description", lambda o: o.description),
+                ("created_at", lambda o: _s(o.created_at)),
+                ("updated_at", lambda o: _s(o.updated_at)),
             ],
         ),
         (
@@ -297,6 +329,8 @@ def _export_specs(organization):
                 ("id", lambda o: _s(o.id)),
                 ("name", lambda o: o.name),
                 ("description", lambda o: o.description),
+                ("created_at", lambda o: _s(o.created_at)),
+                ("updated_at", lambda o: _s(o.updated_at)),
             ],
         ),
         (
@@ -469,6 +503,7 @@ def _export_specs(organization):
                 ("granted_by_id", lambda o: _s(o.granted_by_id)),
                 ("granted_by_email", lambda o: _s(o.granted_by and o.granted_by.email)),
                 ("created_at", lambda o: _s(o.created_at)),
+                ("updated_at", lambda o: _s(o.updated_at)),
             ],
         ),
         (
@@ -481,6 +516,7 @@ def _export_specs(organization):
                 ("user_id", lambda o: _s(o.user_id)),
                 ("user_email", lambda o: o.user.email),
                 ("created_at", lambda o: _s(o.created_at)),
+                ("updated_at", lambda o: _s(o.updated_at)),
             ],
         ),
         (
@@ -494,6 +530,7 @@ def _export_specs(organization):
                 ("uploaded_by_id", lambda o: _s(o.uploaded_by_id)),
                 ("uploaded_by_email", lambda o: _s(o.uploaded_by and o.uploaded_by.email)),
                 ("required_permission", lambda o: o.required_permission),
+                ("confirmed_at", lambda o: _s(o.confirmed_at)),
                 ("created_at", lambda o: _s(o.created_at)),
             ],
         ),
@@ -505,15 +542,19 @@ def _export_specs(organization):
         _attachment_spec(SopAttachment, "sop_attachments.csv", "sop", organization),
         _attachment_spec(TestAttachment, "test_attachments.csv", "test", organization),
         (
-            AuditLog.objects.filter(organization=organization).select_related("actor"),
+            AuditLog.objects.filter(organization=organization).select_related("actor", "target_content_type"),
             "audit_log.csv",
             [
                 ("id", lambda o: _s(o.id)),
+                ("actor_id", lambda o: _s(o.actor_id)),
                 ("actor_email", lambda o: _s(o.actor and o.actor.email)),
                 ("action", lambda o: o.action),
+                ("target_type", _audit_target_type),
+                ("target_object_id", lambda o: _s(o.target_object_id)),
                 ("target_repr", lambda o: o.target_repr),
-                ("metadata", lambda o: _s(o.metadata)),
+                ("metadata", lambda o: _json(o.metadata)),
                 ("ip_address", lambda o: _s(o.ip_address)),
+                ("user_agent", lambda o: o.user_agent),
                 ("created_at", lambda o: _s(o.created_at)),
             ],
         ),
@@ -525,6 +566,8 @@ def _export_specs(organization):
                 ("name", lambda o: o.name),
                 ("slug", lambda o: o.slug),
                 ("description", lambda o: o.description),
+                ("created_at", lambda o: _s(o.created_at)),
+                ("updated_at", lambda o: _s(o.updated_at)),
             ],
         ),
         (
@@ -591,6 +634,8 @@ def _export_specs(organization):
                 ("lesson_id", lambda o: _s(o.lesson_id)),
                 ("text", lambda o: o.text),
                 ("order", lambda o: _s(o.order)),
+                ("created_at", lambda o: _s(o.created_at)),
+                ("updated_at", lambda o: _s(o.updated_at)),
             ],
         ),
         (
@@ -644,6 +689,8 @@ def _export_specs(organization):
                 ("status", lambda o: o.status),
                 ("enrolled_at", lambda o: _s(o.enrolled_at)),
                 ("completed_at", lambda o: _s(o.completed_at)),
+                ("created_at", lambda o: _s(o.created_at)),
+                ("updated_at", lambda o: _s(o.updated_at)),
             ],
         ),
         (
@@ -656,6 +703,48 @@ def _export_specs(organization):
                 ("enrollment_id", lambda o: _s(o.enrollment_id)),
                 ("lesson_id", lambda o: _s(o.lesson_id)),
                 ("completed_at", lambda o: _s(o.completed_at)),
+            ],
+        ),
+        (
+            PolicyDraft.objects.filter(organization=organization),
+            "policy_drafts.csv",
+            [
+                ("id", lambda o: _s(o.id)),
+                ("kind", lambda o: o.kind),
+                ("title", lambda o: o.title),
+                ("content", lambda o: o.content),
+                ("updated_by_id", lambda o: _s(o.updated_by_id)),
+                ("created_at", lambda o: _s(o.created_at)),
+                ("updated_at", lambda o: _s(o.updated_at)),
+            ],
+        ),
+        (
+            PolicyVersion.objects.filter(organization=organization).select_related("published_by"),
+            "policy_versions.csv",
+            [
+                ("id", lambda o: _s(o.id)),
+                ("kind", lambda o: o.kind),
+                ("version", lambda o: _s(o.version)),
+                ("title", lambda o: o.title),
+                ("content", lambda o: o.content),
+                ("is_current", lambda o: _s(o.is_current)),
+                ("published_at", lambda o: _s(o.published_at)),
+                ("published_by_id", lambda o: _s(o.published_by_id)),
+                ("published_by_email", lambda o: _s(o.published_by and o.published_by.email)),
+                ("created_at", lambda o: _s(o.created_at)),
+                ("updated_at", lambda o: _s(o.updated_at)),
+            ],
+        ),
+        (
+            PolicyAcceptance.objects.filter(version__organization=organization).select_related("user"),
+            "policy_acceptances.csv",
+            [
+                ("id", lambda o: _s(o.id)),
+                ("version_id", lambda o: _s(o.version_id)),
+                ("user_id", lambda o: _s(o.user_id)),
+                ("user_email", lambda o: o.user.email),
+                ("created_at", lambda o: _s(o.created_at)),
+                ("updated_at", lambda o: _s(o.updated_at)),
             ],
         ),
     ]
@@ -676,16 +765,50 @@ def _write_organization_settings(zf: zipfile.ZipFile, organization) -> None:
     with zf.open("organization_settings.csv", "w") as raw:
         text_stream = io.TextIOWrapper(raw, encoding="utf-8", newline="")
         writer = csv.writer(text_stream)
-        writer.writerow(["name", "primary_color", "secondary_color", "updated_at"])
+        writer.writerow(
+            [
+                "name",
+                "logo_id",
+                "favicon_id",
+                "primary_color",
+                "secondary_color",
+                "primary_color_dark",
+                "secondary_color_dark",
+                "product_tour_enabled",
+                "updated_at",
+            ]
+        )
         writer.writerow(
             [
                 settings_row.name,
+                _s(settings_row.logo_id),
+                _s(settings_row.favicon_id),
                 settings_row.primary_color,
                 settings_row.secondary_color,
+                settings_row.primary_color_dark,
+                settings_row.secondary_color_dark,
+                _s(settings_row.product_tour_enabled),
                 _s(settings_row.updated_at),
             ]
         )
         text_stream.flush()
+
+
+# Bumped whenever restore.py needs to tell archive generations apart. 1 is
+# every archive made before the manifest existed (content-only restore).
+ARCHIVE_FORMAT_VERSION = 2
+
+
+def _write_manifest(zf: zipfile.ZipFile, organization) -> None:
+    # organization_id lets an uploaded archive be matched back to its source
+    # organization - see views.RestoreJobUploadView.
+    manifest = {
+        "format_version": ARCHIVE_FORMAT_VERSION,
+        "organization_id": str(organization.id),
+        "organization_name": organization.name,
+        "created_at": timezone.now().isoformat(),
+    }
+    zf.writestr("manifest.json", json.dumps(manifest, indent=2))
 
 
 def _write_files(zf: zipfile.ZipFile, organization) -> None:
@@ -706,6 +829,7 @@ def build_org_backup_archive(job: BackupJob) -> None:
     with tempfile.TemporaryDirectory() as tmp_dir:
         archive_path = Path(tmp_dir) / f"{job.id}.zip"
         with zipfile.ZipFile(archive_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+            _write_manifest(zf, organization)
             _write_organization_settings(zf, organization)
             for queryset, filename, columns in _export_specs(organization):
                 _write_csv_entry(zf, filename, columns, queryset)

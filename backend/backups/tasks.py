@@ -37,13 +37,19 @@ def generate_org_backup(job_id) -> None:
     job.save(update_fields=["status", "completed_at", "archive", "updated_at"])
 
 
+def _discard_uploaded_archive(job: RestoreJob) -> None:
+    if job.uploaded_archive:
+        job.uploaded_archive.delete(save=False)
+        job.save(update_fields=["uploaded_archive", "updated_at"])
+
+
 @shared_task
 def restore_org_backup(restore_job_id) -> None:
     """Runs restore.restore_org_backup_archive in the background (see
     RestoreJob) - triggered by RestoreJobListCreateView.post, polled via
     RestoreJobDetailView."""
     try:
-        job = RestoreJob.objects.select_related("organization", "source_backup").get(pk=restore_job_id)
+        job = RestoreJob.objects.select_related("organization", "source_backup", "requested_by").get(pk=restore_job_id)
     except RestoreJob.DoesNotExist:
         logger.warning("restore_org_backup: job %s no longer exists", restore_job_id)
         return
@@ -51,15 +57,20 @@ def restore_org_backup(restore_job_id) -> None:
     job.status = RestoreJob.Status.RUNNING
     job.save(update_fields=["status", "updated_at"])
 
+    archive = job.uploaded_archive if job.uploaded_archive else job.source_backup and job.source_backup.archive
     try:
-        with job.source_backup.archive.open("rb") as archive_file:
-            summary = restore.restore_org_backup_archive(job.organization, archive_file)
+        if not archive:
+            raise restore.RestoreError("The backup this restore was started from no longer exists.")
+        with archive.open("rb") as archive_file:
+            summary = restore.restore_org_backup_archive(job.organization, archive_file, actor=job.requested_by)
     except Exception as exc:  # noqa: BLE001 - any failure here must land the job in FAILED, not crash the worker
         logger.exception("restore_org_backup failed for job %s", restore_job_id)
         job.status = RestoreJob.Status.FAILED
         job.error = str(exc)[:2000]
         job.save(update_fields=["status", "error", "updated_at"])
         return
+    finally:
+        _discard_uploaded_archive(job)
 
     job.status = RestoreJob.Status.DONE
     job.summary = summary.as_dict()

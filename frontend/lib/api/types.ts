@@ -81,11 +81,15 @@ export interface RestoreSummary {
   created: Record<string, number>;
   orphaned_user_refs: number;
   missing_files: number;
+  // Absent on restores that ran before members were restored too.
+  deactivated_users?: number;
+  users_without_password?: number;
 }
 
 export interface RestoreJob {
   id: string;
-  source_backup_id: string;
+  source_backup_id: string | null;
+  uploaded_filename: string;
   status: RestoreJobStatus;
   requested_by: string | null;
   summary: RestoreSummary | Record<string, never>;

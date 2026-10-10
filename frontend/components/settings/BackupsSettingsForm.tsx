@@ -14,6 +14,7 @@ import {
   getBackupJobs,
   getRestoreJob,
   getRestoreJobs,
+  uploadRestoreArchive,
 } from "@/lib/api/backups";
 import type { BackupJob, RestoreJob } from "@/lib/api/types";
 import { formatDateTime } from "@/lib/datetime";
@@ -45,6 +46,9 @@ export function BackupsSettingsForm() {
   const [restoreTarget, setRestoreTarget] = useState<BackupJob | null>(null);
   const [restoreError, setRestoreError] = useState<string | null>(null);
   const restorePollTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [uploadTarget, setUploadTarget] = useState<File | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
 
   useEffect(() => {
     getBackupJobs().then(setJobs);
@@ -109,15 +113,34 @@ export function BackupsSettingsForm() {
     }
   }
 
+  async function handleConfirmUpload() {
+    if (!uploadTarget) return;
+    setRestoreError(null);
+    setUploadProgress(0);
+    try {
+      const job = await uploadRestoreArchive(uploadTarget, setUploadProgress);
+      setRestoreJobs((prev) => [job, ...(prev ?? [])]);
+      pollRestoreJob(job.id);
+    } catch (err) {
+      setRestoreError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setUploadProgress(null);
+    }
+  }
+
   return (
     <div className="space-y-6 max-w-3xl">
-      <div className="bg-surface rounded-xl border border-outline-variant p-6 space-y-4">
+      <div className="bg-surface rounded-xl border border-outline-variant p-4 sm:p-6 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h2 className="font-headline-md text-headline-md text-on-surface">{t("title")}</h2>
             <p className="font-body-md text-body-md text-on-surface-variant mt-1">{t("description")}</p>
+            <p className="font-body-md text-body-md text-on-surface-variant mt-2 flex items-start gap-1.5">
+              <Icon name="lock" size={16} className="mt-0.5 shrink-0" />
+              {t("sensitiveNote")}
+            </p>
           </div>
-          <Button onClick={handleCreate} disabled={isCreating}>
+          <Button onClick={handleCreate} disabled={isCreating} className="shrink-0">
             <Icon name="download" size={18} />
             {isCreating ? commonT("working") : t("createButton")}
           </Button>
@@ -132,10 +155,10 @@ export function BackupsSettingsForm() {
             {jobs.map((job) => (
               <li
                 key={job.id}
-                className="flex items-center justify-between gap-4 px-3 py-2 rounded-lg bg-surface-container"
+                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 px-3 py-2 rounded-lg bg-surface-container"
               >
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                     <span className="font-body-md text-body-md text-on-surface">{formatDateTime(job.created_at)}</span>
                     <span
                       className={`font-label-caps text-label-caps uppercase rounded-full px-2 py-0.5 ${STATUS_CLASSES[job.status]}`}
@@ -149,11 +172,11 @@ export function BackupsSettingsForm() {
                     </p>
                   )}
                   {job.status === "FAILED" && job.error && (
-                    <p className="font-body-md text-body-md text-error truncate">{job.error}</p>
+                    <p className="font-body-md text-body-md text-error break-words sm:truncate">{job.error}</p>
                   )}
                 </div>
                 {job.can_download && (
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 shrink-0">
                     <Button variant="secondary" onClick={() => handleDownload(job)}>
                       <Icon name="download" size={16} />
                       {t("downloadButton")}
@@ -176,8 +199,35 @@ export function BackupsSettingsForm() {
         )}
       </div>
 
-      <div className="bg-surface rounded-xl border border-outline-variant p-6 space-y-4">
-        <h2 className="font-headline-md text-headline-md text-on-surface">{t("restoresTitle")}</h2>
+      <div className="bg-surface rounded-xl border border-outline-variant p-4 sm:p-6 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h2 className="font-headline-md text-headline-md text-on-surface">{t("restoresTitle")}</h2>
+            <p className="font-body-md text-body-md text-on-surface-variant mt-1">{t("uploadHint")}</p>
+          </div>
+          <input
+            ref={fileInput}
+            type="file"
+            accept=".zip,application/zip"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) setUploadTarget(file);
+              e.target.value = "";
+            }}
+          />
+          <Button
+            variant="secondary"
+            className="shrink-0"
+            disabled={uploadProgress !== null}
+            onClick={() => fileInput.current?.click()}
+          >
+            <Icon name="upload" size={18} />
+            {uploadProgress !== null
+              ? t("uploading", { percent: Math.round(uploadProgress * 100) })
+              : t("uploadButton")}
+          </Button>
+        </div>
 
         {!restoreJobs ? (
           <p className="font-body-md text-body-md text-on-surface-variant">{commonT("loading")}</p>
@@ -187,7 +237,7 @@ export function BackupsSettingsForm() {
           <ul className="space-y-1">
             {restoreJobs.map((job) => (
               <li key={job.id} className="px-3 py-2 rounded-lg bg-surface-container space-y-1">
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                   <span className="font-body-md text-body-md text-on-surface">{formatDateTime(job.created_at)}</span>
                   <span
                     className={`font-label-caps text-label-caps uppercase rounded-full px-2 py-0.5 ${STATUS_CLASSES[job.status]}`}
@@ -195,16 +245,31 @@ export function BackupsSettingsForm() {
                     {t(`status${job.status}`)}
                   </span>
                 </div>
+                {job.uploaded_filename && (
+                  <p className="font-body-md text-body-md text-on-surface-variant break-all">
+                    {t("restoreFromUpload", { name: job.uploaded_filename })}
+                  </p>
+                )}
                 {job.requested_by && (
                   <p className="font-body-md text-body-md text-on-surface-variant truncate">
                     {t("requestedBy", { email: job.requested_by })}
                   </p>
                 )}
                 {job.status === "FAILED" && job.error && (
-                  <p className="font-body-md text-body-md text-error truncate">{job.error}</p>
+                  <p className="font-body-md text-body-md text-error break-words sm:truncate">{job.error}</p>
                 )}
                 {job.status === "DONE" && "orphaned_user_refs" in job.summary && (
                   <>
+                    {(job.summary.deactivated_users ?? 0) > 0 && (
+                      <p className="font-body-md text-body-md text-on-surface-variant">
+                        {t("restoreSummaryDeactivatedUsers", { count: job.summary.deactivated_users ?? 0 })}
+                      </p>
+                    )}
+                    {(job.summary.users_without_password ?? 0) > 0 && (
+                      <p className="font-body-md text-body-md text-on-surface-variant">
+                        {t("restoreSummaryUsersWithoutPassword", { count: job.summary.users_without_password ?? 0 })}
+                      </p>
+                    )}
                     {job.summary.orphaned_user_refs > 0 && (
                       <p className="font-body-md text-body-md text-on-surface-variant">
                         {t("restoreSummaryOrphanedUsers", { count: job.summary.orphaned_user_refs })}
@@ -239,6 +304,18 @@ export function BackupsSettingsForm() {
         confirmLabel={t("restoreConfirmButton")}
         danger
         onConfirm={handleConfirmRestore}
+      />
+
+      <ConfirmModal
+        open={uploadTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setUploadTarget(null);
+        }}
+        title={t("uploadConfirmTitle", { name: uploadTarget?.name ?? "" })}
+        description={t("restoreConfirmDescription")}
+        confirmLabel={t("restoreConfirmButton")}
+        danger
+        onConfirm={handleConfirmUpload}
       />
     </div>
   );

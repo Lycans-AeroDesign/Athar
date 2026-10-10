@@ -116,6 +116,32 @@ location /api/ {
 }
 
 # ------------------------------------------------
+# BACKUP UPLOAD (restore from a .zip) - the one route allowed a body far
+# past the server-wide 20m cap; Django enforces its own exact limit
+# (BACKUP_UPLOAD_MAX_SIZE_MB, see backend/config/settings.py), keep this at
+# least that big. Same auth/permission gate as the rest of /api/.
+# ------------------------------------------------
+location = /api/v1/backups/restores/upload/ {
+    limit_req zone=api_limit burst=5 nodelay;
+    limit_req_status 429;
+
+    client_max_body_size 5g;
+    proxy_read_timeout 300s;
+    proxy_send_timeout 300s;
+
+    proxy_pass http://backend;
+
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $remote_addr;
+    proxy_set_header X-Forwarded-Host $host;
+    proxy_set_header X-Forwarded-Port $server_port;
+    proxy_set_header X-Forwarded-Proto $scheme;
+
+    proxy_http_version 1.1;
+}
+
+# ------------------------------------------------
 # Django admin / OpenAPI schema+docs (DEBUG-only on the backend itself -
 # see backend/config/urls.py; proxied here unconditionally, same as /api/)
 # ------------------------------------------------

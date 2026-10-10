@@ -2,22 +2,27 @@ import io
 import zipfile
 
 from django.contrib.contenttypes.models import ContentType
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 
 from core.testing import create_test_organization
 from accounts.models import User
+from files.models import StoredFile
 from rbac.models import Role
 
 from knowledge import services as knowledge_services
 from knowledge.models import (
+    Answer,
     Article,
     Bookmark,
     Component,
     ComponentCategory,
     KnowledgeRelation,
     Project,
+    Question,
     RestrictedAccessGrant,
     StorageLocation,
     Tag,
@@ -349,29 +354,164 @@ class RestoreJobTests(BackupJobTestCase):
         self.assertEqual(restored_enrollment.course_id, course_id)
         self.assertTrue(LessonProgress.objects.filter(enrollment_id=enrollment_id, lesson_id=lesson_id).exists())
 
-    def test_restore_nulls_out_references_to_deleted_users(self):
-        author, _ = self._login_with_role("orphanauthor@example.com", "Subteam Head")
-        _, admin_access = self._login_with_role("orphanadmin@example.com", "Organization Admin")
-
-        _, article, _ = self._seed_content(author)
-
-        backup_job = self._run_backup(admin_access)
-        author.delete()
-
+    def _restore_from(self, admin_access, backup_job):
         response = self.client.post(
             reverse("backups-restore-list-create"),
             {"backup_job_id": str(backup_job.id)},
             format="json",
             **self._auth(admin_access),
         )
-        restore_job_id = response.data["id"]
+        response = self.client.get(reverse("backups-restore-detail", args=[response.data["id"]]), **self._auth(admin_access))
+        self.assertEqual(response.data["status"], "DONE", response.data)
+        return response.data["summary"]
 
-        response = self.client.get(reverse("backups-restore-detail", args=[restore_job_id]), **self._auth(admin_access))
-        self.assertEqual(response.data["status"], "DONE")
-        self.assertGreaterEqual(response.data["summary"]["orphaned_user_refs"], 1)
+    def _backup_bytes(self, admin_access) -> bytes:
+        backup_job = self._run_backup(admin_access)
+        response = self.client.get(reverse("backups-download", args=[backup_job.id]), **self._auth(admin_access))
+        return b"".join(response.streaming_content)
 
-        restored_article = Article.objects.get(pk=article.id)
-        self.assertIsNone(restored_article.author_id)
+    def _upload(self, access, archive_bytes, name="athar-backup.zip"):
+        return self.client.post(
+            reverse("backups-restore-upload"),
+            {"archive": SimpleUploadedFile(name, archive_bytes, content_type="application/zip")},
+            format="multipart",
+            **self._auth(access),
+        )
+
+    def _login(self, email, password="password123"):
+        return self.client.post(reverse("auth-login"), {"email": email, "password": password}, format="json")
+
+    def test_restore_brings_back_deleted_members_and_deactivates_newer_ones(self):
+        author, _ = self._login_with_role("orphanauthor@example.com", "Subteam Head")
+        _, admin_access = self._login_with_role("orphanadmin@example.com", "Organization Admin")
+        _, article, _ = self._seed_content(author)
+        author_id = author.id
+        original_created_at = Article.objects.get(pk=article.id).created_at
+
+        backup_job = self._run_backup(admin_access)
+        author.delete()
+        newcomer, _ = self._login_with_role("newcomer@example.com", "Member")
+
+        summary = self._restore_from(admin_access, backup_job)
+        self.assertEqual(summary["deactivated_users"], 1)
+
+        restored_author = User.objects.get(pk=author_id)
+        self.assertTrue(restored_author.is_active)
+        self.assertTrue(restored_author.has_permission("project.read"))
+        self.assertEqual(Article.objects.get(pk=article.id).author_id, author_id)
+        self.assertEqual(Article.objects.get(pk=article.id).created_at, original_created_at)
+        # Same password hash as before the backup - logs in unchanged.
+        self.assertEqual(self._login("orphanauthor@example.com").status_code, status.HTTP_200_OK)
+
+        newcomer.refresh_from_db()
+        self.assertFalse(newcomer.is_active)
+        self.assertTrue(User.objects.get(email="orphanadmin@example.com").is_active)
+
+    def test_restore_nulls_out_references_to_users_missing_from_the_archive(self):
+        archive = io.BytesIO()
+        with zipfile.ZipFile(archive, "w") as zf:
+            zf.writestr(
+                "projects.csv",
+                "id,name,description,status,visibility,tag_ids,tags,created_by_id,created_by_email,created_at,updated_at\n"
+                "6a3b1b5e-1d2a-4c3e-9f00-0000000000bb,Ghost,,ACTIVE,PUBLIC,,,"
+                "6a3b1b5e-1d2a-4c3e-9f00-0000000000cc,gone@example.com,,\n",
+            )
+        archive.seek(0)
+
+        summary = restore.restore_org_backup_archive(self.organization, archive)
+
+        self.assertEqual(summary.orphaned_user_refs, 1)
+        self.assertIsNone(Project.objects.get(name="Ghost").created_by_id)
+
+    def test_uploaded_archive_rebuilds_the_organization_on_a_fresh_server(self):
+        author, _ = self._login_with_role("dr-author@example.com", "Subteam Head")
+        _, admin_access = self._login_with_role("dr-admin@example.com", "Organization Admin")
+        project, article, tag = self._seed_content(author)
+        archive_bytes = self._backup_bytes(admin_access)
+
+        # "Lose the server": the original organization is gone entirely, and
+        # a brand-new one is set up by an admin who isn't in the backup.
+        fresh_org = create_test_organization()
+        fresh_admin, fresh_access = self._login_with_role("fresh-admin@example.com", "Member", fresh_org)
+        Role.objects.get(organization=fresh_org, name="Organization Admin").user_roles.create(user=fresh_admin)
+        type(self.organization).objects.filter(pk=self.organization.pk).delete()
+
+        response = self._upload(fresh_access, archive_bytes)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
+        job = RestoreJob.objects.get(pk=response.data["id"])
+        self.assertEqual(job.status, RestoreJob.Status.DONE, job.error)
+        self.assertFalse(job.uploaded_archive)  # discarded once used
+
+        restored_author = User.objects.get(email="dr-author@example.com")
+        self.assertEqual(restored_author.organization, fresh_org)
+        self.assertTrue(restored_author.has_permission("project.read"))
+        self.assertEqual(self._login("dr-author@example.com").status_code, status.HTTP_200_OK)
+        self.assertEqual(Article.objects.get(pk=article.id).organization, fresh_org)
+        self.assertEqual(list(Project.objects.get(pk=project.id).tags.values_list("id", flat=True)), [tag.id])
+        # The admin who ran it keeps admin rights even though the backup's
+        # roles were restored over theirs.
+        fresh_admin.refresh_from_db()
+        self.assertTrue(fresh_admin.is_active)
+        self.assertTrue(fresh_admin.has_permission("organization.manage"))
+
+    def test_upload_rejects_another_existing_organizations_backup(self):
+        _, admin_access = self._login_with_role("xorg-admin@example.com", "Organization Admin")
+        archive_bytes = self._backup_bytes(admin_access)
+        other_org = create_test_organization()
+        _, other_access = self._login_with_role("xorg-other@example.com", "Organization Admin", other_org)
+
+        response = self._upload(other_access, archive_bytes)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(RestoreJob.objects.filter(organization=other_org).exists())
+
+    def test_upload_rejects_a_non_backup_file(self):
+        _, admin_access = self._login_with_role("junk-admin@example.com", "Organization Admin")
+        response = self._upload(admin_access, b"not a zip", name="notes.zip")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_upload_requires_organization_manage(self):
+        _, member_access = self._login_with_role("upload-member@example.com", "Member")
+        response = self._upload(member_access, b"irrelevant")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_crafted_archive_cannot_reach_into_another_organization(self):
+        other_org = create_test_organization()
+        other_user = User.objects.create_user(email="victim@example.com", password="password123", organization=other_org)
+        victim_question = Question.objects.create(organization=other_org, title="Private", body="...", author=other_user)
+
+        archive = io.BytesIO()
+        with zipfile.ZipFile(archive, "w") as zf:
+            zf.writestr(
+                "answers.csv",
+                "id,question_id,body,author_id,author_email,created_at\n"
+                f"6a3b1b5e-1d2a-4c3e-9f00-0000000000dd,{victim_question.id},injected,,,\n",
+            )
+            zf.writestr(
+                "knowledge_relations.csv",
+                "id,source_type,source_object_id,target_type,target_object_id,relation_type,created_by_id,"
+                "created_by_email,created_at\n"
+                f"6a3b1b5e-1d2a-4c3e-9f00-0000000000ee,question,{victim_question.id},question,"
+                f"{victim_question.id},RELATED,,,\n",
+            )
+        archive.seek(0)
+        restore.restore_org_backup_archive(self.organization, archive)
+        self.assertFalse(Answer.objects.filter(question=victim_question).exists())
+        self.assertFalse(KnowledgeRelation.objects.filter(source_object_id=victim_question.id).exists())
+
+        # Claiming another organization's member fails the whole restore.
+        archive = io.BytesIO()
+        with zipfile.ZipFile(archive, "w") as zf:
+            zf.writestr(
+                "users.csv",
+                "id,email,username,first_name,last_name,title,is_active,password,date_joined\n"
+                f"{other_user.id},victim@example.com,,,,,True,pbkdf2_sha256$x,\n",
+            )
+        archive.seek(0)
+        with self.assertRaises(restore.RestoreError):
+            restore.restore_org_backup_archive(self.organization, archive)
+        other_user.refresh_from_db()
+        self.assertEqual(other_user.organization, other_org)
 
     def test_restore_round_trips_component_inventory(self):
         author, _ = self._login_with_role("restoreinv@example.com", "Subteam Head")
@@ -416,6 +556,60 @@ class RestoreJobTests(BackupJobTestCase):
         self.assertEqual(restored.inventory_notes, "Includes 2x 20V batteries")
         self.assertEqual(restored.link, "https://example.com/drill")
         self.assertEqual(restored.updated_by_id, author.id)
+
+    def test_restore_round_trips_files_and_keeps_them_confirmed(self):
+        author, _ = self._login_with_role("restorefiles@example.com", "Subteam Head")
+        _, admin_access = self._login_with_role("restorefilesadmin@example.com", "Organization Admin")
+        stored_file = StoredFile.objects.create(
+            organization=self.organization,
+            file=SimpleUploadedFile("spec.pdf", b"pdf-bytes", content_type="application/pdf"),
+            original_filename="spec.pdf",
+            content_type="application/pdf",
+            size=9,
+            uploaded_by=author,
+            confirmed_at=timezone.now(),
+        )
+
+        backup_job = self._run_backup(admin_access)
+        # The file still exists at restore time - the common "roll back to
+        # last week" case, not just a restore into an empty organization.
+        response = self.client.post(
+            reverse("backups-restore-list-create"),
+            {"backup_job_id": str(backup_job.id)},
+            format="json",
+            **self._auth(admin_access),
+        )
+        response = self.client.get(reverse("backups-restore-detail", args=[response.data["id"]]), **self._auth(admin_access))
+        self.assertEqual(response.data["status"], "DONE", response.data)
+
+        restored = StoredFile.objects.get(pk=stored_file.pk)
+        with restored.file.open("rb") as f:
+            self.assertEqual(f.read(), b"pdf-bytes")
+        # Otherwise files.services.delete_unconfirmed_files would reclaim
+        # every restored file 24h later.
+        self.assertIsNotNone(restored.confirmed_at)
+
+    def test_restore_keeps_a_questions_accepted_answer(self):
+        author, _ = self._login_with_role("restoreqa@example.com", "Subteam Head")
+        _, admin_access = self._login_with_role("restoreqaadmin@example.com", "Organization Admin")
+        question = Question.objects.create(organization=self.organization, title="Which servo?", body="...", author=author)
+        answer = Answer.objects.create(question=question, body="The MG996R", author=author)
+        Question.objects.filter(pk=question.pk).update(accepted_answer=answer)
+
+        backup_job = self._run_backup(admin_access)
+        with backup_job.archive.open("rb") as archive, zipfile.ZipFile(archive) as zf:
+            self.assertIn("policy_acceptances.csv", zf.namelist())
+        Question.objects.filter(pk=question.pk).update(accepted_answer=None)
+
+        response = self.client.post(
+            reverse("backups-restore-list-create"),
+            {"backup_job_id": str(backup_job.id)},
+            format="json",
+            **self._auth(admin_access),
+        )
+        response = self.client.get(reverse("backups-restore-detail", args=[response.data["id"]]), **self._auth(admin_access))
+        self.assertEqual(response.data["status"], "DONE", response.data)
+        self.assertEqual(Question.objects.get(pk=question.pk).accepted_answer_id, answer.pk)
 
     def test_restoring_an_archive_from_before_component_categories_rebuilds_them_by_name(self):
         legacy_components_csv = (

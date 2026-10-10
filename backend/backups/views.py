@@ -1,18 +1,29 @@
+import zipfile
+
+from django.conf import settings
 from django.http import FileResponse
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import status
 from rest_framework.exceptions import ValidationError
+from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from audit.services import log_action
 from config.openapi import BAD_REQUEST, COMMON_ERRORS, NOT_FOUND
+from organization.models import Organization
 from config.pagination import paginated_response
 from rbac.permissions import require_permission
 
-from . import tasks
+from . import restore, tasks
 from .models import BackupJob, RestoreJob
-from .serializers import BackupJobSerializer, CreateRestoreJobSerializer, RestoreJobSerializer
+from .serializers import (
+    BackupJobSerializer,
+    CreateRestoreJobSerializer,
+    RestoreJobSerializer,
+    UploadRestoreJobSerializer,
+)
 
 # organization.manage - the same permission knowledge/visibility.py's
 # ADMIN_BYPASS_PERMISSION uses as the "is this an org admin" signal - is
@@ -73,12 +84,11 @@ class BackupJobDownloadView(APIView):
 
 
 class RestoreJobListCreateView(APIView):
-    """Restores the organization's content from one of its own BackupJobs -
-    see backups/restore.py for exactly what "restore" means here (content
-    only, full wipe-and-replace at the org scope - not Users/Roles/...).
-    Only a backup belonging to the same organization can be used as a
-    source (enforced below), so this can never pull another organization's
-    data in via a guessed BackupJob id."""
+    """Restores the organization from one of its own BackupJobs - see
+    backups/restore.py for exactly what "restore" means here (a full
+    wipe-and-replace at the org scope). Only a backup belonging to the same
+    organization can be used as a source (enforced below), so this can never
+    pull another organization's data in via a guessed BackupJob id."""
 
     permission_classes = [require_permission(BACKUP_PERMISSION)]
 
@@ -109,6 +119,72 @@ class RestoreJobListCreateView(APIView):
         job = RestoreJob.objects.create(
             organization=request.user.organization, source_backup=backup_job, requested_by=request.user
         )
+        log_action(request.user, "backup.restore", target=job, metadata={"source_backup": str(backup_job.id)}, request=request)
+        tasks.restore_org_backup.delay(str(job.id))
+        return Response(RestoreJobSerializer(job).data, status=status.HTTP_201_CREATED)
+
+
+def _validate_uploaded_archive(uploaded_file, organization) -> None:
+    """Cheap up-front checks so an obviously wrong upload fails here, with a
+    clear message, instead of minutes later in the background task. The
+    archive is still treated as untrusted by restore.py itself - this isn't
+    what keeps a crafted archive in bounds, that is."""
+    max_bytes = settings.BACKUP_UPLOAD_MAX_SIZE_MB * 1024 * 1024
+    if uploaded_file.size > max_bytes:
+        raise ValidationError({"archive": [f"This file is too large - the limit is {settings.BACKUP_UPLOAD_MAX_SIZE_MB}MB."]})
+    if not zipfile.is_zipfile(uploaded_file):
+        raise ValidationError({"archive": ["This isn't a .zip file."]})
+    uploaded_file.seek(0)
+    with zipfile.ZipFile(uploaded_file) as zf:
+        names = set(zf.namelist())
+        # Zip-bomb guard: a real backup barely compresses (most of its bulk
+        # is already-compressed uploads), so 10x the upload cap is generous.
+        if sum(info.file_size for info in zf.infolist()) > max_bytes * 10:
+            raise ValidationError({"archive": ["This archive expands to an unreasonable size."]})
+        if not names & {"manifest.json", "users.csv", "articles.csv"}:
+            raise ValidationError({"archive": ["This doesn't look like an Athar backup."]})
+        try:
+            manifest = restore.read_manifest(zf)
+        except restore.RestoreError as exc:
+            raise ValidationError({"archive": [str(exc)]}) from exc
+    uploaded_file.seek(0)
+    # A backup of a *different* organization that still exists on this
+    # server can't be restored here: its rows' ids are still in use by that
+    # organization. (One whose organization is gone - the disaster-recovery
+    # case of a fresh server - is fine.)
+    source_id = manifest.get("organization_id")
+    if source_id and source_id != str(organization.id) and Organization.objects.filter(id=source_id).exists():
+        raise ValidationError({"archive": ["This backup belongs to another organization on this server."]})
+
+
+class RestoreJobUploadView(APIView):
+    """Restores the organization from an uploaded backup archive - for when
+    the server-side copy is gone (e.g. a fresh server after losing the old
+    one). Same restore as RestoreJobListCreateView; the archive is kept only
+    until the restore finishes (see tasks.restore_org_backup)."""
+
+    permission_classes = [require_permission(BACKUP_PERMISSION)]
+    parser_classes = [MultiPartParser, FormParser]
+
+    @extend_schema(
+        tags=["Backups"],
+        summary="Restore the organization from an uploaded backup .zip (runs in the background)",
+        request={"multipart/form-data": UploadRestoreJobSerializer},
+        responses={201: RestoreJobSerializer, 400: BAD_REQUEST, **COMMON_ERRORS},
+    )
+    def post(self, request):
+        serializer = UploadRestoreJobSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        uploaded_file = serializer.validated_data["archive"]
+        _validate_uploaded_archive(uploaded_file, request.user.organization)
+        job = RestoreJob(
+            organization=request.user.organization,
+            requested_by=request.user,
+            uploaded_filename=uploaded_file.name[:255],
+        )
+        job.uploaded_archive.save(f"{job.id}.zip", uploaded_file, save=False)
+        job.save()
+        log_action(request.user, "backup.restore", target=job, metadata={"uploaded_filename": job.uploaded_filename}, request=request)
         tasks.restore_org_backup.delay(str(job.id))
         return Response(RestoreJobSerializer(job).data, status=status.HTTP_201_CREATED)
 

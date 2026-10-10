@@ -40,11 +40,16 @@ class BackupJob(UUIDPrimaryKeyModel, OrganizationScopedModel, TimeStampedModel):
         return f"{self.organization_id} backup ({self.status}) @ {self.created_at:%Y-%m-%d %H:%M}"
 
 
+def uploaded_restore_archive_path(instance: "RestoreJob", filename: str) -> str:
+    return f"backups/{instance.organization_id}/restores/{instance.id}.zip"
+
+
 class RestoreJob(UUIDPrimaryKeyModel, OrganizationScopedModel, TimeStampedModel):
-    """Restores an organization's content from one of its own BackupJob
-    archives - see backups/restore.py for the actual wipe-and-replace logic
-    and exactly what is/isn't restored. Same Celery-task shape as BackupJob
-    (backups/tasks.py), same organization.manage gate (views.py)."""
+    """Restores an organization from one of its own BackupJob archives, or
+    from an archive an admin uploaded (e.g. onto a fresh server after losing
+    the old one) - see backups/restore.py for the actual wipe-and-replace
+    logic and exactly what is/isn't restored. Same Celery-task shape as
+    BackupJob (backups/tasks.py), same organization.manage gate (views.py)."""
 
     class Status(models.TextChoices):
         PENDING = "PENDING", "Pending"
@@ -55,6 +60,11 @@ class RestoreJob(UUIDPrimaryKeyModel, OrganizationScopedModel, TimeStampedModel)
     # SET_NULL, not CASCADE - deleting the source backup later shouldn't
     # delete the historical record that a restore from it happened.
     source_backup = models.ForeignKey(BackupJob, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    # Set instead of source_backup for an uploaded archive. Deleted as soon
+    # as the restore finishes (see tasks.restore_org_backup) - it holds
+    # password hashes, so it shouldn't outlive its one use.
+    uploaded_archive = models.FileField(upload_to=uploaded_restore_archive_path, null=True, blank=True)
+    uploaded_filename = models.CharField(max_length=255, blank=True)
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING)
     requested_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"

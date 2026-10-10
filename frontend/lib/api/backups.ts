@@ -1,4 +1,4 @@
-import { apiFetch, apiJson } from "./client";
+import { apiFetch, apiJson, apiUpload } from "./client";
 import type { BackupJob, Paginated, RestoreJob } from "./types";
 
 export function getBackupJobs(): Promise<BackupJob[]> {
@@ -23,6 +23,15 @@ export function createRestoreJob(backupJobId: string): Promise<RestoreJob> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ backup_job_id: backupJobId }),
   });
+}
+
+/** Restores from a backup .zip the admin uploads (e.g. onto a fresh server)
+ * rather than one still stored server-side - see backend/backups/views.py's
+ * RestoreJobUploadView. Over apiUpload for real progress on a large file. */
+export function uploadRestoreArchive(file: File, onProgress?: (fraction: number) => void): Promise<RestoreJob> {
+  const formData = new FormData();
+  formData.append("archive", file);
+  return apiUpload<RestoreJob>("/api/v1/backups/restores/upload/", formData, onProgress);
 }
 
 export function getRestoreJob(id: string): Promise<RestoreJob> {

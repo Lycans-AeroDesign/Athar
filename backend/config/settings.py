@@ -231,6 +231,11 @@ if AWS_STORAGE_BUCKET_NAME:
 # "Max size: 2MB" note - raise this (or make it per-endpoint) once general
 # document/resource uploads are built.
 MAX_UPLOAD_SIZE_MB = env.int("MAX_UPLOAD_SIZE_MB", default=2)
+# Separate (much larger) cap for uploading an organization backup .zip to
+# restore from - see backups/views.py's RestoreJobUploadView. nginx's own
+# body-size limit for that one route (nginx/templates/locations.inc.template)
+# must be at least this.
+BACKUP_UPLOAD_MAX_SIZE_MB = env.int("BACKUP_UPLOAD_MAX_SIZE_MB", default=5120)
 
 
 # CORS

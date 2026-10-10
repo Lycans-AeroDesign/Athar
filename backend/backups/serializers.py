@@ -32,6 +32,7 @@ class RestoreJobSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "source_backup_id",
+            "uploaded_filename",
             "status",
             "requested_by",
             "summary",
@@ -43,3 +44,7 @@ class RestoreJobSerializer(serializers.ModelSerializer):
 
 class CreateRestoreJobSerializer(serializers.Serializer):
     backup_job_id = serializers.UUIDField()
+
+
+class UploadRestoreJobSerializer(serializers.Serializer):
+    archive = serializers.FileField()
