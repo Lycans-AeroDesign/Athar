@@ -1,3 +1,9 @@
+## [1.11.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.10.1...v1.11.0) (2026-10-10)
+
+### Features
+
+* **backups:** restore the whole organization, including from an uploaded archive ([4cc6a74](https://github.com/Lycans-AeroDesign/Athar/commit/4cc6a74d404dc4732b4ca0c33178680ec966ec1a))
+
 ## [1.10.1](https://github.com/Lycans-AeroDesign/Athar/compare/v1.10.0...v1.10.1) (2026-10-09)
 
 ### Bug Fixes
