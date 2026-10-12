@@ -1,3 +1,12 @@
+## [1.12.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.11.0...v1.12.0) (2026-10-12)
+
+### Features
+
+* **help:** replace About with a Help page covering each section and Markdown ([38e265b](https://github.com/Lycans-AeroDesign/Athar/commit/38e265b2148dcce7303b47ba9f2a88b699f65f66))
+* **markdown:** add math, code highlighting, callouts, heading links and image zoom ([ea6603a](https://github.com/Lycans-AeroDesign/Athar/commit/ea6603af641d1e9bd16a949d62ed16ecce21aeb0))
+* **organization:** use the uploaded favicon as the browser tab icon ([ef617d9](https://github.com/Lycans-AeroDesign/Athar/commit/ef617d9df43f44618fa8abc9dd9dc48ccf65cc93))
+* **settings:** flag unsaved changes and warn before losing them ([667c266](https://github.com/Lycans-AeroDesign/Athar/commit/667c266385672825c7771cb564973b90d21ddaaa))
+
 ## [1.11.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.10.1...v1.11.0) (2026-10-10)
 
 ### Features
