@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { AuditLogSettingsForm } from "@/components/settings/AuditLogSettingsForm";
 import { BackupsSettingsForm } from "@/components/settings/BackupsSettingsForm";
@@ -13,6 +13,7 @@ import { InvitationsSettingsForm } from "@/components/settings/InvitationsSettin
 import { PoliciesSettingsForm } from "@/components/settings/PoliciesSettingsForm";
 import { RolesSettingsForm } from "@/components/settings/RolesSettingsForm";
 import { UsersSettingsForm } from "@/components/settings/UsersSettingsForm";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { CourseCategoryManager } from "@/components/training/CourseCategoryManager";
 import { useHasPermission } from "@/lib/auth/permissions";
 import { useOrganization } from "@/lib/organization/OrganizationProvider";
@@ -40,6 +41,28 @@ export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<TabId>("general");
   const t = useTranslations("settings");
   const commonT = useTranslations("common");
+  const modalT = useTranslations("modal");
+  // Reported by General/Branding, the two tabs with a Save Changes step -
+  // switching tabs unmounts the form and would silently drop its edits.
+  const [isDirty, setIsDirty] = useState(false);
+  const [pendingTab, setPendingTab] = useState<TabId | null>(null);
+
+  // Covers reload/closing the tab, which the confirm modal below can't.
+  useEffect(() => {
+    if (!isDirty) return;
+    const handler = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [isDirty]);
+
+  function selectTab(tabId: TabId) {
+    if (tabId === activeTab) return;
+    if (isDirty) {
+      setPendingTab(tabId);
+      return;
+    }
+    setActiveTab(tabId);
+  }
 
   const canEditGeneral = useHasPermission("organization.manage");
   const canEditBranding = useHasPermission("branding.manage");
@@ -91,7 +114,7 @@ export default function SettingsPage() {
           <button
             key={tabId}
             type="button"
-            onClick={() => setActiveTab(tabId)}
+            onClick={() => selectTab(tabId)}
             className={`shrink-0 pb-3 font-label-caps text-label-caps uppercase border-b-2 transition-colors -mb-px ${
               activeTab === tabId
                 ? "border-primary text-primary"
@@ -129,10 +152,36 @@ export default function SettingsPage() {
       ) : !settings ? (
         <p className="font-body-md text-body-md text-on-surface-variant">{commonT("loading")}</p>
       ) : activeTab === "general" ? (
-        <GeneralSettingsForm settings={settings} onUpdate={setSettings} canEdit={canEditGeneral} />
+        <GeneralSettingsForm
+          settings={settings}
+          onUpdate={setSettings}
+          canEdit={canEditGeneral}
+          onDirtyChange={setIsDirty}
+        />
       ) : (
-        <BrandingSettingsForm settings={settings} onUpdate={setSettings} canEdit={canEditBranding} />
+        <BrandingSettingsForm
+          settings={settings}
+          onUpdate={setSettings}
+          canEdit={canEditBranding}
+          onDirtyChange={setIsDirty}
+        />
       )}
+
+      <ConfirmModal
+        open={pendingTab !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingTab(null);
+        }}
+        title={modalT("discardTitle")}
+        description={modalT("discardDescription")}
+        confirmLabel={commonT("discard")}
+        danger
+        onConfirm={() => {
+          if (pendingTab) setActiveTab(pendingTab);
+          setIsDirty(false);
+          setPendingTab(null);
+        }}
+      />
     </section>
   );
 }

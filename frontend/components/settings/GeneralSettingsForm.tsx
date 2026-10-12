@@ -1,9 +1,10 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
+import { ChangedIndicator } from "@/components/ui/ChangedIndicator";
 import { Combobox } from "@/components/ui/Combobox";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { locales, localeNames, type Locale } from "@/i18n/request";
@@ -21,9 +22,10 @@ interface GeneralSettingsFormProps {
   settings: OrganizationSettings;
   onUpdate: (settings: OrganizationSettings) => void;
   canEdit: boolean;
+  onDirtyChange?: (isDirty: boolean) => void;
 }
 
-export function GeneralSettingsForm({ settings, onUpdate, canEdit }: GeneralSettingsFormProps) {
+export function GeneralSettingsForm({ settings, onUpdate, canEdit, onDirtyChange }: GeneralSettingsFormProps) {
   const t = useTranslations("settings.general");
   const commonT = useTranslations("common");
   const topbarT = useTranslations("topbar");
@@ -37,6 +39,14 @@ export function GeneralSettingsForm({ settings, onUpdate, canEdit }: GeneralSett
   const [isSaving, setIsSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
 
+  const nameChanged = name !== settings.name;
+  const productTourChanged = productTourEnabled !== settings.product_tour_enabled;
+  const isDirty = nameChanged || productTourChanged;
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty, onDirtyChange]);
+
   async function handleSave() {
     setIsSaving(true);
     try {
@@ -49,6 +59,11 @@ export function GeneralSettingsForm({ settings, onUpdate, canEdit }: GeneralSett
     } finally {
       setIsSaving(false);
     }
+  }
+
+  function handleDiscard() {
+    setName(settings.name);
+    setProductTourEnabled(settings.product_tour_enabled);
   }
 
   async function handleEngineeringListFiltersChange(checked: boolean) {
@@ -72,38 +87,45 @@ export function GeneralSettingsForm({ settings, onUpdate, canEdit }: GeneralSett
           <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase">
             {t("nameLabel")}
           </label>
-          <input
-            className="block w-full px-4 py-2 font-body-md text-body-md text-on-surface bg-surface-container border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors disabled:opacity-60"
-            disabled={!canEdit}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
+          <ChangedIndicator changed={nameChanged}>
+            <input
+              className="block w-full px-4 py-2 font-body-md text-body-md text-on-surface bg-surface-container border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors disabled:opacity-60"
+              disabled={!canEdit}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+          </ChangedIndicator>
         </div>
 
-        <label className="flex items-start gap-3 cursor-pointer">
-          <input
-            type="checkbox"
-            disabled={!canEdit}
-            checked={productTourEnabled}
-            onChange={(e) => setProductTourEnabled(e.target.checked)}
-            className="mt-1 rounded border-outline-variant text-primary focus:ring-primary w-4 h-4 shrink-0 disabled:opacity-60"
-          />
-          <span>
-            <span className="block font-body-md text-body-md text-on-surface">
-              {t("productTourLabel")}
+        <ChangedIndicator changed={productTourChanged} className="w-fit">
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              disabled={!canEdit}
+              checked={productTourEnabled}
+              onChange={(e) => setProductTourEnabled(e.target.checked)}
+              className="mt-1 rounded border-outline-variant text-primary focus:ring-primary w-4 h-4 shrink-0 disabled:opacity-60"
+            />
+            <span>
+              <span className="block font-body-md text-body-md text-on-surface">
+                {t("productTourLabel")}
+              </span>
+              <span className="block font-body-md text-body-md text-on-surface-variant">
+                {t("productTourDescription")}
+              </span>
             </span>
-            <span className="block font-body-md text-body-md text-on-surface-variant">
-              {t("productTourDescription")}
-            </span>
-          </span>
-        </label>
+          </label>
+        </ChangedIndicator>
 
         {canEdit && (
           <div className="flex items-center gap-4">
-            <Button onClick={handleSave} disabled={isSaving}>
+            <Button variant="secondary" onClick={handleDiscard} disabled={!isDirty || isSaving}>
+              {commonT("discard")}
+            </Button>
+            <Button onClick={handleSave} disabled={!isDirty || isSaving}>
               {isSaving ? commonT("saving") : commonT("save")}
             </Button>
-            {savedAt && (
+            {savedAt && !isDirty && (
               <span className="font-body-md text-body-md text-on-surface-variant">
                 {commonT("saved")}
               </span>

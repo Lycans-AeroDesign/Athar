@@ -1,9 +1,10 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
+import { ChangedIndicator } from "@/components/ui/ChangedIndicator";
 import { Icon } from "@/components/ui/Icon";
 import { PhotoDropzone } from "@/components/ui/PhotoDropzone";
 import { uploadFile } from "@/lib/api/files";
@@ -20,9 +21,10 @@ interface BrandingSettingsFormProps {
   settings: OrganizationSettings;
   onUpdate: (settings: OrganizationSettings) => void;
   canEdit: boolean;
+  onDirtyChange?: (isDirty: boolean) => void;
 }
 
-export function BrandingSettingsForm({ settings, onUpdate, canEdit }: BrandingSettingsFormProps) {
+export function BrandingSettingsForm({ settings, onUpdate, canEdit, onDirtyChange }: BrandingSettingsFormProps) {
   const t = useTranslations("settings.branding");
   const commonT = useTranslations("common");
   const [primaryColor, setPrimaryColor] = useState(settings.primary_color);
@@ -46,6 +48,10 @@ export function BrandingSettingsForm({ settings, onUpdate, canEdit }: BrandingSe
     secondaryColorDark !== settings.secondary_color_dark ||
     pendingLogo !== undefined ||
     pendingFavicon !== undefined;
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty, onDirtyChange]);
 
   const displayedLogo = pendingLogo !== undefined ? pendingLogo : settings.logo;
   const displayedFavicon = pendingFavicon !== undefined ? pendingFavicon : settings.favicon;
@@ -115,16 +121,18 @@ export function BrandingSettingsForm({ settings, onUpdate, canEdit }: BrandingSe
             {t("logoDescription", { maxSize: MAX_UPLOAD_SIZE_MB })}
           </p>
         </div>
-        <PhotoDropzone
-          value={displayedLogo}
-          onFileSelected={handleLogoSelected}
-          onUnsupportedFile={() => setLogoError(commonT("unsupportedImageType"))}
-          disabled={!canEdit}
-          progress={logoUploadProgress}
-          alt={t("logoTitle")}
-          fit="contain"
-          className="h-36 w-36"
-        />
+        <ChangedIndicator changed={pendingLogo !== undefined} className="inline-block">
+          <PhotoDropzone
+            value={displayedLogo}
+            onFileSelected={handleLogoSelected}
+            onUnsupportedFile={() => setLogoError(commonT("unsupportedImageType"))}
+            disabled={!canEdit}
+            progress={logoUploadProgress}
+            alt={t("logoTitle")}
+            fit="contain"
+            className="h-36 w-36"
+          />
+        </ChangedIndicator>
         {logoError && (
           <p className="font-body-md text-body-md text-error" role="alert">
             {logoError}
@@ -139,16 +147,18 @@ export function BrandingSettingsForm({ settings, onUpdate, canEdit }: BrandingSe
             {t("faviconDescription")}
           </p>
         </div>
-        <PhotoDropzone
-          value={displayedFavicon}
-          onFileSelected={handleFaviconSelected}
-          onUnsupportedFile={() => setFaviconError(commonT("unsupportedImageType"))}
-          disabled={!canEdit}
-          progress={faviconUploadProgress}
-          alt={t("faviconTitle")}
-          fit="contain"
-          className="h-28 w-28"
-        />
+        <ChangedIndicator changed={pendingFavicon !== undefined} className="inline-block">
+          <PhotoDropzone
+            value={displayedFavicon}
+            onFileSelected={handleFaviconSelected}
+            onUnsupportedFile={() => setFaviconError(commonT("unsupportedImageType"))}
+            disabled={!canEdit}
+            progress={faviconUploadProgress}
+            alt={t("faviconTitle")}
+            fit="contain"
+            className="h-28 w-28"
+          />
+        </ChangedIndicator>
         {faviconError && (
           <p className="font-body-md text-body-md text-error" role="alert">
             {faviconError}
@@ -173,12 +183,14 @@ export function BrandingSettingsForm({ settings, onUpdate, canEdit }: BrandingSe
               label={t("primaryAccent")}
               value={primaryColor}
               onChange={setPrimaryColor}
+              changed={primaryColor !== settings.primary_color}
               canEdit={canEdit}
             />
             <ColorInputField
               label={t("secondaryColor")}
               value={secondaryColor}
               onChange={setSecondaryColor}
+              changed={secondaryColor !== settings.secondary_color}
               canEdit={canEdit}
             />
           </div>
@@ -193,12 +205,14 @@ export function BrandingSettingsForm({ settings, onUpdate, canEdit }: BrandingSe
               label={t("primaryAccent")}
               value={primaryColorDark}
               onChange={setPrimaryColorDark}
+              changed={primaryColorDark !== settings.primary_color_dark}
               canEdit={canEdit}
             />
             <ColorInputField
               label={t("secondaryColor")}
               value={secondaryColorDark}
               onChange={setSecondaryColorDark}
+              changed={secondaryColorDark !== settings.secondary_color_dark}
               canEdit={canEdit}
             />
           </div>
@@ -224,9 +238,10 @@ interface ColorInputFieldProps {
   value: string;
   onChange: (value: string) => void;
   canEdit: boolean;
+  changed: boolean;
 }
 
-function ColorInputField({ label, value, onChange, canEdit }: ColorInputFieldProps) {
+function ColorInputField({ label, value, onChange, canEdit, changed }: ColorInputFieldProps) {
   const t = useTranslations("settings.branding");
   const lowContrast = hasLowContrast(value);
 
@@ -235,10 +250,12 @@ function ColorInputField({ label, value, onChange, canEdit }: ColorInputFieldPro
       <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase">
         {label}
       </label>
-      <div className="flex items-center gap-2">
+      <ChangedIndicator changed={changed} className="flex items-center gap-2">
         <input
           type="color"
-          className="h-9 w-9 rounded-lg border border-outline-variant bg-transparent disabled:opacity-60"
+          // Strips the browser's default inner padding/border so the swatch
+          // fills the whole box instead of sitting inset inside it.
+          className="h-9 w-9 shrink-0 cursor-pointer overflow-hidden rounded-lg border border-outline-variant bg-transparent p-0 disabled:cursor-not-allowed disabled:opacity-60 [&::-webkit-color-swatch-wrapper]:p-0 [&::-webkit-color-swatch]:border-none [&::-webkit-color-swatch]:rounded-none [&::-moz-color-swatch]:border-none [&::-moz-color-swatch]:rounded-none"
           disabled={!canEdit}
           value={value}
           onChange={(e) => onChange(e.target.value)}
@@ -249,7 +266,7 @@ function ColorInputField({ label, value, onChange, canEdit }: ColorInputFieldPro
           value={value}
           onChange={(e) => onChange(e.target.value)}
         />
-      </div>
+      </ChangedIndicator>
       {lowContrast && (
         <p className="flex items-center gap-1 font-body-md text-body-md text-error" role="alert">
           <Icon name="report_problem" size={14} />
