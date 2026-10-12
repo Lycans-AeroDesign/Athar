@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { Icon } from "./Icon";
 import { Markdown } from "./Markdown";
+import { Link } from "@/i18n/navigation";
 import { CALLOUT_TYPES, type CalloutType } from "@/lib/markdownCallouts";
 import { updateMe } from "@/lib/api/accounts";
 import { createRelation, searchKnowledge } from "@/lib/api/knowledge";
@@ -639,6 +640,16 @@ export function MarkdownEditor({ value, onChange, placeholder, relateFrom }: Mar
                     <span className="font-body-md text-body-md text-on-surface">{t("helpCallout")}</span>
                   </li>
                 </ul>
+                {/* New tab - navigating away here would lose whatever is being written. */}
+                <Link
+                  href="/help?tab=writing"
+                  target="_blank"
+                  rel="noopener"
+                  className="inline-flex items-center gap-1 font-body-md text-body-md text-primary hover:underline"
+                >
+                  {t("helpFullGuide")}
+                  <Icon name="open_in_new" size={14} />
+                </Link>
               </Popover.Content>
             </Popover.Portal>
           </Popover.Root>

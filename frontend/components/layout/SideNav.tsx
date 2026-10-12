@@ -185,11 +185,15 @@ export function SideNav({ open, onClose }: SideNavProps) {
             {t("settings")}
           </Link>
           <Link
-            className="flex items-center gap-4 px-4 py-2 text-on-surface-variant hover:bg-surface-variant transition-colors duration-150 rounded-xl"
-            href="/about"
+            className={
+              pathname === "/help"
+                ? "flex items-center gap-4 px-4 py-2 bg-primary-container text-on-primary-container font-bold rounded-xl transition-colors"
+                : "flex items-center gap-4 px-4 py-2 text-on-surface-variant hover:bg-surface-variant transition-colors duration-150 rounded-xl"
+            }
+            href="/help"
           >
-            <Icon name="info" />
-            {t("about")}
+            <Icon name="help" />
+            {t("help")}
           </Link>
         </div>
       </nav>

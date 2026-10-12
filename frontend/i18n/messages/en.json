@@ -106,7 +106,7 @@
     "documents": "Documents",
     "training": "Training Center",
     "settings": "Settings",
-    "about": "About"
+    "help": "Help"
   },
   "topbar": {
     "openMenu": "Open menu",
@@ -452,6 +452,192 @@
     "creditBody": "Athar is built and self-hosted by Lycans AeroDesign as the reference deployment for this system, and shared as open source so other student teams can run their own instance.",
     "creditLink": "lycansteam.com"
   },
+  "help": {
+    "title": "Help",
+    "description": "How to use Athar, what belongs in each section, and how to format what you write.",
+    "tabs": {
+      "guide": "Guide",
+      "writing": "Writing",
+      "about": "About"
+    },
+    "guide": {
+      "intro": "Athar is where the team's knowledge lives. Each section holds a different kind of record - here's what belongs in each one, and what makes an entry useful to the next person who reads it.",
+      "includeTitle": "What to include",
+      "sections": {
+        "articles": {
+          "title": "Articles",
+          "purpose": "Long-form technical knowledge: how something works, why a design decision was made, tutorials, write-ups and lessons learned.",
+          "include": [
+            "A clear title - the words someone would search for",
+            "A short summary, so readers can tell at a glance whether it's what they need",
+            "The context: the problem, the constraints and the decision, not just the final answer",
+            "Diagrams, photos, equations and data that back up the explanation",
+            "A category and tags, and links to the related project, components, failures or tests"
+          ],
+          "note": "New articles are reviewed before they're published: Draft → In Review → Published. A reviewer can send one back with a reason (Rejected). Outdated articles are Archived rather than deleted."
+        },
+        "questions": {
+          "title": "Questions",
+          "purpose": "Ask the team something you couldn't find an answer to. Good answers often become articles later.",
+          "include": [
+            "One specific question in the title",
+            "What you've already tried, and what you expected to happen",
+            "Error messages, logs or photos",
+            "Once something solves it, mark it as the solution so the next person finds it"
+          ]
+        },
+        "projects": {
+          "title": "Projects",
+          "purpose": "What the team is building - an aircraft, a subsystem, a competition entry. Projects are the hub the other records link back to.",
+          "include": [
+            "Objectives and requirements",
+            "Scope, timeline and current status",
+            "Links to the components, tests, failures and documents that belong to it"
+          ]
+        },
+        "components": {
+          "title": "Components",
+          "purpose": "Parts and hardware the team uses or keeps in the workshop - flight controllers, motors, batteries, sensors, tools.",
+          "include": [
+            "Manufacturer, part number, and a datasheet or vendor link",
+            "Key specs as label/value pairs (e.g. Processor: STM32H753)",
+            "A photo, the quantity, where it's kept in the workshop, and its condition",
+            "What it's used for, and any gotchas"
+          ]
+        },
+        "failures": {
+          "title": "Failures",
+          "purpose": "Investigation records for anything that broke, crashed or didn't behave as expected - so the same thing doesn't happen twice.",
+          "include": [
+            "What happened: symptoms, conditions and evidence (photos, logs, flight data)",
+            "Severity, date, and the affected component, project or aircraft",
+            "Root cause - what actually caused it, not just the symptom",
+            "Corrective action (the fix) and preventive action (what stops it happening again)"
+          ],
+          "note": "Record failures even when they're embarrassing - they're the most valuable knowledge a team can keep."
+        },
+        "sops": {
+          "title": "SOPs",
+          "purpose": "Standard operating procedures - steps the team follows the same way every time: pre-flight checks, battery handling, soldering, assembly.",
+          "include": [
+            "The purpose, and when the procedure applies",
+            "Prerequisites, required equipment and safety notes",
+            "Numbered steps, each one a single action",
+            "How to check it was done correctly"
+          ],
+          "note": "Mark an SOP Mandatory when skipping it isn't an option, and put hazards in a > [!WARNING] callout so nobody misses them."
+        },
+        "tests": {
+          "title": "Tests",
+          "purpose": "Flight tests, bench tests and experiments - planned or completed.",
+          "include": [
+            "Objective: what the test is meant to find out",
+            "Configuration: aircraft or system, components, firmware, conditions",
+            "Procedure and safety considerations",
+            "Results with measurements, a pass/fail outcome, and the conclusion or lessons learned"
+          ]
+        },
+        "documents": {
+          "title": "Documents",
+          "purpose": "Reference material - reports, datasheets, manuals, rules, papers - as an uploaded file or an external link.",
+          "include": [
+            "The file or URL, its type and its source",
+            "The author or organization and the publication date, for external documents",
+            "A description of what it covers and why it's useful"
+          ]
+        },
+        "training": {
+          "title": "Training Center",
+          "purpose": "Courses and lessons for onboarding new members and building skills. Created by members with training permissions.",
+          "include": [
+            "One course per skill area, split into short lessons",
+            "Lessons written like articles - explanations, images, code and equations",
+            "Links to the SOPs, components and articles each lesson relies on"
+          ]
+        },
+        "bookmarks": {
+          "title": "Bookmarks",
+          "purpose": "Your own list of saved items from any section. Only you can see it.",
+          "include": []
+        }
+      },
+      "tipsTitle": "Tips for every section",
+      "tips": {
+        "linkTitle": "Link things together",
+        "linkBody": "Type @ in any editor to link an article, question, project, component, failure, SOP, test or document. The item also shows up under Related Knowledge on both sides.",
+        "visibilityTitle": "Choose who can see it",
+        "visibilityBody": "Public items are visible to everyone in the organization. Restricted items are only visible to the people you give access to.",
+        "searchTitle": "Write for search",
+        "searchBody": "Use the words someone would type when they're stuck - part numbers, error messages, the aircraft's name. Tags help filter, but search finds titles and content."
+      }
+    },
+    "writing": {
+      "intro": "Every text field in Athar is written in Markdown - plain text with a few symbols for formatting. You can use the editor's toolbar instead of typing the symbols, and switch to Preview to check the result.",
+      "youType": "You type",
+      "youGet": "You get",
+      "examples": {
+        "headings": {
+          "title": "Headings",
+          "syntax": "## Wing design\n### Spar sizing",
+          "note": "Hover a heading to copy a link to it. Articles list their ## and ### headings as a table of contents."
+        },
+        "emphasis": {
+          "title": "Bold, italic, strikethrough, inline code",
+          "syntax": "**Bold**, _italic_, ~~old value~~ and `inline code`"
+        },
+        "lists": {
+          "title": "Lists",
+          "syntax": "- Carbon tube\n- Balsa ribs\n\n1. Cut the ribs\n2. Glue the spar"
+        },
+        "tasks": {
+          "title": "Task lists",
+          "syntax": "- [x] Charge the batteries\n- [ ] Check the control surfaces"
+        },
+        "links": {
+          "title": "Links",
+          "syntax": "[Motor datasheet](https://example.com/datasheet.pdf)",
+          "note": "To link something inside Athar, type @ and pick it from the list instead."
+        },
+        "images": {
+          "title": "Images and files",
+          "syntax": "![Wing spar layout](image-link)",
+          "note": "Paste or drag an image or file into the editor to upload it - images are embedded, other files become a download link. The text in square brackets becomes the image's caption, and readers can click an image to enlarge it."
+        },
+        "quote": {
+          "title": "Quotes and dividers",
+          "syntax": "> The best part is no part.\n\n---"
+        },
+        "callouts": {
+          "title": "Callouts",
+          "syntax": "> [!WARNING]\n> Disconnect the LiPo battery before servicing the power board.\n\n> [!TIP]\n> Label every connector before you unplug it.",
+          "note": "Five kinds: [!NOTE], [!TIP], [!IMPORTANT], [!WARNING] and [!CAUTION]."
+        },
+        "table": {
+          "title": "Tables",
+          "syntax": "| Motor | KV | Max thrust |\n| --- | --- | --- |\n| T-Motor MN3110 | 700 | 1.6 kg |\n| SunnySky X2216 | 880 | 1.2 kg |"
+        },
+        "code": {
+          "title": "Code",
+          "syntax": "```python\ndef stall_speed(weight, rho, area, cl_max):\n    return (2 * weight / (rho * area * cl_max)) ** 0.5\n```",
+          "note": "Name the language after the opening ``` to get syntax highlighting - e.g. python, cpp, matlab, bash, json, yaml, or xml for ROS launch files."
+        },
+        "math": {
+          "title": "Equations",
+          "syntax": "Lift is $L = \\frac{1}{2} \\rho V^2 S C_L$.\n\n$$\nC_L = \\frac{2L}{\\rho V^2 S}\n$$",
+          "note": "LaTeX syntax: one $ on each side for an equation inside a line, $$ on their own lines for a centered one. Type \\$ for a literal dollar sign."
+        },
+        "diagram": {
+          "title": "Diagrams",
+          "syntax": "```mermaid\nflowchart LR\n  Sensor --> FC[Flight controller] --> ESC --> Motor\n```",
+          "note": "Flowcharts, sequence diagrams, state machines and more, using Mermaid syntax."
+        },
+        "footnotes": {
+          "title": "Footnotes",
+          "syntax": "Wing loading was 4.2 kg/m²[^1].\n\n[^1]: Measured at the 2026 regional competition."
+        }
+      }
+    }
+  },
   "userProfile": {
     "loading": "Loading profile...",
     "notFound": "This user doesn't exist.",
@@ -713,7 +899,8 @@
       "calloutPlaceholder": "Callout text",
       "equationPlaceholder": "E = mc^2",
       "helpMath": "Write equations in LaTeX: $C_L$ inline, or $$ on their own lines for a centered equation.",
-      "helpCallout": "Start a quote with [!NOTE], [!TIP], [!IMPORTANT], [!WARNING] or [!CAUTION] to make a callout."
+      "helpCallout": "Start a quote with [!NOTE], [!TIP], [!IMPORTANT], [!WARNING] or [!CAUTION] to make a callout.",
+      "helpFullGuide": "Full formatting guide"
     }
   },
   "engineering": {
