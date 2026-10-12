@@ -698,7 +698,22 @@
       "helpTitle": "نصائح التنسيق",
       "helpMention": "اكتب @ لربط أو الإشارة إلى مقالة أو سؤال أو مشروع أو مكوّن أو عطل أو إجراء تشغيل قياسي أو اختبار أو مستند آخر.",
       "helpUpload": "الصق أو اسحب وأفلت صورًا أو ملفات لرفعها وتضمينها.",
-      "helpMermaid": "ضع صيغة Mermaid داخل كتلة كود ```mermaid لعرضها كمخطط."
+      "helpMermaid": "ضع صيغة Mermaid داخل كتلة كود ```mermaid لعرضها كمخطط.",
+      "headingTooltip": "عنوان",
+      "strikethroughTooltip": "يتوسطه خط",
+      "taskListTooltip": "قائمة مهام",
+      "quoteTooltip": "اقتباس",
+      "calloutTooltip": "تنبيه (ملاحظة، نصيحة، تحذير...)",
+      "equationTooltip": "معادلة",
+      "horizontalRuleTooltip": "فاصل",
+      "headingPlaceholder": "عنوان",
+      "strikethroughPlaceholder": "نص مشطوب",
+      "taskPlaceholder": "مهمة",
+      "quotePlaceholder": "اقتباس",
+      "calloutPlaceholder": "نص التنبيه",
+      "equationPlaceholder": "E = mc^2",
+      "helpMath": "اكتب المعادلات بصيغة LaTeX: ‎$C_L$‎ داخل السطر، أو ‎$$‎ في سطر مستقل لمعادلة في المنتصف.",
+      "helpCallout": "ابدأ الاقتباس بـ [!NOTE] أو [!TIP] أو [!IMPORTANT] أو [!WARNING] أو [!CAUTION] لإنشاء تنبيه."
     }
   },
   "engineering": {
@@ -1121,7 +1136,8 @@
     "close": "إغلاق",
     "discardTitle": "تجاهل التغييرات غير المحفوظة؟",
     "discardDescription": "لديك تغييرات غير محفوظة. الإغلاق الآن سيؤدي إلى فقدانها.",
-    "keepEditing": "متابعة التحرير"
+    "keepEditing": "متابعة التحرير",
+    "imagePreview": "معاينة الصورة"
   },
   "filePreview": {
     "downloadButton": "تنزيل",
@@ -1388,5 +1404,17 @@
     "noneYet": "لم تُنشر أي سياسات بعد.",
     "progress": "تمت الموافقة على {accepted} من {total}",
     "remainingHint": "للمتابعة، يجب أيضًا الموافقة على:"
+  },
+  "markdown": {
+    "callout": {
+      "note": "ملاحظة",
+      "tip": "نصيحة",
+      "important": "مهم",
+      "warning": "تحذير",
+      "caution": "تنبيه خطر"
+    },
+    "zoomImage": "تكبير الصورة",
+    "copySectionLink": "نسخ رابط هذا القسم",
+    "linkCopied": "تم نسخ الرابط"
   }
 }

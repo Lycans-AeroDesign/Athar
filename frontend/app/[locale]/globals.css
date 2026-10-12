@@ -56,6 +56,22 @@
   --color-background: #faf8ff;
   --color-on-background: #1a1b22;
   --color-surface-variant: #e2e1ec;
+  /* Markdown callouts (> [!NOTE] etc.) and code syntax highlighting - see
+     components/ui/Markdown.tsx. GitHub's own palette, so the five callout
+     kinds stay recognizably distinct from each other in both themes. */
+  --color-callout-note: #0969da;
+  --color-callout-tip: #1a7f37;
+  --color-callout-important: #8250df;
+  --color-callout-warning: #9a6700;
+  --color-callout-caution: #cf222e;
+  --color-code-keyword: #cf222e;
+  --color-code-string: #0a3069;
+  --color-code-comment: #6e7781;
+  --color-code-number: #0550ae;
+  --color-code-function: #8250df;
+  --color-code-type: #953800;
+  --color-code-attr: #0550ae;
+  --color-code-meta: #116329;
 }
 
 /* Theme has three states: an explicit choice (saved as a cookie, applied via
@@ -113,6 +129,19 @@
     --color-background: #121317;
     --color-on-background: #e4e2ec;
     --color-surface-variant: #444654;
+    --color-callout-note: #4493f8;
+    --color-callout-tip: #3fb950;
+    --color-callout-important: #ab7df8;
+    --color-callout-warning: #d29922;
+    --color-callout-caution: #f85149;
+    --color-code-keyword: #ff7b72;
+    --color-code-string: #a5d6ff;
+    --color-code-comment: #8b949e;
+    --color-code-number: #79c0ff;
+    --color-code-function: #d2a8ff;
+    --color-code-type: #ffa657;
+    --color-code-attr: #79c0ff;
+    --color-code-meta: #7ee787;
   }
 }
 
@@ -169,9 +198,27 @@
   --color-background: #121317;
   --color-on-background: #e4e2ec;
   --color-surface-variant: #444654;
+  --color-callout-note: #4493f8;
+  --color-callout-tip: #3fb950;
+  --color-callout-important: #ab7df8;
+  --color-callout-warning: #d29922;
+  --color-callout-caution: #f85149;
+  --color-code-keyword: #ff7b72;
+  --color-code-string: #a5d6ff;
+  --color-code-comment: #8b949e;
+  --color-code-number: #79c0ff;
+  --color-code-function: #d2a8ff;
+  --color-code-type: #ffa657;
+  --color-code-attr: #79c0ff;
+  --color-code-meta: #7ee787;
 }
 
 @theme inline {
+  --color-callout-note: var(--color-callout-note);
+  --color-callout-tip: var(--color-callout-tip);
+  --color-callout-important: var(--color-callout-important);
+  --color-callout-warning: var(--color-callout-warning);
+  --color-callout-caution: var(--color-callout-caution);
   --color-surface: var(--color-surface);
   --color-surface-dim: var(--color-surface-dim);
   --color-surface-bright: var(--color-surface-bright);
@@ -299,4 +346,70 @@ body {
 
 .animate-fade-in-up {
   animation: fade-in-up 200ms ease-out;
+}
+
+/* Syntax highlighting for fenced code blocks - rehype-highlight emits
+   highlight.js's hljs-* token classes (see components/ui/Markdown.tsx);
+   colors come from the --color-code-* tokens above so they follow the theme. */
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-doctag,
+.hljs-template-tag {
+  color: var(--color-code-keyword);
+}
+.hljs-string,
+.hljs-regexp,
+.hljs-addition {
+  color: var(--color-code-string);
+}
+.hljs-comment,
+.hljs-quote {
+  color: var(--color-code-comment);
+  font-style: italic;
+}
+.hljs-number,
+.hljs-literal,
+.hljs-symbol,
+.hljs-variable.constant_ {
+  color: var(--color-code-number);
+}
+.hljs-title,
+.hljs-section {
+  color: var(--color-code-function);
+}
+.hljs-type,
+.hljs-built_in,
+.hljs-title.class_ {
+  color: var(--color-code-type);
+}
+.hljs-attr,
+.hljs-attribute,
+.hljs-property,
+.hljs-variable,
+.hljs-template-variable,
+.hljs-selector-class,
+.hljs-selector-id {
+  color: var(--color-code-attr);
+}
+.hljs-meta,
+.hljs-name,
+.hljs-tag {
+  color: var(--color-code-meta);
+}
+.hljs-deletion {
+  color: var(--color-callout-caution);
+}
+.hljs-emphasis {
+  font-style: italic;
+}
+.hljs-strong {
+  font-weight: 700;
+}
+
+/* Display equations ($$...$$) scroll sideways instead of overflowing a
+   phone-width screen. */
+.katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-block: 0.25rem;
 }

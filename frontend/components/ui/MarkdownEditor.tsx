@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { Icon } from "./Icon";
 import { Markdown } from "./Markdown";
+import { CALLOUT_TYPES, type CalloutType } from "@/lib/markdownCallouts";
 import { updateMe } from "@/lib/api/accounts";
 import { createRelation, searchKnowledge } from "@/lib/api/knowledge";
 import { uploadFile } from "@/lib/api/files";
@@ -90,6 +91,45 @@ function getCaretCoordinates(
   return { top, left, height };
 }
 
+const MENTION_POPUP_WIDTH = 288;
+
+// Only needs to be unique per upload - see uploadAndInsert's placeholder.
+function newUploadId(): string {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+const TOOLBAR_BUTTON_CLASS =
+  "p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-variant transition-colors disabled:opacity-40 disabled:cursor-not-allowed";
+
+function ToolButton({
+  icon,
+  tooltip,
+  onClick,
+  disabled,
+}: {
+  icon: string;
+  tooltip: string;
+  onClick: () => void;
+  disabled: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={tooltip}
+      title={tooltip}
+      className={TOOLBAR_BUTTON_CLASS}
+    >
+      <Icon name={icon} size={18} />
+    </button>
+  );
+}
+
+function ToolbarSeparator() {
+  return <div className="w-px h-5 bg-outline-variant mx-1" aria-hidden="true" />;
+}
+
 // Textarea + a toolbar that inserts/wraps markdown syntax at the current
 // selection, plus an Edit/Preview tab toggle - not a WYSIWYG editor, since
 // the content model is markdown source (see Markdown.tsx). No "Underline"
@@ -99,10 +139,12 @@ function getCaretCoordinates(
 export function MarkdownEditor({ value, onChange, placeholder, relateFrom }: MarkdownEditorProps) {
   const t = useTranslations("knowledge.editor");
   const commonT = useTranslations("common");
+  const markdownT = useTranslations("markdown");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [tab, setTab] = useState<"edit" | "preview">("edit");
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [relationError, setRelationError] = useState<string | null>(null);
+  const [calloutMenuOpen, setCalloutMenuOpen] = useState(false);
 
   // Formatting tips popover: opens itself once per user (like the product
   // tour's has_completed_tour - see lib/onboarding/tour.ts) rather than
@@ -165,7 +207,11 @@ export function MarkdownEditor({ value, onChange, placeholder, relateFrom }: Mar
     // Deferred a frame so layout (the just-typed "@" character) has painted
     // before measuring it - same rAF-after-paint pattern as focusSelection().
     const frame = requestAnimationFrame(() => {
-      setMentionCoords(getCaretCoordinates(textarea, mention.start));
+      const caret = getCaretCoordinates(textarea, mention.start);
+      // Clamped so the fixed-width popup never runs past the textarea's right
+      // edge for a mention typed near the end of a long line.
+      const left = Math.min(caret.left, Math.max(0, textarea.clientWidth - MENTION_POPUP_WIDTH));
+      setMentionCoords({ ...caret, left });
     });
     return () => cancelAnimationFrame(frame);
     // Only the mention's start offset matters here - re-running this on every
@@ -257,7 +303,7 @@ export function MarkdownEditor({ value, onChange, placeholder, relateFrom }: Mar
   // per call, not meaningful. The percent is live (from uploadFile's real
   // XHR progress events, not simulated), rewritten in place as it changes.
   async function uploadAndInsert(file: File, insertPos: number, isImage: boolean): Promise<number> {
-    const uploadId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const uploadId = newUploadId();
     const placeholderFor = (percent: number) =>
       `${isImage ? "!" : ""}[${t(isImage ? "uploadingImage" : "uploadingFile", { filename: file.name, percent })}](uploading:${uploadId})`;
     let placeholderText = placeholderFor(0);
@@ -355,32 +401,63 @@ export function MarkdownEditor({ value, onChange, placeholder, relateFrom }: Mar
     focusSelection(selStart, selStart + inserted.length);
   }
 
-  function applyBulletedList() {
+  // Whole lines covered by the selection (or just the cursor's line) -
+  // block syntax like "## " or "> " has to start at the line itself, not
+  // wherever the cursor happens to sit inside it.
+  function selectedLineRange(): { start: number; end: number } | null {
     const textarea = textareaRef.current;
-    if (!textarea) return;
+    if (!textarea) return null;
     const { selectionStart, selectionEnd } = textarea;
-    const selected = value.slice(selectionStart, selectionEnd) || t("listItemPlaceholder");
-    const prefixed = selected
-      .split("\n")
-      .map((line) => `- ${line}`)
-      .join("\n");
-    const next = value.slice(0, selectionStart) + prefixed + value.slice(selectionEnd);
-    onChange(next);
-    focusSelection(selectionStart, selectionStart + prefixed.length);
+    // A selection ending right after a newline (whole lines selected by
+    // dragging) shouldn't drag the next, unselected line along.
+    const effectiveEnd =
+      selectionEnd > selectionStart && value[selectionEnd - 1] === "\n" ? selectionEnd - 1 : selectionEnd;
+    const start = value.lastIndexOf("\n", selectionStart - 1) + 1;
+    const newlineAfter = value.indexOf("\n", effectiveEnd);
+    return { start, end: newlineAfter === -1 ? value.length : newlineAfter };
   }
 
-  function applyNumberedList() {
+  function replaceLines(transform: (lines: string[]) => string[], placeholderText: string) {
+    const range = selectedLineRange();
+    if (!range) return;
+    const block = value.slice(range.start, range.end) || placeholderText;
+    const replaced = transform(block.split("\n")).join("\n");
+    onChange(value.slice(0, range.start) + replaced + value.slice(range.end));
+    focusSelection(range.start, range.start + replaced.length);
+  }
+
+  function prefixLines(prefixFor: (index: number) => string, placeholderText: string) {
+    replaceLines((lines) => lines.map((line, i) => prefixFor(i) + line), placeholderText);
+  }
+
+  function applyCallout(type: CalloutType) {
+    setCalloutMenuOpen(false);
+    replaceLines(
+      (lines) => [`> [!${type.toUpperCase()}]`, ...lines.map((line) => `> ${line}`)],
+      t("calloutPlaceholder"),
+    );
+  }
+
+  // Single-line selections become inline math ($...$), multi-line ones a
+  // display block ($$ on their own lines) - same split as applyCode.
+  function applyEquation() {
     const textarea = textareaRef.current;
     if (!textarea) return;
-    const { selectionStart, selectionEnd } = textarea;
-    const selected = value.slice(selectionStart, selectionEnd) || t("listItemPlaceholder");
-    const prefixed = selected
-      .split("\n")
-      .map((line, i) => `${i + 1}. ${line}`)
-      .join("\n");
-    const next = value.slice(0, selectionStart) + prefixed + value.slice(selectionEnd);
+    const selected = value.slice(textarea.selectionStart, textarea.selectionEnd);
+    if (selected.includes("\n")) {
+      wrapSelection("$$\n", "\n$$", t("equationPlaceholder"));
+    } else {
+      wrapSelection("$", "$", t("equationPlaceholder"));
+    }
+  }
+
+  function insertBlock(text: string) {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    const { selectionStart } = textarea;
+    const next = value.slice(0, selectionStart) + text + value.slice(selectionStart);
     onChange(next);
-    focusSelection(selectionStart, selectionStart + prefixed.length);
+    focusSelection(selectionStart + text.length, selectionStart + text.length);
   }
 
   function applyCode() {
@@ -396,24 +473,9 @@ export function MarkdownEditor({ value, onChange, placeholder, relateFrom }: Mar
   }
 
   function applyTable() {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-    const { selectionStart } = textarea;
-    const template = "\n| Column 1 | Column 2 |\n| --- | --- |\n| Value | Value |\n";
-    const next = value.slice(0, selectionStart) + template + value.slice(selectionStart);
-    onChange(next);
-    focusSelection(selectionStart + template.length, selectionStart + template.length);
+    insertBlock("\n| Column 1 | Column 2 |\n| --- | --- |\n| Value | Value |\n");
   }
 
-  const buttonClass =
-    "p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-variant transition-colors disabled:opacity-40 disabled:cursor-not-allowed";
-
-  // Clamped so the fixed-width popup never runs past the textarea's right
-  // edge for a mention typed near the end of a long line.
-  const mentionPopupWidth = 288;
-  const mentionPopupLeft = mentionCoords
-    ? Math.min(mentionCoords.left, Math.max(0, (textareaRef.current?.clientWidth ?? mentionPopupWidth) - mentionPopupWidth))
-    : 0;
 
   return (
     <div className="border border-outline-variant rounded-xl overflow-hidden bg-surface">
@@ -422,94 +484,128 @@ export function MarkdownEditor({ value, onChange, placeholder, relateFrom }: Mar
           container's overflow-hidden. sm+ keeps the single toolbar-left/tabs-right row. */}
       <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between border-b border-outline-variant bg-surface-container">
         <div className="flex flex-wrap items-center gap-1 px-2 py-1.5">
-          <button
-            type="button"
+          <ToolButton
+            icon="title"
+            tooltip={t("headingTooltip")}
+            onClick={() => prefixLines(() => "## ", t("headingPlaceholder"))}
+            disabled={tab === "preview"}
+          />
+          <ToolButton
+            icon="format_bold"
+            tooltip={t("boldTooltip")}
             onClick={() => wrapSelection("**", "**", t("boldPlaceholder"))}
             disabled={tab === "preview"}
-            aria-label={t("boldTooltip")}
-            title={t("boldTooltip")}
-            className={buttonClass}
-          >
-            <Icon name="format_bold" size={18} />
-          </button>
-          <button
-            type="button"
+          />
+          <ToolButton
+            icon="format_italic"
+            tooltip={t("italicTooltip")}
             onClick={() => wrapSelection("_", "_", t("italicPlaceholder"))}
             disabled={tab === "preview"}
-            aria-label={t("italicTooltip")}
-            title={t("italicTooltip")}
-            className={buttonClass}
-          >
-            <Icon name="format_italic" size={18} />
-          </button>
-          <button
-            type="button"
-            onClick={applyBulletedList}
+          />
+          <ToolButton
+            icon="format_strikethrough"
+            tooltip={t("strikethroughTooltip")}
+            onClick={() => wrapSelection("~~", "~~", t("strikethroughPlaceholder"))}
             disabled={tab === "preview"}
-            aria-label={t("bulletedListTooltip")}
-            title={t("bulletedListTooltip")}
-            className={buttonClass}
-          >
-            <Icon name="format_list_bulleted" size={18} />
-          </button>
-          <button
-            type="button"
-            onClick={applyNumberedList}
+          />
+          <ToolbarSeparator />
+          <ToolButton
+            icon="format_list_bulleted"
+            tooltip={t("bulletedListTooltip")}
+            onClick={() => prefixLines(() => "- ", t("listItemPlaceholder"))}
             disabled={tab === "preview"}
-            aria-label={t("numberedListTooltip")}
-            title={t("numberedListTooltip")}
-            className={buttonClass}
-          >
-            <Icon name="format_list_numbered" size={18} />
-          </button>
-          <button
-            type="button"
+          />
+          <ToolButton
+            icon="format_list_numbered"
+            tooltip={t("numberedListTooltip")}
+            onClick={() => prefixLines((i) => `${i + 1}. `, t("listItemPlaceholder"))}
+            disabled={tab === "preview"}
+          />
+          <ToolButton
+            icon="checklist"
+            tooltip={t("taskListTooltip")}
+            onClick={() => prefixLines(() => "- [ ] ", t("taskPlaceholder"))}
+            disabled={tab === "preview"}
+          />
+          <ToolbarSeparator />
+          <ToolButton
+            icon="link"
+            tooltip={t("linkTooltip")}
             onClick={() => wrapSelection("[", "](url)", t("linkTextPlaceholder"))}
             disabled={tab === "preview"}
-            aria-label={t("linkTooltip")}
-            title={t("linkTooltip")}
-            className={buttonClass}
-          >
-            <Icon name="link" size={18} />
-          </button>
-          <button
-            type="button"
+          />
+          <ToolButton
+            icon="image"
+            tooltip={t("imageTooltip")}
             onClick={() => wrapSelection("![", "](url)", t("imageAltPlaceholder"))}
             disabled={tab === "preview"}
-            aria-label={t("imageTooltip")}
-            title={t("imageTooltip")}
-            className={buttonClass}
-          >
-            <Icon name="image" size={18} />
-          </button>
-          <button
-            type="button"
-            onClick={applyCode}
+          />
+          <ToolButton
+            icon="format_quote"
+            tooltip={t("quoteTooltip")}
+            onClick={() => prefixLines(() => "> ", t("quotePlaceholder"))}
             disabled={tab === "preview"}
-            aria-label={t("codeTooltip")}
-            title={t("codeTooltip")}
-            className={buttonClass}
-          >
-            <Icon name="code" size={18} />
-          </button>
-          <button
-            type="button"
+          />
+          <Popover.Root open={calloutMenuOpen} onOpenChange={setCalloutMenuOpen}>
+            <Popover.Trigger asChild>
+              <button
+                type="button"
+                disabled={tab === "preview"}
+                aria-label={t("calloutTooltip")}
+                title={t("calloutTooltip")}
+                className={TOOLBAR_BUTTON_CLASS}
+              >
+                <Icon name="feedback" size={18} />
+              </button>
+            </Popover.Trigger>
+            <Popover.Portal>
+              <Popover.Content
+                align="start"
+                sideOffset={6}
+                onCloseAutoFocus={(e) => e.preventDefault()}
+                className="min-w-40 bg-surface-container-lowest border border-outline-variant rounded-lg py-1 shadow-[0_2px_8px_0_rgba(0,0,0,0.15)] z-50"
+              >
+                {CALLOUT_TYPES.map((type) => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => applyCallout(type)}
+                    className="flex w-full items-center px-3 py-2 text-start font-body-md text-body-md text-on-surface hover:bg-surface-variant transition-colors"
+                  >
+                    {markdownT(`callout.${type}`)}
+                  </button>
+                ))}
+              </Popover.Content>
+            </Popover.Portal>
+          </Popover.Root>
+          <ToolbarSeparator />
+          <ToolButton icon="code" tooltip={t("codeTooltip")} onClick={applyCode} disabled={tab === "preview"} />
+          <ToolButton
+            icon="functions"
+            tooltip={t("equationTooltip")}
+            onClick={applyEquation}
+            disabled={tab === "preview"}
+          />
+          <ToolButton
+            icon="table_chart"
+            tooltip={t("tableTooltip")}
             onClick={applyTable}
             disabled={tab === "preview"}
-            aria-label={t("tableTooltip")}
-            title={t("tableTooltip")}
-            className={buttonClass}
-          >
-            <Icon name="table_chart" size={18} />
-          </button>
-          <div className="w-px h-5 bg-outline-variant mx-1" aria-hidden="true" />
+          />
+          <ToolButton
+            icon="horizontal_rule"
+            tooltip={t("horizontalRuleTooltip")}
+            onClick={() => insertBlock("\n\n---\n\n")}
+            disabled={tab === "preview"}
+          />
+          <ToolbarSeparator />
           <Popover.Root open={helpOpen} onOpenChange={setHelpOpen}>
             <Popover.Trigger asChild>
               <button
                 type="button"
                 aria-label={t("helpTooltip")}
                 title={t("helpTooltip")}
-                className={buttonClass}
+                className={TOOLBAR_BUTTON_CLASS}
               >
                 <Icon name="help" size={18} />
               </button>
@@ -533,6 +629,14 @@ export function MarkdownEditor({ value, onChange, placeholder, relateFrom }: Mar
                   <li className="flex items-start gap-2">
                     <Icon name="diagram" size={16} className="text-primary shrink-0 mt-0.5" />
                     <span className="font-body-md text-body-md text-on-surface">{t("helpMermaid")}</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Icon name="functions" size={16} className="text-primary shrink-0 mt-0.5" />
+                    <span className="font-body-md text-body-md text-on-surface">{t("helpMath")}</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Icon name="feedback" size={16} className="text-primary shrink-0 mt-0.5" />
+                    <span className="font-body-md text-body-md text-on-surface">{t("helpCallout")}</span>
                   </li>
                 </ul>
               </Popover.Content>
@@ -590,7 +694,7 @@ export function MarkdownEditor({ value, onChange, placeholder, relateFrom }: Mar
           {mention && mentionCoords && (
             <div
               className="absolute z-10 max-h-64 overflow-y-auto bg-surface-container-lowest border border-outline-variant rounded-lg shadow-[0_2px_8px_0_rgba(0,0,0,0.15)]"
-              style={{ top: mentionCoords.top + mentionCoords.height, left: mentionPopupLeft, width: mentionPopupWidth }}
+              style={{ top: mentionCoords.top + mentionCoords.height, left: mentionCoords.left, width: MENTION_POPUP_WIDTH }}
             >
               {mentionSearching ? (
                 <p className="px-3 py-2 font-body-md text-body-md text-on-surface-variant">{t("mentionSearching")}</p>

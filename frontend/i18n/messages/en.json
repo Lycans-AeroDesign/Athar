@@ -698,7 +698,22 @@
       "helpTitle": "Formatting tips",
       "helpMention": "Type @ to link or mention another article, question, project, component, failure, SOP, test, or document.",
       "helpUpload": "Paste or drag & drop images or files to upload and embed them.",
-      "helpMermaid": "Wrap Mermaid syntax in a ```mermaid code block to render it as a diagram."
+      "helpMermaid": "Wrap Mermaid syntax in a ```mermaid code block to render it as a diagram.",
+      "headingTooltip": "Heading",
+      "strikethroughTooltip": "Strikethrough",
+      "taskListTooltip": "Task list",
+      "quoteTooltip": "Quote",
+      "calloutTooltip": "Callout (note, tip, warning...)",
+      "equationTooltip": "Equation",
+      "horizontalRuleTooltip": "Divider",
+      "headingPlaceholder": "Heading",
+      "strikethroughPlaceholder": "struck text",
+      "taskPlaceholder": "Task",
+      "quotePlaceholder": "Quote",
+      "calloutPlaceholder": "Callout text",
+      "equationPlaceholder": "E = mc^2",
+      "helpMath": "Write equations in LaTeX: $C_L$ inline, or $$ on their own lines for a centered equation.",
+      "helpCallout": "Start a quote with [!NOTE], [!TIP], [!IMPORTANT], [!WARNING] or [!CAUTION] to make a callout."
     }
   },
   "engineering": {
@@ -1121,7 +1136,8 @@
     "close": "Close",
     "discardTitle": "Discard unsaved changes?",
     "discardDescription": "You have unsaved changes. Closing now will lose them.",
-    "keepEditing": "Keep editing"
+    "keepEditing": "Keep editing",
+    "imagePreview": "Image preview"
   },
   "filePreview": {
     "downloadButton": "Download",
@@ -1388,5 +1404,17 @@
     "noneYet": "No policies have been published yet.",
     "progress": "{accepted} of {total} accepted",
     "remainingHint": "To continue, you also need to accept:"
+  },
+  "markdown": {
+    "callout": {
+      "note": "Note",
+      "tip": "Tip",
+      "important": "Important",
+      "warning": "Warning",
+      "caution": "Caution"
+    },
+    "zoomImage": "Enlarge image",
+    "copySectionLink": "Copy link to this section",
+    "linkCopied": "Link copied"
   }
 }
