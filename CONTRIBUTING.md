@@ -217,6 +217,7 @@ The frontend's test suite is new and deliberately small (see `docs/VISION.md` §
 - [ ] **Migrations**: new model changes have a matching migration; no edits to already-applied migrations; hand-written ones follow the `NNNN_manual_...` naming convention.
 - [ ] **Utils vs services**: helpers in `utils.py`, business logic in `services.py`; no duplicated logic.
 - [ ] **Reuse**: existing utils/services/serializers/components used instead of parallel implementations.
+- [ ] **Backend**: `uv run manage.py test --parallel auto` passes (what `ci.yml` runs), plus `manage.py check` and `makemigrations --check --dry-run`.
 - [ ] **Frontend**: `npm run lint`, `npm run build`, and `npm test` pass; dark mode works; no secrets in `NEXT_PUBLIC_*`.
 - [ ] **i18n**: no hardcoded UI text — every string goes through `useTranslations`/`getTranslations`; new keys added to `en.json` (and kept in sync, even if untranslated, in every other locale file).
 - [ ] **Security**: no new endpoint relies on frontend-only access control; no secrets committed or logged.
