@@ -1,3 +1,9 @@
+## [1.12.1](https://github.com/Lycans-AeroDesign/Athar/compare/v1.12.0...v1.12.1) (2026-10-12)
+
+### Bug Fixes
+
+* **organization:** keep the uploaded favicon applied across navigation ([a66990c](https://github.com/Lycans-AeroDesign/Athar/commit/a66990c4621ce3fb790c813961296cde9b289b7b))
+
 ## [1.12.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.11.0...v1.12.0) (2026-10-12)
 
 ### Features
