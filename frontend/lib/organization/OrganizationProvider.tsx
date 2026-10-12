@@ -54,35 +54,6 @@ function writeCachedSettings(settings: OrganizationSettings) {
   }
 }
 
-// Points every <link rel="icon"> at the org's uploaded favicon, or restores
-// the originals (Next's own app/favicon.ico) when it's cleared. Rewrites the
-// existing links rather than appending a new one, since browsers pick among
-// several icon links by their `sizes` and could otherwise keep the default.
-function applyFavicon(href: string | null) {
-  const links = Array.from(document.querySelectorAll<HTMLLinkElement>('link[rel~="icon"]'));
-  if (href && links.length === 0) {
-    const link = document.createElement("link");
-    link.rel = "icon";
-    link.dataset.orgFavicon = "true";
-    document.head.appendChild(link);
-    links.push(link);
-  }
-  for (const link of links) {
-    if (href) {
-      link.dataset.defaultHref ??= link.getAttribute("href") ?? "";
-      link.dataset.defaultType ??= link.getAttribute("type") ?? "";
-      // The default's type (image/x-icon) wouldn't match an uploaded PNG/SVG.
-      link.removeAttribute("type");
-      link.href = href;
-    } else if (link.dataset.orgFavicon) {
-      link.remove();
-    } else if (link.dataset.defaultHref !== undefined) {
-      link.href = link.dataset.defaultHref;
-      if (link.dataset.defaultType) link.type = link.dataset.defaultType;
-    }
-  }
-}
-
 // Fetches once at the top of the tree (the read endpoint is public - see
 // backend/organization/views.py - so this also works on the pre-login /login
 // page) and updates document.title client-side once the name is known.
@@ -114,18 +85,20 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
     if (settings?.name) document.title = settings.name;
   }, [settings?.name]);
 
-  // Same client-side-only reasoning as document.title above. `updated_at` is
-  // appended as a cache-buster since the favicon endpoint's URL never changes
-  // when a new image is saved, and browsers cache favicons aggressively.
+  // Same client-side-only reasoning as document.title above. This is the
+  // page's only icon link - the default lives in public/ rather than
+  // app/favicon.ico, so Next doesn't render a competing one of its own that
+  // it can re-create on navigation. React 19 hoists a <link> rendered
+  // anywhere into <head> and keeps its href in sync. `updated_at` is a
+  // cache-buster: the favicon endpoint's URL never changes when a new image
+  // is saved, and browsers cache favicons aggressively.
   const faviconHref = settings?.favicon_url
     ? `${apiUrl(settings.favicon_url)}?v=${encodeURIComponent(settings.updated_at)}`
-    : null;
-  useEffect(() => {
-    applyFavicon(faviconHref);
-  }, [faviconHref]);
+    : "/favicon.ico";
 
   return (
     <OrganizationContext.Provider value={{ settings, refetch, setSettings }}>
+      <link rel="icon" href={faviconHref} />
       {children}
     </OrganizationContext.Provider>
   );
