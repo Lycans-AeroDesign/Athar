@@ -69,6 +69,20 @@ export function GlobalSearch() {
   const router = useRouter();
   const pathname = usePathname();
   const containerRef = useRef<HTMLDivElement>(null);
+  // The scope controls are absolutely positioned over the input's end, and
+  // their width varies (icon-only vs. a label like "Components" vs. Arabic
+  // text, plus the clear button once a scope is active) - so the input's
+  // end-padding follows their measured width rather than a fixed pe-*,
+  // which let the placeholder/typed text run underneath them.
+  const controlsRef = useRef<HTMLDivElement>(null);
+  const [controlsWidth, setControlsWidth] = useState(0);
+  useEffect(() => {
+    const el = controlsRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(() => setControlsWidth(el.offsetWidth));
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
   // Same preference that gates the list pages' own search box (Account >
   // Settings > Preferences) - off means no filter gets added automatically
   // anywhere, so the bar always starts from "all" here too. A manual pick
@@ -148,9 +162,11 @@ export function GlobalSearch() {
     <div ref={containerRef} className="relative w-full">
       <Icon name="search" className="absolute start-4 top-1/2 -translate-y-1/2 text-outline" />
       <input
-        className="w-full bg-surface-container-low border border-outline-variant rounded-xl py-2 ps-12 pe-16 sm:pe-32 text-body-md font-body-md text-on-surface placeholder:text-outline focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+        className="w-full bg-surface-container-low border border-outline-variant rounded-xl py-2 ps-12 pe-16 text-ellipsis text-body-md font-body-md text-on-surface placeholder:text-outline focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
         placeholder={t("searchPlaceholder")}
         type="text"
+        // controls' own width + their end-2 offset + a small gap before the text
+        style={controlsWidth ? { paddingInlineEnd: controlsWidth + 12 } : undefined}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         onFocus={() => results && setIsOpen(true)}
@@ -159,7 +175,7 @@ export function GlobalSearch() {
           if (e.key === "Enter") goToSearchPage();
         }}
       />
-      <div className="absolute end-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+      <div ref={controlsRef} className="absolute end-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
         <Menu
           align="end"
           trigger={
