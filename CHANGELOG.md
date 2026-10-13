@@ -1,3 +1,14 @@
+## [1.13.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.12.1...v1.13.0) (2026-10-13)
+
+### Features
+
+* **settings:** group settings into routed sections with a live branding preview ([42fd05d](https://github.com/Lycans-AeroDesign/Athar/commit/42fd05dae64148d731276e37b19f9ff67c066775))
+* **ui:** show a create action in empty list states ([9a491d7](https://github.com/Lycans-AeroDesign/Athar/commit/9a491d71570ceafce0e5a622ff9fda2d0cbb8b7f))
+
+### Bug Fixes
+
+* **search:** stop the scope filter overlapping the global search text ([1e0eb3f](https://github.com/Lycans-AeroDesign/Athar/commit/1e0eb3f7b2d5288c24498f3db20cebbc2d6122bd))
+
 ## [1.12.1](https://github.com/Lycans-AeroDesign/Athar/compare/v1.12.0...v1.12.1) (2026-10-12)
 
 ### Bug Fixes
