@@ -76,7 +76,7 @@ function formatFileSize(bytes: number): string {
 
 // The file itself is uploaded standalone first (uploadFile), then associated
 // via its own endpoint (ATTACHMENT_API[type].add) - same two-phase pattern
-// as BrandingSettingsForm.tsx's logo/favicon upload.
+// as IdentitySettingsForm.tsx's logo/favicon upload.
 export function Attachments({ type, id, canEdit }: AttachmentsProps) {
   const t = useTranslations("knowledge.attachments");
   const [attachments, setAttachments] = useState<KnowledgeAttachment[] | null>(null);

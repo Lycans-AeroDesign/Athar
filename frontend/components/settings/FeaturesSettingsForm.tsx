@@ -1,47 +1,32 @@
 "use client";
 
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { ChangedIndicator } from "@/components/ui/ChangedIndicator";
-import { Combobox } from "@/components/ui/Combobox";
-import { usePathname, useRouter } from "@/i18n/navigation";
-import { locales, localeNames, type Locale } from "@/i18n/request";
-import { updateMe } from "@/lib/api/accounts";
 import { updateGeneralSettings } from "@/lib/api/organization";
 import type { OrganizationSettings } from "@/lib/api/types";
-import { useAuth } from "@/lib/auth/AuthProvider";
-import { useTheme } from "@/lib/theme/ThemeProvider";
-import type { ThemePreference } from "@/lib/theme/theme";
 
-const LANGUAGE_OPTIONS = locales.map((code) => ({ value: code, label: localeNames[code] }));
-const THEME_OPTIONS: ThemePreference[] = ["light", "dark", "system"];
-
-interface GeneralSettingsFormProps {
+interface FeaturesSettingsFormProps {
   settings: OrganizationSettings;
   onUpdate: (settings: OrganizationSettings) => void;
   canEdit: boolean;
   onDirtyChange?: (isDirty: boolean) => void;
 }
 
-export function GeneralSettingsForm({ settings, onUpdate, canEdit, onDirtyChange }: GeneralSettingsFormProps) {
+// Organization > Features - instance-wide on/off switches. Saves through the
+// same General endpoint as the org name (see IdentitySettingsForm.tsx), so
+// it shares organization.manage as its edit gate.
+export function FeaturesSettingsForm({ settings, onUpdate, canEdit, onDirtyChange }: FeaturesSettingsFormProps) {
   const t = useTranslations("settings.general");
+  const featuresT = useTranslations("settings.features");
   const commonT = useTranslations("common");
-  const topbarT = useTranslations("topbar");
-  const { theme, setTheme } = useTheme();
-  const locale = useLocale();
-  const pathname = usePathname();
-  const router = useRouter();
-  const { user, updateUser } = useAuth();
-  const [name, setName] = useState(settings.name);
   const [productTourEnabled, setProductTourEnabled] = useState(settings.product_tour_enabled);
   const [isSaving, setIsSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
 
-  const nameChanged = name !== settings.name;
-  const productTourChanged = productTourEnabled !== settings.product_tour_enabled;
-  const isDirty = nameChanged || productTourChanged;
+  const isDirty = productTourEnabled !== settings.product_tour_enabled;
 
   useEffect(() => {
     onDirtyChange?.(isDirty);
@@ -50,132 +35,55 @@ export function GeneralSettingsForm({ settings, onUpdate, canEdit, onDirtyChange
   async function handleSave() {
     setIsSaving(true);
     try {
-      const updated = await updateGeneralSettings({
-        name,
-        product_tour_enabled: productTourEnabled,
-      });
-      onUpdate(updated);
+      onUpdate(await updateGeneralSettings({ product_tour_enabled: productTourEnabled }));
       setSavedAt(Date.now());
     } finally {
       setIsSaving(false);
     }
   }
 
-  function handleDiscard() {
-    setName(settings.name);
-    setProductTourEnabled(settings.product_tour_enabled);
-  }
-
-  async function handleEngineeringListFiltersChange(checked: boolean) {
-    if (!user) return;
-    const updated = await updateMe({ preferences: { ...user.preferences, engineering_list_filters: checked } });
-    updateUser(updated);
-  }
-
-  const themeLabels: Record<ThemePreference, string> = {
-    light: topbarT("themeLight"),
-    dark: topbarT("themeDark"),
-    system: topbarT("themeSystem"),
-  };
-
   return (
-    <div className="space-y-6 max-w-2xl">
-      <div className="bg-surface rounded-xl border border-outline-variant p-6 space-y-6">
-        <h2 className="font-headline-md text-headline-md text-on-surface">{t("title")}</h2>
+    <div className="max-w-2xl bg-surface rounded-xl border border-outline-variant p-6 space-y-6">
+      <div>
+        <h2 className="font-headline-md text-headline-md text-on-surface">{featuresT("title")}</h2>
+        <p className="font-body-md text-body-md text-on-surface-variant mt-1">{featuresT("description")}</p>
+      </div>
 
-        <div className="space-y-2">
-          <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase">
-            {t("nameLabel")}
-          </label>
-          <ChangedIndicator changed={nameChanged}>
-            <input
-              className="block w-full px-4 py-2 font-body-md text-body-md text-on-surface bg-surface-container border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors disabled:opacity-60"
-              disabled={!canEdit}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
-          </ChangedIndicator>
+      <ChangedIndicator changed={isDirty} className="w-fit">
+        <label className="flex items-start gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            disabled={!canEdit}
+            checked={productTourEnabled}
+            onChange={(e) => setProductTourEnabled(e.target.checked)}
+            className="mt-1 rounded border-outline-variant text-primary focus:ring-primary w-4 h-4 shrink-0 disabled:opacity-60"
+          />
+          <span>
+            <span className="block font-body-md text-body-md text-on-surface">{t("productTourLabel")}</span>
+            <span className="block font-body-md text-body-md text-on-surface-variant">
+              {t("productTourDescription")}
+            </span>
+          </span>
+        </label>
+      </ChangedIndicator>
+
+      {canEdit && (
+        <div className="flex items-center gap-4">
+          <Button
+            variant="secondary"
+            onClick={() => setProductTourEnabled(settings.product_tour_enabled)}
+            disabled={!isDirty || isSaving}
+          >
+            {commonT("discard")}
+          </Button>
+          <Button onClick={handleSave} disabled={!isDirty || isSaving}>
+            {isSaving ? commonT("saving") : commonT("save")}
+          </Button>
+          {savedAt && !isDirty && (
+            <span className="font-body-md text-body-md text-on-surface-variant">{commonT("saved")}</span>
+          )}
         </div>
-
-        <ChangedIndicator changed={productTourChanged} className="w-fit">
-          <label className="flex items-start gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              disabled={!canEdit}
-              checked={productTourEnabled}
-              onChange={(e) => setProductTourEnabled(e.target.checked)}
-              className="mt-1 rounded border-outline-variant text-primary focus:ring-primary w-4 h-4 shrink-0 disabled:opacity-60"
-            />
-            <span>
-              <span className="block font-body-md text-body-md text-on-surface">
-                {t("productTourLabel")}
-              </span>
-              <span className="block font-body-md text-body-md text-on-surface-variant">
-                {t("productTourDescription")}
-              </span>
-            </span>
-          </label>
-        </ChangedIndicator>
-
-        {canEdit && (
-          <div className="flex items-center gap-4">
-            <Button variant="secondary" onClick={handleDiscard} disabled={!isDirty || isSaving}>
-              {commonT("discard")}
-            </Button>
-            <Button onClick={handleSave} disabled={!isDirty || isSaving}>
-              {isSaving ? commonT("saving") : commonT("save")}
-            </Button>
-            {savedAt && !isDirty && (
-              <span className="font-body-md text-body-md text-on-surface-variant">
-                {commonT("saved")}
-              </span>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Theme, language, and the list-filter toggle below are all per-viewer
-          preferences (theme/language via cookies, the toggle via
-          user.preferences on the backend), not part of the organization's
-          saved settings above - each applies immediately, with no Save
-          Changes step. Theme/language mirror the equivalent pickers in the
-          account menu (see TopBar.tsx). */}
-      <div className="bg-surface rounded-xl border border-outline-variant p-6 space-y-6">
-        <h2 className="font-headline-md text-headline-md text-on-surface">{t("preferencesTitle")}</h2>
-
-        <Combobox
-          label={t("themeLabel")}
-          options={THEME_OPTIONS.map((value) => ({ value, label: themeLabels[value] }))}
-          value={theme}
-          onChange={(value) => setTheme(value as ThemePreference)}
-        />
-
-        <Combobox
-          label={t("languageLabel")}
-          options={LANGUAGE_OPTIONS}
-          value={locale}
-          onChange={(value) => router.replace(pathname, { locale: value as Locale })}
-        />
-
-        {user && (
-          <label className="flex items-start gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={user.preferences.engineering_list_filters ?? true}
-              onChange={(e) => handleEngineeringListFiltersChange(e.target.checked)}
-              className="mt-1 rounded border-outline-variant text-primary focus:ring-primary w-4 h-4 shrink-0"
-            />
-            <span>
-              <span className="block font-body-md text-body-md text-on-surface">
-                {t("engineeringListFiltersLabel")}
-              </span>
-              <span className="block font-body-md text-body-md text-on-surface-variant">
-                {t("engineeringListFiltersDescription")}
-              </span>
-            </span>
-          </label>
-        )}
-      </div>
+      )}
     </div>
   );
 }

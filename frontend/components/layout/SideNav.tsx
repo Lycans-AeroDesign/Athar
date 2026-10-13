@@ -174,7 +174,7 @@ export function SideNav({ open, onClose }: SideNavProps) {
         <div className="mt-auto p-2 border-t border-outline-variant space-y-1">
           <Link
             className={
-              pathname === "/settings"
+              pathname.startsWith("/settings")
                 ? "flex items-center gap-4 px-4 py-2 bg-primary-container text-on-primary-container font-bold rounded-xl transition-colors"
                 : "flex items-center gap-4 px-4 py-2 text-on-surface-variant hover:bg-surface-variant transition-colors duration-150 rounded-xl"
             }

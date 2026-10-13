@@ -85,29 +85,40 @@ interface BrandColors {
 }
 
 /**
- * Applies the org's brand colors as CSS custom properties on <html>,
- * overriding globals.css's defaults - both the base primary/secondary roles
- * and their "container" tones (bg-primary-container, bg-secondary-container -
- * used by e.g. Button's primary variant and SideNav's selected-item
- * highlight), each with a matching "on" text color for contrast.
+ * The CSS custom properties for the org's brand colors, overriding
+ * globals.css's defaults - both the base primary/secondary roles and their
+ * "container" tones (bg-primary-container, bg-secondary-container - used by
+ * e.g. Button's primary variant and SideNav's selected-item highlight), each
+ * with a matching "on" text color for contrast.
  */
-export function applyBrandColors(colors: BrandColors, mode: "light" | "dark") {
-  const root = document.documentElement;
+export function brandColorVars(colors: BrandColors, mode: "light" | "dark"): Record<string, string> {
+  const vars: Record<string, string> = {};
   if (colors.primary) {
-    root.style.setProperty("--color-primary", colors.primary);
-    root.style.setProperty("--color-on-primary", contrastingOnColor(colors.primary));
-    root.style.setProperty("--color-primary-hover", deriveHover(colors.primary, mode));
+    vars["--color-primary"] = colors.primary;
+    vars["--color-on-primary"] = contrastingOnColor(colors.primary);
+    vars["--color-primary-hover"] = deriveHover(colors.primary, mode);
     const container = deriveContainer(colors.primary, mode);
-    root.style.setProperty("--color-primary-container", container);
-    root.style.setProperty("--color-on-primary-container", contrastingOnColor(container));
-    root.style.setProperty("--color-primary-container-hover", deriveHover(container, mode));
+    vars["--color-primary-container"] = container;
+    vars["--color-on-primary-container"] = contrastingOnColor(container);
+    vars["--color-primary-container-hover"] = deriveHover(container, mode);
   }
   if (colors.secondary) {
-    root.style.setProperty("--color-secondary", colors.secondary);
-    root.style.setProperty("--color-on-secondary", contrastingOnColor(colors.secondary));
+    vars["--color-secondary"] = colors.secondary;
+    vars["--color-on-secondary"] = contrastingOnColor(colors.secondary);
     const container = deriveContainer(colors.secondary, mode);
-    root.style.setProperty("--color-secondary-container", container);
-    root.style.setProperty("--color-on-secondary-container", contrastingOnColor(container));
-    root.style.setProperty("--color-secondary-container-hover", deriveHover(container, mode));
+    vars["--color-secondary-container"] = container;
+    vars["--color-on-secondary-container"] = contrastingOnColor(container);
+    vars["--color-secondary-container-hover"] = deriveHover(container, mode);
+  }
+  return vars;
+}
+
+/** Applies brandColorVars app-wide, on <html>. Branding settings' live
+ * preview applies the same vars to its own subtree instead (see
+ * BrandingPreview.tsx), so unsaved colors never leak into the real app. */
+export function applyBrandColors(colors: BrandColors, mode: "light" | "dark") {
+  const root = document.documentElement;
+  for (const [name, value] of Object.entries(brandColorVars(colors, mode))) {
+    root.style.setProperty(name, value);
   }
 }

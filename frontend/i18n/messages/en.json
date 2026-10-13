@@ -207,27 +207,35 @@
   "settings": {
     "title": "Organization Settings",
     "description": "Manage your engineering workspace configuration and branding.",
-    "tabs": {
-      "general": "General",
-      "branding": "Branding",
-      "categories": "Categories",
-      "permissions": "Roles & Permissions",
+    "groups": {
+      "organization": "Organization",
+      "people": "People & Access",
+      "content": "Content",
+      "data": "Data & Security"
+    },
+    "sections": {
+      "identity": "Identity & Branding",
+      "features": "Features",
       "users": "Users",
       "invitations": "Invitations",
+      "roles": "Roles & Permissions",
+      "categories": "Categories",
       "policies": "Policies",
       "audit": "Audit Log",
       "backups": "Backups"
     },
+    "sectionNavLabel": "Settings section",
+    "noSectionsTitle": "Nothing to manage here",
+    "noSectionsDescription": "Your role doesn't include any organization settings. Your personal preferences - theme, language, and search filters - are on My Account.",
+    "goToAccount": "Go to My Account",
     "general": {
-      "title": "General Details",
       "nameLabel": "Organization Name",
-      "preferencesTitle": "Preferences",
-      "themeLabel": "Theme",
-      "languageLabel": "Language",
-      "engineeringListFiltersLabel": "Automatic search filters",
-      "engineeringListFiltersDescription": "Adds a search box to each of the Projects/Components/Failures/SOPs list pages, scoped to that page's own content, and auto-scopes the top search bar to whichever of those sections you're viewing. Either way, an active-filter chip shows what's applied and clears it. Turning this off leaves both search boxes unscoped by default - you can still pick a filter manually.",
       "productTourLabel": "Interactive product tour",
       "productTourDescription": "Shows new members a short guided tour of the sidebar, search, and account menu the first time they log in. Turning this off hides the tour instance-wide, including the \"Take a tour\" option in the account menu."
+    },
+    "features": {
+      "title": "Features",
+      "description": "Instance-wide switches that apply to every member of the organization."
     },
     "branding": {
       "logoTitle": "Organization Logo",
@@ -243,7 +251,15 @@
       "darkThemeLabel": "Dark Theme",
       "primaryAccent": "Primary Accent",
       "secondaryColor": "Secondary Color",
-      "lowContrastWarning": "Low contrast - text on this color may be hard to read."
+      "lowContrastWarning": "Low contrast - text on this color may be hard to read.",
+      "previewTitle": "Live Preview",
+      "previewDescription": "How your logo and colors will look across the app. Updates as you edit - nothing changes for anyone else until you save.",
+      "previewFeaturedLabel": "Featured",
+      "previewSampleTitle": "Wing spar load test results",
+      "previewTagLabel": "#structures",
+      "previewSampleLink": "Landing gear failure report",
+      "previewPrimaryButton": "New Article",
+      "previewSecondaryButton": "Cancel"
     },
     "categories": {
       "title": "Categories",
@@ -425,10 +441,17 @@
     "lastNameLabel": "Last Name",
     "titleLabel": "Role in Team",
     "titlePlaceholder": "e.g. Lead Systems Integration",
-    "rolesLabel": "Roles",
     "myContributionsTitle": "My Contributions",
     "editProfileTitle": "Edit Profile",
-    "editProfileButton": "Edit Profile"
+    "editProfileButton": "Edit Profile",
+    "preferences": {
+      "title": "Preferences",
+      "description": "Only affects you - changes apply immediately.",
+      "themeLabel": "Theme",
+      "languageLabel": "Language",
+      "engineeringListFiltersLabel": "Automatic search filters",
+      "engineeringListFiltersDescription": "Adds a search box to each of the Projects/Components/Failures/SOPs list pages, scoped to that page's own content, and auto-scopes the top search bar to whichever of those sections you're viewing. Either way, an active-filter chip shows what's applied and clears it. Turning this off leaves both search boxes unscoped by default - you can still pick a filter manually."
+    }
   },
   "about": {
     "title": "About Athar",
@@ -648,29 +671,18 @@
     "periodAll": "Lifetime",
     "standingLabel": "#{rank} of {total}",
     "standingNone": "No ranked contributions yet",
-    "groupKnowledgeTitle": "Knowledge",
-    "groupEngineeringTitle": "Engineering",
-    "groupResourcesTitle": "Resources",
     "statArticles": "Articles",
     "statQuestions": "Questions",
     "statAnswers": "Answers",
-    "statAcceptedAnswers": "Answers Accepted",
     "statProjects": "Projects",
     "statComponents": "Components",
     "statFailures": "Failures",
     "statSops": "SOPs",
     "statTests": "Tests",
     "statDocuments": "Documents",
-    "tabArticle": "Articles",
-    "tabQuestion": "Questions",
-    "tabAnswer": "Answers",
-    "tabProject": "Projects",
-    "tabComponent": "Components",
-    "tabFailure": "Failures",
-    "tabSop": "SOPs",
-    "tabTest": "Tests",
-    "tabDocument": "Documents",
     "emptyState": "Nothing here yet.",
+    "noContributions": "No contributions yet.",
+    "acceptedCount": "{count} accepted",
     "loadingTab": "Loading...",
     "acceptedBadge": "Accepted",
     "recentActivityTitle": "Recent Activity",

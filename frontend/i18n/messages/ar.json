@@ -207,27 +207,35 @@
   "settings": {
     "title": "إعدادات المؤسسة",
     "description": "إدارة إعدادات مساحة العمل الهندسية والهوية البصرية.",
-    "tabs": {
-      "general": "عام",
-      "branding": "الهوية البصرية",
-      "categories": "الفئات",
-      "permissions": "الأدوار والصلاحيات",
+    "groups": {
+      "organization": "المؤسسة",
+      "people": "الأشخاص والوصول",
+      "content": "المحتوى",
+      "data": "البيانات والأمان"
+    },
+    "sections": {
+      "identity": "الهوية والعلامة",
+      "features": "الميزات",
       "users": "المستخدمون",
       "invitations": "الدعوات",
+      "roles": "الأدوار والصلاحيات",
+      "categories": "الفئات",
       "policies": "السياسات",
       "audit": "سجل التدقيق",
       "backups": "النسخ الاحتياطي"
     },
+    "sectionNavLabel": "قسم الإعدادات",
+    "noSectionsTitle": "لا يوجد ما تديره هنا",
+    "noSectionsDescription": "لا يتضمن دورك أي إعدادات للمؤسسة. تفضيلاتك الشخصية - المظهر واللغة وفلاتر البحث - موجودة في حسابي.",
+    "goToAccount": "الانتقال إلى حسابي",
     "general": {
-      "title": "التفاصيل العامة",
       "nameLabel": "اسم المؤسسة",
-      "preferencesTitle": "التفضيلات",
-      "themeLabel": "المظهر",
-      "languageLabel": "اللغة",
-      "engineeringListFiltersLabel": "فلاتر البحث التلقائية",
-      "engineeringListFiltersDescription": "يضيف مربع بحث إلى كل صفحة من صفحات قوائم المشاريع/المكونات/الأعطال/إجراءات التشغيل، مقتصرًا على محتوى تلك الصفحة، ويضبط نطاق شريط البحث العلوي تلقائيًا حسب القسم الذي تتصفحه. في الحالتين، تظهر شارة توضح الفلتر المُفعّل وتتيح إزالته. تعطيل هذا الخيار يترك مربعي البحث بلا نطاق افتراضي - ويمكنك دائمًا اختيار فلتر يدويًا.",
       "productTourLabel": "جولة تعريفية تفاعلية",
       "productTourDescription": "تعرض للأعضاء الجدد جولة تعريفية قصيرة بالقائمة الجانبية والبحث وقائمة الحساب عند تسجيل الدخول لأول مرة. تعطيل هذا الخيار يخفي الجولة على مستوى المؤسسة بالكامل، بما في ذلك خيار \"بدء جولة تعريفية\" في قائمة الحساب."
+    },
+    "features": {
+      "title": "الميزات",
+      "description": "مفاتيح تشغيل على مستوى المؤسسة تنطبق على جميع الأعضاء."
     },
     "branding": {
       "logoTitle": "شعار المؤسسة",
@@ -243,7 +251,15 @@
       "darkThemeLabel": "المظهر الداكن",
       "primaryAccent": "اللون الأساسي",
       "secondaryColor": "اللون الثانوي",
-      "lowContrastWarning": "تباين منخفض - قد يصعب قراءة النص على هذا اللون."
+      "lowContrastWarning": "تباين منخفض - قد يصعب قراءة النص على هذا اللون.",
+      "previewTitle": "معاينة مباشرة",
+      "previewDescription": "كيف سيبدو شعارك وألوانك في التطبيق. تتحدث أثناء التعديل - لن يتغير شيء لأي شخص آخر حتى تحفظ.",
+      "previewFeaturedLabel": "مميز",
+      "previewSampleTitle": "نتائج اختبار حمل عارضة الجناح",
+      "previewTagLabel": "#الهياكل",
+      "previewSampleLink": "تقرير عطل جهاز الهبوط",
+      "previewPrimaryButton": "مقال جديد",
+      "previewSecondaryButton": "إلغاء"
     },
     "categories": {
       "title": "الفئات",
@@ -425,10 +441,17 @@
     "lastNameLabel": "اسم العائلة",
     "titleLabel": "الدور في الفريق",
     "titlePlaceholder": "مثال: قيادة تكامل الأنظمة",
-    "rolesLabel": "الأدوار",
     "myContributionsTitle": "مساهماتي",
     "editProfileTitle": "تعديل الملف الشخصي",
-    "editProfileButton": "تعديل الملف الشخصي"
+    "editProfileButton": "تعديل الملف الشخصي",
+    "preferences": {
+      "title": "التفضيلات",
+      "description": "تؤثر عليك فقط - تُطبَّق التغييرات فورًا.",
+      "themeLabel": "المظهر",
+      "languageLabel": "اللغة",
+      "engineeringListFiltersLabel": "فلاتر البحث التلقائية",
+      "engineeringListFiltersDescription": "يضيف مربع بحث إلى كل صفحة من صفحات قوائم المشاريع/المكونات/الأعطال/إجراءات التشغيل، مقتصرًا على محتوى تلك الصفحة، ويضبط نطاق شريط البحث العلوي تلقائيًا حسب القسم الذي تتصفحه. في الحالتين، تظهر شارة توضح الفلتر المُفعّل وتتيح إزالته. تعطيل هذا الخيار يترك مربعي البحث بلا نطاق افتراضي - ويمكنك دائمًا اختيار فلتر يدويًا."
+    }
   },
   "about": {
     "title": "عن أثر",
@@ -648,29 +671,18 @@
     "periodAll": "طوال الوقت",
     "standingLabel": "المركز {rank} من {total}",
     "standingNone": "لا توجد مساهمات مصنّفة بعد",
-    "groupKnowledgeTitle": "المعرفة",
-    "groupEngineeringTitle": "الهندسة",
-    "groupResourcesTitle": "الموارد",
     "statArticles": "المقالات",
     "statQuestions": "الأسئلة",
     "statAnswers": "الإجابات",
-    "statAcceptedAnswers": "الإجابات المقبولة",
     "statProjects": "المشاريع",
     "statComponents": "المكونات",
     "statFailures": "الأعطال",
     "statSops": "إجراءات التشغيل",
     "statTests": "الاختبارات",
     "statDocuments": "المستندات",
-    "tabArticle": "المقالات",
-    "tabQuestion": "الأسئلة",
-    "tabAnswer": "الإجابات",
-    "tabProject": "المشاريع",
-    "tabComponent": "المكونات",
-    "tabFailure": "الأعطال",
-    "tabSop": "إجراءات التشغيل",
-    "tabTest": "الاختبارات",
-    "tabDocument": "المستندات",
     "emptyState": "لا يوجد شيء هنا بعد.",
+    "noContributions": "لا توجد مساهمات بعد.",
+    "acceptedCount": "{count} مقبولة",
     "loadingTab": "جارٍ التحميل...",
     "acceptedBadge": "مقبولة",
     "recentActivityTitle": "النشاط الأخير",

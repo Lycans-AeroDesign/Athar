@@ -1,187 +1,53 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
-import { AuditLogSettingsForm } from "@/components/settings/AuditLogSettingsForm";
-import { BackupsSettingsForm } from "@/components/settings/BackupsSettingsForm";
-import { BrandingSettingsForm } from "@/components/settings/BrandingSettingsForm";
-import { InventoryListManager } from "@/components/engineering/InventoryListManager";
-import { CategorySettingsForm } from "@/components/settings/CategorySettingsForm";
-import { GeneralSettingsForm } from "@/components/settings/GeneralSettingsForm";
-import { InvitationsSettingsForm } from "@/components/settings/InvitationsSettingsForm";
-import { PoliciesSettingsForm } from "@/components/settings/PoliciesSettingsForm";
-import { RolesSettingsForm } from "@/components/settings/RolesSettingsForm";
-import { UsersSettingsForm } from "@/components/settings/UsersSettingsForm";
-import { ConfirmModal } from "@/components/ui/ConfirmModal";
-import { CourseCategoryManager } from "@/components/training/CourseCategoryManager";
-import { useHasPermission } from "@/lib/auth/permissions";
-import { useOrganization } from "@/lib/organization/OrganizationProvider";
+import { useVisibleSettingsGroups } from "@/components/settings/sections";
+import { Button } from "@/components/ui/Button";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { Link, useRouter } from "@/i18n/navigation";
 
-// Only General, Branding, Categories, Roles & Permissions, Users,
-// Invitations, Policies, Audit Log, and Backups are implemented - the Stitch reference
-// (ref/athar_general_settings) also shows Authentication/Teams/Visibility/
-// Notifications/Storage tabs, but those aren't wired to a real backend yet,
-// so they're left out rather than shown as non-functional placeholders.
-const ALL_TAB_IDS = [
-  "general",
-  "branding",
-  "categories",
-  "permissions",
-  "users",
-  "invitations",
-  "policies",
-  "audit",
-  "backups",
-] as const;
-type TabId = (typeof ALL_TAB_IDS)[number];
-
-export default function SettingsPage() {
-  const { settings, setSettings } = useOrganization();
-  const [activeTab, setActiveTab] = useState<TabId>("general");
+// Desktop (`lg` and up): /settings has no content of its own - it forwards
+// to the first section this viewer can open (permissions and viewport are
+// only known client-side, hence a client redirect). Below `lg`, this *is*
+// the section list (SettingsShell renders it), so nothing is rendered here.
+// A role with none of the settings permissions gets pointed at My Account,
+// where personal preferences live.
+const DESKTOP_QUERY = "(min-width: 64rem)"; // Tailwind's `lg`
+export default function SettingsIndexPage() {
   const t = useTranslations("settings");
-  const commonT = useTranslations("common");
-  const modalT = useTranslations("modal");
-  // Reported by General/Branding, the two tabs with a Save Changes step -
-  // switching tabs unmounts the form and would silently drop its edits.
-  const [isDirty, setIsDirty] = useState(false);
-  const [pendingTab, setPendingTab] = useState<TabId | null>(null);
+  const router = useRouter();
+  const groups = useVisibleSettingsGroups();
+  const firstSection = groups[0]?.sections[0]?.id;
 
-  // Covers reload/closing the tab, which the confirm modal below can't.
   useEffect(() => {
-    if (!isDirty) return;
-    const handler = (e: BeforeUnloadEvent) => e.preventDefault();
-    window.addEventListener("beforeunload", handler);
-    return () => window.removeEventListener("beforeunload", handler);
-  }, [isDirty]);
+    if (!firstSection) return;
+    const query = window.matchMedia(DESKTOP_QUERY);
+    const forward = () => {
+      if (query.matches) router.replace(`/settings/${firstSection}`);
+    };
+    forward();
+    // Also covers widening the window (or rotating a tablet) past `lg`
+    // while on the mobile list.
+    query.addEventListener("change", forward);
+    return () => query.removeEventListener("change", forward);
+  }, [firstSection, router]);
 
-  function selectTab(tabId: TabId) {
-    if (tabId === activeTab) return;
-    if (isDirty) {
-      setPendingTab(tabId);
-      return;
-    }
-    setActiveTab(tabId);
-  }
-
-  const canEditGeneral = useHasPermission("organization.manage");
-  const canEditBranding = useHasPermission("branding.manage");
-  // GET /knowledge/categories/ needs no special permission, but create/delete
-  // do (see CategorySettingsForm's own top comment) - without category.manage
-  // the tab would only ever show a read-only list, so it's hidden instead.
-  const canManageCategories = useHasPermission("category.manage");
-  // Training's own CourseCategory is a separate model from Knowledge's
-  // Category (see CourseCategoryManager's top comment) - gated on the same
-  // training.manage permission that guards its create/delete endpoints and
-  // its other management UI at /training/manage.
-  const canManageTrainingCategories = useHasPermission("training.manage");
-  // GET /rbac/roles/ itself requires role.manage, so without it there is
-  // nothing this tab could show - see RolesSettingsForm's own top comment.
-  const canManageRoles = useHasPermission("role.manage");
-  // GET /auth/invitations/ itself requires user.manage - same reasoning as roles above.
-  const canManageInvitations = useHasPermission("user.manage");
-  // GET /rbac/users/ itself requires user.manage too - same permission the
-  // Users tab's block/unblock action requires, so this is also the read gate.
-  const canManageUsers = canManageInvitations;
-  // GET /audit/logs/ itself requires audit.read - same reasoning as roles above.
-  const canReadAudit = useHasPermission("audit.read");
-  // GET /backups/ itself requires organization.manage - same reasoning as
-  // roles above (and the same permission General's own edit gate uses,
-  // since "who can back up this org's data" is exactly "who administers it").
-  const canManageBackups = canEditGeneral;
-  // The /policies/manage/ endpoints require organization.manage too.
-  const canManagePolicies = canEditGeneral;
-
-  const visibleTabs = ALL_TAB_IDS.filter(
-    (tabId) =>
-      (tabId !== "branding" || canEditBranding) &&
-      (tabId !== "permissions" || canManageRoles) &&
-      (tabId !== "categories" || canManageCategories || canManageTrainingCategories) &&
-      (tabId !== "users" || canManageUsers) &&
-      (tabId !== "invitations" || canManageInvitations) &&
-      (tabId !== "policies" || canManagePolicies) &&
-      (tabId !== "audit" || canReadAudit) &&
-      (tabId !== "backups" || canManageBackups),
-  );
+  if (firstSection) return null;
 
   return (
-    <section>
-      <h1 className="font-display text-display text-on-surface">{t("title")}</h1>
-      <p className="font-body-lg text-body-lg text-on-surface-variant mt-2">{t("description")}</p>
-
-      <div className="flex gap-6 overflow-x-auto border-b border-outline-variant mt-6 mb-6">
-        {visibleTabs.map((tabId) => (
-          <button
-            key={tabId}
-            type="button"
-            onClick={() => selectTab(tabId)}
-            className={`shrink-0 pb-3 font-label-caps text-label-caps uppercase border-b-2 transition-colors -mb-px ${
-              activeTab === tabId
-                ? "border-primary text-primary"
-                : "border-transparent text-on-surface-variant hover:text-on-surface"
-            }`}
-          >
-            {t(`tabs.${tabId}`)}
-          </button>
-        ))}
-      </div>
-
-      {activeTab === "permissions" ? (
-        <RolesSettingsForm />
-      ) : activeTab === "categories" ? (
-        <div className="space-y-8">
-          {canManageCategories && <CategorySettingsForm />}
-          {/* Components' own categories and storage locations - separate
-              lists from the knowledge categories above (see
-              backend/knowledge/models.py's ComponentCategory), gated on the
-              same category.manage permission. */}
-          {canManageCategories && <InventoryListManager kind="categories" />}
-          {canManageCategories && <InventoryListManager kind="locations" />}
-          {canManageTrainingCategories && <CourseCategoryManager />}
-        </div>
-      ) : activeTab === "users" ? (
-        <UsersSettingsForm />
-      ) : activeTab === "invitations" ? (
-        <InvitationsSettingsForm />
-      ) : activeTab === "audit" ? (
-        <AuditLogSettingsForm />
-      ) : activeTab === "policies" ? (
-        <PoliciesSettingsForm />
-      ) : activeTab === "backups" ? (
-        <BackupsSettingsForm />
-      ) : !settings ? (
-        <p className="font-body-md text-body-md text-on-surface-variant">{commonT("loading")}</p>
-      ) : activeTab === "general" ? (
-        <GeneralSettingsForm
-          settings={settings}
-          onUpdate={setSettings}
-          canEdit={canEditGeneral}
-          onDirtyChange={setIsDirty}
-        />
-      ) : (
-        <BrandingSettingsForm
-          settings={settings}
-          onUpdate={setSettings}
-          canEdit={canEditBranding}
-          onDirtyChange={setIsDirty}
-        />
-      )}
-
-      <ConfirmModal
-        open={pendingTab !== null}
-        onOpenChange={(open) => {
-          if (!open) setPendingTab(null);
-        }}
-        title={modalT("discardTitle")}
-        description={modalT("discardDescription")}
-        confirmLabel={commonT("discard")}
-        danger
-        onConfirm={() => {
-          if (pendingTab) setActiveTab(pendingTab);
-          setIsDirty(false);
-          setPendingTab(null);
-        }}
+    <div className="space-y-2">
+      <h2 className="font-headline-md text-headline-md text-on-surface">{t("noSectionsTitle")}</h2>
+      <EmptyState
+        icon="settings"
+        message={t("noSectionsDescription")}
+        action={
+          <Link href="/account">
+            <Button>{t("goToAccount")}</Button>
+          </Link>
+        }
       />
-    </section>
+    </div>
   );
 }

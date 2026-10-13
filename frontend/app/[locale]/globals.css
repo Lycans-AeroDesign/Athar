@@ -5,7 +5,11 @@
    palette is derived from it (Material Design 3 tonal-swap convention:
    dark primary = light's primary-fixed-dim, etc.) since no dark mockup
    was provided. */
-:root {
+/* [data-preview-theme] pins a subtree to one palette regardless of the
+   app's own theme - used by Branding settings' live preview, which shows
+   the light and dark brand colors side by side. */
+:root,
+[data-preview-theme="light"] {
   --color-surface: #faf8ff;
   --color-surface-dim: #dad9e3;
   --color-surface-bright: #faf8ff;
@@ -147,7 +151,8 @@
 
 /* Same values as above, repeated for the explicit-dark case (a system that
    prefers light but the user picked "dark" in the account menu). */
-:root[data-theme="dark"] {
+:root[data-theme="dark"],
+[data-preview-theme="dark"] {
   --color-surface: #121317;
   --color-surface-dim: #121317;
   --color-surface-bright: #38393f;

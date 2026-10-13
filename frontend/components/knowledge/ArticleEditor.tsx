@@ -42,7 +42,7 @@ interface ArticleEditorProps {
   initialProjectId?: string | null;
 }
 
-// Structured like BrandingSettingsForm.tsx - local-state draft seeded from
+// Structured like IdentitySettingsForm.tsx - local-state draft seeded from
 // the article prop, submitted via the API modules in lib/api/knowledge.ts.
 // Unlike that form, there's no single "Save"/"Discard" pair: which action
 // buttons show depends on the article's current status and whether the
@@ -251,7 +251,7 @@ export function ArticleEditor({ article, onDirtyChange, initialProjectId = null 
       )}
 
       {/* Stacked full-width below sm - up to three buttons on one row doesn't fit a phone.
-          Discard/Save styling and dirty-gating match the settings forms (BrandingSettingsForm.tsx). */}
+          Discard/Save styling and dirty-gating match the settings forms (IdentitySettingsForm.tsx). */}
       <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3 *:w-full sm:*:w-auto">
         {article && (
           <Button variant="secondary" onClick={handleDiscard} disabled={isSaving || !isDirty}>
