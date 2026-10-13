@@ -11,6 +11,7 @@ import { TagPanel } from "@/components/knowledge/TagPanel";
 import { Can } from "@/components/auth/Can";
 import { Button } from "@/components/ui/Button";
 import { Combobox } from "@/components/ui/Combobox";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
 import { Link } from "@/i18n/navigation";
 import { getArticles, getCategories, getQuestions, getTags } from "@/lib/api/knowledge";
@@ -177,7 +178,30 @@ export default function KnowledgePage() {
           {articles === null || questions === null ? (
             <p className="font-body-md text-body-md text-on-surface-variant">{t("loading")}</p>
           ) : recentItems.length === 0 ? (
-            <p className="font-body-md text-body-md text-on-surface-variant">{t("emptyState")}</p>
+            <EmptyState
+              icon="menu_book"
+              message={t("emptyState")}
+              action={
+                <div className="flex flex-wrap items-center justify-center gap-3">
+                  <Can permission="question.create">
+                    <Link href="/knowledge/questions/new">
+                      <Button variant="secondary">
+                        <Icon name="forum" size={18} />
+                        {t("askQuestionButton")}
+                      </Button>
+                    </Link>
+                  </Can>
+                  <Can permission="article.create">
+                    <Link href="/knowledge/articles/new">
+                      <Button>
+                        <Icon name="add" size={18} />
+                        {t("newArticleButton")}
+                      </Button>
+                    </Link>
+                  </Can>
+                </div>
+              }
+            />
           ) : (
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
               {recentItems.map((item) =>

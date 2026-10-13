@@ -8,6 +8,7 @@ import { FailuresTable } from "@/components/engineering/FailuresTable";
 import { ActiveFilterChip } from "@/components/ui/ActiveFilterChip";
 import { Button } from "@/components/ui/Button";
 import { Combobox } from "@/components/ui/Combobox";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
 import { Pagination } from "@/components/ui/Pagination";
 import { Link } from "@/i18n/navigation";
@@ -154,7 +155,20 @@ export default function FailuresPage() {
       ) : failures === null ? (
         <p className="font-body-md text-body-md text-on-surface-variant">{commonT("loading")}</p>
       ) : failures.length === 0 ? (
-        <p className="font-body-md text-body-md text-on-surface-variant">{t("emptyState")}</p>
+        <EmptyState
+          icon="report_problem"
+          message={t("emptyState")}
+          action={
+            <Can permission="failure.create">
+              <Link href="/failures/new">
+                <Button>
+                  <Icon name="add" size={18} />
+                  {t("newButton")}
+                </Button>
+              </Link>
+            </Can>
+          }
+        />
       ) : (
         <FailuresTable failures={failures} ordering={ordering} onOrderingChange={updateOrdering} />
       )}

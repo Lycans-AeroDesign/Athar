@@ -13,6 +13,7 @@ import { ActiveFilterChip } from "@/components/ui/ActiveFilterChip";
 import { AuthenticatedImage } from "@/components/ui/AuthenticatedImage";
 import { Button } from "@/components/ui/Button";
 import { Combobox } from "@/components/ui/Combobox";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
 import { Menu, type MenuEntry } from "@/components/ui/Menu";
 import { Pagination } from "@/components/ui/Pagination";
@@ -441,7 +442,20 @@ function ComponentsPageContent() {
       ) : components === null ? (
         <p className="font-body-md text-body-md text-on-surface-variant">{commonT("loading")}</p>
       ) : components.length === 0 ? (
-        <p className="font-body-md text-body-md text-on-surface-variant">{t("emptyState")}</p>
+        <EmptyState
+          icon="settings_input_component"
+          message={t("emptyState")}
+          action={
+            <Can permission="component.create">
+              <Link href="/components/new">
+                <Button>
+                  <Icon name="add" size={18} />
+                  {t("newButton")}
+                </Button>
+              </Link>
+            </Can>
+          }
+        />
       ) : (
         // Keying by viewMode remounts this on toggle, replaying the fade-in
         // instead of an abrupt cut between the grid and table layouts.

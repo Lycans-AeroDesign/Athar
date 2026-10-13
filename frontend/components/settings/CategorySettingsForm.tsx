@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
 import { Modal } from "@/components/ui/Modal";
 import { createCategory, deleteCategory, getCategories, updateCategory } from "@/lib/api/knowledge";
@@ -90,7 +91,16 @@ export function CategorySettingsForm() {
         {!categories ? (
           <p className="font-body-md text-body-md text-on-surface-variant">{commonT("loading")}</p>
         ) : categories.length === 0 ? (
-          <p className="font-body-md text-body-md text-on-surface-variant">{t("emptyState")}</p>
+          <EmptyState
+            icon="label"
+            message={t("emptyState")}
+            action={
+              <Button onClick={openCreate}>
+                <Icon name="add" size={18} />
+                {t("newCategory")}
+              </Button>
+            }
+          />
         ) : (
           <ul className="space-y-1">
             {categories.map((category) => (

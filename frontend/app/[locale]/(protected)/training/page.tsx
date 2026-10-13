@@ -7,6 +7,7 @@ import { Can } from "@/components/auth/Can";
 import { CourseCard } from "@/components/training/CourseCard";
 import { Button } from "@/components/ui/Button";
 import { Combobox } from "@/components/ui/Combobox";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
 import { Link } from "@/i18n/navigation";
 import { getCourseProgress, listCourseCategories, listCourses, listMyCourses, searchCourses } from "@/lib/api/training";
@@ -133,7 +134,20 @@ export default function TrainingDiscoveryPage() {
         {courses === null ? (
           <p className="font-body-md text-body-md text-on-surface-variant">{t("loading")}</p>
         ) : courses.length === 0 ? (
-          <p className="font-body-md text-body-md text-on-surface-variant">{t("emptyState")}</p>
+          <EmptyState
+            icon="school"
+            message={t("emptyState")}
+            action={
+              <Can permission="training.create">
+                <Link href="/training/manage/courses/new">
+                  <Button>
+                    <Icon name="add" size={18} />
+                    {t("newCourseButton")}
+                  </Button>
+                </Link>
+              </Can>
+            }
+          />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {courses.map((course) => (

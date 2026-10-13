@@ -7,6 +7,7 @@ import { Can } from "@/components/auth/Can";
 import { ActiveFilterChip } from "@/components/ui/ActiveFilterChip";
 import { Button } from "@/components/ui/Button";
 import { Combobox } from "@/components/ui/Combobox";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
 import { Pagination } from "@/components/ui/Pagination";
 import { Link } from "@/i18n/navigation";
@@ -130,7 +131,20 @@ export default function ProjectsPage() {
       ) : projects === null ? (
         <p className="font-body-md text-body-md text-on-surface-variant">{commonT("loading")}</p>
       ) : projects.length === 0 ? (
-        <p className="font-body-md text-body-md text-on-surface-variant">{t("emptyState")}</p>
+        <EmptyState
+          icon="architecture"
+          message={t("emptyState")}
+          action={
+            <Can permission="project.create">
+              <Link href="/projects/new">
+                <Button>
+                  <Icon name="add" size={18} />
+                  {t("newButton")}
+                </Button>
+              </Link>
+            </Can>
+          }
+        />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {projects.map((project) => (

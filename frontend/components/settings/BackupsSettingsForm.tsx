@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
 import {
   createBackupJob,
@@ -149,7 +150,16 @@ export function BackupsSettingsForm() {
         {!jobs ? (
           <p className="font-body-md text-body-md text-on-surface-variant">{commonT("loading")}</p>
         ) : jobs.length === 0 ? (
-          <p className="font-body-md text-body-md text-on-surface-variant">{t("emptyState")}</p>
+          <EmptyState
+            icon="archive"
+            message={t("emptyState")}
+            action={
+              <Button onClick={handleCreate} disabled={isCreating}>
+                <Icon name="download" size={18} />
+                {isCreating ? commonT("working") : t("createButton")}
+              </Button>
+            }
+          />
         ) : (
           <ul className="space-y-1">
             {jobs.map((job) => (

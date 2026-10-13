@@ -8,6 +8,7 @@ import { DocumentsTable } from "@/components/engineering/DocumentsTable";
 import { ActiveFilterChip } from "@/components/ui/ActiveFilterChip";
 import { Button } from "@/components/ui/Button";
 import { Combobox } from "@/components/ui/Combobox";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
 import { Pagination } from "@/components/ui/Pagination";
 import { getDocuments, type DocumentOrdering } from "@/lib/api/documents";
@@ -165,7 +166,20 @@ export default function DocumentsPage() {
       ) : documents === null ? (
         <p className="font-body-md text-body-md text-on-surface-variant">{commonT("loading")}</p>
       ) : documents.length === 0 ? (
-        <p className="font-body-md text-body-md text-on-surface-variant">{t("emptyState")}</p>
+        <EmptyState
+          icon="folder"
+          message={t("emptyState")}
+          action={
+            <Can permission="document.create">
+              <Link href="/documents/new">
+                <Button>
+                  <Icon name="add" size={18} />
+                  {t("newButton")}
+                </Button>
+              </Link>
+            </Can>
+          }
+        />
       ) : (
         <DocumentsTable documents={documents} ordering={ordering} onOrderingChange={updateOrdering} />
       )}

@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
 import { Modal } from "@/components/ui/Modal";
 import {
@@ -130,7 +131,16 @@ export function InventoryListManager({ kind }: { kind: "categories" | "locations
         {!entries ? (
           <p className="font-body-md text-body-md text-on-surface-variant">{commonT("loading")}</p>
         ) : entries.length === 0 ? (
-          <p className="font-body-md text-body-md text-on-surface-variant">{t("emptyState")}</p>
+          <EmptyState
+            icon={kind === "categories" ? "label" : "place"}
+            message={t("emptyState")}
+            action={
+              <Button onClick={openCreate}>
+                <Icon name="add" size={18} />
+                {t("newButton")}
+              </Button>
+            }
+          />
         ) : (
           <ul className="space-y-1 max-h-96 overflow-y-auto">
             {entries.map((entry) => (

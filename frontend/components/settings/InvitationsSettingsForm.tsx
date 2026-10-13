@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { DatePicker } from "@/components/ui/DatePicker";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
 import { Modal } from "@/components/ui/Modal";
 import { formatDateTime } from "@/lib/datetime";
@@ -89,7 +90,16 @@ export function InvitationsSettingsForm() {
         {!codes ? (
           <p className="font-body-md text-body-md text-on-surface-variant">{commonT("loading")}</p>
         ) : codes.length === 0 ? (
-          <p className="font-body-md text-body-md text-on-surface-variant">{t("emptyState")}</p>
+          <EmptyState
+            icon="mail"
+            message={t("emptyState")}
+            action={
+              <Button onClick={openCreate}>
+                <Icon name="add" size={18} />
+                {t("generateCode")}
+              </Button>
+            }
+          />
         ) : (
           <ul className="space-y-1">
             {codes.map((code) => {
