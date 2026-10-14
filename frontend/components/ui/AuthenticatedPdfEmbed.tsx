@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 
 import { apiFetch } from "@/lib/api/client";
 
+import { PdfViewer } from "./PdfViewer";
+
 interface AuthenticatedPdfEmbedProps {
   /** Path under the API, e.g. "/api/v1/files/<id>/download/" - not a public URL. */
   src: string;
@@ -13,8 +15,9 @@ interface AuthenticatedPdfEmbedProps {
 
 // Same auth-gated blob: URL fetch as AuthenticatedImage.tsx (the file-serving
 // endpoint only accepts a Bearer token, which a plain <iframe src> can never
-// send), but rendered via <iframe> - the browser's own built-in PDF viewer -
-// instead of <img>. Used by training/LessonContent.tsx's DocumentResource so
+// send), but rendered via PdfViewer (native viewer on desktop, pdf.js on
+// mobile where an <iframe> only shows an "Open" placeholder) instead of <img>.
+// Used by training/LessonContent.tsx's DocumentResource so
 // an uploaded PDF becomes the lesson's inline main content instead of just a
 // download link, the same way a video resource embeds instead of linking out.
 export function AuthenticatedPdfEmbed({ src, title, className }: AuthenticatedPdfEmbedProps) {
@@ -51,5 +54,5 @@ export function AuthenticatedPdfEmbed({ src, title, className }: AuthenticatedPd
     return <div className={`animate-pulse bg-surface-variant ${className ?? ""}`} />;
   }
 
-  return <iframe src={current.url} title={title} className={`border-0 ${className ?? ""}`} />;
+  return <PdfViewer url={current.url} title={title} className={className} />;
 }
