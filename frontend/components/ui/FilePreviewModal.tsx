@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 
 import { Button } from "./Button";
 import { Icon } from "./Icon";
+import { PdfViewer } from "./PdfViewer";
 import { apiFetch } from "@/lib/api/client";
 import { downloadFile } from "@/lib/api/files";
 import type { StoredFile } from "@/lib/api/types";
@@ -125,7 +126,7 @@ export function FilePreviewModal({ open, onOpenChange, file }: FilePreviewModalP
               <img src={state.url} alt={file.original_filename} className="max-w-full max-h-[75vh] object-contain" />
             )}
             {state.status === "media" && state.kind === "pdf" && (
-              <iframe src={state.url} title={file.original_filename} className="w-full h-[75vh] border-0" />
+              <PdfViewer url={state.url} title={file.original_filename} className="w-full h-[75vh]" />
             )}
             {state.status === "media" && state.kind === "video" && (
               <video controls src={state.url} className="max-w-full max-h-[75vh]" />
