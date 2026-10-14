@@ -1,3 +1,9 @@
+## [1.13.1](https://github.com/Lycans-AeroDesign/Athar/compare/v1.13.0...v1.13.1) (2026-10-14)
+
+### Bug Fixes
+
+* **files:** add shared PdfViewer for mobile-safe PDF rendering ([72e1d04](https://github.com/Lycans-AeroDesign/Athar/commit/72e1d0498939e20d8fb25f9d5402cc578cc5743b))
+
 ## [1.13.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.12.1...v1.13.0) (2026-10-13)
 
 ### Features
