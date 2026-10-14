@@ -63,7 +63,8 @@ export function FilePreviewModal({ open, onOpenChange, file }: FilePreviewModalP
           setResult({ key, status: "text", text: await blob.text() });
           return;
         }
-        objectUrl = URL.createObjectURL(blob);
+        const typedBlob = new Blob([blob], { type: file.content_type || blob.type });
+        objectUrl = URL.createObjectURL(typedBlob);
         setResult({ key, status: "media", kind, url: objectUrl });
       })
       .catch(() => {
@@ -74,7 +75,7 @@ export function FilePreviewModal({ open, onOpenChange, file }: FilePreviewModalP
       cancelled = true;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [open, kind, file.id, file.download_url]);
+  }, [open, kind, file.id, file.download_url, file.content_type]);
 
   const current = result?.key === file.id ? result : null;
   const state: { status: "loading" } | FetchedState =
