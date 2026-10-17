@@ -8,6 +8,7 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 
+from core import crypto
 from core.testing import create_test_organization
 from accounts.models import User
 from files.models import StoredFile
@@ -40,7 +41,10 @@ from training.models import (
 )
 
 from . import restore
+from . import services
 from .models import BackupJob, RestoreJob
+
+PASSPHRASE = "correct horse battery"
 
 
 class BackupJobTestCase(APITestCase):
@@ -79,7 +83,9 @@ class BackupJobPermissionTests(BackupJobTestCase):
         response = self.client.get(reverse("backups-detail", args=[job_id]), **self._auth(member_access))
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-        response = self.client.get(reverse("backups-download", args=[job_id]), **self._auth(member_access))
+        response = self.client.post(
+            reverse("backups-download", args=[job_id]), {"passphrase": PASSPHRASE}, format="json", **self._auth(member_access)
+        )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
         job = BackupJob.objects.get(pk=job_id)
@@ -114,7 +120,9 @@ class BackupJobCrossOrgIsolationTests(APITestCase):
         response = self.client.get(reverse("backups-detail", args=[job_id]), **self._auth(b_admin_access))
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
-        response = self.client.get(reverse("backups-download", args=[job_id]), **self._auth(b_admin_access))
+        response = self.client.post(
+            reverse("backups-download", args=[job_id]), {"passphrase": PASSPHRASE}, format="json", **self._auth(b_admin_access)
+        )
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
         response = self.client.get(reverse("backups-list-create"), **self._auth(b_admin_access))
@@ -148,14 +156,29 @@ class BackupJobGenerationTests(BackupJobTestCase):
         self.assertEqual(response.data["status"], "DONE")
         self.assertTrue(response.data["can_download"])
 
-        response = self.client.get(reverse("backups-download", args=[job_id]), **self._auth(admin_access))
+        job = BackupJob.objects.get(pk=job_id)
+        # Stored encrypted with the server key, never as a plaintext zip.
+        with job.archive.open("rb") as stored:
+            self.assertTrue(crypto.is_encrypted(stored))
+            self.assertFalse(crypto.needs_passphrase(stored))
+
+        response = self.client.post(
+            reverse("backups-download", args=[job_id]), {"passphrase": "too short"}, format="json", **self._auth(admin_access)
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        response = self.client.post(
+            reverse("backups-download", args=[job_id]), {"passphrase": PASSPHRASE}, format="json", **self._auth(admin_access)
+        )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response["Content-Type"], "application/zip")
 
         archive_bytes = b"".join(response.streaming_content)
-        job = BackupJob.objects.get(pk=job_id)
+        self.assertEqual(int(response["Content-Length"]), len(archive_bytes))
+        self.assertFalse(zipfile.is_zipfile(io.BytesIO(archive_bytes)))
+        self.assertTrue(crypto.needs_passphrase(io.BytesIO(archive_bytes)))
+        plaintext = b"".join(crypto.iter_decrypt(io.BytesIO(archive_bytes), PASSPHRASE))
         try:
-            with zipfile.ZipFile(io.BytesIO(archive_bytes)) as zf:
+            with zipfile.ZipFile(io.BytesIO(plaintext)) as zf:
                 names = zf.namelist()
                 self.assertIn("projects.csv", names)
                 self.assertIn("users.csv", names)
@@ -367,16 +390,16 @@ class RestoreJobTests(BackupJobTestCase):
 
     def _backup_bytes(self, admin_access) -> bytes:
         backup_job = self._run_backup(admin_access)
-        response = self.client.get(reverse("backups-download", args=[backup_job.id]), **self._auth(admin_access))
+        response = self.client.post(
+            reverse("backups-download", args=[backup_job.id]), {"passphrase": PASSPHRASE}, format="json", **self._auth(admin_access)
+        )
         return b"".join(response.streaming_content)
 
-    def _upload(self, access, archive_bytes, name="athar-backup.zip"):
-        return self.client.post(
-            reverse("backups-restore-upload"),
-            {"archive": SimpleUploadedFile(name, archive_bytes, content_type="application/zip")},
-            format="multipart",
-            **self._auth(access),
-        )
+    def _upload(self, access, archive_bytes, name="athar-backup.athar", passphrase=PASSPHRASE):
+        data = {"archive": SimpleUploadedFile(name, archive_bytes, content_type="application/octet-stream")}
+        if passphrase is not None:
+            data["passphrase"] = passphrase
+        return self.client.post(reverse("backups-restore-upload"), data, format="multipart", **self._auth(access))
 
     def _login(self, email, password="password123"):
         return self.client.post(reverse("auth-login"), {"email": email, "password": password}, format="json")
@@ -464,6 +487,38 @@ class RestoreJobTests(BackupJobTestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertFalse(RestoreJob.objects.filter(organization=other_org).exists())
+
+    def test_upload_rejects_a_wrong_passphrase_or_a_tampered_file(self):
+        _, admin_access = self._login_with_role("wrongpass-admin@example.com", "Organization Admin")
+        archive_bytes = self._backup_bytes(admin_access)
+
+        response = self._upload(admin_access, archive_bytes, passphrase="not the passphrase")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("passphrase", response.data)
+
+        response = self._upload(admin_access, archive_bytes, passphrase=None)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        tampered = bytearray(archive_bytes)
+        tampered[-5] ^= 0x01
+        response = self._upload(admin_access, bytes(tampered))
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(RestoreJob.objects.exists())
+
+    def test_upload_still_accepts_a_plaintext_zip_from_before_encryption(self):
+        author, _ = self._login_with_role("legacy-author@example.com", "Subteam Head")
+        _, admin_access = self._login_with_role("legacy-admin@example.com", "Organization Admin")
+        _, article, _ = self._seed_content(author)
+        backup_job = self._run_backup(admin_access)
+        with services.open_decrypted_archive(backup_job.archive) as archive:
+            legacy_bytes = archive.read()
+        Article.objects.filter(pk=article.pk).delete()
+
+        response = self._upload(admin_access, legacy_bytes, name="old-backup.zip", passphrase=None)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
+        job = RestoreJob.objects.get(pk=response.data["id"])
+        self.assertEqual(job.status, RestoreJob.Status.DONE, job.error)
+        self.assertTrue(Article.objects.filter(pk=article.pk).exists())
 
     def test_upload_rejects_a_non_backup_file(self):
         _, admin_access = self._login_with_role("junk-admin@example.com", "Organization Admin")
@@ -597,7 +652,7 @@ class RestoreJobTests(BackupJobTestCase):
         Question.objects.filter(pk=question.pk).update(accepted_answer=answer)
 
         backup_job = self._run_backup(admin_access)
-        with backup_job.archive.open("rb") as archive, zipfile.ZipFile(archive) as zf:
+        with services.open_decrypted_archive(backup_job.archive) as archive, zipfile.ZipFile(archive) as zf:
             self.assertIn("policy_acceptances.csv", zf.namelist())
         Question.objects.filter(pk=question.pk).update(accepted_answer=None)
 

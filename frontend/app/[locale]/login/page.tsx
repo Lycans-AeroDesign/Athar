@@ -4,6 +4,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { Suspense, useState, type FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
 
+import { SecurityNote } from "@/components/auth/SecurityNote";
 import { BrandMark } from "@/components/ui/BrandMark";
 import { FloatingLabelInput } from "@/components/ui/FloatingLabelInput";
 import { Link, useRouter } from "@/i18n/navigation";
@@ -158,6 +159,8 @@ function LoginForm() {
                 {isSubmitting ? t("login.submitting") : t("login.submit")}
               </button>
             </div>
+
+            <SecurityNote />
           </form>
 
           <p className="text-center font-body-md text-body-md text-on-surface-variant mt-6">

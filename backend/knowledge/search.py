@@ -2,12 +2,25 @@
 `icontains` OR-chains that used to be hand-maintained separately in
 SearchView and each engineering ListCreateView's own `?q=` filter. See
 core/migrations/0001_enable_pg_trgm.py for the extension this depends on.
+
+Each searchable model stores its search document in two generated columns
+(search_columns() below), each with a GIN index (search_indexes()), so a
+search is an index lookup rather than re-tokenizing every row's full text
+on every query. Postgres keeps both columns up to date on every write.
+Deliberately free of model imports, so models.py can import it.
 """
 
 import re
 
-from django.contrib.postgres.search import SearchQuery, SearchRank, SearchVector, TrigramWordSimilarity
-from django.db.models import Q, QuerySet, TextField, Value
+from django.contrib.postgres.indexes import GinIndex, OpClass
+from django.contrib.postgres.search import (
+    SearchQuery,
+    SearchRank,
+    SearchVector,
+    SearchVectorField,
+    TrigramWordSimilarity,
+)
+from django.db.models import F, GeneratedField, Q, QuerySet, TextField, Value
 from django.db.models.functions import Concat
 
 # 'simple' tokenizes on whitespace/punctuation with no language-specific
@@ -40,7 +53,10 @@ SEARCH_FIELDS: dict[str, tuple[str, tuple[str, ...]]] = {
 # faithful stand-in for `icontains`'s "matches anywhere, in any field"
 # behavior even when other_fields includes long body text alongside a short
 # title. Its natural scores run higher than plain similarity()'s, hence the
-# higher cutoff than a bare trigram-similarity threshold would use.
+# higher cutoff than a bare trigram-similarity threshold would use. Applied
+# as pg_trgm.word_similarity_threshold on every connection (see
+# config/settings.py's DATABASES) - that's what the indexable %> operator
+# compares against, rather than a `similarity > x` filter no index can serve.
 TRIGRAM_THRESHOLD = 0.4
 
 
@@ -63,6 +79,38 @@ def _concat_fields(fields: tuple[str, ...]):
     return Concat(*parts, output_field=TextField())
 
 
+def _search_vector(primary_field: str, other_fields: tuple[str, ...]):
+    vector = SearchVector(primary_field, weight="A", config=SEARCH_CONFIG)
+    for field in other_fields:
+        vector += SearchVector(field, weight="B", config=SEARCH_CONFIG)
+    return vector
+
+
+def search_columns(primary_field: str, other_fields: tuple[str, ...]) -> tuple[GeneratedField, GeneratedField]:
+    """(search_vector, search_text) generated columns for a model - assign
+    both in the model body and add search_indexes() to its Meta.indexes.
+    Pass the same fields as that model's SEARCH_FIELDS entry."""
+    return (
+        GeneratedField(
+            expression=_search_vector(primary_field, other_fields),
+            output_field=SearchVectorField(),
+            db_persist=True,
+        ),
+        GeneratedField(
+            expression=_concat_fields((primary_field, *other_fields)),
+            output_field=TextField(),
+            db_persist=True,
+        ),
+    )
+
+
+def search_indexes(prefix: str) -> list[GinIndex]:
+    return [
+        GinIndex(fields=["search_vector"], name=f"{prefix}_search_vec"),
+        GinIndex(OpClass(F("search_text"), name="gin_trgm_ops"), name=f"{prefix}_search_trgm"),
+    ]
+
+
 def search_filter(queryset: QuerySet, query: str, model_name: str) -> QuerySet:
     """Filters `queryset` to rows matching `query`, annotating `rank`
     (full-text relevance) and `similarity` (trigram word-similarity against
@@ -75,18 +123,12 @@ def search_filter(queryset: QuerySet, query: str, model_name: str) -> QuerySet:
     word-similarity across the same fields is kept as a fallback for
     exactly that case.
     """
-    primary_field, other_fields = SEARCH_FIELDS[model_name]
-    all_fields = (primary_field, *other_fields)
-
-    vector = SearchVector(primary_field, weight="A", config=SEARCH_CONFIG)
-    for field in other_fields:
-        vector += SearchVector(field, weight="B", config=SEARCH_CONFIG)
     ts_query = SearchQuery(query, config=SEARCH_CONFIG, search_type="websearch")
 
     return queryset.annotate(
-        rank=SearchRank(vector, ts_query),
-        similarity=TrigramWordSimilarity(query, _concat_fields(all_fields)),
-    ).filter(Q(rank__gt=0) | Q(similarity__gt=TRIGRAM_THRESHOLD))
+        rank=SearchRank(F("search_vector"), ts_query),
+        similarity=TrigramWordSimilarity(query, F("search_text")),
+    ).filter(Q(search_vector=ts_query) | Q(search_text__trigram_word_similar=query))
 
 
 # Ordered: fenced code first (its contents aren't prose), then images before

@@ -38,7 +38,9 @@
     "hidePassword": "Hide password",
     "fieldRequired": "This field is required.",
     "invalidEmail": "Enter a valid email address.",
+    "invalidUsername": "Usernames can only contain letters, numbers, dots, underscores, and hyphens (3-30 characters).",
     "passwordTooShort": "Password must be at least {min} characters.",
+    "secureNote": "Your data is safe and secure with us.",
     "login": {
       "tagline": "Knowledge that never graduates.",
       "identifierLabel": "Email or Username",
@@ -58,7 +60,7 @@
       "organizationNameLabel": "Team/Organization Name",
       "firstNameLabel": "First Name",
       "lastNameLabel": "Last Name",
-      "usernameLabel": "Username (optional)",
+      "usernameLabel": "Username",
       "invitationCodeLabel": "Invitation Code",
       "invitationCodePrefilled": "Pre-filled from your invite link.",
       "submit": "Create Account",
@@ -372,14 +374,24 @@
       "restoresEmptyState": "No restores yet.",
       "restoreSummaryOrphanedUsers": "{count} reference(s) to since-deleted users were cleared.",
       "restoreSummaryMissingFiles": "{count} file(s) referenced by the backup could not be found and were skipped.",
-      "sensitiveNote": "Backups include members' password hashes so a restore can bring every account back as it was. Store downloaded archives as securely as you would a password database.",
+      "sensitiveNote": "Backups include members' password hashes so a restore can bring every account back as it was. They're encrypted on this server, and every download is encrypted with a passphrase you choose.",
       "uploadButton": "Restore from File",
-      "uploadHint": "Restore from a backup .zip you downloaded earlier - for example after moving to a new server.",
+      "uploadHint": "Restore from a backup file you downloaded earlier - for example after moving to a new server. You'll need the passphrase it was downloaded with.",
       "uploadConfirmTitle": "Restore from \"{name}\"?",
       "uploading": "Uploading {percent}%",
       "restoreFromUpload": "From uploaded file {name}",
       "restoreSummaryDeactivatedUsers": "{count, plural, one {# member who isn't in the backup was deactivated.} other {# members who aren't in the backup were deactivated.}}",
-      "restoreSummaryUsersWithoutPassword": "{count, plural, one {# member was restored without a password (older backup) and needs a password reset link.} other {# members were restored without a password (older backup) and need password reset links.}}"
+      "restoreSummaryUsersWithoutPassword": "{count, plural, one {# member was restored without a password (older backup) and needs a password reset link.} other {# members were restored without a password (older backup) and need password reset links.}}",
+      "downloadTitle": "Encrypt and download",
+      "downloadDescription": "Choose a passphrase to encrypt this backup with. You'll need it to restore the file - on this server or any other.",
+      "passphraseLabel": "Passphrase",
+      "passphraseConfirmLabel": "Repeat passphrase",
+      "passphraseHint": "At least {min} characters.",
+      "passphraseTooShort": "The passphrase must be at least {min} characters.",
+      "passphraseMismatch": "The passphrases don't match.",
+      "passphraseWarning": "Store this passphrase somewhere safe, like a password manager. It can't be recovered - without it, this backup can't be restored.",
+      "uploadPassphraseHint": "The passphrase this backup was downloaded with.",
+      "uploadLegacyNote": "This looks like an older, unencrypted backup (.zip) - no passphrase is needed."
     },
     "componentCategories": {
       "title": "Component Categories",
@@ -450,7 +462,9 @@
       "themeLabel": "Theme",
       "languageLabel": "Language",
       "engineeringListFiltersLabel": "Automatic search filters",
-      "engineeringListFiltersDescription": "Adds a search box to each of the Projects/Components/Failures/SOPs list pages, scoped to that page's own content, and auto-scopes the top search bar to whichever of those sections you're viewing. Either way, an active-filter chip shows what's applied and clears it. Turning this off leaves both search boxes unscoped by default - you can still pick a filter manually."
+      "engineeringListFiltersDescription": "Adds a search box to each of the Projects/Components/Failures/SOPs list pages, scoped to that page's own content, and auto-scopes the top search bar to whichever of those sections you're viewing. Either way, an active-filter chip shows what's applied and clears it. Turning this off leaves both search boxes unscoped by default - you can still pick a filter manually.",
+      "emailVisibleLabel": "Show my email to other members",
+      "emailVisibleDescription": "Lets other members see your email address on your profile, on content you wrote, and in member pickers. When off, only you and administrators who manage users can see it."
     }
   },
   "about": {

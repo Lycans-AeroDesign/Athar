@@ -4,6 +4,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { Suspense, useState, type FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
 
+import { SecurityNote } from "@/components/auth/SecurityNote";
 import { BrandMark } from "@/components/ui/BrandMark";
 import { FloatingLabelInput } from "@/components/ui/FloatingLabelInput";
 import { Link, useRouter } from "@/i18n/navigation";
@@ -16,6 +17,9 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // Matches accounts/serializers.py's RegisterSerializer.password min_length=8
 // and organization/serializers.py's OrganizationCreateSerializer.admin_password.
 const MIN_PASSWORD_LENGTH = 8;
+// Matches accounts/models.py's username_validator - required at signup (see
+// RegisterSerializer.username / OrganizationCreateSerializer.admin_username).
+const USERNAME_PATTERN = /^[a-zA-Z0-9_.-]{3,30}$/;
 
 type Mode = "invite" | "organization";
 
@@ -77,6 +81,8 @@ function RegisterForm() {
 
   function validate(): FieldErrors {
     const errors: FieldErrors = {};
+    if (!username.trim()) errors.username = t("fieldRequired");
+    else if (!USERNAME_PATTERN.test(username.trim())) errors.username = t("invalidUsername");
     if (!email.trim()) errors.email = t("fieldRequired");
     else if (!EMAIL_PATTERN.test(email)) errors.email = t("invalidEmail");
     if (!password) errors.password = t("fieldRequired");
@@ -104,7 +110,7 @@ function RegisterForm() {
           invitation_code: invitationCode,
           first_name: firstName,
           last_name: lastName,
-          username: username.trim() || undefined,
+          username: username.trim(),
         });
       } else {
         await createOrganizationRequest({
@@ -113,7 +119,7 @@ function RegisterForm() {
           admin_password: password,
           admin_first_name: firstName,
           admin_last_name: lastName,
-          admin_username: username.trim() || undefined,
+          admin_username: username.trim(),
         });
       }
       // Neither endpoint logs the caller in (see lib/api/auth.ts) - log in
@@ -322,6 +328,8 @@ function RegisterForm() {
                     : t("register.submit")}
               </button>
             </div>
+
+            <SecurityNote />
           </form>
 
           <p className="text-center font-body-md text-body-md text-on-surface-variant mt-6">

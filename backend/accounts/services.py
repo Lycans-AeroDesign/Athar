@@ -77,7 +77,7 @@ def register_user(
         actor=None,
         action="user.register",
         target=user,
-        metadata={"invitation_code": invitation.code},
+        metadata={"invitation_id": str(invitation.id), "invitation_code": invitation.masked_code},
         request=request,
         organization=invitation.organization,
     )

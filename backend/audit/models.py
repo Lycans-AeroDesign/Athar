@@ -37,6 +37,13 @@ class AuditLog(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+        indexes = [
+            # The activity feeds/leaderboard (audit/views.py, knowledge/services.py)
+            # filter by organization + action (+ actor), newest first.
+            models.Index(fields=["organization", "action", "-created_at"], name="audit_org_action_created"),
+            models.Index(fields=["organization", "actor", "-created_at"], name="audit_org_actor_created"),
+            models.Index(fields=["target_content_type", "target_object_id"], name="audit_target"),
+        ]
 
     def __str__(self):
         return f"{self.action} by {self.actor} at {self.created_at}"

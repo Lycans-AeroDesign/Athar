@@ -29,6 +29,8 @@ export interface User {
   roles: string[];
   permissions: string[];
   preferences: UserPreferences;
+  /** Whether other members see this user's email (author cards, profile, member pickers) - see backend knowledge.serializers.visible_email. */
+  email_visible: boolean;
   date_joined: string;
   /** Read-only here - toggled only via rbac.setUserActive (requires user.manage), never self-service. */
   is_active: boolean;
@@ -167,7 +169,8 @@ export interface KnowledgeAuthor {
   id: string;
   first_name: string;
   last_name: string;
-  email: string;
+  /** null unless the author opted in (User.email_visible), is the viewer, or the viewer has user.manage. */
+  email: string | null;
   title: string;
   username: string | null;
   profile_picture: StoredFileRef | null;
@@ -616,7 +619,8 @@ export interface UserProfile {
   id: string;
   first_name: string;
   last_name: string;
-  email: string;
+  /** null unless visible to the viewer - same rule as KnowledgeAuthor.email. */
+  email: string | null;
   title: string;
   username: string | null;
   profile_picture: StoredFileRef | null;

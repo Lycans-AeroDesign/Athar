@@ -248,6 +248,7 @@ const ICONS: Record<string, LucideIcon> = {
   upload: Upload,
   upload_file: FileUp,
   verified: BadgeCheck,
+  verified_user: ShieldCheck,
   videocam: Video,
   visibility: Eye,
   visibility_off: EyeOff,

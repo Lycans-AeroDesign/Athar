@@ -6,8 +6,11 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { FloatingLabelInput } from "@/components/ui/FloatingLabelInput";
 import { Icon } from "@/components/ui/Icon";
+import { Modal } from "@/components/ui/Modal";
 import {
+  BACKUP_PASSPHRASE_MIN_LENGTH,
   createBackupJob,
   createRestoreJob,
   downloadBackupJob,
@@ -50,6 +53,18 @@ export function BackupsSettingsForm() {
   const fileInput = useRef<HTMLInputElement>(null);
   const [uploadTarget, setUploadTarget] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [uploadPassphrase, setUploadPassphrase] = useState("");
+
+  // Downloads are encrypted with a passphrase the admin picks here - the only
+  // thing needed to restore the file on another server later.
+  const [downloadTarget, setDownloadTarget] = useState<BackupJob | null>(null);
+  const [passphrase, setPassphrase] = useState("");
+  const [passphraseConfirm, setPassphraseConfirm] = useState("");
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
+  // A plaintext .zip is a backup downloaded before encryption existed - it
+  // restores without a passphrase.
+  const uploadNeedsPassphrase = uploadTarget !== null && !uploadTarget.name.toLowerCase().endsWith(".zip");
 
   useEffect(() => {
     getBackupJobs().then(setJobs);
@@ -94,11 +109,39 @@ export function BackupsSettingsForm() {
     }
   }
 
-  async function handleDownload(job: BackupJob) {
+  function openDownload(job: BackupJob) {
+    // Cleared on open rather than after each attempt, so a cancelled save
+    // dialog or a failed download can be retried without retyping it.
+    setDownloadTarget(job);
+    setPassphrase("");
+    setPassphraseConfirm("");
+    setDownloadError(null);
+  }
+
+  async function handleDownload() {
+    if (!downloadTarget) return;
+    if (passphrase.length < BACKUP_PASSPHRASE_MIN_LENGTH) {
+      setDownloadError(t("passphraseTooShort", { min: BACKUP_PASSPHRASE_MIN_LENGTH }));
+      return;
+    }
+    if (passphrase !== passphraseConfirm) {
+      setDownloadError(t("passphraseMismatch"));
+      return;
+    }
+    setIsDownloading(true);
+    setDownloadError(null);
     try {
-      await downloadBackupJob(job.id, `backup-${job.created_at.slice(0, 10)}.zip`);
+      const saved = await downloadBackupJob(
+        downloadTarget.id,
+        passphrase,
+        `backup-${downloadTarget.created_at.slice(0, 10)}.athar`,
+      );
+      // Cancelling the browser's save dialog keeps the modal open to retry.
+      if (saved) setDownloadTarget(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setDownloadError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setIsDownloading(false);
     }
   }
 
@@ -116,10 +159,14 @@ export function BackupsSettingsForm() {
 
   async function handleConfirmUpload() {
     if (!uploadTarget) return;
+    const file = uploadTarget;
+    const filePassphrase = uploadNeedsPassphrase ? uploadPassphrase : "";
+    setUploadTarget(null);
+    setUploadPassphrase("");
     setRestoreError(null);
     setUploadProgress(0);
     try {
-      const job = await uploadRestoreArchive(uploadTarget, setUploadProgress);
+      const job = await uploadRestoreArchive(file, filePassphrase, setUploadProgress);
       setRestoreJobs((prev) => [job, ...(prev ?? [])]);
       pollRestoreJob(job.id);
     } catch (err) {
@@ -187,7 +234,7 @@ export function BackupsSettingsForm() {
                 </div>
                 {job.can_download && (
                   <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 shrink-0">
-                    <Button variant="secondary" onClick={() => handleDownload(job)}>
+                    <Button variant="secondary" onClick={() => openDownload(job)}>
                       <Icon name="download" size={16} />
                       {t("downloadButton")}
                     </Button>
@@ -218,7 +265,7 @@ export function BackupsSettingsForm() {
           <input
             ref={fileInput}
             type="file"
-            accept=".zip,application/zip"
+            accept=".athar,.zip,application/zip,application/octet-stream"
             className="hidden"
             onChange={(e) => {
               const file = e.target.files?.[0];
@@ -316,17 +363,118 @@ export function BackupsSettingsForm() {
         onConfirm={handleConfirmRestore}
       />
 
-      <ConfirmModal
+      <Modal
+        open={downloadTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setDownloadTarget(null);
+        }}
+        title={t("downloadTitle")}
+        description={t("downloadDescription")}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setDownloadTarget(null)}>
+              {commonT("cancel")}
+            </Button>
+            <Button type="submit" form="backup-download-form" disabled={isDownloading}>
+              <Icon name="download" size={16} />
+              {isDownloading ? commonT("working") : t("downloadButton")}
+            </Button>
+          </>
+        }
+      >
+        <form
+          id="backup-download-form"
+          noValidate
+          className="space-y-1"
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleDownload();
+          }}
+        >
+          <FloatingLabelInput
+            type="password"
+            autoComplete="new-password"
+            icon="lock"
+            label={t("passphraseLabel")}
+            value={passphrase}
+            onChange={(e) => setPassphrase(e.target.value)}
+            hint={t("passphraseHint", { min: BACKUP_PASSPHRASE_MIN_LENGTH })}
+          />
+          <FloatingLabelInput
+            type="password"
+            autoComplete="new-password"
+            icon="lock"
+            label={t("passphraseConfirmLabel")}
+            value={passphraseConfirm}
+            onChange={(e) => setPassphraseConfirm(e.target.value)}
+          />
+          <p className="font-body-md text-body-md text-on-surface-variant flex items-start gap-1.5">
+            <Icon name="info" size={16} className="mt-0.5 shrink-0" />
+            {t("passphraseWarning")}
+          </p>
+          {downloadError && (
+            <p className="font-body-md text-body-md text-error" role="alert">
+              {downloadError}
+            </p>
+          )}
+        </form>
+      </Modal>
+
+      <Modal
         open={uploadTarget !== null}
         onOpenChange={(open) => {
-          if (!open) setUploadTarget(null);
+          if (!open) {
+            setUploadTarget(null);
+            setUploadPassphrase("");
+          }
         }}
         title={t("uploadConfirmTitle", { name: uploadTarget?.name ?? "" })}
         description={t("restoreConfirmDescription")}
-        confirmLabel={t("restoreConfirmButton")}
-        danger
-        onConfirm={handleConfirmUpload}
-      />
+        footer={
+          <>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setUploadTarget(null);
+                setUploadPassphrase("");
+              }}
+            >
+              {commonT("cancel")}
+            </Button>
+            <Button
+              type="submit"
+              form="backup-upload-form"
+              variant="danger"
+              disabled={uploadNeedsPassphrase && uploadPassphrase.length === 0}
+            >
+              {t("restoreConfirmButton")}
+            </Button>
+          </>
+        }
+      >
+        <form
+          id="backup-upload-form"
+          noValidate
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleConfirmUpload();
+          }}
+        >
+          {uploadNeedsPassphrase ? (
+            <FloatingLabelInput
+              type="password"
+              autoComplete="off"
+              icon="lock"
+              label={t("passphraseLabel")}
+              value={uploadPassphrase}
+              onChange={(e) => setUploadPassphrase(e.target.value)}
+              hint={t("uploadPassphraseHint")}
+            />
+          ) : (
+            <p className="font-body-md text-body-md text-on-surface-variant">{t("uploadLegacyNote")}</p>
+          )}
+        </form>
+      </Modal>
     </div>
   );
 }

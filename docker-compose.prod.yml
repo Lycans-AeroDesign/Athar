@@ -59,6 +59,11 @@ services:
       EMAIL_USE_TLS: ${EMAIL_USE_TLS:-True}
       EMAIL_USE_SSL: ${EMAIL_USE_SSL:-False}
       DEFAULT_FROM_EMAIL: ${DEFAULT_FROM_EMAIL:-Athar <noreply@localhost>}
+      # Encrypts backup archives stored on this server - empty derives a key
+      # from SECRET_KEY (see backend/core/crypto.py's server_key()).
+      BACKUP_ENCRYPTION_KEY: ${BACKUP_ENCRYPTION_KEY:-}
+      SECURE_HSTS_SECONDS: ${SECURE_HSTS_SECONDS:-0}
+      AUDIT_IP_RETENTION_DAYS: ${AUDIT_IP_RETENTION_DAYS:-90}
       CELERY_BROKER_URL: redis://redis:6379/0
     volumes:
       - backend_media:/app/media

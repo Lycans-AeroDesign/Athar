@@ -1,10 +1,36 @@
 import os
 import subprocess
 import tarfile
+import tempfile
+from contextlib import contextmanager
 from pathlib import Path
 
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
+
+from core import crypto
+from core.management.passphrase import add_passphrase_argument, resolve_passphrase
+
+
+@contextmanager
+def _decrypted(path: Path, options, passphrase_cache: dict):
+    """Yields a plaintext path for `path` - a decrypted temp copy of an
+    encrypted .enc file, or `path` itself for one made before the CLI
+    backups were encrypted."""
+    with open(path, "rb") as source:
+        if not crypto.is_encrypted(source):
+            yield path
+            return
+        if "value" not in passphrase_cache:
+            passphrase_cache["value"] = resolve_passphrase(options, confirm=False)
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            plaintext_path = Path(tmp_dir) / path.name.removesuffix(".enc")
+            try:
+                with open(plaintext_path, "wb") as destination:
+                    crypto.decrypt_file(source, destination, passphrase_cache["value"])
+            except crypto.DecryptionError as exc:
+                raise CommandError(f"{path}: {exc}") from exc
+            yield plaintext_path
 
 
 class Command(BaseCommand):
@@ -21,12 +47,13 @@ class Command(BaseCommand):
     )
 
     def add_arguments(self, parser):
-        parser.add_argument("dump_path", help="Path to the .dump file produced by create_full_backup.")
+        parser.add_argument("dump_path", help="Path to the .dump.enc file produced by create_full_backup.")
         parser.add_argument(
             "--media-archive-path",
             default=None,
-            help="Path to the matching athar-media-*.tar.gz to also restore (optional).",
+            help="Path to the matching athar-media-*.tar.gz.enc to also restore (optional).",
         )
+        add_passphrase_argument(parser)
         parser.add_argument(
             "--yes",
             action="store_true",
@@ -48,8 +75,14 @@ class Command(BaseCommand):
                 f"with the contents of {dump_path}. Re-run with --yes to confirm."
             )
 
-        self._restore_database(dump_path)
-        self._restore_media(media_archive_path)
+        passphrase_cache = {}
+        with _decrypted(dump_path, options, passphrase_cache) as plaintext_dump:
+            self._restore_database(plaintext_dump)
+        if media_archive_path is None:
+            self._restore_media(None)
+        else:
+            with _decrypted(media_archive_path, options, passphrase_cache) as plaintext_media:
+                self._restore_media(plaintext_media)
 
         self.stdout.write(self.style.SUCCESS("Full-instance restore complete."))
 

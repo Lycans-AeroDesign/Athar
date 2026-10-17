@@ -7,6 +7,12 @@ from django.db.models import Q
 from core.models import OrganizationScopedModel, TimeStampedModel, UUIDPrimaryKeyModel
 from files.models import StoredFile
 from knowledge.models import Visibility
+from knowledge.search import search_columns, search_indexes
+
+# Registered into knowledge.search.SEARCH_FIELDS by apps.py's ready() - kept
+# here so Course's generated search columns and that registry entry can't
+# drift apart.
+COURSE_SEARCH_FIELDS = ("title", ("short_description", "description"))
 
 
 class CourseCategory(UUIDPrimaryKeyModel, OrganizationScopedModel, TimeStampedModel):
@@ -86,8 +92,14 @@ class Course(UUIDPrimaryKeyModel, OrganizationScopedModel, TimeStampedModel):
     )
     published_at = models.DateTimeField(null=True, blank=True)
 
+    search_vector, search_text = search_columns(*COURSE_SEARCH_FIELDS)
+
     class Meta:
         ordering = ["-updated_at"]
+        indexes = [
+            models.Index(fields=["organization", "status", "-updated_at"], name="tr_course_org_status"),
+            *search_indexes("tr_course"),
+        ]
         unique_together = [("organization", "slug")]
 
     def __str__(self):
@@ -290,6 +302,9 @@ class CourseEnrollment(UUIDPrimaryKeyModel, OrganizationScopedModel, TimeStamped
 
     class Meta:
         ordering = ["-enrolled_at"]
+        indexes = [
+            models.Index(fields=["user", "status"], name="tr_enrollment_user_status"),
+        ]
         unique_together = [("course", "user")]
 
     def __str__(self):

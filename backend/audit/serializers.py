@@ -38,7 +38,7 @@ class ActivityEntrySerializer(serializers.ModelSerializer):
     def get_actor(self, obj: AuditLog) -> dict | None:
         from knowledge.serializers import AuthorSerializer
 
-        return AuthorSerializer(obj.actor).data if obj.actor else None
+        return AuthorSerializer(obj.actor, context=self.context).data if obj.actor else None
 
     def get_target(self, obj: AuditLog) -> dict | None:
         target = obj.target

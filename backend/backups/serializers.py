@@ -1,3 +1,4 @@
+from django.conf import settings
 from rest_framework import serializers
 
 from .models import BackupJob, RestoreJob
@@ -46,5 +47,16 @@ class CreateRestoreJobSerializer(serializers.Serializer):
     backup_job_id = serializers.UUIDField()
 
 
+class DownloadBackupSerializer(serializers.Serializer):
+    passphrase = serializers.CharField(
+        min_length=settings.BACKUP_PASSPHRASE_MIN_LENGTH, max_length=1024, trim_whitespace=False, write_only=True
+    )
+
+
 class UploadRestoreJobSerializer(serializers.Serializer):
     archive = serializers.FileField()
+    # Required for an encrypted (.athar) backup; a plaintext .zip from before
+    # backups were encrypted restores without one.
+    passphrase = serializers.CharField(
+        required=False, allow_blank=True, max_length=1024, trim_whitespace=False, write_only=True
+    )

@@ -97,7 +97,8 @@ export function RestrictedAccessPicker({ initialGrants, value, onChange }: Restr
               }`}
             >
               <span className="truncate">
-                {user.first_name} {user.last_name} <span className="opacity-75">({user.email})</span>
+                {user.first_name} {user.last_name}
+                {user.email && <span className="opacity-75"> ({user.email})</span>}
               </span>
               {pending === "remove" ? (
                 <button
@@ -134,7 +135,9 @@ export function RestrictedAccessPicker({ initialGrants, value, onChange }: Restr
         placeholder={t("addPlaceholder")}
         options={pickableMembers.map((member) => ({
           value: member.id,
-          label: `${member.first_name} ${member.last_name} (${member.email})`,
+          label: member.email
+            ? `${member.first_name} ${member.last_name} (${member.email})`
+            : `${member.first_name} ${member.last_name}`.trim() || (member.username ? `@${member.username}` : ""),
         }))}
         value={null}
         onChange={handleAdd}

@@ -9,6 +9,8 @@ from django.db.models.functions import Lower
 from core.models import OrganizationScopedModel, TimeStampedModel, UUIDPrimaryKeyModel
 from files.models import StoredFile
 
+from .search import SEARCH_FIELDS, search_columns, search_indexes
+
 
 class Visibility(models.TextChoices):
     """Every relatable content type's visibility field (Article, Question,
@@ -101,8 +103,14 @@ class Article(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     published_at = models.DateTimeField(null=True, blank=True)
 
+    search_vector, search_text = search_columns(*SEARCH_FIELDS["article"])
+
     class Meta:
         ordering = ["-updated_at"]
+        indexes = [
+            models.Index(fields=["organization", "status", "-updated_at"], name="kn_article_org_status"),
+            *search_indexes("kn_article"),
+        ]
         # slug was globally unique - now per-org.
         unique_together = [("organization", "slug")]
 
@@ -172,8 +180,14 @@ class Question(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    search_vector, search_text = search_columns(*SEARCH_FIELDS["question"])
+
     class Meta:
         ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["organization", "-created_at"], name="kn_question_org_created"),
+            *search_indexes("kn_question"),
+        ]
 
     def __str__(self):
         return self.title
@@ -326,8 +340,14 @@ class Project(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    search_vector, search_text = search_columns(*SEARCH_FIELDS["project"])
+
     class Meta:
         ordering = ["-updated_at"]
+        indexes = [
+            models.Index(fields=["organization", "-updated_at"], name="kn_project_org_updated"),
+            *search_indexes("kn_project"),
+        ]
 
     def __str__(self):
         return self.name
@@ -464,8 +484,15 @@ class Component(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    search_vector, search_text = search_columns(*SEARCH_FIELDS["component"])
+
     class Meta:
         ordering = ["-updated_at"]
+        indexes = [
+            models.Index(fields=["organization", "-updated_at"], name="kn_component_org_updated"),
+            models.Index(fields=["organization", "status"], name="kn_component_org_status"),
+            *search_indexes("kn_component"),
+        ]
 
     def __str__(self):
         return self.name
@@ -507,8 +534,14 @@ class Failure(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    search_vector, search_text = search_columns(*SEARCH_FIELDS["failure"])
+
     class Meta:
         ordering = ["-date", "-created_at"]
+        indexes = [
+            models.Index(fields=["organization", "-date", "-created_at"], name="kn_failure_org_date"),
+            *search_indexes("kn_failure"),
+        ]
 
     def __str__(self):
         return self.title
@@ -537,8 +570,14 @@ class Sop(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    search_vector, search_text = search_columns(*SEARCH_FIELDS["sop"])
+
     class Meta:
         ordering = ["-updated_at"]
+        indexes = [
+            models.Index(fields=["organization", "-updated_at"], name="kn_sop_org_updated"),
+            *search_indexes("kn_sop"),
+        ]
         verbose_name = "SOP"
         verbose_name_plural = "SOPs"
 
@@ -606,8 +645,14 @@ class Test(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    search_vector, search_text = search_columns(*SEARCH_FIELDS["test"])
+
     class Meta:
         ordering = ["-date", "-created_at"]
+        indexes = [
+            models.Index(fields=["organization", "-date", "-created_at"], name="kn_test_org_date"),
+            *search_indexes("kn_test"),
+        ]
 
     def __str__(self):
         return self.title
@@ -667,8 +712,14 @@ class Document(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    search_vector, search_text = search_columns(*SEARCH_FIELDS["document"])
+
     class Meta:
         ordering = ["-updated_at"]
+        indexes = [
+            models.Index(fields=["organization", "-updated_at"], name="kn_document_org_updated"),
+            *search_indexes("kn_document"),
+        ]
 
     def __str__(self):
         return self.title

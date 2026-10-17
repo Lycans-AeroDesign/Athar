@@ -47,6 +47,14 @@ ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=[])
 # never sees a client-supplied value directly, so this is safe to trust
 # unconditionally.
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+# Outside DEBUG every request arrives over HTTPS (nginx redirects port 80 -
+# see nginx/templates/prod.conf.template), so Django's own cookies (admin
+# session, CSRF) never need to travel over plain HTTP. HSTS is opt-in: once
+# set, browsers refuse plain HTTP for that long, so only turn it on after
+# HTTPS is confirmed working (e.g. SECURE_HSTS_SECONDS=31536000).
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
+SECURE_HSTS_SECONDS = env.int("SECURE_HSTS_SECONDS", default=0)
 
 
 # Application definition
@@ -127,6 +135,11 @@ DATABASES = {
     # environment, dev included. Raises ImproperlyConfigured if unset.
     "default": env.db("DATABASE_URL"),
 }
+# knowledge.search's trigram fallback filters with the GIN-indexable %>
+# operator, which compares against this per-session setting (pg_trgm's own
+# default is 0.6) - see knowledge.search.TRIGRAM_THRESHOLD.
+_db_options = DATABASES["default"].setdefault("OPTIONS", {})
+_db_options["options"] = f"{_db_options.get('options', '')} -c pg_trgm.word_similarity_threshold=0.4".strip()
 
 
 # Password validation
@@ -236,6 +249,17 @@ MAX_UPLOAD_SIZE_MB = env.int("MAX_UPLOAD_SIZE_MB", default=2)
 # body-size limit for that one route (nginx/templates/locations.inc.template)
 # must be at least this.
 BACKUP_UPLOAD_MAX_SIZE_MB = env.int("BACKUP_UPLOAD_MAX_SIZE_MB", default=5120)
+# Archives stored on this server are encrypted with this key (see
+# core/crypto.py's server_key()) - base64 of 32 random bytes, e.g.
+# `python -c "import os,base64;print(base64.b64encode(os.urandom(32)).decode())"`.
+# Unset derives one from SECRET_KEY. Downloaded backups use the admin's own
+# passphrase instead, so restoring on a new server never needs this key.
+BACKUP_ENCRYPTION_KEY = env("BACKUP_ENCRYPTION_KEY", default="")
+BACKUP_PASSPHRASE_MIN_LENGTH = 12
+# scrypt cost for passphrase-encrypted backups (n = 2**this, ~128MB/0.5s).
+# Tests use a cheap cost - the parameters are stored in each file's header,
+# so this never affects whether an existing backup can be decrypted.
+BACKUP_SCRYPT_LOG2_N = 14 if "test" in sys.argv else 17
 
 
 # CORS
@@ -288,6 +312,7 @@ REST_FRAMEWORK = {
         "user": env("THROTTLE_USER_RATE", default="300/min"),
         "auth": env("THROTTLE_AUTH_RATE", default="10/min"),
         "auth_refresh": env("THROTTLE_AUTH_REFRESH_RATE", default="60/min"),
+        "backup_download": env("THROTTLE_BACKUP_DOWNLOAD_RATE", default="10/hour"),
     },
     # Exactly one trusted proxy (nginx) sits in front of the app, and it
     # overwrites X-Forwarded-For with the real peer address rather than
@@ -311,6 +336,7 @@ if "test" in sys.argv:
     REST_FRAMEWORK["DEFAULT_THROTTLE_CLASSES"] = []
     REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"]["auth"] = None
     REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"]["auth_refresh"] = None
+    REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"]["backup_download"] = None
 
 SPECTACULAR_SETTINGS = {
     "TITLE": "Athar API",
@@ -373,8 +399,8 @@ CELERY_TASK_ALWAYS_EAGER = "test" in sys.argv
 CELERY_TASK_EAGER_PROPAGATES = True
 
 # Run by the `celery-beat` service (docker-compose.yml) - a plain in-code
-# schedule rather than the django-celery-beat package, since this is the only
-# periodic job and doesn't need runtime/admin-editable scheduling. Hourly
+# schedule rather than the django-celery-beat package, since these are a
+# few fixed periodic jobs that don't need runtime/admin-editable scheduling. Hourly
 # comfortably beats StoredFile's own 24h grace period (see
 # files/services.py's UNCONFIRMED_FILE_GRACE_PERIOD) without being chatty.
 CELERY_BEAT_SCHEDULE = {
@@ -382,7 +408,15 @@ CELERY_BEAT_SCHEDULE = {
         "task": "files.tasks.delete_unconfirmed_files",
         "schedule": 3600.0,
     },
+    "scrub-old-audit-request-metadata": {
+        "task": "audit.tasks.scrub_old_request_metadata",
+        "schedule": 86400.0,
+    },
 }
+# How long audit log entries keep the requester's IP address and user agent
+# before audit.tasks.scrub_old_request_metadata clears them (the entry itself
+# is kept forever).
+AUDIT_IP_RETENTION_DAYS = env.int("AUDIT_IP_RETENTION_DAYS", default=90)
 
 
 # Email

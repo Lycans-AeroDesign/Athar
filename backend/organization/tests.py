@@ -251,7 +251,7 @@ class OrganizationCreateTests(APITestCase):
     def test_creates_organization_with_first_admin(self):
         response = self.client.post(
             reverse("organization-create"),
-            {"name": "Brand New Org", "admin_email": "founder@neworg.example", "admin_password": "somepassword123"},
+            {"name": "Brand New Org", "admin_email": "founder@neworg.example", "admin_password": "somepassword123", "admin_username": "founder"},
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
@@ -266,7 +266,7 @@ class OrganizationCreateTests(APITestCase):
     def test_new_organization_starts_with_the_default_policies(self):
         self.client.post(
             reverse("organization-create"),
-            {"name": "Policy Org", "admin_email": "founder@policyorg.example", "admin_password": "somepassword123"},
+            {"name": "Policy Org", "admin_email": "founder@policyorg.example", "admin_password": "somepassword123", "admin_username": "founder"},
             format="json",
         )
         organization = Organization.objects.get(name="Policy Org")
@@ -285,7 +285,7 @@ class OrganizationCreateTests(APITestCase):
         with self.settings(ENABLE_ORGANIZATION_REGISTRATION=False):
             response = self.client.post(
                 reverse("organization-create"),
-                {"name": "Blocked Org", "admin_email": "blocked@neworg.example", "admin_password": "somepassword123"},
+                {"name": "Blocked Org", "admin_email": "blocked@neworg.example", "admin_password": "somepassword123", "admin_username": "blocked"},
                 format="json",
             )
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
@@ -320,14 +320,19 @@ class OrganizationCreateTests(APITestCase):
         for i in range(3):
             response = self.client.post(
                 reverse("organization-create"),
-                {"name": f"Org {i}", "admin_email": f"founder{i}@neworg.example", "admin_password": "somepassword123"},
+                {
+                    "name": f"Org {i}",
+                    "admin_email": f"founder{i}@neworg.example",
+                    "admin_password": "somepassword123",
+                    "admin_username": f"founder{i}",
+                },
                 format="json",
             )
             self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
         response = self.client.post(
             reverse("organization-create"),
-            {"name": "One Too Many", "admin_email": "onetoomany@neworg.example", "admin_password": "somepassword123"},
+            {"name": "One Too Many", "admin_email": "onetoomany@neworg.example", "admin_password": "somepassword123", "admin_username": "onetoomany"},
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
@@ -361,21 +366,23 @@ class OrganizationCreateTests(APITestCase):
         self.assertFalse(User.objects.filter(email="second@neworg.example").exists())
         self.assertFalse(Organization.objects.filter(name="Second Org").exists())
 
-    def test_admin_username_is_optional(self):
-        response = self.client.post(
-            reverse("organization-create"),
-            {"name": "No Username Org", "admin_email": "nouser@neworg.example", "admin_password": "somepassword123"},
-            format="json",
-        )
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertIsNone(User.objects.get(email="nouser@neworg.example").username)
+    def test_admin_username_is_required(self):
+        for payload in ({}, {"admin_username": ""}):
+            response = self.client.post(
+                reverse("organization-create"),
+                {"name": "No Username Org", "admin_email": "nouser@neworg.example", "admin_password": "somepassword123", **payload},
+                format="json",
+            )
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+            self.assertIn("admin_username", response.data)
+        self.assertFalse(Organization.objects.filter(name="No Username Org").exists())
 
     def test_rejects_a_case_variant_of_an_existing_email(self):
         other = create_test_organization()
         User.objects.create_user(email="taken@example.com", password="correctpassword123", organization=other)
         response = self.client.post(
             reverse("organization-create"),
-            {"name": "Squatter Org", "admin_email": "TAKEN@example.com", "admin_password": "somepassword123"},
+            {"name": "Squatter Org", "admin_email": "TAKEN@example.com", "admin_password": "somepassword123", "admin_username": "TAKEN"},
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
@@ -385,7 +392,7 @@ class OrganizationCreateTests(APITestCase):
     def test_rejects_weak_admin_password(self):
         response = self.client.post(
             reverse("organization-create"),
-            {"name": "Weak Org", "admin_email": "weak@neworg.example", "admin_password": "12345678"},
+            {"name": "Weak Org", "admin_email": "weak@neworg.example", "admin_password": "12345678", "admin_username": "weak"},
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

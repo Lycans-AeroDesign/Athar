@@ -1,7 +1,8 @@
 interface NamedPerson {
   first_name: string;
   last_name: string;
-  email: string;
+  /** null when the viewer isn't allowed to see it - see KnowledgeAuthor.email. */
+  email: string | null;
   username?: string | null;
 }
 
@@ -14,7 +15,7 @@ interface NamedPerson {
 export function formatPersonName(person: NamedPerson | null | undefined): string | null {
   if (!person) return null;
   if (person.username) return `@${person.username}`;
-  return [person.first_name, person.last_name].filter(Boolean).join(" ") || person.email;
+  return [person.first_name, person.last_name].filter(Boolean).join(" ") || person.email || null;
 }
 
 /** 1-2 letter initials for an Avatar - "AR" for Ahmad R., falling back to

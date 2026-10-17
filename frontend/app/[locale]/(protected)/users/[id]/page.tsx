@@ -40,10 +40,12 @@ export default function UserProfilePage() {
           <h1 className="font-display text-display text-on-surface truncate">{name}</h1>
           {profile.title && <p className="font-body-lg text-body-lg text-on-surface-variant">{profile.title}</p>}
           <div className="flex flex-wrap items-center gap-3 mt-2 font-mono-sm text-mono-sm text-on-surface-variant">
-            <span className="flex items-center gap-1">
-              <Icon name="mail" size={14} />
-              {profile.email}
-            </span>
+            {profile.email && (
+              <span className="flex items-center gap-1">
+                <Icon name="mail" size={14} />
+                {profile.email}
+              </span>
+            )}
             <span className="flex items-center gap-1">
               <Icon name="calendar_month" size={14} />
               {t("joinedLabel", { date: formatDate(profile.date_joined) })}

@@ -77,17 +77,13 @@ class OrganizationCreateSerializer(serializers.Serializer):
     admin_password = serializers.CharField(write_only=True, min_length=8)
     admin_first_name = serializers.CharField(required=False, allow_blank=True, default="")
     admin_last_name = serializers.CharField(required=False, allow_blank=True, default="")
-    # Optional, same format/uniqueness rules as accounts.User.username - a
-    # plain Serializer, not a ModelSerializer, so DRF's automatic
-    # UniqueValidator can't be used here (it assumes the model field is named
-    # the same as this serializer field, i.e. "admin_username", which doesn't
-    # exist on User - see this field's own uniqueness check below instead).
-    # username_validator (format only, no DB lookup) is still skipped by DRF
-    # for a blank "" submission (allow_blank=True), so leaving this empty at
-    # signup never 400s.
-    admin_username = serializers.CharField(
-        required=False, allow_blank=True, default="", max_length=30, validators=[username_validator]
-    )
+    # Required, same format/uniqueness rules as accounts.User.username (and
+    # as RegisterSerializer.username) - a plain Serializer, not a
+    # ModelSerializer, so DRF's automatic UniqueValidator can't be used here
+    # (it assumes the model field is named the same as this serializer field,
+    # i.e. "admin_username", which doesn't exist on User - see this field's
+    # own uniqueness check below instead).
+    admin_username = serializers.CharField(max_length=30, validators=[username_validator])
 
     def validate_admin_email(self, value):
         # A plain Serializer (see the admin_username field's own comment

@@ -106,7 +106,8 @@ Check `docker compose -f docker-compose.prod.yml logs -f` for startup issues, an
 ## 7. After it's running
 
 - Create your first organization/admin account through the app itself (registration flow, or `docker compose -f docker-compose.prod.yml exec backend python manage.py createsuperuser` for a break-glass Django admin account — see [`README.md`](README.md#backups) for what admin access is/isn't used for).
-- Set up periodic `manage.py create_full_backup` runs (cron, or your own scheduler) if you want off-server backups — see [Backups](README.md#backups).
+- Set up periodic `manage.py create_full_backup` runs (cron, or your own scheduler) if you want off-server backups. Give them a passphrase through `BACKUP_PASSPHRASE` or `--passphrase-file`, since cron can't answer a prompt. See [Backups](README.md#backups).
+- Once HTTPS is confirmed working, consider setting `SECURE_HSTS_SECONDS=31536000` in `.env`. Browsers will then refuse plain HTTP to your domain for a year.
 
 ## Troubleshooting
 

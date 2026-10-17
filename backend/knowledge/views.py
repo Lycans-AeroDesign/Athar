@@ -419,7 +419,8 @@ class UserProfileView(APIView):
         total_members = User.objects.filter(organization=request.user.organization).count()
         return Response(
             UserProfileSerializer(
-                user, context={"stats": stats, "periods": periods, "total_members": total_members}
+                user,
+                context={"request": request, "stats": stats, "periods": periods, "total_members": total_members},
             ).data
         )
 
@@ -2345,7 +2346,7 @@ class OrgMembersListView(APIView):
         members = User.objects.filter(organization=request.user.organization).order_by(
             "first_name", "last_name", "email"
         )
-        return paginated_response(request, members, AuthorSerializer)
+        return paginated_response(request, members, AuthorSerializer, context={"request": request})
 
 
 class BookmarkListCreateView(APIView):
