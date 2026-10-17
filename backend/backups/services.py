@@ -26,6 +26,7 @@ import json
 import shutil
 import tempfile
 import zipfile
+from contextlib import contextmanager
 from pathlib import Path
 
 from django.core.files import File
@@ -33,6 +34,7 @@ from django.utils import timezone
 
 from accounts.models import InvitationCode, User
 from audit.models import AuditLog
+from core import crypto
 from files.models import StoredFile
 from knowledge.models import (
     Answer,
@@ -148,6 +150,7 @@ def _export_specs(organization):
                 ("password", lambda o: o.password),
                 ("last_login", lambda o: _s(o.last_login)),
                 ("preferences", lambda o: _json(o.preferences)),
+                ("email_visible", lambda o: _s(o.email_visible)),
                 ("date_joined", lambda o: _s(o.date_joined)),
             ],
         ),
@@ -835,5 +838,28 @@ def build_org_backup_archive(job: BackupJob) -> None:
                 _write_csv_entry(zf, filename, columns, queryset)
             _write_files(zf, organization)
 
-        with open(archive_path, "rb") as archive_file:
-            job.archive.save(f"{job.id}.zip", File(archive_file), save=False)
+        # Encrypted at rest with the server key - the archive is as
+        # sensitive as the database (see module docstring). Downloads
+        # re-encrypt it with the admin's passphrase (views.BackupJobDownloadView).
+        encrypted_path = Path(tmp_dir) / f"{job.id}.zip.enc"
+        with open(archive_path, "rb") as source, open(encrypted_path, "wb") as destination:
+            crypto.encrypt_file(source, destination)
+        with open(encrypted_path, "rb") as archive_file:
+            job.archive.save(f"{job.id}.zip.enc", File(archive_file), save=False)
+
+
+@contextmanager
+def open_decrypted_archive(archive_field):
+    """Yields a seekable plaintext file for a stored archive (BackupJob.archive
+    or RestoreJob.uploaded_archive) - decrypted into a temp file when it's
+    server-key encrypted, or the stored file itself for a plaintext archive
+    made before encryption existed. zipfile needs to seek, so this can't be
+    a streaming decrypt."""
+    with archive_field.open("rb") as stored:
+        if not crypto.is_encrypted(stored):
+            yield stored
+            return
+        with tempfile.TemporaryFile() as plaintext:
+            crypto.decrypt_file(stored, plaintext)
+            plaintext.seek(0)
+            yield plaintext

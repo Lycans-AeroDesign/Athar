@@ -34,7 +34,7 @@ export async function registerRequest(payload: {
   invitation_code: string;
   first_name?: string;
   last_name?: string;
-  username?: string;
+  username: string;
 }): Promise<User> {
   const res = await fetch(`${API_URL}${REGISTER_PATH}`, {
     method: "POST",
@@ -61,7 +61,7 @@ export async function createOrganizationRequest(payload: {
   admin_password: string;
   admin_first_name?: string;
   admin_last_name?: string;
-  admin_username?: string;
+  admin_username: string;
 }): Promise<User> {
   const res = await fetch(`${API_URL}${CREATE_ORGANIZATION_PATH}`, {
     method: "POST",

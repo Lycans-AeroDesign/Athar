@@ -31,7 +31,12 @@ class AuthFlowTests(APITestCase):
     def _register_and_login(self, email="guest@example.com", password="guestpass123"):
         self.client.post(
             reverse("auth-register"),
-            {"email": email, "password": password, "invitation_code": self._invitation_code().code},
+            {
+                "email": email,
+                "password": password,
+                "invitation_code": self._invitation_code().code,
+                "username": email.split("@")[0].replace("+", "_"),
+            },
             format="json",
         )
         return self.client.post(
@@ -42,7 +47,7 @@ class AuthFlowTests(APITestCase):
         code = self._invitation_code()
         response = self.client.post(
             reverse("auth-register"),
-            {"email": "new@example.com", "password": "somepassword123", "invitation_code": code.code},
+            {"email": "new@example.com", "password": "somepassword123", "invitation_code": code.code, "username": "new"},
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
@@ -52,7 +57,7 @@ class AuthFlowTests(APITestCase):
         code.refresh_from_db()
         self.assertEqual(code.uses_count, 1)
 
-    def test_register_accepts_optional_username_and_rejects_duplicates(self):
+    def test_register_rejects_duplicate_usernames(self):
         User.objects.create_user(email="existing@example.com", username="taken", organization=self.organization)
 
         response = self.client.post(
@@ -82,6 +87,22 @@ class AuthFlowTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data["username"], "brandnew")
 
+    def test_register_requires_a_username(self):
+        for payload in ({}, {"username": ""}):
+            response = self.client.post(
+                reverse("auth-register"),
+                {
+                    "email": "nousername@example.com",
+                    "password": "somepassword123",
+                    "invitation_code": self._invitation_code().code,
+                    **payload,
+                },
+                format="json",
+            )
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+            self.assertIn("username", response.data)
+        self.assertFalse(User.objects.filter(email="nousername@example.com").exists())
+
     def test_register_requires_invitation_code(self):
         response = self.client.post(
             reverse("auth-register"),
@@ -94,7 +115,7 @@ class AuthFlowTests(APITestCase):
     def test_register_rejects_unknown_code(self):
         response = self.client.post(
             reverse("auth-register"),
-            {"email": "new@example.com", "password": "somepassword123", "invitation_code": "NOPE"},
+            {"email": "new@example.com", "password": "somepassword123", "invitation_code": "NOPE", "username": "new"},
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
@@ -104,7 +125,7 @@ class AuthFlowTests(APITestCase):
         code = self._invitation_code(revoked_at=timezone.now())
         response = self.client.post(
             reverse("auth-register"),
-            {"email": "new@example.com", "password": "somepassword123", "invitation_code": code.code},
+            {"email": "new@example.com", "password": "somepassword123", "invitation_code": code.code, "username": "new"},
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
@@ -113,7 +134,7 @@ class AuthFlowTests(APITestCase):
         code = self._invitation_code(expires_at=timezone.now() - timezone.timedelta(minutes=1))
         response = self.client.post(
             reverse("auth-register"),
-            {"email": "new@example.com", "password": "somepassword123", "invitation_code": code.code},
+            {"email": "new@example.com", "password": "somepassword123", "invitation_code": code.code, "username": "new"},
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
@@ -125,14 +146,14 @@ class AuthFlowTests(APITestCase):
         code = self._invitation_code()
         first = self.client.post(
             reverse("auth-register"),
-            {"email": "first@example.com", "password": "somepassword123", "invitation_code": code.code},
+            {"email": "first@example.com", "password": "somepassword123", "invitation_code": code.code, "username": "first"},
             format="json",
         )
         self.assertEqual(first.status_code, status.HTTP_201_CREATED)
 
         second = self.client.post(
             reverse("auth-register"),
-            {"email": "second@example.com", "password": "somepassword123", "invitation_code": code.code},
+            {"email": "second@example.com", "password": "somepassword123", "invitation_code": code.code, "username": "second"},
             format="json",
         )
         self.assertEqual(second.status_code, status.HTTP_400_BAD_REQUEST)
@@ -143,14 +164,14 @@ class AuthFlowTests(APITestCase):
         for email in ["a@example.com", "b@example.com"]:
             response = self.client.post(
                 reverse("auth-register"),
-                {"email": email, "password": "somepassword123", "invitation_code": code.code},
+                {"email": email, "password": "somepassword123", "invitation_code": code.code, "username": email[0] * 3},
                 format="json",
             )
             self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
         third = self.client.post(
             reverse("auth-register"),
-            {"email": "c@example.com", "password": "somepassword123", "invitation_code": code.code},
+            {"email": "c@example.com", "password": "somepassword123", "invitation_code": code.code, "username": "c__"},
             format="json",
         )
         self.assertEqual(third.status_code, status.HTTP_400_BAD_REQUEST)
@@ -387,7 +408,7 @@ class AuthFlowTests(APITestCase):
         User.objects.create_user(email="alice@example.com", password="correctpassword123", organization=self.organization)
         response = self.client.post(
             reverse("auth-register"),
-            {"email": "ALICE@Example.com", "password": "somepassword123", "invitation_code": self._invitation_code().code},
+            {"email": "ALICE@Example.com", "password": "somepassword123", "invitation_code": self._invitation_code().code, "username": "ALICE"},
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
@@ -422,7 +443,12 @@ class AuthFlowTests(APITestCase):
         for weak in ("12345678", "password", "guest@example.com"):
             response = self.client.post(
                 reverse("auth-register"),
-                {"email": "guest@example.com", "password": weak, "invitation_code": self._invitation_code().code},
+                {
+                    "email": "guest@example.com",
+                    "password": weak,
+                    "invitation_code": self._invitation_code().code,
+                    "username": "guest",
+                },
                 format="json",
             )
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST, weak)

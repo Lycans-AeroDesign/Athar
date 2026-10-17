@@ -67,7 +67,7 @@ export function CoAuthorPicker({ value, onChange, authorId, canEdit }: CoAuthorP
           placeholder={t("coAuthorsPlaceholder")}
           options={pickable.map((member) => ({
             value: member.id,
-            label: `${formatPersonName(member)} (${member.email})`,
+            label: member.email ? `${formatPersonName(member)} (${member.email})` : (formatPersonName(member) ?? ""),
           }))}
           value={null}
           onChange={(id) => {

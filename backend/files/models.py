@@ -41,6 +41,10 @@ class StoredFile(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+        indexes = [
+            # files.tasks.delete_unconfirmed_files: unconfirmed rows past the grace period.
+            models.Index(fields=["created_at"], condition=models.Q(confirmed_at__isnull=True), name="files_unconfirmed_created"),
+        ]
 
     def __str__(self):
         return self.original_filename

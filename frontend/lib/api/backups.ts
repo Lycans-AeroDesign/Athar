@@ -1,4 +1,4 @@
-import { apiFetch, apiJson, apiUpload } from "./client";
+import { ApiError, apiFetch, apiJson, apiUpload, extractApiError } from "./client";
 import type { BackupJob, Paginated, RestoreJob } from "./types";
 
 export function getBackupJobs(): Promise<BackupJob[]> {
@@ -25,12 +25,19 @@ export function createRestoreJob(backupJobId: string): Promise<RestoreJob> {
   });
 }
 
-/** Restores from a backup .zip the admin uploads (e.g. onto a fresh server)
+/** Restores from a backup file the admin uploads (e.g. onto a fresh server)
  * rather than one still stored server-side - see backend/backups/views.py's
- * RestoreJobUploadView. Over apiUpload for real progress on a large file. */
-export function uploadRestoreArchive(file: File, onProgress?: (fraction: number) => void): Promise<RestoreJob> {
+ * RestoreJobUploadView. `passphrase` decrypts an encrypted .athar backup; a
+ * plaintext .zip from before backups were encrypted needs none. Over
+ * apiUpload for real progress on a large file. */
+export function uploadRestoreArchive(
+  file: File,
+  passphrase: string,
+  onProgress?: (fraction: number) => void,
+): Promise<RestoreJob> {
   const formData = new FormData();
   formData.append("archive", file);
+  if (passphrase) formData.append("passphrase", passphrase);
   return apiUpload<RestoreJob>("/api/v1/backups/restores/upload/", formData, onProgress);
 }
 
@@ -38,12 +45,71 @@ export function getRestoreJob(id: string): Promise<RestoreJob> {
   return apiJson<RestoreJob>(`/api/v1/backups/restores/${id}/`);
 }
 
-/** Downloads a finished backup archive through the auth-gated endpoint (see
- * backend/backups/views.py) - same blob: URL approach as lib/api/files.ts's
- * downloadFile, since a plain <a href> can't carry the Bearer header. */
-export async function downloadBackupJob(id: string, filename: string): Promise<void> {
-  const res = await apiFetch(`/api/v1/backups/${id}/download/`);
-  if (!res.ok) throw new Error(`Failed to download backup (${res.status})`);
+/** Matches backend settings.BACKUP_PASSPHRASE_MIN_LENGTH - the backend
+ * enforces it either way, this just lets the form say so up front. */
+export const BACKUP_PASSPHRASE_MIN_LENGTH = 12;
+
+// The File System Access API's save picker - Chromium-only (Chrome, Edge),
+// and not in TypeScript's DOM lib yet, hence the minimal local typing.
+type SaveFilePicker = (options: {
+  suggestedName?: string;
+  types?: { description?: string; accept: Record<string, string[]> }[];
+}) => Promise<{ createWritable: () => Promise<WritableStream<Uint8Array>> }>;
+
+/** Downloads a finished backup, encrypted with `passphrase`, through the
+ * auth-gated endpoint (see backend/backups/views.py's BackupJobDownloadView -
+ * POST so the passphrase stays out of URLs). A plain <a href> can't carry the
+ * Bearer header, so this fetches it from JS.
+ *
+ * Where the browser supports it, the response is streamed straight into a
+ * file the admin picks, never held in memory: a backup can be gigabytes, and
+ * Chrome fails `res.blob()` outright ("Failed to fetch") once a blob outgrows
+ * what it's willing to keep in memory/on a nearly-full disk. Elsewhere it
+ * falls back to the same blob: URL approach as lib/api/files.ts's
+ * downloadFile. Resolves false if the admin cancels the save dialog. */
+export async function downloadBackupJob(id: string, passphrase: string, filename: string): Promise<boolean> {
+  const showSaveFilePicker = (window as Window & { showSaveFilePicker?: SaveFilePicker }).showSaveFilePicker;
+  let writable: WritableStream<Uint8Array> | null = null;
+  if (showSaveFilePicker) {
+    // Before the fetch, while the click's user activation is still fresh -
+    // the picker refuses to open without one.
+    try {
+      const handle = await showSaveFilePicker({
+        suggestedName: filename,
+        types: [{ description: "Athar backup", accept: { "application/octet-stream": [".athar"] } }],
+      });
+      writable = await handle.createWritable();
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") return false;
+      throw err;
+    }
+  }
+
+  const path = `/api/v1/backups/${id}/download/`;
+  let res: Response;
+  try {
+    res = await apiFetch(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ passphrase }),
+    });
+  } catch (err) {
+    await writable?.abort();
+    throw err;
+  }
+  if (!res.ok) {
+    await writable?.abort();
+    const { message, fields } = await extractApiError(res, path);
+    throw new ApiError(message, res.status, fields);
+  }
+
+  if (writable && res.body) {
+    // pipeTo closes the file on success and aborts it (discarding the
+    // partial write) if the stream errors.
+    await res.body.pipeTo(writable);
+    return true;
+  }
+
   const blob = await res.blob();
   const objectUrl = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
@@ -53,4 +119,5 @@ export async function downloadBackupJob(id: string, filename: string): Promise<v
   anchor.click();
   anchor.remove();
   URL.revokeObjectURL(objectUrl);
+  return true;
 }

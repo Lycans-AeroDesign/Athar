@@ -2241,6 +2241,8 @@ class UserProfileTests(KnowledgeTestCase):
 
         response = self.client.get(reverse("knowledge-user-profile", args=[owner.id]), **self._auth(viewer_access))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["id"], str(owner.id))
+        # Visible to other members by default (User.email_visible).
         self.assertEqual(response.data["email"], "profileowner@example.com")
         self.assertNotIn("roles", response.data)
         self.assertNotIn("permissions", response.data)
@@ -2649,11 +2651,11 @@ class ContributionScoringTests(KnowledgeTestCase):
 
         response = self.client.get(reverse("knowledge-leaderboard"), **self._auth(prolific_access))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        entry_by_email = {entry["user"]["email"]: entry["score"] for entry in response.data}
+        entry_by_id = {entry["user"]["id"]: entry["score"] for entry in response.data}
 
-        self.assertNotIn("otherorgleader@example.com", entry_by_email)
-        self.assertEqual(entry_by_email["scoreprolific@example.com"], 3)
-        self.assertEqual(entry_by_email["scorequiet@example.com"], 1)
+        self.assertNotIn(str(other_user.id), entry_by_id)
+        self.assertEqual(entry_by_id[str(prolific.id)], 3)
+        self.assertEqual(entry_by_id[str(quiet.id)], 1)
         scores_in_order = [entry["score"] for entry in response.data]
         self.assertEqual(scores_in_order, sorted(scores_in_order, reverse=True))
 
@@ -2671,11 +2673,11 @@ class ContributionScoringTests(KnowledgeTestCase):
                 reverse("knowledge-leaderboard") + f"?period={period}", **self._auth(contributor_access)
             )
             self.assertEqual(response.status_code, status.HTTP_200_OK)
-            entry_by_email = {entry["user"]["email"]: entry["score"] for entry in response.data}
+            entry_by_id = {entry["user"]["id"]: entry["score"] for entry in response.data}
             # A contribution made moments ago always falls inside every window,
             # including "month"/"year" - it's the exclusion of older activity
             # (not covered here) that those windows exist for.
-            self.assertEqual(entry_by_email["scoreperiod@example.com"], 1)
+            self.assertEqual(entry_by_id[str(contributor.id)], 1)
 
         response = self.client.get(
             reverse("knowledge-leaderboard") + "?period=decade", **self._auth(contributor_access)
@@ -2691,7 +2693,7 @@ class ContributionScoringTests(KnowledgeTestCase):
             **self._auth(author_access),
         ).data
 
-        _, senior_access = self._login_with_role("scorearticleeditor@example.com", "Mentor")
+        senior, senior_access = self._login_with_role("scorearticleeditor@example.com", "Mentor")
         self.client.patch(
             reverse("knowledge-article-detail", args=[article["id"]]),
             {"content": "Revised body"},
@@ -2701,8 +2703,8 @@ class ContributionScoringTests(KnowledgeTestCase):
 
         response = self.client.get(reverse("knowledge-article-detail", args=[article["id"]]), **self._auth(author_access))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        contributor_emails = {c["email"] for c in response.data["contributors"]}
-        self.assertEqual(contributor_emails, {"scorearticleauthor@example.com", "scorearticleeditor@example.com"})
+        contributor_ids = {c["id"] for c in response.data["contributors"]}
+        self.assertEqual(contributor_ids, {str(author.id), str(senior.id)})
 
     def test_user_activity_feed_is_scoped_to_the_target_user_and_organization(self):
         target, target_access = self._login_with_role("scoreactivitytarget@example.com", "Member")
@@ -2783,12 +2785,12 @@ class RestrictedAccessGrantTests(KnowledgeTestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         grant_id = response.data["id"]
-        self.assertEqual(response.data["granted_user"]["email"], "grantee@example.com")
+        self.assertEqual(response.data["granted_user"]["id"], str(grantee.id))
 
         response = self.client.get(reverse("knowledge-project-detail", args=[project["id"]]), **self._auth(other_access))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(
-            {g["user"]["email"] for g in response.data["restricted_to"]}, {"grantee@example.com"}
+            {g["user"]["id"] for g in response.data["restricted_to"]}, {str(grantee.id)}
         )
         response = self.client.get(reverse("knowledge-project-list-create"), **self._auth(other_access))
         self.assertIn(project["id"], {p["id"] for p in response.data["results"]})

@@ -9,7 +9,7 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from files.models import StoredFile
 from files.serializers import StoredFileSerializer
 
-from .models import InvitationCode, User
+from .models import InvitationCode, User, username_validator
 
 
 def normalize_unique_email(value: str) -> str:
@@ -67,6 +67,7 @@ class UserSerializer(serializers.ModelSerializer):
             "roles",
             "permissions",
             "preferences",
+            "email_visible",
             "date_joined",
             "is_active",
         ]
@@ -97,7 +98,7 @@ class MeUpdateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ["username", "first_name", "last_name", "title", "preferences", "profile_picture_id"]
+        fields = ["username", "first_name", "last_name", "title", "preferences", "email_visible", "profile_picture_id"]
 
     def validate_username(self, value):
         # "" means "clear it" from the client's perspective, but the model
@@ -132,6 +133,9 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     password = serializers.CharField(write_only=True, min_length=8)
     invitation_code = serializers.CharField(write_only=True)
+    # Required at signup, unlike the model field (null=True so accounts
+    # created before this rule, or by an admin, can still lack one).
+    username = serializers.CharField(max_length=30, validators=[username_validator])
 
     class Meta:
         model = User
@@ -141,9 +145,8 @@ class RegisterSerializer(serializers.ModelSerializer):
         return normalize_unique_email(value)
 
     def validate_username(self, value):
-        # Same "" -> None normalization as MeUpdateSerializer.validate_username
-        # (see models.py's username field comment) - optional here too, not
-        # required at signup.
+        # Blank is already rejected by the field itself (required, no
+        # allow_blank) - this is just the case-insensitive uniqueness check.
         return check_unique_username(value)
 
     def validate(self, attrs):

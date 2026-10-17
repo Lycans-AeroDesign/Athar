@@ -17,7 +17,8 @@ const LANGUAGE_OPTIONS = locales.map((code) => ({
 const THEME_OPTIONS: ThemePreference[] = ["light", "dark", "system"];
 
 // Per-viewer preferences (theme/language via cookies, the list-filter toggle
-// via user.preferences on the backend) - lives on My Account rather than
+// via user.preferences and the email-visibility toggle via user.email_visible
+// on the backend) - lives on My Account rather than
 // Organization Settings since none of it affects anyone else. Each applies
 // immediately, with no Save step. Theme/language mirror the equivalent
 // pickers in the account menu (see TopBar.tsx).
@@ -36,6 +37,11 @@ export function PreferencesPanel() {
       preferences: { ...user.preferences, engineering_list_filters: checked },
     });
     updateUser(updated);
+  }
+
+  async function handleEmailVisibleChange(checked: boolean) {
+    if (!user) return;
+    updateUser(await updateMe({ email_visible: checked }));
   }
 
   const themeLabels: Record<ThemePreference, string> = {
@@ -82,6 +88,23 @@ export function PreferencesPanel() {
             <span className="block font-body-md text-body-md text-on-surface">{t("engineeringListFiltersLabel")}</span>
             <span className="block font-body-md text-body-md text-on-surface-variant">
               {t("engineeringListFiltersDescription")}
+            </span>
+          </span>
+        </label>
+      )}
+
+      {user && (
+        <label className="flex items-start gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={user.email_visible}
+            onChange={(e) => handleEmailVisibleChange(e.target.checked)}
+            className="mt-1 rounded border-outline-variant text-primary focus:ring-primary w-4 h-4 shrink-0"
+          />
+          <span>
+            <span className="block font-body-md text-body-md text-on-surface">{t("emailVisibleLabel")}</span>
+            <span className="block font-body-md text-body-md text-on-surface-variant">
+              {t("emailVisibleDescription")}
             </span>
           </span>
         </label>

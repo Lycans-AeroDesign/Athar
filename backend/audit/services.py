@@ -1,6 +1,9 @@
 import ipaddress
+from datetime import timedelta
 
+from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
 from .models import AuditLog
 
@@ -49,3 +52,16 @@ def log_action(
         entry.user_agent = request.META.get("HTTP_USER_AGENT", "")
     entry.save()
     return entry
+
+
+def scrub_old_request_metadata() -> int:
+    """Clears ip_address/user_agent on entries older than
+    settings.AUDIT_IP_RETENTION_DAYS - who did what stays in the log for
+    good, but where they did it from is personal data that's only useful
+    for investigating recent activity. Returns the number of rows changed."""
+    cutoff = timezone.now() - timedelta(days=settings.AUDIT_IP_RETENTION_DAYS)
+    return (
+        AuditLog.objects.filter(created_at__lt=cutoff)
+        .exclude(ip_address__isnull=True, user_agent="")
+        .update(ip_address=None, user_agent="")
+    )

@@ -81,17 +81,45 @@ class OrgScopedPrimaryKeyRelatedField(serializers.PrimaryKeyRelatedField):
         return super().to_internal_value(data)
 
 
+EMAIL_VISIBILITY_BYPASS_PERMISSION = "user.manage"
+
+
+def visible_email(serializer: serializers.Serializer, user: User) -> str | None:
+    """`user`'s email if the viewer may see it - always when the user opted
+    in (User.email_visible), otherwise only to the user themself or a
+    user.manage holder. Needs context["request"] for the latter two; without
+    it only opted-in emails are shown (fails closed). The user.manage check
+    is cached on the request, since one list response can serialize dozens
+    of authors."""
+    if user.email_visible:
+        return user.email
+    request = serializer.context.get("request")
+    viewer = getattr(request, "user", None)
+    if viewer is None or not viewer.is_authenticated:
+        return None
+    if viewer.pk == user.pk:
+        return user.email
+    if not hasattr(request, "_can_see_all_emails"):
+        request._can_see_all_emails = viewer.has_permission(EMAIL_VISIBILITY_BYPASS_PERMISSION)
+    return user.email if request._can_see_all_emails else None
+
+
 class AuthorSerializer(serializers.ModelSerializer):
     """Minimal - deliberately NOT accounts.UserSerializer, which also exposes
     roles/permissions. Every article/question reader would otherwise see
     every author's full permission set, since article.read is granted to
-    every seeded role including Guest."""
+    every seeded role including Guest. Same reasoning for email: null unless
+    visible_email allows it."""
 
     profile_picture = StoredFileSerializer(read_only=True)
+    email = serializers.SerializerMethodField()
 
     class Meta:
         model = User
         fields = ["id", "first_name", "last_name", "email", "title", "username", "profile_picture"]
+
+    def get_email(self, obj: User) -> str | None:
+        return visible_email(self, obj)
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
@@ -103,6 +131,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
     context, no model field backing either."""
 
     profile_picture = StoredFileSerializer(read_only=True)
+    email = serializers.SerializerMethodField()
     stats = serializers.SerializerMethodField()
     # {"month": {"score": int, "rank": int|None}, "year": {...}, "all": {...}} -
     # see UserProfileView.get.
@@ -124,6 +153,9 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "periods",
             "total_members",
         ]
+
+    def get_email(self, obj: User) -> str | None:
+        return visible_email(self, obj)
 
     def get_stats(self, obj: User) -> dict:
         return self.context["stats"]
@@ -156,7 +188,7 @@ class ContributorsMixin:
 
     def get_contributors(self, obj) -> list:
         model_name = obj.__class__.__name__.lower()
-        return AuthorSerializer(services.contributors_for(model_name, obj), many=True).data
+        return AuthorSerializer(services.contributors_for(model_name, obj), many=True, context=self.context).data
 
 
 class RestrictedAccessMixin:
@@ -172,7 +204,8 @@ class RestrictedAccessMixin:
             content_type=ContentType.objects.get_for_model(type(obj)), object_id=obj.pk
         ).select_related("granted_user")
         return [
-            {"grant_id": str(grant.id), "user": AuthorSerializer(grant.granted_user).data} for grant in grants
+            {"grant_id": str(grant.id), "user": AuthorSerializer(grant.granted_user, context=self.context).data}
+            for grant in grants
         ]
 
 

@@ -85,6 +85,12 @@ class User(AbstractBaseUser):
     # rather than dedicated columns since these are display/UX toggles with
     # no query or permission implications; add keys as features need them.
     preferences = models.JSONField(default=dict, blank=True)
+    # Whether other members see this user's email on author cards, profiles
+    # and the member pickers - see knowledge.serializers.visible_email. On by
+    # default (teammates expect to reach each other); a user can turn it off
+    # from My Account > Preferences. user.manage holders and the user
+    # themself always see it either way.
+    email_visible = models.BooleanField(default=True)
     date_joined = models.DateTimeField(auto_now_add=True)
 
     roles = models.ManyToManyField(
@@ -144,6 +150,10 @@ class User(AbstractBaseUser):
         return self.is_superuser
 
 
+def mask_invitation_code(code: str) -> str:
+    return f"••••{code[-4:]}"
+
+
 def generate_invitation_code() -> str:
     return get_random_string(10, allowed_chars=INVITATION_CODE_ALPHABET)
 
@@ -173,7 +183,14 @@ class InvitationCode(models.Model):
         ordering = ["-created_at"]
 
     def __str__(self):
-        return self.code
+        # Masked - this is what AuditLog.target_repr stores for invitation
+        # actions, and the audit log is readable by audit.read holders who
+        # shouldn't be able to harvest still-valid registration codes from it.
+        return self.masked_code
+
+    @property
+    def masked_code(self) -> str:
+        return mask_invitation_code(self.code)
 
     def is_valid(self) -> bool:
         if self.revoked_at is not None:

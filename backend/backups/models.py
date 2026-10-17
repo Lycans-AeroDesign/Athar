@@ -5,7 +5,7 @@ from core.models import OrganizationScopedModel, TimeStampedModel, UUIDPrimaryKe
 
 
 def backup_archive_upload_path(instance: "BackupJob", filename: str) -> str:
-    return f"backups/{instance.organization_id}/{instance.id}.zip"
+    return f"backups/{instance.organization_id}/{instance.id}.zip.enc"
 
 
 class BackupJob(UUIDPrimaryKeyModel, OrganizationScopedModel, TimeStampedModel):
@@ -29,6 +29,8 @@ class BackupJob(UUIDPrimaryKeyModel, OrganizationScopedModel, TimeStampedModel):
     # Uses whatever STORAGES["default"] is configured (local disk or
     # S3-compatible - see config/settings.py) automatically, same as
     # files.StoredFile.file - no special-casing needed here for that.
+    # Encrypted with the server key (core/crypto.py) - archives made before
+    # that are plaintext .zip, and everything that reads one handles both.
     archive = models.FileField(upload_to=backup_archive_upload_path, null=True, blank=True)
     error = models.TextField(blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)
@@ -41,7 +43,7 @@ class BackupJob(UUIDPrimaryKeyModel, OrganizationScopedModel, TimeStampedModel):
 
 
 def uploaded_restore_archive_path(instance: "RestoreJob", filename: str) -> str:
-    return f"backups/{instance.organization_id}/restores/{instance.id}.zip"
+    return f"backups/{instance.organization_id}/restores/{instance.id}.zip.enc"
 
 
 class RestoreJob(UUIDPrimaryKeyModel, OrganizationScopedModel, TimeStampedModel):

@@ -61,7 +61,7 @@ def restore_org_backup(restore_job_id) -> None:
     try:
         if not archive:
             raise restore.RestoreError("The backup this restore was started from no longer exists.")
-        with archive.open("rb") as archive_file:
+        with services.open_decrypted_archive(archive) as archive_file:
             summary = restore.restore_org_backup_archive(job.organization, archive_file, actor=job.requested_by)
     except Exception as exc:  # noqa: BLE001 - any failure here must land the job in FAILED, not crash the worker
         logger.exception("restore_org_backup failed for job %s", restore_job_id)

@@ -12,4 +12,6 @@ class TrainingConfig(AppConfig):
         # trigram implementation without duplicating it. See training/search.py.
         from knowledge.search import SEARCH_FIELDS
 
-        SEARCH_FIELDS["course"] = ("title", ("short_description", "description"))
+        from .models import COURSE_SEARCH_FIELDS
+
+        SEARCH_FIELDS["course"] = COURSE_SEARCH_FIELDS

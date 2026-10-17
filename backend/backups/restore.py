@@ -400,6 +400,8 @@ def _restore_users(ctx: _RestoreContext, zf: zipfile.ZipFile) -> list[dict]:
         if "preferences" in row:
             preferences = _json_or_default(row["preferences"], {})
             user.preferences = preferences if isinstance(preferences, dict) else {}
+        if "email_visible" in row:
+            user.email_visible = _bool(row["email_visible"])
         if "last_login" in row:
             user.last_login = _datetime_or_none(row["last_login"])
         user.save()
