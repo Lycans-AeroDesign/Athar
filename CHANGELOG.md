@@ -1,3 +1,10 @@
+## [1.16.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.15.0...v1.16.0) (2026-10-18)
+
+### Features
+
+* add platform admin dashboard for instance operators ([0cd24ef](https://github.com/Lycans-AeroDesign/Athar/commit/0cd24ef6bb991a426b1f87c26da42468194b81f2))
+* **platform:** email-only password resets and a registration toggle ([ff6bdac](https://github.com/Lycans-AeroDesign/Athar/commit/ff6bdacbb0bc63d4577efa25eb44ea3f39a8411c))
+
 ## [1.15.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.14.0...v1.15.0) (2026-10-18)
 
 ### Features
