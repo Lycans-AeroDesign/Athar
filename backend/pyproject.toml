@@ -18,7 +18,7 @@ dependencies = [
     "djangorestframework-simplejwt>=5.5.1",
     "drf-spectacular>=0.30.0",
     "gunicorn>=26.1.0",
-    "psycopg[binary]>=3.3.4",
+    "psycopg[binary]>=3.3.6",
     "sentry-sdk>=2.0",
     "whitenoise>=6.12.0",
 ]
