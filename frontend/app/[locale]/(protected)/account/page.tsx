@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
+import { DataPrivacyPanel } from "@/components/account/DataPrivacyPanel";
 import { EditProfileModal } from "@/components/account/EditProfileModal";
 import { PreferencesPanel } from "@/components/account/PreferencesPanel";
 import { ContributionsPanel } from "@/components/knowledge/ContributionsPanel";
@@ -15,7 +16,7 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 import { formatDate } from "@/lib/datetime";
 import { formatPersonName } from "@/lib/format";
 
-type AccountTab = "contributions" | "preferences";
+type AccountTab = "contributions" | "preferences" | "data";
 
 // Identity header up top (with Edit Profile opening a dialog rather than a
 // long inline form), then two tabs: your contributions - the thing you come
@@ -42,6 +43,7 @@ export default function AccountPage() {
   const tabs: { id: AccountTab; label: string; icon: string }[] = [
     { id: "contributions", label: t("myContributionsTitle"), icon: "trophy" },
     { id: "preferences", label: t("preferences.title"), icon: "settings" },
+    { id: "data", label: t("data.title"), icon: "privacy_tip" },
   ];
 
   return (
@@ -111,9 +113,13 @@ export default function AccountPage() {
         ) : (
           <p className="font-body-md text-body-md text-on-surface-variant">{commonT("loading")}</p>
         )
-      ) : (
+      ) : tab === "preferences" ? (
         <div className="max-w-2xl">
           <PreferencesPanel />
+        </div>
+      ) : (
+        <div className="max-w-2xl">
+          <DataPrivacyPanel />
         </div>
       )}
 

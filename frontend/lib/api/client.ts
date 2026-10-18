@@ -120,7 +120,11 @@ function parseErrorBody(
     if (typeof record.detail === "string") return { message: record.detail, fields: {} };
     const fields: Record<string, string> = {};
     for (const [key, value] of Object.entries(record)) {
-      if (Array.isArray(value) && value.every((entry): entry is string => typeof entry === "string") && value.length > 0) {
+      // A serializer error is a list of strings; a service raising ValidationError({"field": "msg"})
+      // gives a bare string instead.
+      if (typeof value === "string" && value) {
+        fields[key] = value;
+      } else if (Array.isArray(value) && value.every((entry): entry is string => typeof entry === "string") && value.length > 0) {
         fields[key] = value.join(" ");
       }
     }

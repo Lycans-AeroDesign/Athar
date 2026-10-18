@@ -45,6 +45,11 @@ describe("extractApiError", () => {
     });
   });
 
+  it("reads a field error given as a plain string, as a service's ValidationError({field: msg}) produces", async () => {
+    const result = await extractApiError(fakeResponse({ password: "That password is incorrect." }), "/api/v1/thing/");
+    expect(result).toEqual({ message: "That password is incorrect.", fields: { password: "That password is incorrect." } });
+  });
+
   it("falls back to a generic status-based message when the body isn't JSON", async () => {
     const res = {
       status: 500,

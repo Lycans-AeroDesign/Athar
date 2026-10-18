@@ -465,6 +465,20 @@
       "engineeringListFiltersDescription": "Adds a search box to each of the Projects/Components/Failures/SOPs list pages, scoped to that page's own content, and auto-scopes the top search bar to whichever of those sections you're viewing. Either way, an active-filter chip shows what's applied and clears it. Turning this off leaves both search boxes unscoped by default - you can still pick a filter manually.",
       "emailVisibleLabel": "Show my email to other members",
       "emailVisibleDescription": "Lets other members see your email address on your profile, on content you wrote, and in member pickers. When off, only you and administrators who manage users can see it."
+    },
+    "data": {
+      "title": "Privacy & data",
+      "description": "Download a copy of the personal data Athar holds about you, or delete your account.",
+      "exportTitle": "Download my data",
+      "exportDescription": "A JSON file with your profile, the content you wrote, your bookmarks, course progress and activity log. It never includes your password.",
+      "exportButton": "Download my data",
+      "exportError": "Couldn't download your data: {message}",
+      "deleteTitle": "Delete my account",
+      "deleteDescription": "Permanently deletes your account, bookmarks, course progress and sessions. Content you wrote stays with your organization with your name removed. This can't be undone.",
+      "deleteButton": "Delete my account",
+      "deleteConfirmTitle": "Delete your account?",
+      "deleteConfirmDescription": "Enter your password to confirm. You'll be signed out immediately.",
+      "passwordLabel": "Password"
     }
   },
   "about": {
