@@ -23,12 +23,9 @@ class OrganizationSettingsSerializer(serializers.ModelSerializer):
     # useful for the settings form's own bookkeeping (filename, id, ...).
     logo_url = serializers.SerializerMethodField()
     favicon_url = serializers.SerializerMethodField()
-    # Instance-wide (not per-organization) flag mirrored from settings.py's
-    # ENABLE_ORGANIZATION_REGISTRATION, not an OrganizationSettings model
-    # field - piggybacks on this always-public, pre-login endpoint so the
-    # register page can hide its "create a new organization" tab without a
-    # dedicated endpoint. See OrganizationCreateView, which is the one that
-    # actually enforces this server-side.
+    # Instance-wide flag mirrored from settings.ENABLE_ORGANIZATION_REGISTRATION, carried on
+    # this public pre-login endpoint so the register page can hide its "create organization"
+    # tab. OrganizationCreateView enforces it server-side.
     organization_registration_enabled = serializers.SerializerMethodField()
     # Same idea, mirrors settings.EMAIL_ENABLED - lets the Users tab offer
     # "email the reset link" only when the server can actually send email.
@@ -77,12 +74,9 @@ class OrganizationCreateSerializer(serializers.Serializer):
     admin_password = serializers.CharField(write_only=True, min_length=8)
     admin_first_name = serializers.CharField(required=False, allow_blank=True, default="")
     admin_last_name = serializers.CharField(required=False, allow_blank=True, default="")
-    # Required, same format/uniqueness rules as accounts.User.username (and
-    # as RegisterSerializer.username) - a plain Serializer, not a
-    # ModelSerializer, so DRF's automatic UniqueValidator can't be used here
-    # (it assumes the model field is named the same as this serializer field,
-    # i.e. "admin_username", which doesn't exist on User - see this field's
-    # own uniqueness check below instead).
+    # Required; same format/uniqueness rules as accounts.User.username. A plain Serializer, so
+    # DRF's UniqueValidator doesn't apply (no `admin_username` on User); see the uniqueness
+    # check below.
     admin_username = serializers.CharField(max_length=30, validators=[username_validator])
 
     def validate_admin_email(self, value):

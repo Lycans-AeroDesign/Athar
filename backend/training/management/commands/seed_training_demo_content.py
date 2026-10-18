@@ -6,14 +6,11 @@ from organization.models import Organization
 from rbac.models import Role
 
 from training import services
-from training.models import Course, CourseEnrollment, CourseModule, CourseResource, Lesson, LessonKnowledgeReference
+from training.models import Course, CourseEnrollment, CourseResource, Lesson, LessonKnowledgeReference
 
-# Same three demo users/emails as knowledge.management.commands.seed_demo_content's
-# DEMO_USERS - reusing them (rather than a separate set) means running both
-# commands against the same organization produces one coherent demo login
-# set, not two disjoint casts of characters. Deliberately not imported from
-# that module though - app-local command, no cross-app import for a plain
-# constant dict.
+# Same three demo users as knowledge's seed_demo_content DEMO_USERS, so running both
+# against one organization yields one coherent demo login set. Not imported from that
+# module, to avoid a cross-app import for a constant.
 DEMO_USERS = {
     "member1@demo.local": ("Casey", "Nguyen", "Member"),
     "mentor1@demo.local": ("Priya", "Sharma", "Mentor"),
@@ -221,7 +218,7 @@ class Command(BaseCommand):
             actor=head, course=course, title="Team Workflow",
             description="How the pieces fit together day to day.",
         )
-        putting_it_together = services.create_lesson(
+        services.create_lesson(
             actor=head, module=team_workflow, title="Putting It All Together",
             short_description="A recap of the full commit-branch-PR-merge cycle.",
             lesson_type=Lesson.LessonType.TEXT,

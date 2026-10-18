@@ -4,7 +4,7 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from core.testing import create_test_organization
+from core.testing import RoleLoginMixin, create_test_organization
 from accounts.models import User
 from audit.models import AuditLog
 from files.models import StoredFile
@@ -27,25 +27,16 @@ from .models import (
     Question,
     QuestionAttachment,
     RestrictedAccessGrant,
-    Sop,
     StorageLocation,
     Tag,
     Test,
 )
 
 
-class KnowledgeTestCase(APITestCase):
+class KnowledgeTestCase(RoleLoginMixin, APITestCase):
     @classmethod
     def setUpTestData(cls):
         cls.organization = create_test_organization()
-
-    def _login_with_role(self, email, role_name):
-        user = User.objects.create_user(email=email, password="password123", organization=self.organization)
-        Role.objects.get(organization=self.organization, name=role_name).user_roles.create(user=user)
-        response = self.client.post(
-            reverse("auth-login"), {"email": email, "password": "password123"}, format="json"
-        )
-        return user, response.data["access"]
 
     def _auth(self, access_token):
         return {"HTTP_AUTHORIZATION": f"Bearer {access_token}"}
@@ -2391,11 +2382,9 @@ class DocumentTests(KnowledgeTestCase):
             format="json",
             **self._auth(owner_access),
         ).data
-        # Project creation needs project.create (Subteam Head only, see
-        # EngineeringDomainTests) - a separate account from the document
-        # owner just to get a project to relate to; the relation itself is
-        # created from the document owner's side below, which only needs
-        # edit rights on the *source* (the document), not the target.
+        # Project creation needs project.create (Subteam Head only), so a separate account makes the
+        # project. The relation is created from the document owner's side, which only needs edit
+        # rights on the *source* (the document), not the target.
         _, head_access = self._login_with_role("docresthead@example.com", "Subteam Head")
         project = self.client.post(
             reverse("knowledge-project-list-create"), {"name": "Zephyrix Project"}, format="json", **self._auth(head_access)
@@ -2428,7 +2417,7 @@ class DocumentTests(KnowledgeTestCase):
             self.assertEqual([r["other_id"] for r in response.data], [document["id"]])
 
 
-class MultiTenancyIsolationTests(APITestCase):
+class MultiTenancyIsolationTests(RoleLoginMixin, APITestCase):
     """Phase F of the multi-tenancy retrofit plan - a dedicated adversarial
     pass, not "every model has a filter so it must be fine." Two real,
     independent organizations (own RBAC catalogue, own users, own data),
@@ -2441,14 +2430,6 @@ class MultiTenancyIsolationTests(APITestCase):
     def setUpTestData(cls):
         cls.org_a = create_test_organization(name="Org A")
         cls.org_b = create_test_organization(name="Org B")
-
-    def _login_with_role(self, email, role_name, organization):
-        user = User.objects.create_user(email=email, password="password123", organization=organization)
-        Role.objects.get(organization=organization, name=role_name).user_roles.create(user=user)
-        response = self.client.post(
-            reverse("auth-login"), {"email": email, "password": "password123"}, format="json"
-        )
-        return user, response.data["access"]
 
     def _auth(self, access_token):
         return {"HTTP_AUTHORIZATION": f"Bearer {access_token}"}
@@ -2895,7 +2876,7 @@ class BookmarkTests(KnowledgeTestCase):
         self.assertTrue(Bookmark.objects.filter(id=bookmark_id).exists())
 
 
-class CrossOrgAccessGrantAndBookmarkTests(APITestCase):
+class CrossOrgAccessGrantAndBookmarkTests(RoleLoginMixin, APITestCase):
     """Same two-organization shape as MultiTenancyIsolationTests above (not
     a subclass of it - that would re-run its tests a second time under this
     class name) for the two new cross-org attack surfaces this feature set
@@ -2905,14 +2886,6 @@ class CrossOrgAccessGrantAndBookmarkTests(APITestCase):
     def setUpTestData(cls):
         cls.org_a = create_test_organization(name="Org A Grants")
         cls.org_b = create_test_organization(name="Org B Grants")
-
-    def _login_with_role(self, email, role_name, organization):
-        user = User.objects.create_user(email=email, password="password123", organization=organization)
-        Role.objects.get(organization=organization, name=role_name).user_roles.create(user=user)
-        response = self.client.post(
-            reverse("auth-login"), {"email": email, "password": "password123"}, format="json"
-        )
-        return user, response.data["access"]
 
     def _auth(self, access_token):
         return {"HTTP_AUTHORIZATION": f"Bearer {access_token}"}
@@ -3493,7 +3466,7 @@ class CreationFlowTests(KnowledgeTestCase):
         self.assertEqual(len(response.data["results"]), 1)
 
 
-class WriteSerializerScopingTests(APITestCase):
+class WriteSerializerScopingTests(RoleLoginMixin, APITestCase):
     """Foreign-key ids on every write serializer (project_id, component_id,
     category_id, file_id, co_author_ids) resolve only within the caller's
     own organization - and, for projects/components, only to rows the caller
@@ -3503,12 +3476,6 @@ class WriteSerializerScopingTests(APITestCase):
     def setUpTestData(cls):
         cls.org_a = create_test_organization(name="Scope Org A")
         cls.org_b = create_test_organization(name="Scope Org B")
-
-    def _login_with_role(self, email, role_name, organization):
-        user = User.objects.create_user(email=email, password="password123", organization=organization)
-        Role.objects.get(organization=organization, name=role_name).user_roles.create(user=user)
-        response = self.client.post(reverse("auth-login"), {"email": email, "password": "password123"}, format="json")
-        return user, response.data["access"]
 
     def _auth(self, access_token):
         return {"HTTP_AUTHORIZATION": f"Bearer {access_token}"}

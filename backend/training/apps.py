@@ -5,11 +5,9 @@ class TrainingConfig(AppConfig):
     name = "training"
 
     def ready(self):
-        # Registers this app's course search fields into knowledge.search's
-        # shared registry at startup - a one-way reach from training into
-        # knowledge (never the reverse), so Training's own SearchView can
-        # reuse knowledge.search.search_filter's Postgres full-text +
-        # trigram implementation without duplicating it. See training/search.py.
+        # Registers course search fields into knowledge.search's shared registry (a one-way
+        # reach from training into knowledge), reusing its full-text + trigram implementation.
+        # See training/search.py.
         from knowledge.search import SEARCH_FIELDS
 
         from .models import COURSE_SEARCH_FIELDS

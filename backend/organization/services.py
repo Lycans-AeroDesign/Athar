@@ -8,13 +8,10 @@ from rbac.services import seed_rbac_for_organization
 
 from .models import Organization, OrganizationSettings
 
-# Leading bytes -> the only Content-Type branding images are ever served
-# as (see views.OrganizationLogoView/OrganizationFaviconView). Decided from
-# the file's actual content, not its client-supplied filename or MIME type -
-# both are whatever the uploader said. SVG is deliberately absent: it's a
-# script-capable document, and the logo/favicon URLs are public and served
-# inline from the app's own origin, so an SVG there is stored XSS against
-# anyone who opens the link.
+# Leading bytes -> the only Content-Type branding images are served as (views.OrganizationLogoView/
+# OrganizationFaviconView), decided from file content, not the client-supplied name or MIME
+# type. SVG is deliberately absent: it's script-capable and these URLs are public and served
+# inline from the app's origin, so it would be stored XSS.
 _BRANDING_IMAGE_SIGNATURES = (
     (b"\x89PNG\r\n\x1a\n", "image/png"),
     (b"\xff\xd8\xff", "image/jpeg"),
@@ -60,12 +57,10 @@ def create_organization(
     admin_username: str | None = None,
     request=None,
 ):
-    """The self-service SaaS signup entrypoint - creates a brand-new,
-    fully-isolated Organization plus its first user (assigned that org's own
-    Organization Admin role). Distinct from accounts.services.register_user,
-    which joins an EXISTING org via an invitation code. Returns (organization,
-    admin_user); mirrors RegisterView's own shape (create, don't auto-login -
-    the caller still logs in separately, same as invitation-based registration)."""
+    """The self-service signup entrypoint: creates a new, isolated Organization plus its first
+    user (assigned that org's own Organization Admin role). Unlike
+    accounts.services.register_user, which joins an existing org by invitation code. Returns
+    (organization, admin_user); like RegisterView, it doesn't auto-login."""
     from accounts.models import User
     from policies.services import seed_default_policies
     from rbac.models import Role
@@ -102,11 +97,8 @@ def update_general(*, settings: OrganizationSettings, actor, request=None, **fie
 
 
 def update_branding(*, settings: OrganizationSettings, actor, request=None, **fields) -> OrganizationSettings:
-    # logo_id/favicon_id resolve against the global StoredFile.objects.all()
-    # queryset at the serializer layer (see OrganizationBrandingUpdateSerializer -
-    # a PrimaryKeyRelatedField's queryset can't easily be scoped per-request),
-    # so this is the one place that actually stops an org admin from pointing
-    # their branding at a file uploaded by a different tenant.
+    # logo_id/favicon_id resolve against the global StoredFile queryset at the serializer
+    # layer, so this is what stops an org admin pointing branding at another tenant's file.
     for field in ("logo", "favicon"):
         value = fields.get(field)
         if value is not None and value.organization_id != settings.organization_id:

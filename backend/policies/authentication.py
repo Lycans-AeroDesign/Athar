@@ -6,14 +6,11 @@ from .services import has_pending_policies
 
 POLICY_ACCEPTANCE_REQUIRED = "policy_acceptance_required"
 
-# URL names a user may still call while they have unaccepted policies: read
-# and accept the policies themselves, load their own session (the frontend
-# needs /auth/me to render the gate), and log out (the gate's "decline").
-# The admin policy endpoints stay reachable too (they still require
-# organization.manage) - publishing one policy gates the publisher as well,
-# and they mustn't be locked out of publishing the next one or fixing a typo.
-# Everything else is refused server-side - the frontend PolicyGate is only
-# the UX for this, not the enforcement (see CONTRIBUTING.md §6).
+# URL names callable while policies are unaccepted: read/accept the policies, load own
+# session (/auth/me, for the gate UI), and log out (the gate's "decline"). Admin policy
+# endpoints stay reachable (still require organization.manage) so a publisher isn't locked
+# out of publishing the next policy. Everything else is refused server-side; the frontend
+# PolicyGate is only UX (see CONTRIBUTING.md 6).
 ALLOWED_WHILE_PENDING = {
     "policies-current",
     "policies-accept",

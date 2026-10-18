@@ -2,7 +2,7 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from core.testing import create_test_organization
+from core.testing import RoleLoginMixin, create_test_organization
 from accounts.models import User
 
 from .models import Permission, Role
@@ -84,20 +84,11 @@ class PermissionEnforcementTests(APITestCase):
         self.assertTrue(AuditLog.objects.filter(action="role.create", actor=admin).exists())
 
 
-class UserBlockUnblockTests(APITestCase):
+class UserBlockUnblockTests(RoleLoginMixin, APITestCase):
     @classmethod
     def setUpTestData(cls):
         cls.organization = create_test_organization()
         cls.other_organization = create_test_organization(name="Other Org For Block")
-
-    def _login_with_role(self, email, role_name, organization=None):
-        organization = organization or self.organization
-        user = User.objects.create_user(email=email, password="password123", organization=organization)
-        Role.objects.get(organization=organization, name=role_name).user_roles.create(user=user)
-        response = self.client.post(
-            reverse("auth-login"), {"email": email, "password": "password123"}, format="json"
-        )
-        return user, response.data["access"]
 
     def _auth(self, access_token):
         return {"HTTP_AUTHORIZATION": f"Bearer {access_token}"}

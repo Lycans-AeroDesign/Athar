@@ -25,28 +25,17 @@ from .serializers import (
 def _public_organization(request) -> Organization | None:
     """Which org's branding/settings an anonymous (pre-login) request sees.
 
-    There is no subdomain/host-based routing yet (see Organization.slug's
-    own docstring), so an anonymous visitor's organization genuinely can't
-    be determined in the general multi-tenant case - falling back to a
-    heuristic is a deliberate, documented limitation (a deployment hosting
-    several *populated* organizations has no correct answer here yet), not
-    a real per-tenant resolution.
+    There is no subdomain/host-based routing yet (see Organization.slug), so the visitor's org
+    can't be determined in the general multi-tenant case; this heuristic is a documented
+    limitation, not per-tenant resolution.
 
-    The heuristic prefers the oldest organization that actually has a user
-    over one that doesn't, rather than plain oldest-first: every install
-    gets a bootstrap "Default Organization" from a data migration (see
-    organization/migrations/0002_seed_bootstrap_organization.py), which is
-    always the single oldest row - if an operator instead used self-service
-    org creation (organization.services.create_organization) and never put
-    a real user in the bootstrap org, plain oldest-first would permanently
-    serve that empty placeholder's (blank) branding instead of the org
-    anyone is actually using, for every single-org deployment, which is
-    this project's primary use case. Falls back to genuinely oldest only
-    when no organization has a user yet (a fresh install before anyone has
-    registered at all).
+    It prefers the oldest organization that has a user over plain oldest-first: every install
+    gets a bootstrap "Default Organization" (migration 0002_seed_bootstrap_organization), and
+    if an operator used self-service creation and never put a user in it, oldest-first would
+    permanently serve that empty placeholder's blank branding. It falls back to the oldest
+    only when no organization has a user yet.
 
-    Once authenticated, every other view in this file uses
-    request.user.organization instead, which is always correct."""
+    Once authenticated, other views use request.user.organization."""
     if request.user.is_authenticated:
         return request.user.organization
     return (
@@ -59,13 +48,10 @@ def _public_organization(request) -> Organization | None:
 
 
 def _branding_image_response(stored_file) -> FileResponse:
-    """Serves a logo/favicon inline (it's an <img>/<link rel="icon"> source)
-    but never as anything script-capable: the Content-Type comes from the
-    file's own bytes (services.branding_image_content_type), and the CSP
-    sandbox stops even a mislabelled file from running script on this
-    origin if someone opens the URL directly. Anything that no longer sniffs
-    as an allowed image (e.g. an SVG saved before update_branding checked
-    this) is a 404 rather than served."""
+    """Serves a logo/favicon inline but never as anything script-capable: Content-Type comes
+    from the file's own bytes (services.branding_image_content_type), and the CSP sandbox
+    stops a mislabelled file from running script on this origin. Anything that no longer
+    sniffs as an allowed image (e.g. an SVG saved before update_branding checked) is a 404."""
     content_type = services.branding_image_content_type(stored_file)
     if content_type is None:
         raise Http404

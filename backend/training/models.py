@@ -35,22 +35,13 @@ class CourseCategory(UUIDPrimaryKeyModel, OrganizationScopedModel, TimeStampedMo
 
 
 class Course(UUIDPrimaryKeyModel, OrganizationScopedModel, TimeStampedModel):
-    """Top-level learning unit. Status mirrors knowledge.models.Article.Status
-    exactly (5 states, including REJECTED) - "mirror the Knowledge article
-    workflow" only holds up if REJECTED (a real terminal-but-editable state
-    reached from IN_REVIEW) comes along with it; dropping it would leave a
-    rejected-in-review course with nowhere to go but back to DRAFT, losing
-    the reviewer's feedback trail. See knowledge.services.submit_article/
-    publish_article/reject_article/archive_article/unarchive_article for the
-    workflow-transition-function shape this model's own service functions
-    (training.services.submit_course etc.) are structurally identical to.
+    """Top-level learning unit. Status mirrors knowledge.models.Article.Status (including
+    REJECTED, so a rejected course keeps its reviewer feedback trail); the transition functions
+    in training.services follow knowledge.services' shape.
 
-    Deliberately has no `visibility` field (unlike Article/Question/the
-    engineering-domain types) - gating is entirely on `status`
-    (PUBLISHED = org-wide, DRAFT/IN_REVIEW/REJECTED = author + managers only,
-    ARCHIVED = hidden from discovery but still reachable by existing
-    enrollees/managers). A second visibility axis on top of that would be
-    overengineering for what the spec actually asks for."""
+    Access combines `visibility` (PUBLIC/RESTRICTED, see training/visibility.py) with `status`:
+    PUBLISHED = visible org-wide, DRAFT/IN_REVIEW/REJECTED = author + managers, ARCHIVED =
+    hidden from discovery but still reachable by enrollees/managers."""
 
     class Status(models.TextChoices):
         DRAFT = "DRAFT", "Draft"
@@ -79,11 +70,9 @@ class Course(UUIDPrimaryKeyModel, OrganizationScopedModel, TimeStampedModel):
     # avoids an expensive aggregate query on every course-list render.
     estimated_minutes = models.PositiveIntegerField(default=0)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT)
-    # Same PUBLIC/RESTRICTED axis as every knowledge type (knowledge.models.
-    # Visibility), orthogonal to `status` above: a RESTRICTED course is only
-    # visible to its author, org admins, training managers and users named in
-    # a knowledge.RestrictedAccessGrant for it - whatever its status. See
-    # training/visibility.py for the rule.
+    # Same PUBLIC/RESTRICTED axis as knowledge types, orthogonal to `status`: a RESTRICTED
+    # course is visible only to its author, org admins, training managers and users with a
+    # RestrictedAccessGrant, whatever its status (training/visibility.py).
     visibility = models.CharField(max_length=20, choices=Visibility.choices, default=Visibility.PUBLIC)
     # SET_NULL, not CASCADE - deleting a user must not delete their content
     # (matches knowledge.models.Article.author's precedent).
@@ -171,23 +160,13 @@ class LearningObjective(UUIDPrimaryKeyModel, TimeStampedModel):
 
 
 class CourseResource(UUIDPrimaryKeyModel, TimeStampedModel):
-    """A learning asset attached to a lesson - either an external URL
-    (Google Drive video, YouTube, GitHub repo, a website, ...) or an
-    Athar-hosted StoredFile. Deliberately never a pointer into the Knowledge
-    DB - see LessonKnowledgeReference below for that, and the Training
-    Center plan's §1.5 for why the two are kept as disjoint models.
+    """A learning asset attached to a lesson: an external URL or an Athar-hosted
+    StoredFile. Never a pointer into the Knowledge DB (see LessonKnowledgeReference).
 
-    `is_primary` is a plan-introduced addition beyond the spec's literal
-    schema sketch: it marks which resource IS the lesson's main content (the
-    video/document itself) as opposed to a supplementary "further reading"
-    link/file - the spec didn't say how the lesson viewer would tell the two
-    apart otherwise.
+    `is_primary` marks the lesson's main content, as opposed to supplementary links.
 
-    Mutual-exclusivity invariants (url XOR stored_file; provider blank
-    unless EXTERNAL_LINK) are enforced in training.services.create_resource/
-    update_resource, not as DB CheckConstraints - matching how
-    KnowledgeRelation's own cross-model invariants are enforced in
-    knowledge/services.py, not the DB layer."""
+    Invariants (url XOR stored_file; provider blank unless EXTERNAL_LINK) are enforced in
+    training.services.create_resource/update_resource, not as DB CheckConstraints."""
 
     class ResourceType(models.TextChoices):
         EXTERNAL_LINK = "EXTERNAL_LINK", "External Link"
@@ -227,27 +206,16 @@ class CourseResource(UUIDPrimaryKeyModel, TimeStampedModel):
 
 
 class LessonKnowledgeReference(UUIDPrimaryKeyModel, TimeStampedModel):
-    """A one-directional pointer from a Lesson to an existing Knowledge
-    object (Article/Question/Project/Component/Failure/Sop/Test/Document) -
-    deliberately its OWN model, not a row in knowledge.models.KnowledgeRelation.
+    """A one-way pointer from a Lesson to a Knowledge object (Article, Question, Project,
+    Component, Failure, Sop, Test, Document).
 
-    KnowledgeRelation is a bidirectional *semantic* graph with a curated verb
-    registry (knowledge/relationships.py's RELATIONSHIP_DEFINITIONS) - a
-    Lesson->Article pointer needs no verb, and reusing it would require
-    Knowledge's own _RELATABLE_MODELS allowlist to import training.models.Lesson,
-    breaking the one-way training->knowledge dependency this app is built on
-    (see training/apps.py's ready() for the one place training *does* reach
-    into knowledge, its search-field registry - a one-time startup
-    registration, not a runtime import cycle).
+    Its own model rather than a KnowledgeRelation row, so knowledge never imports
+    training.models and the training->knowledge dependency stays one-way. The allowlist of
+    referenceable types lives in training.services.
 
-    Allowlist of referenceable types lives in training.services (mirroring
-    knowledge.services._RELATABLE_MODELS), not here, since ContentType itself
-    can't express an allowlist. Read-time behavior: a lesson's
-    knowledge_references are resolved through knowledge.visibility.can_view_instance
-    before being serialized - a reference whose target is RESTRICTED-and-
-    inaccessible, or has since been deleted (dangling GenericFK, no DB
-    constraint), is silently omitted, never a 403 - same precedent
-    knowledge.models.Bookmark documents for itself."""
+    At read time, references are filtered through knowledge.visibility.can_view_instance;
+    restricted-and-inaccessible or deleted (dangling GenericFK) targets are silently
+    omitted, never a 403."""
 
     lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name="knowledge_references")
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, related_name="+")
@@ -273,22 +241,15 @@ class LessonKnowledgeReference(UUIDPrimaryKeyModel, TimeStampedModel):
 
 
 class CourseEnrollment(UUIDPrimaryKeyModel, OrganizationScopedModel, TimeStampedModel):
-    """Unlike CourseModule/Lesson, this DOES carry its own `organization` FK
-    despite being reachable via course.organization - /my-courses/ and
-    org-wide stats need direct filtering without a join, and
-    training.services.enroll_in_course validates
-    actor.organization == course.organization at creation, the same "own FK
-    despite an already-scoped parent, because this is the one place a
-    cross-org mistake could otherwise sneak in" rationale
-    knowledge.models.KnowledgeRelation documents for itself.
+    """Carries its own `organization` FK (unlike CourseModule/Lesson) so /my-courses/ and
+    org-wide stats filter without a join; training.services.enroll_in_course validates
+    it matches the course's organization.
 
-    NOT_STARTED is implicit (no enrollment row exists yet), per the spec.
+    NOT_STARTED is implicit (no row yet).
 
-    Deletion safety: training.services.delete_course rejects deletion while
-    course.enrollments.exists() - hard delete is only possible for
-    enrollment-free drafts; once any learner has enrolled, only
-    archive_course is available. This is what actually guarantees enrollment/
-    progress history is never destroyed - not the on_delete choice below."""
+    Deletion safety: delete_course rejects courses with enrollments, so only
+    archive_course is available once a learner enrolls. That, not the on_delete choice
+    below, protects enrollment/progress history."""
 
     class Status(models.TextChoices):
         IN_PROGRESS = "IN_PROGRESS", "In Progress"
@@ -312,14 +273,9 @@ class CourseEnrollment(UUIDPrimaryKeyModel, OrganizationScopedModel, TimeStamped
 
 
 class LessonProgress(UUIDPrimaryKeyModel):
-    """Row existence = COMPLETED, nothing else stored - a deliberate
-    simplification versus the spec's literal schema sketch (which has an
-    explicit completed/not-completed state field). This is the same idiom
-    the spec itself already uses for CourseEnrollment's implicit NOT_STARTED.
-    training.services.mark_lesson_complete is get_or_create(enrollment=,
-    lesson=) - inherently idempotent, satisfying "duplicate completion
-    handling" for free. No `organization` FK - reached only via `enrollment`
-    (already org-scoped), same precedent as CourseModule."""
+    """Row existence means COMPLETED; nothing else is stored. mark_lesson_complete is a
+    get_or_create, so duplicate completions are idempotent. No `organization` FK: reached
+    only via `enrollment`, which is already org-scoped."""
 
     enrollment = models.ForeignKey(CourseEnrollment, on_delete=models.CASCADE, related_name="lesson_progress")
     lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name="+")

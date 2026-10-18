@@ -115,11 +115,9 @@ csv.field_size_limit(min(sys.maxsize, 2**31 - 1))
 
 ADMIN_PERMISSION = "organization.manage"
 
-# Reverse-dependency order (leaves first) - see this module's own docstring.
-# Training is its own independent tree (LessonKnowledgeReference points INTO
-# knowledge content via a plain generic FK, no DB constraint - see that
-# model's own docstring on why - so it's fine deleted in either order
-# relative to the knowledge block below).
+# Reverse-dependency order (leaves first); see the module docstring. Training is an
+# independent tree: LessonKnowledgeReference points into knowledge via a plain generic FK
+# with no DB constraint, so deletion order relative to knowledge doesn't matter.
 _DELETE_SPECS = [
     (LessonProgress, "enrollment__organization"),
     (CourseEnrollment, "organization"),
@@ -763,11 +761,9 @@ def _restore_tests(ctx, zf, projects_by_id, tags_by_id) -> set[uuid.UUID]:
 
 
 def _restore_files(ctx: _RestoreContext, zf: zipfile.ZipFile) -> dict[uuid.UUID, StoredFile]:
-    # StoredFiles are never wiped up front (not in _DELETE_SPECS): a file
-    # uploaded since the backup may still be someone's profile picture, and
-    # a file's bytes never change after upload, so a row that still exists
-    # under the same id is reused as-is rather than re-inserted (which would
-    # hit its pkey).
+    # StoredFiles are never wiped up front (not in _DELETE_SPECS): one uploaded since the
+    # backup may still be someone's profile picture. Bytes never change after upload, so a
+    # row that still exists under the same id is reused rather than re-inserted.
     existing = {f.id: f for f in StoredFile.objects.filter(organization=ctx.organization)}
     names = zf.namelist()
     files_by_id = {}
@@ -775,11 +771,9 @@ def _restore_files(ctx: _RestoreContext, zf: zipfile.ZipFile) -> dict[uuid.UUID,
         file_id = _uuid_or_none(row["id"])
         if file_id is None:
             continue
-        # Everything restored is referenced by restored content, so it must
-        # stay confirmed or files.services.delete_unconfirmed_files would
-        # reclaim it 24h later. Archives from before confirmed_at was
-        # exported have no way to tell a staged upload apart, so they count
-        # as confirmed too.
+        # Restored files are referenced by restored content, so they must stay confirmed or
+        # delete_unconfirmed_files would reclaim them. Archives from before confirmed_at was
+        # exported can't distinguish staged uploads, so they count as confirmed too.
         confirmed_at = _datetime_or_none(row["confirmed_at"]) if "confirmed_at" in row else timezone.now()
         if file_id in existing:
             stored_file = existing[file_id]
@@ -1336,12 +1330,10 @@ def _restore_timestamps(ctx: _RestoreContext, zf: zipfile.ZipFile) -> None:
 
 @transaction.atomic
 def restore_org_backup_archive(organization, archive_file, actor=None) -> RestoreSummary:
-    """`archive_file` is an open, seekable file-like object positioned at
-    the start of a .zip produced by services.build_org_backup_archive.
-    `actor` is the admin running the restore (see this module's docstring
-    for what that protects). Everything below runs in one transaction - a
-    failure partway through rolls the whole restore back rather than
-    leaving the organization half-wiped."""
+    """`archive_file` is an open, seekable file positioned at the start of a .zip produced by
+    services.build_org_backup_archive. `actor` is the admin running the restore (see the module
+    docstring). Everything runs in one transaction, so a failure rolls the whole restore back
+    rather than leaving the organization half-wiped."""
     summary = RestoreSummary()
     ctx = _RestoreContext(organization, summary, actor)
 

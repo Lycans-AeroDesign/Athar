@@ -23,10 +23,8 @@ logger = logging.getLogger(__name__)
 def consume_invitation_code(code: str) -> InvitationCode:
     """Validates and marks one use of a code, inside the caller's transaction.
 
-    select_for_update() locks the row for the rest of the transaction, so two
-    concurrent registrations racing on the same single-use code can't both
-    pass the is_valid() check before either commits.
-    """
+    select_for_update() locks the row so two concurrent registrations can't both pass the
+    is_valid() check on the same single-use code."""
     try:
         invitation = InvitationCode.objects.select_for_update().get(code=code)
     except InvitationCode.DoesNotExist as exc:
@@ -53,11 +51,9 @@ def register_user(
 ) -> User:
     """Create a user and assign the default self-registration role (Guest).
 
-    Business logic for registration lives here (not the view) since it spans
-    two apps (accounts + rbac) and writes an audit entry. Wrapped in a
-    transaction together with consume_invitation_code() so a user is never
-    created without successfully consuming a valid code, or vice versa.
-    """
+    Lives here rather than in the view since it spans accounts and rbac and writes an audit
+    entry. Runs in one transaction with consume_invitation_code() so a user is never created
+    without consuming a valid code."""
     invitation = consume_invitation_code(invitation_code)
 
     user = User.objects.create_user(
@@ -123,14 +119,12 @@ def _hash_reset_token(token: str) -> str:
 
 
 def create_password_reset_link(*, user: User, actor: User, request=None) -> tuple[PasswordResetLink, str]:
-    """Generates a one-time reset link for `user` (same org as `actor` - the
-    view enforces that) and returns (link, raw_token). The raw token is never
-    stored, only its hash - the caller must hand it to the admin right away.
-    Any earlier unused link for the same user stops working.
+    """Generates a one-time reset link for `user` (same org as `actor`; the view enforces that)
+    and returns (link, raw_token). Only the token's hash is stored, so the caller must hand
+    over the raw token right away. Any earlier unused link for the user stops working.
 
-    An actor can only reset someone who holds no permission the actor lacks:
-    resetting a password is a full account takeover, so without this a
-    user.manage holder could take over an org admin's account."""
+    An actor can only reset someone who holds no permission the actor lacks: a reset is a full
+    account takeover, so otherwise a user.manage holder could take over an org admin."""
     if user.id == actor.id:
         raise PermissionDenied("Use your own account settings to change your password, not a reset link.")
     if not user.is_active:
@@ -227,13 +221,10 @@ EMAIL_LOGO_CID = "org-logo"
 
 
 class _EmailWithInlineImage(EmailMultiAlternatives):
-    """EmailMultiAlternatives whose HTML part can carry one inline image,
-    referenced from the HTML as `cid:<EMAIL_LOGO_CID>`. Embedded rather than
-    linked: the logo URL is on the backend, which an email client often
-    can't reach (localhost in dev, a private network when self-hosted), and
-    many clients block remote images by default anyway. The image goes in a
-    multipart/related around the HTML, so clients show it in the body rather
-    than as an attachment."""
+    """EmailMultiAlternatives whose HTML part can carry one inline image, referenced as
+    `cid:<EMAIL_LOGO_CID>`. Embedded rather than linked because the backend logo URL is often
+    unreachable from a mail client (localhost, private network) and many clients block remote
+    images. It goes in a multipart/related around the HTML so it shows in the body."""
 
     inline_image: tuple[bytes, str] | None = None  # (data, "image/png")
 

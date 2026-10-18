@@ -1,5 +1,4 @@
 from django.conf import settings
-from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import status
 from rest_framework.exceptions import AuthenticationFailed
@@ -15,6 +14,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from audit.services import log_action
 from config.openapi import BAD_REQUEST, COMMON_ERRORS, NOT_FOUND, UNAUTHORIZED
 from config.pagination import paginated_response
+from core.shortcuts import org_object_or_404
 from rbac.permissions import require_permission
 
 from .models import InvitationCode, User
@@ -242,7 +242,7 @@ class InvitationCodeRevokeView(APIView):
         responses={200: InvitationCodeSerializer, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def post(self, request, pk):
-        invitation = get_object_or_404(InvitationCode, pk=pk, organization=request.user.organization)
+        invitation = org_object_or_404(request, InvitationCode, pk)
         invitation = revoke_invitation_code(invitation=invitation, actor=request.user, request=request)
         return Response(InvitationCodeSerializer(invitation).data)
 
@@ -261,7 +261,7 @@ class UserPasswordResetLinkView(APIView):
         responses={201: PasswordResetLinkSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def post(self, request, pk):
-        user = get_object_or_404(User, pk=pk, organization=request.user.organization)
+        user = org_object_or_404(request, User, pk)
         options = PasswordResetLinkCreateSerializer(data=request.data)
         options.is_valid(raise_exception=True)
         link, token = create_password_reset_link(user=user, actor=request.user, request=request)

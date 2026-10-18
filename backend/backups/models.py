@@ -26,11 +26,9 @@ class BackupJob(UUIDPrimaryKeyModel, OrganizationScopedModel, TimeStampedModel):
     requested_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
     )
-    # Uses whatever STORAGES["default"] is configured (local disk or
-    # S3-compatible - see config/settings.py) automatically, same as
-    # files.StoredFile.file - no special-casing needed here for that.
-    # Encrypted with the server key (core/crypto.py) - archives made before
-    # that are plaintext .zip, and everything that reads one handles both.
+    # Uses STORAGES["default"] (local disk or S3-compatible), like files.StoredFile.file.
+    # Encrypted with the server key (core/crypto.py); older archives are plaintext .zip and
+    # everything that reads one handles both.
     archive = models.FileField(upload_to=backup_archive_upload_path, null=True, blank=True)
     error = models.TextField(blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)

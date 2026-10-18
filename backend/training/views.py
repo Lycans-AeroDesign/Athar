@@ -9,6 +9,7 @@ from rest_framework.views import APIView
 
 from config.openapi import BAD_REQUEST, COMMON_ERRORS, NOT_FOUND
 from config.pagination import paginated_response
+from core.shortcuts import org_object_or_404
 from rbac.permissions import require_permission
 
 from knowledge.models import RestrictedAccessGrant
@@ -52,9 +53,8 @@ from .serializers import (
 
 # --- Visibility helpers -------------------------------------------------------
 #
-# Course has no `visibility` field (see models.py's docstring) - gating is
-# entirely status-based, mirroring knowledge.views._visible_article_or_404's
-# shape but against Course.Status instead of RESTRICTED/PUBLIC.
+# Course gating combines `visibility` (training/visibility.py) with status rules, mirroring
+# knowledge.views._visible_article_or_404.
 
 
 def _ensure_course_visible(request, course: Course) -> None:
@@ -92,7 +92,7 @@ def _restriction_checked_course_or_404(request, pk):
     progress, where a non-published course is already answered by the
     service layer (enroll_in_course's own "only a published course" 400)
     rather than hidden behind a 403."""
-    course = get_object_or_404(Course, pk=pk, organization=request.user.organization)
+    course = org_object_or_404(request, Course, pk)
     if not course_visibility.can_view_course(request.user, course):
         raise PermissionDenied("This course isn't accessible to you.")
     return course
@@ -146,7 +146,7 @@ class CourseCategoryDetailView(APIView):
         responses={200: CourseCategorySerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def patch(self, request, pk):
-        category = get_object_or_404(CourseCategory, pk=pk, organization=request.user.organization)
+        category = org_object_or_404(request, CourseCategory, pk)
         serializer = CourseCategoryWriteSerializer(category, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         category = services.update_course_category(
@@ -159,7 +159,7 @@ class CourseCategoryDetailView(APIView):
         responses={204: OpenApiResponse(description="Deleted."), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def delete(self, request, pk):
-        category = get_object_or_404(CourseCategory, pk=pk, organization=request.user.organization)
+        category = org_object_or_404(request, CourseCategory, pk)
         services.delete_course_category(category=category, actor=request.user, request=request)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -239,7 +239,7 @@ class CourseDetailView(APIView):
         responses={200: CourseDetailSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def patch(self, request, pk):
-        course = get_object_or_404(Course, pk=pk, organization=request.user.organization)
+        course = org_object_or_404(request, Course, pk)
         serializer = CourseWriteSerializer(course, data=request.data, partial=True, context={"request": request})
         serializer.is_valid(raise_exception=True)
         course = services.update_course(course=course, actor=request.user, request=request, **serializer.validated_data)
@@ -250,7 +250,7 @@ class CourseDetailView(APIView):
         responses={204: OpenApiResponse(description="Deleted."), 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def delete(self, request, pk):
-        course = get_object_or_404(Course, pk=pk, organization=request.user.organization)
+        course = org_object_or_404(request, Course, pk)
         services.delete_course(course=course, actor=request.user, request=request)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -263,7 +263,7 @@ class CourseSubmitView(APIView):
         responses={200: CourseDetailSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def post(self, request, pk):
-        course = get_object_or_404(Course, pk=pk, organization=request.user.organization)
+        course = org_object_or_404(request, Course, pk)
         course = services.submit_course(course=course, actor=request.user, request=request)
         return Response(CourseDetailSerializer(course, context={"request": request}).data)
 
@@ -276,7 +276,7 @@ class CoursePublishView(APIView):
         responses={200: CourseDetailSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def post(self, request, pk):
-        course = get_object_or_404(Course, pk=pk, organization=request.user.organization)
+        course = org_object_or_404(request, Course, pk)
         course = services.publish_course(course=course, actor=request.user, request=request)
         return Response(CourseDetailSerializer(course, context={"request": request}).data)
 
@@ -289,7 +289,7 @@ class CourseRejectView(APIView):
         responses={200: CourseDetailSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def post(self, request, pk):
-        course = get_object_or_404(Course, pk=pk, organization=request.user.organization)
+        course = org_object_or_404(request, Course, pk)
         course = services.reject_course(
             course=course, actor=request.user, reason=request.data.get("reason", ""), request=request
         )
@@ -304,7 +304,7 @@ class CourseArchiveView(APIView):
         responses={200: CourseDetailSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def post(self, request, pk):
-        course = get_object_or_404(Course, pk=pk, organization=request.user.organization)
+        course = org_object_or_404(request, Course, pk)
         course = services.archive_course(course=course, actor=request.user, request=request)
         return Response(CourseDetailSerializer(course, context={"request": request}).data)
 
@@ -317,7 +317,7 @@ class CourseUnarchiveView(APIView):
         responses={200: CourseDetailSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def post(self, request, pk):
-        course = get_object_or_404(Course, pk=pk, organization=request.user.organization)
+        course = org_object_or_404(request, Course, pk)
         course = services.unarchive_course(course=course, actor=request.user, request=request)
         return Response(CourseDetailSerializer(course, context={"request": request}).data)
 
@@ -338,7 +338,7 @@ class CourseAccessGrantListCreateView(APIView):
         responses={201: AccessGrantSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def post(self, request, pk):
-        course = get_object_or_404(Course, pk=pk, organization=request.user.organization)
+        course = org_object_or_404(request, Course, pk)
         serializer = CourseAccessGrantCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         grant = services.add_course_access(
@@ -355,7 +355,7 @@ class CourseAccessGrantDetailView(APIView):
         responses={204: OpenApiResponse(description="Revoked."), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def delete(self, request, pk, grant_pk):
-        course = get_object_or_404(Course, pk=pk, organization=request.user.organization)
+        course = org_object_or_404(request, Course, pk)
         grant = get_object_or_404(
             RestrictedAccessGrant,
             pk=grant_pk,
@@ -402,7 +402,7 @@ class CourseStatsView(APIView):
         responses={200: OpenApiResponse(description="{total_enrolled, active, completed, completion_rate}"), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def get(self, request, pk):
-        course = get_object_or_404(Course, pk=pk, organization=request.user.organization)
+        course = org_object_or_404(request, Course, pk)
         return Response(services.course_stats(course))
 
 
@@ -489,7 +489,7 @@ class CourseModuleListCreateView(APIView):
         responses={201: CourseModuleSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def post(self, request, pk):
-        course = get_object_or_404(Course, pk=pk, organization=request.user.organization)
+        course = org_object_or_404(request, Course, pk)
         serializer = CourseModuleWriteSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         module = services.create_module(course=course, actor=request.user, request=request, **serializer.validated_data)
@@ -505,7 +505,7 @@ class CourseModuleReorderView(APIView):
         responses={200: CourseModuleSerializer(many=True), 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def post(self, request, pk):
-        course = get_object_or_404(Course, pk=pk, organization=request.user.organization)
+        course = org_object_or_404(request, Course, pk)
         serializer = ReorderSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         modules = services.reorder_modules(

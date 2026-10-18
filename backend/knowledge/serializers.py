@@ -34,22 +34,15 @@ from .models import (
     TestAttachment,
 )
 
-# Every real relatable content type - shared by CreateRelationSerializer,
-# CreateAccessGrantSerializer, and CreateBookmarkSerializer so a new type
-# only ever needs to be added in one place. Was CreateRelationSerializer's
-# own private _RELATABLE_TYPES before access grants/bookmarks needed the
-# same list.
+# Every real relatable content type, shared by the relation, access-grant and bookmark
+# serializers so a new type is added in one place.
 RELATABLE_TYPE_CHOICES = ["article", "question", "project", "component", "failure", "sop", "test", "document"]
 
 
 class OrgScopedPrimaryKeyRelatedField(serializers.PrimaryKeyRelatedField):
-    """PrimaryKeyRelatedField that only resolves ids within the requesting
-    user's own organization - an id from another tenant gets the same
-    "does not exist" error as a made-up one, so it can't be used to attach
-    (or probe for) another organization's rows. With `visibility_model_name`
-    it additionally hides RESTRICTED rows the requester can't see (see
-    knowledge/visibility.py), same "does not exist" error.
-
+    """PrimaryKeyRelatedField that resolves ids only within the requesting user's organization;
+    another tenant's id gets the same "does not exist" error as a made-up one. With
+    `visibility_model_name` it also hides RESTRICTED rows the requester can't see.
     Needs context["request"]; without it nothing resolves (fails closed)."""
 
     def __init__(self, *, visibility_model_name: str | None = None, **kwargs):
@@ -85,12 +78,10 @@ EMAIL_VISIBILITY_BYPASS_PERMISSION = "user.manage"
 
 
 def visible_email(serializer: serializers.Serializer, user: User) -> str | None:
-    """`user`'s email if the viewer may see it - always when the user opted
-    in (User.email_visible), otherwise only to the user themself or a
-    user.manage holder. Needs context["request"] for the latter two; without
-    it only opted-in emails are shown (fails closed). The user.manage check
-    is cached on the request, since one list response can serialize dozens
-    of authors."""
+    """`user`'s email if the viewer may see it: always when the user opted in
+    (User.email_visible), otherwise only to the user or a user.manage holder. Without
+    context["request"] only opted-in emails show (fails closed). The user.manage check is
+    cached on the request since a list can serialize dozens of authors."""
     if user.email_visible:
         return user.email
     request = serializer.context.get("request")
@@ -123,12 +114,10 @@ class AuthorSerializer(serializers.ModelSerializer):
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
-    """Public-safe profile shape for a user's contributions page - same
-    minimal fields as AuthorSerializer above (never roles/permissions) plus
-    date_joined, the aggregate contribution counts, and the weighted
-    leaderboard score/rank per time window (see scoring.py and
-    services.period_since) - all computed by the view and passed in via
-    context, no model field backing either."""
+    """Public-safe profile for a user's contributions page: AuthorSerializer's minimal fields
+    (never roles/permissions) plus date_joined, contribution counts, and the weighted
+    leaderboard score/rank per time window (see scoring.py, services.period_since), all
+    computed by the view and passed in via context."""
 
     profile_picture = StoredFileSerializer(read_only=True)
     email = serializers.SerializerMethodField()
@@ -177,14 +166,10 @@ class LeaderboardEntrySerializer(serializers.Serializer):
 
 
 class ContributorsMixin:
-    """get_contributors backing a `contributors` SerializerMethodField each
-    *DetailSerializer below declares directly (DRF's SerializerMetaclass only
-    collects declared Fields from `Meta`-bearing bases, so the field itself
-    can't live on a plain mixin - only this method can be shared) - distinct
-    authors of every {type}.create/{type}.update AuditLog entry for this
-    object, via services.contributors_for. See that function's own docstring
-    for why this reuses AuditLog instead of adding real per-type revision
-    history."""
+    """get_contributors for a `contributors` SerializerMethodField that each *DetailSerializer
+    declares itself (DRF only collects declared fields from Meta-bearing bases). Returns
+    distinct authors of the object's {type}.create/{type}.update AuditLog entries via
+    services.contributors_for."""
 
     def get_contributors(self, obj) -> list:
         model_name = obj.__class__.__name__.lower()
@@ -192,12 +177,10 @@ class ContributorsMixin:
 
 
 class RestrictedAccessMixin:
-    """get_restricted_to backing a `restricted_to` SerializerMethodField each
-    *DetailSerializer below declares directly (same DRF-metaclass reason
-    ContributorsMixin's own docstring gives). Lists who's been explicitly
-    granted access to this item on top of its owner/creator - meaningless
-    when the item isn't RESTRICTED, but returned regardless (an empty list)
-    rather than omitted, so the frontend doesn't need a conditional field."""
+    """get_restricted_to for a `restricted_to` SerializerMethodField each *DetailSerializer
+    declares itself (same DRF reason as ContributorsMixin). Lists users explicitly granted
+    access; returned as an empty list when not RESTRICTED so the frontend needs no
+    conditional."""
 
     def get_restricted_to(self, obj) -> list:
         grants = RestrictedAccessGrant.objects.filter(
@@ -238,12 +221,10 @@ class CreationRelationSerializer(serializers.Serializer):
 
 
 class CreationExtrasMixin(serializers.Serializer):
-    """Create-only extras every relatable type's write serializer accepts -
-    see services.create_with_links for what each does. Silently dropped on
-    update (PATCH), where related content is managed through the relations
-    endpoints instead. Write serializers for types without their own
-    `project` FK additionally declare `project_id` with source="link_project"
-    (see ProjectLinkMixin)."""
+    """Create-only extras every relatable type's write serializer accepts (see
+    services.create_with_links). Silently dropped on PATCH, where related content is managed
+    through the relations endpoints. Types without their own `project` FK also declare
+    `project_id` with source="link_project" (see ProjectLinkMixin)."""
 
     relations = serializers.ListField(child=CreationRelationSerializer(), required=False, write_only=True)
 
@@ -468,13 +449,10 @@ class AcceptAnswerSerializer(serializers.Serializer):
 
 
 class KnowledgeRelationSerializer(serializers.ModelSerializer):
-    """This always renders the *other* side relative to context["viewer"] =
-    (viewer_content_type, viewer_object_id), which the view passes in, rather
-    than exposing source/target directly. `relation_label` is the direction-
-    aware verb (e.g. "USES" from the source's side, "USED_IN" from the
-    target's side, per knowledge/relationships.py's registry) - falls back to
-    the stored relation_type verbatim (typically the generic "RELATED",
-    symmetric either way) when no registry entry matches."""
+    """Renders the *other* side relative to context["viewer"] = (viewer_content_type,
+    viewer_object_id), supplied by the view. `relation_label` is the direction-aware verb
+    (e.g. "USES" from the source, "USED_IN" from the target; see knowledge/relationships.py),
+    falling back to the stored relation_type (typically the symmetric "RELATED")."""
 
     other_type = serializers.SerializerMethodField()
     other_id = serializers.SerializerMethodField()
@@ -1056,12 +1034,8 @@ class DocumentListSerializer(serializers.ModelSerializer):
     tags = TagSerializer(many=True, read_only=True)
     created_by = AuthorSerializer(read_only=True)
     file = StoredFileSerializer(read_only=True)
-    # API field name kept as "organization" (the external org/author's own
-    # organization, e.g. "SAE International") even though the model field
-    # is now `external_organization` - see Document's own docstring for why
-    # it was renamed (the multi-tenancy retrofit needed the bare
-    # `organization` name for the tenant-scoping FK instead). Keeping the
-    # API shape unchanged means no frontend changes were needed for this.
+    # API field name stays "organization" (the external author/org, e.g. "SAE International")
+    # though the model field is `external_organization`; see Document's docstring.
     organization = serializers.CharField(source="external_organization", required=False, allow_blank=True)
 
     class Meta:

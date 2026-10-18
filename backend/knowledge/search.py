@@ -23,13 +23,9 @@ from django.contrib.postgres.search import (
 from django.db.models import F, GeneratedField, Q, QuerySet, TextField, Value
 from django.db.models.functions import Concat
 
-# 'simple' tokenizes on whitespace/punctuation with no language-specific
-# stemming or stopword removal. This app's content is bilingual (English/
-# Arabic technical writing) - Postgres' 'english' config would silently
-# mangle Arabic text, and its English-specific stemming/stopword removal
-# isn't obviously right for short technical titles or part numbers either.
-# Revisit with real per-locale configs only if plain tokenizing proves not
-# good enough.
+# 'simple' tokenizes on whitespace/punctuation with no stemming or stopwords. Content is
+# bilingual (English/Arabic), and Postgres' 'english' config would mangle Arabic and isn't
+# clearly right for short titles or part numbers. Revisit only if this proves insufficient.
 SEARCH_CONFIG = "simple"
 
 # model_name -> (primary title/name field, other fields folded into the
@@ -47,16 +43,12 @@ SEARCH_FIELDS: dict[str, tuple[str, tuple[str, ...]]] = {
     "document": ("title", ("description",)),
 }
 
-# word_similarity() (unlike plain similarity()) scores the *best-matching
-# substring* of the target text against the query, rather than diluting the
-# score over the whole concatenated field length - that's what makes it a
-# faithful stand-in for `icontains`'s "matches anywhere, in any field"
-# behavior even when other_fields includes long body text alongside a short
-# title. Its natural scores run higher than plain similarity()'s, hence the
-# higher cutoff than a bare trigram-similarity threshold would use. Applied
-# as pg_trgm.word_similarity_threshold on every connection (see
-# config/settings.py's DATABASES) - that's what the indexable %> operator
-# compares against, rather than a `similarity > x` filter no index can serve.
+# word_similarity() scores the best-matching substring of the target rather than diluting
+# over the whole concatenated field, so it stands in faithfully for `icontains`'s "matches
+# anywhere in any field" even with long body text next to a short title. Its scores run
+# higher than plain similarity()'s, hence the higher cutoff. Applied as
+# pg_trgm.word_similarity_threshold on every connection (config/settings.py DATABASES),
+# which the indexable %> operator compares against.
 TRIGRAM_THRESHOLD = 0.4
 
 

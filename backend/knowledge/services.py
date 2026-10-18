@@ -7,7 +7,7 @@ import uuid
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
-from django.db.models import Count, Q, QuerySet
+from django.db.models import Count, QuerySet
 from django.utils import timezone
 from django.utils.text import slugify
 from rest_framework.exceptions import ValidationError
@@ -67,6 +67,11 @@ def _unique_slug(model, base: str, organization) -> str:
     return candidate
 
 
+def _require_permission(actor, codename: str, message: str) -> None:
+    if not actor.has_permission(codename):
+        raise PermissionDenied(message)
+
+
 def _require_co_owner_or_permission(*, actor, model_name: str, instance, codename: str, message: str) -> None:
     """_require_owner_or_permission for types with co-authors - the author
     or any co-author (see visibility.is_owner_of), or the override holder."""
@@ -122,12 +127,9 @@ def _set_co_authors(*, obj, actor, co_authors, override_codename: str) -> None:
 
 
 def visible_articles_for(viewer) -> QuerySet[Article]:
-    """Published articles `viewer` may see - excludes RESTRICTED ones unless
-    they're privileged for it (owner, org admin, or article.review/
-    article.publish holder) or hold an explicit grant. Shared by
-    ArticleListCreateView, SearchView, and the user-profile/contributions
-    endpoints so this rule can't drift out of sync between them the way it
-    already once did (see the search-visibility fix this same rule exists for)."""
+    """Published articles `viewer` may see. RESTRICTED ones are excluded unless the viewer is
+    privileged for them (owner, org admin, article.review/publish holder) or holds a
+    grant. Shared by the list, search and contributions endpoints so the rule can't drift."""
     queryset = Article.objects.filter(organization=viewer.organization, status=Article.Status.PUBLISHED)
     return visibility_rules.exclude_inaccessible(queryset, viewer, Article, "article")
 
@@ -526,15 +528,10 @@ def promote_question_to_article(*, question: Question, actor, request=None) -> A
 
 # --- Engineering domain (Project/Component/Failure/Sop) -------------------
 #
-# No draft/review workflow on any of these (see models.py's module
-# docstring) - so unlike Article/Question, there's no "owner can edit their
-# own draft" case to account for. Editing/deleting is gated purely on the
-# x.update/x.delete permission, full stop - matches docs/VISION.md #26's
-# "Member: report failures" vs "Mentor: update failures" split
-# (create and update are deliberately separate tiers, not "ownership
-# unlocks editing"). They do each carry a `visibility` field though - see
-# Visibility's docstring in models.py and knowledge/visibility.py for how
-# RESTRICTED is enforced identically to Article/Question/Document.
+# No draft/review workflow, so there's no "owner edits their own draft" case: editing and
+# deleting are gated purely on x.update/x.delete (create and update are separate tiers).
+# Each type has a `visibility` field, enforced like Article/Question/Document (see
+# knowledge/visibility.py).
 
 
 def create_project(
@@ -552,8 +549,7 @@ def create_project(
 
 
 def update_project(*, project: Project, actor, request=None, **fields) -> Project:
-    if not actor.has_permission("project.update"):
-        raise PermissionDenied("You need project.update to edit this project.")
+    _require_permission(actor, "project.update", "You need project.update to edit this project.")
     tag_names = fields.pop("tag_names", None)
     for field, value in fields.items():
         setattr(project, field, value)
@@ -566,8 +562,7 @@ def update_project(*, project: Project, actor, request=None, **fields) -> Projec
 
 
 def delete_project(*, project: Project, actor, request=None) -> None:
-    if not actor.has_permission("project.delete"):
-        raise PermissionDenied("You need project.delete to remove this project.")
+    _require_permission(actor, "project.delete", "You need project.delete to remove this project.")
     log_action(actor=actor, action="project.delete", metadata={"project_id": str(project.pk), "name": project.name}, request=request)
     project.delete()
 
@@ -760,8 +755,7 @@ def _apply_stock_status_rule(component: Component, fields: dict) -> None:
 
 
 def update_component(*, component: Component, actor, request=None, **fields) -> Component:
-    if not actor.has_permission("component.update"):
-        raise PermissionDenied("You need component.update to edit this component.")
+    _require_permission(actor, "component.update", "You need component.update to edit this component.")
     tag_names = fields.pop("tag_names", None)
     if "location_name" in fields:
         fields["location"] = _resolve_location_name(fields.pop("location_name"), actor=actor, request=request)
@@ -779,8 +773,7 @@ def update_component(*, component: Component, actor, request=None, **fields) -> 
 
 
 def delete_component(*, component: Component, actor, request=None) -> None:
-    if not actor.has_permission("component.delete"):
-        raise PermissionDenied("You need component.delete to remove this component.")
+    _require_permission(actor, "component.delete", "You need component.delete to remove this component.")
     log_action(
         actor=actor, action="component.delete", metadata={"component_id": str(component.pk), "name": component.name}, request=request
     )
@@ -814,8 +807,7 @@ def create_failure(
 
 
 def update_failure(*, failure: Failure, actor, request=None, **fields) -> Failure:
-    if not actor.has_permission("failure.update"):
-        raise PermissionDenied("You need failure.update to edit this failure report.")
+    _require_permission(actor, "failure.update", "You need failure.update to edit this failure report.")
     for field, value in fields.items():
         setattr(failure, field, value)
     failure.save(update_fields=[*fields.keys(), "updated_at"])
@@ -828,8 +820,7 @@ def update_failure(*, failure: Failure, actor, request=None, **fields) -> Failur
 
 
 def delete_failure(*, failure: Failure, actor, request=None) -> None:
-    if not actor.has_permission("failure.delete"):
-        raise PermissionDenied("You need failure.delete to remove this failure report.")
+    _require_permission(actor, "failure.delete", "You need failure.delete to remove this failure report.")
     log_action(actor=actor, action="failure.delete", metadata={"failure_id": str(failure.pk), "title": failure.title}, request=request)
     failure.delete()
 
@@ -855,8 +846,7 @@ def create_sop(
 
 
 def update_sop(*, sop: Sop, actor, request=None, **fields) -> Sop:
-    if not actor.has_permission("sop.update"):
-        raise PermissionDenied("You need sop.update to edit this SOP.")
+    _require_permission(actor, "sop.update", "You need sop.update to edit this SOP.")
     tag_names = fields.pop("tag_names", None)
     for field, value in fields.items():
         setattr(sop, field, value)
@@ -869,8 +859,7 @@ def update_sop(*, sop: Sop, actor, request=None, **fields) -> Sop:
 
 
 def delete_sop(*, sop: Sop, actor, request=None) -> None:
-    if not actor.has_permission("sop.delete"):
-        raise PermissionDenied("You need sop.delete to remove this SOP.")
+    _require_permission(actor, "sop.delete", "You need sop.delete to remove this SOP.")
     log_action(actor=actor, action="sop.delete", metadata={"sop_id": str(sop.pk), "title": sop.title}, request=request)
     sop.delete()
 
@@ -918,8 +907,7 @@ def create_test(
 
 
 def update_test(*, test: Test, actor, request=None, **fields) -> Test:
-    if not actor.has_permission("test.update"):
-        raise PermissionDenied("You need test.update to edit this test.")
+    _require_permission(actor, "test.update", "You need test.update to edit this test.")
     tag_names = fields.pop("tag_names", None)
     for field, value in fields.items():
         setattr(test, field, value)
@@ -934,8 +922,7 @@ def update_test(*, test: Test, actor, request=None, **fields) -> Test:
 
 
 def delete_test(*, test: Test, actor, request=None) -> None:
-    if not actor.has_permission("test.delete"):
-        raise PermissionDenied("You need test.delete to remove this test.")
+    _require_permission(actor, "test.delete", "You need test.delete to remove this test.")
     log_action(actor=actor, action="test.delete", metadata={"test_id": str(test.pk), "title": test.title}, request=request)
     test.delete()
 
@@ -1032,8 +1019,7 @@ def _remove_engineering_attachment(*, attachment, actor, request, action: str, i
 
 
 def add_project_attachment(*, project: Project, file, actor, request=None) -> ProjectAttachment:
-    if not actor.has_permission("project.update"):
-        raise PermissionDenied("You need project.update to attach files to this project.")
+    _require_permission(actor, "project.update", "You need project.update to attach files to this project.")
     return _add_engineering_attachment(
         owner=project, attachment_model=ProjectAttachment, owner_field="project", file=file, actor=actor,
         request=request, action="attachment.add",
@@ -1041,14 +1027,12 @@ def add_project_attachment(*, project: Project, file, actor, request=None) -> Pr
 
 
 def remove_project_attachment(*, attachment: ProjectAttachment, actor, request=None) -> None:
-    if not actor.has_permission("project.update"):
-        raise PermissionDenied("You need project.update to remove attachments from this project.")
+    _require_permission(actor, "project.update", "You need project.update to remove attachments from this project.")
     _remove_engineering_attachment(attachment=attachment, actor=actor, request=request, action="attachment.remove", id_field="project_id")
 
 
 def add_component_attachment(*, component: Component, file, actor, request=None) -> ComponentAttachment:
-    if not actor.has_permission("component.update"):
-        raise PermissionDenied("You need component.update to attach files to this component.")
+    _require_permission(actor, "component.update", "You need component.update to attach files to this component.")
     return _add_engineering_attachment(
         owner=component, attachment_model=ComponentAttachment, owner_field="component", file=file, actor=actor,
         request=request, action="attachment.add",
@@ -1056,16 +1040,14 @@ def add_component_attachment(*, component: Component, file, actor, request=None)
 
 
 def remove_component_attachment(*, attachment: ComponentAttachment, actor, request=None) -> None:
-    if not actor.has_permission("component.update"):
-        raise PermissionDenied("You need component.update to remove attachments from this component.")
+    _require_permission(actor, "component.update", "You need component.update to remove attachments from this component.")
     _remove_engineering_attachment(
         attachment=attachment, actor=actor, request=request, action="attachment.remove", id_field="component_id"
     )
 
 
 def add_failure_attachment(*, failure: Failure, file, actor, request=None) -> FailureAttachment:
-    if not actor.has_permission("failure.update"):
-        raise PermissionDenied("You need failure.update to attach files to this failure report.")
+    _require_permission(actor, "failure.update", "You need failure.update to attach files to this failure report.")
     return _add_engineering_attachment(
         owner=failure, attachment_model=FailureAttachment, owner_field="failure", file=file, actor=actor,
         request=request, action="attachment.add",
@@ -1073,14 +1055,12 @@ def add_failure_attachment(*, failure: Failure, file, actor, request=None) -> Fa
 
 
 def remove_failure_attachment(*, attachment: FailureAttachment, actor, request=None) -> None:
-    if not actor.has_permission("failure.update"):
-        raise PermissionDenied("You need failure.update to remove attachments from this failure report.")
+    _require_permission(actor, "failure.update", "You need failure.update to remove attachments from this failure report.")
     _remove_engineering_attachment(attachment=attachment, actor=actor, request=request, action="attachment.remove", id_field="failure_id")
 
 
 def add_sop_attachment(*, sop: Sop, file, actor, request=None) -> SopAttachment:
-    if not actor.has_permission("sop.update"):
-        raise PermissionDenied("You need sop.update to attach files to this SOP.")
+    _require_permission(actor, "sop.update", "You need sop.update to attach files to this SOP.")
     return _add_engineering_attachment(
         owner=sop, attachment_model=SopAttachment, owner_field="sop", file=file, actor=actor,
         request=request, action="attachment.add",
@@ -1088,14 +1068,12 @@ def add_sop_attachment(*, sop: Sop, file, actor, request=None) -> SopAttachment:
 
 
 def remove_sop_attachment(*, attachment: SopAttachment, actor, request=None) -> None:
-    if not actor.has_permission("sop.update"):
-        raise PermissionDenied("You need sop.update to remove attachments from this SOP.")
+    _require_permission(actor, "sop.update", "You need sop.update to remove attachments from this SOP.")
     _remove_engineering_attachment(attachment=attachment, actor=actor, request=request, action="attachment.remove", id_field="sop_id")
 
 
 def add_test_attachment(*, test: Test, file, actor, request=None) -> TestAttachment:
-    if not actor.has_permission("test.update"):
-        raise PermissionDenied("You need test.update to attach files to this test.")
+    _require_permission(actor, "test.update", "You need test.update to attach files to this test.")
     return _add_engineering_attachment(
         owner=test, attachment_model=TestAttachment, owner_field="test", file=file, actor=actor,
         request=request, action="attachment.add",
@@ -1103,8 +1081,7 @@ def add_test_attachment(*, test: Test, file, actor, request=None) -> TestAttachm
 
 
 def remove_test_attachment(*, attachment: TestAttachment, actor, request=None) -> None:
-    if not actor.has_permission("test.update"):
-        raise PermissionDenied("You need test.update to remove attachments from this test.")
+    _require_permission(actor, "test.update", "You need test.update to remove attachments from this test.")
     _remove_engineering_attachment(attachment=attachment, actor=actor, request=request, action="attachment.remove", id_field="test_id")
 
 
@@ -1223,12 +1200,9 @@ def create_relation(
     if not visibility_rules.can_view_instance(actor, target_type, target):
         raise ValidationError(f"No {target_type} with id {target_id}.")
 
-    # Checked against the caller's own source (the item they're adding this
-    # relation FROM) before any canonical-direction normalization - normalizing
-    # first would check edit rights on the wrong side whenever the caller
-    # picked the relation type from its reverse_name (e.g. adding "USED_IN"
-    # from a Component's own page, where the canonical direction is actually
-    # Project--USES-->Component).
+    # Checked against the caller's own source (the item they add the relation FROM) before
+    # canonical-direction normalization; normalizing first would check edit rights on the
+    # wrong side when the caller picked the relation type from its reverse_name.
     if not _can_edit_relatable(actor, source_type, source):
         raise PermissionDenied("You can only add related content to something you own (or have edit rights on).")
 
@@ -1335,21 +1309,17 @@ def _copy_restricted_grants(*, source, target, actor) -> None:
 
 
 def create_with_links(model_name: str, create_fn, *, actor, request=None, data: dict):
-    """Wraps a create_<type> service with the creation-form extras every
-    type's POST accepts, all applied in one transaction (so a failure in any
-    part leaves nothing half-created for a retry to duplicate):
+    """Wraps a create_<type> service with the creation-form extras every type's POST
+    accepts, all in one transaction so a failure leaves nothing half-created:
 
-    - `link_project` (types with no `project` FK of their own): stored as a
-      canonical Project-->item relation, e.g. Project--DOCUMENTED_BY-->Article.
-    - visibility inheritance: when the request omits `visibility` and a
-      project is given (the FK or link_project), the item takes the
-      project's visibility; a RESTRICTED one also copies the project's
-      access grants. An explicit `visibility` always wins.
-    - `relations`: [{target_type, target_id, relation_type}] created from the
-      new item's side.
+    - `link_project` (types with no `project` FK): stored as a Project-->item relation.
+    - visibility inheritance: when `visibility` is omitted and a project is given, the item
+      takes the project's visibility (RESTRICTED also copies its access grants). An
+      explicit `visibility` always wins.
+    - `relations`: [{target_type, target_id, relation_type}] created from the new item.
 
-    The creator is never edit-checked against the new item (they just made
-    it), but every project/target must still be one they can see."""
+    The creator is never edit-checked against the new item, but every project/target must
+    be one they can see."""
     data = dict(data)
     link_project = data.pop("link_project", None)
     relations = data.pop("relations", None) or []
@@ -1414,15 +1384,10 @@ def delete_relation(*, relation: KnowledgeRelation, actor, request=None) -> None
 
 
 def add_restricted_access(*, actor, request=None, content_type: str, object_id, user_id) -> RestrictedAccessGrant:
-    """Grants `user_id` (a fellow org member) access to a RESTRICTED item, on
-    top of whoever already qualifies via knowledge.visibility's rules. Only
-    the item's owner/creator or an `<type>.update`-permission holder may
-    manage its grant list - the same edit-rights check relations already
-    use, since "who can attach a relation to this" and "who may grant
-    access to this" are the same kind of decision. The grantee is resolved
-    within actor's own organization, which combined with _resolve_relatable
-    resolving the item the same way is what keeps a grant from ever
-    crossing organizations."""
+    """Grants `user_id` (a fellow org member) access to a RESTRICTED item, on top of
+    knowledge.visibility's rules. Only the item's owner/creator or an `<type>.update`
+    holder may manage grants (same check relations use). The grantee and the item are both
+    resolved within the actor's organization, so a grant never crosses organizations."""
     from accounts.models import User
 
     _, instance = _resolve_relatable(content_type, object_id, actor.organization)
@@ -1585,14 +1550,9 @@ def _relatable_visible_to(actor, content_type, instance) -> bool:
 
 
 def get_relations_for(model_name: str, object_id, *, actor) -> list[KnowledgeRelation]:
-    """Relations where the given object is either side (source or target) -
-    see KnowledgeRelationSerializer for how "the other side" is resolved.
-
-    `actor` is required (not optional) so a RESTRICTED Article/Question can
-    never leak its title/id as the "other side" of a relation to a viewer who
-    couldn't open it directly - see KnowledgeRelationSerializer's own
-    docstring, which only ever renders "the other side", never checking its
-    visibility itself."""
+    """Relations where the object is either source or target. `actor` is required so a
+    RESTRICTED Article/Question can't leak its title/id as the "other side" of a relation
+    (KnowledgeRelationSerializer doesn't check visibility itself)."""
     _, instance = _resolve_relatable(model_name, object_id, actor.organization)
     content_type = ContentType.objects.get_for_model(type(instance))
     relations = (
@@ -1648,19 +1608,13 @@ def rank_for(scores: dict, user_id) -> "int | None":
 
 
 def compute_contribution_scores_for(organization, *, since=None) -> dict:
-    """user_id -> total score, for the org's leaderboard - see scoring.py's
-    own docstring for why this is creation-weighted (not a flat count) and
-    computed on demand from AuditLog rather than a denormalized column.
+    """user_id -> total score for the org's leaderboard (see scoring.py for the weighting and
+    why it's computed from AuditLog). `since` limits to entries on/after that instant;
+    omitted means lifetime.
 
-    `since` restricts to AuditLog entries created on/after that instant (for
-    the This Month/This Year score windows) - omitted (the default) means
-    lifetime, matching the leaderboard's original all-time behavior.
-
-    `question.accept_answer` is deliberately excluded from the generic
-    CONTRIBUTION_POINTS lookup and handled as its own pass below: the log
-    entry's `actor` is whoever clicked "accept" (usually the question's own
-    author), but the points belong to the answer's author - resolved via the
-    log's `metadata["answer_id"]`, not `log.actor`."""
+    `question.accept_answer` is handled in its own pass: the log's `actor` is whoever
+    clicked "accept", but the points belong to the answer's author, resolved via
+    `metadata["answer_id"]`."""
     from audit.models import AuditLog
 
     scores: dict = {}
@@ -1674,11 +1628,9 @@ def compute_contribution_scores_for(organization, *, since=None) -> dict:
         if action in CO_AUTHOR_CREDITED_ACTIONS and target_id:
             co_credited.append((action, target_id, actor_id))
 
-    # Co-authors earn the same points as the actor for creating/publishing
-    # the item they share (see scoring.CO_AUTHOR_CREDITED_ACTIONS) - credited
-    # by the item's *current* co-author list, so someone added later still
-    # gets credit for the item, and someone removed stops getting it. Never
-    # double-credits the actor themselves.
+    # Co-authors earn the same points for creating/publishing the item they share (see
+    # scoring.CO_AUTHOR_CREDITED_ACTIONS), by the item's current co-author list. The actor is
+    # never double-credited.
     co_author_models = {"article": Article, "question": Question}
     for model_name, model in co_author_models.items():
         target_ids = {target_id for action, target_id, _ in co_credited if CO_AUTHOR_CREDITED_ACTIONS[action] == model_name}
@@ -1757,13 +1709,10 @@ def contributors_for(model_name: str, obj) -> list:
 
 # --- Component CSV import/export --------------------------------------------
 #
-# One column layout both ways, laid out so the workshop's inventory sheet can
-# be synced in either direction: its own 11 columns first, in its own order
-# and with its own dropdown labels ("In Stock", "Needs Repair", ...), then an
-# "Athar ID" column the sheet needs to add once, then every other component
-# field. Importing an export back unchanged is a no-op, and importing a tab
-# of the sheet as-is (its own headers, no Athar ID yet) works too - see
-# _HEADER_ALIASES.
+# One column layout both ways so the workshop's inventory sheet can sync in either
+# direction: the sheet's own 11 columns first (its order and dropdown labels), then an
+# "Athar ID" column, then every other component field. Re-importing an export is a no-op,
+# and a sheet tab as-is (its headers, no Athar ID yet) imports too - see _HEADER_ALIASES.
 
 INVENTORY_CSV_COLUMNS = [
     "Athar ID", "Category", "Item", "Grid Location", "Quantity", "Unit", "Condition", "Status",
@@ -1968,15 +1917,12 @@ def _parse_specifications_cell(raw: str) -> list[dict[str, str]]:
 
 
 def _parse_component_row(record: dict) -> tuple[dict, dict]:
-    """Parses one row (already keyed by _HEADER_ALIASES' canonical names)
-    into (fields, meta). `fields` uses the kwarg names create_component/
-    update_component expect, except category/location stay plain
-    `category_name`/`location_name` strings so parsing never writes to the
-    database - and ONLY for cells that are filled in: a blank cell is simply
-    absent, which is what makes "blank means leave the existing value alone"
-    work on an update. `meta` holds the columns that steer matching rather
-    than being saved (Athar ID, Last Updated). Raises ValueError on a
-    malformed cell."""
+    """Parses one row (keyed by _HEADER_ALIASES' canonical names) into (fields, meta).
+    `fields` uses the kwarg names create_component/update_component expect, except
+    category/location stay plain `category_name`/`location_name` strings so parsing never
+    writes to the database. Only filled-in cells are included, so a blank cell leaves the
+    existing value alone on update. `meta` holds the columns that steer matching (Athar ID,
+    Last Updated). Raises ValueError on a malformed cell."""
     def cell(key: str) -> str:
         return (record.get(key) or "").strip()
 
@@ -2082,12 +2028,9 @@ def _existing_field_display(field: str, existing: Component) -> str:
 
 
 def _build_field_changes(fields: dict, existing: Component | None) -> dict[str, dict[str, str]]:
-    """{field: {"old": str, "new": str}} for every field `fields` specifies
-    whose value actually differs - `old` is always "" for a new component.
-    Case-insensitive, so a same-value-different-case cell (or a tag/category
-    the sheet capitalizes differently) isn't reported as a change. Also
-    includes the stock status the write will derive on its own (see
-    _apply_stock_status_rule), so the preview never hides a change."""
+    """{field: {"old": str, "new": str}} for every field in `fields` whose value differs
+    (`old` is "" for a new component). Case-insensitive. Also includes the stock status the
+    write will derive (see _apply_stock_status_rule), so the preview never hides a change."""
     changes = {}
     for field, value in fields.items():
         if field == "name":
@@ -2191,13 +2134,10 @@ def _merge_duplicate_entries(group: list[dict]) -> None:
 
 
 def _find_component_for_entry(entry: dict, *, actor, claimed: set, remaining_in_group: int):
-    """Returns (component or None, error message or None). An Athar ID
-    matches exactly that component. Otherwise a row matches on Item name
-    plus Grid Location (both case-insensitive), falling back to a same-named
-    component with no location yet, so a first sheet import attaches to
-    components that already existed on the website. `claimed` holds
-    components earlier rows already matched, which is what lets two
-    identical rows pair up with two identical components in order."""
+    """Returns (component or None, error message or None). An Athar ID matches exactly.
+    Otherwise a row matches on Item name plus Grid Location (case-insensitive), falling back
+    to a same-named component with no location yet. `claimed` holds components earlier rows
+    already matched, so identical rows pair up with identical components in order."""
     organization_components = Component.objects.filter(organization=actor.organization).select_related(
         "category", "location"
     )
@@ -2290,26 +2230,19 @@ def import_components_csv(
 ) -> dict:
     """Two-phase bulk import for components (see views.ComponentImportView).
 
-    With commit=False (the frontend's first call, once the user picks a
-    file), this is a pure preview: every row is matched and diffed against
-    the organization's components but NOTHING is written - not even an
-    auto-created category or location. With commit=True the frontend
-    re-sends the identical file after the user confirms, and the rows are
-    applied through create_component/update_component, so audit logging,
-    tag sync and the stock-status rule stay identical to a normal edit.
+    commit=False is a pure preview: rows are matched and diffed but nothing is written,
+    not even an auto-created category or location. commit=True applies the rows through
+    create_component/update_component, so audit logging, tag sync and the stock-status rule
+    match a normal edit.
 
-    `duplicates` decides what happens to rows with the same Item and Grid
-    Location (and no Athar ID): "separate" keeps each as its own component
-    (paired, in order, with same-named components that already exist);
-    "merge" folds them into one row first (see _merge_duplicate_entries).
-    `default_inventory_type` is the tab the file came from - used for rows
-    with no Inventory Type cell, on new components and on existing ones that
-    don't have a type yet.
+    `duplicates` handles rows with the same Item and Grid Location (and no Athar ID):
+    "separate" keeps each as its own component; "merge" folds them into one row first (see
+    _merge_duplicate_entries). `default_inventory_type` fills rows with no Inventory Type
+    cell.
 
-    Returns {"rows": [{"row", "action": "create"|"update"|"unchanged"|
-    "error"|"merged", "name"?, "changes"?, "message"?, "warnings",
-    "merged_into"?}], "summary": {"create", "update", "unchanged", "error",
-    "merged", "duplicate_groups"}} plus, when commit=True, "applied":
+    Returns {"rows": [{"row", "action": "create"|"update"|"unchanged"|"error"|"merged", "name"?,
+    "changes"?, "message"?, "warnings", "merged_into"?}], "summary": {"create", "update",
+    "unchanged", "error", "merged", "duplicate_groups"}} plus, when commit=True, "applied":
     {"created", "updated", "skipped"}."""
     records = _read_import_records(_decode_csv_upload(csv_file))
 

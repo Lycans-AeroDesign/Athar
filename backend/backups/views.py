@@ -19,6 +19,7 @@ from rest_framework.views import APIView
 from audit.services import log_action
 from core import crypto
 from config.openapi import BAD_REQUEST, COMMON_ERRORS, NOT_FOUND
+from core.shortcuts import org_object_or_404
 from organization.models import Organization
 from config.pagination import paginated_response
 from rbac.permissions import require_permission
@@ -72,7 +73,7 @@ class BackupJobDetailView(APIView):
         responses={200: BackupJobSerializer, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def get(self, request, pk):
-        job = get_object_or_404(BackupJob, pk=pk, organization=request.user.organization)
+        job = org_object_or_404(request, BackupJob, pk)
         return Response(BackupJobSerializer(job).data)
 
 
@@ -97,7 +98,7 @@ class BackupJobDownloadView(APIView):
         responses={200: OpenApiResponse(description="The encrypted .athar archive."), 400: OpenApiResponse(description="Not ready yet, or passphrase too short."), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def post(self, request, pk):
-        job = get_object_or_404(BackupJob, pk=pk, organization=request.user.organization)
+        job = org_object_or_404(request, BackupJob, pk)
         if job.status != BackupJob.Status.DONE or not job.archive:
             raise ValidationError("This backup isn't ready yet.")
         serializer = DownloadBackupSerializer(data=request.data)
@@ -110,12 +111,10 @@ class BackupJobDownloadView(APIView):
                 plaintext = crypto.iter_decrypt(stored) if crypto.is_encrypted(stored) else crypto.iter_file(stored)
                 yield from crypto.iter_encrypt(plaintext, passphrase)
 
-        # Re-encrypting the same plaintext with the same chunking gives
-        # exactly the stored file's size back. Declaring it matters: without
-        # a Content-Length the browser can only tell the body is complete by
-        # the connection closing cleanly, and some proxies (Docker Desktop's
-        # port forwarding, for one) reset it instead - which Chrome reports
-        # as a failed fetch even though every byte arrived.
+        # Re-encrypting the same plaintext with the same chunking yields exactly the stored
+        # file's size. Declaring Content-Length matters: without it some proxies (e.g. Docker
+        # Desktop port forwarding) reset the connection and Chrome reports a failed fetch even
+        # though every byte arrived.
         with job.archive.open("rb") as stored:
             stored_encrypted = crypto.is_encrypted(stored)
         size = job.archive.size if stored_encrypted else crypto.encrypted_size(job.archive.size)
@@ -272,5 +271,5 @@ class RestoreJobDetailView(APIView):
         responses={200: RestoreJobSerializer, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def get(self, request, pk):
-        job = get_object_or_404(RestoreJob, pk=pk, organization=request.user.organization)
+        job = org_object_or_404(request, RestoreJob, pk)
         return Response(RestoreJobSerializer(job).data)

@@ -12,7 +12,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 from rest_framework.throttling import ScopedRateThrottle
 
-from core.testing import create_test_organization
+from core.testing import RoleLoginMixin, create_test_organization
 from files.models import StoredFile
 from rbac.models import Permission, Role
 
@@ -342,13 +342,10 @@ class AuthFlowTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         self.assertFalse(User.objects.filter(email="blocked@example.com").exists())
 
-    # Throttling is switched off for the rest of this file (see
-    # config/settings.py's `if "test" in sys.argv`) since _register_and_login
-    # is called dozens of times across this suite - this test explicitly
-    # re-enables a tight "auth" rate for itself to prove the throttle actually
-    # engages, not just that it's configured. ScopedRateThrottle.THROTTLE_RATES
-    # is bound to api_settings.DEFAULT_THROTTLE_RATES once, at import time -
-    # @override_settings doesn't reach it, so the dict itself has to be patched.
+    # Throttling is off for this file (config/settings.py `if "test" in sys.argv`) since
+    # _register_and_login runs dozens of times; this test re-enables a tight "auth" rate to prove
+    # the throttle engages. ScopedRateThrottle.THROTTLE_RATES is bound at import time, so
+    # @override_settings doesn't reach it and the dict itself has to be patched.
     @patch.dict(ScopedRateThrottle.THROTTLE_RATES, {"auth": "3/min"})
     def test_login_is_rate_limited_after_repeated_attempts(self):
         cache.clear()
@@ -481,16 +478,10 @@ class AuthFlowTests(APITestCase):
         self.assertEqual(entry.ip_address, "203.0.113.9")
 
 
-class InvitationCodeAdminTests(APITestCase):
+class InvitationCodeAdminTests(RoleLoginMixin, APITestCase):
     @classmethod
     def setUpTestData(cls):
         cls.organization = create_test_organization()
-
-    def _login_with_role(self, email, role_name):
-        user = User.objects.create_user(email=email, password="password123", organization=self.organization)
-        Role.objects.get(organization=self.organization, name=role_name).user_roles.create(user=user)
-        response = self.client.post(reverse("auth-login"), {"email": email, "password": "password123"}, format="json")
-        return user, response.data["access"]
 
     def _auth(self, access_token):
         return {"HTTP_AUTHORIZATION": f"Bearer {access_token}"}

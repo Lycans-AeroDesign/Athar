@@ -13,16 +13,10 @@ from .search import SEARCH_FIELDS, search_columns, search_indexes
 
 
 class Visibility(models.TextChoices):
-    """Every relatable content type's visibility field (Article, Question,
-    Document, and the engineering-domain types below). Two states only:
-    PUBLIC means org-wide (there's no unauthenticated or cross-org access
-    path in this app, so "public" and "organization-wide" are the same
-    thing - a prior ORGANIZATION value that duplicated PUBLIC was removed).
-    RESTRICTED means only the owner/creator, an org admin (see
-    knowledge.visibility.ADMIN_BYPASS_PERMISSION), a holder of the type's
-    override permission, or a user with an explicit RestrictedAccessGrant
-    can see it - see knowledge/visibility.py for the single shared
-    implementation of this rule."""
+    """Visibility for every relatable content type. PUBLIC is org-wide (there is no
+    unauthenticated or cross-org access path). RESTRICTED is visible only to the owner or
+    creator, org admins, holders of the type's override permission, and users with a
+    RestrictedAccessGrant; the rule lives in knowledge/visibility.py."""
 
     PUBLIC = "PUBLIC", "Public"
     RESTRICTED = "RESTRICTED", "Restricted"
@@ -119,10 +113,8 @@ class Article(models.Model):
 
 
 class ArticleRevision(models.Model):
-    """One row per content/title-changing save (see knowledge/services.py's
-    update_article) - a full snapshot, not a diff. Written from day one since
-    revision history is the one thing genuinely expensive to retrofit once
-    real articles exist without it."""
+    """One row per content- or title-changing save (see services.update_article): a full
+    snapshot, not a diff."""
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
     article = models.ForeignKey(Article, on_delete=models.CASCADE, related_name="revisions")
@@ -165,15 +157,12 @@ class Question(models.Model):
     )
     # Same co-ownership semantics as Article.co_authors.
     co_authors = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, related_name="coauthored_questions")
-    # A single nullable FK, not a boolean on Answer - this is what
-    # *structurally* enforces "at most one accepted answer": there is no
-    # schema state where two answers on the same question are both accepted.
+    # A single nullable FK, not a boolean on Answer, so "at most one accepted answer"
+    # is structural.
     accepted_answer = models.ForeignKey(
         "Answer", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
     )
-    # Set once knowledge.services.promote_question_to_article turns this
-    # question into an Article - a direct FK rather than a generic relation
-    # table, since nothing else in the app has relationships to model yet.
+    # Set once services.promote_question_to_article turns this question into an Article.
     promoted_to_article = models.ForeignKey(
         Article, null=True, blank=True, on_delete=models.SET_NULL, related_name="promoted_from_questions"
     )
@@ -215,22 +204,13 @@ class Answer(models.Model):
 
 
 class KnowledgeRelation(models.Model):
-    """Generic "this is related to that" link, source -> target. Mirrors
-    audit.models.AuditLog's GenericForeignKey pattern (the one precedent for
-    this in the codebase). Only Article and Question exist as real content
-    types today - services.create_relation() enforces that allowlist at the
-    service layer (not here, since ContentType itself can't express it) and
-    the comment there explains why. relation_type is a single free-form
-    value ("RELATED") for now; distinct values (USED_IN, INVOLVED_IN, ...)
-    arrive once Component/Project/Failure are real models to relate to."""
+    """Generic source -> target link, using the same GenericForeignKey pattern as
+    audit.models.AuditLog. The allowed content types are enforced in
+    services.create_relation(), since ContentType can't express an allowlist."""
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
-    # Not "owned" by exactly one side (it references source/target
-    # generically), so it needs its own organization FK rather than
-    # inheriting scoping from a parent - see services.create_relation, which
-    # additionally enforces source/target/actor all share this same org
-    # (the one place a cross-org link could otherwise sneak in via a
-    # guessed target UUID, since the two sides resolve independently).
+    # References source/target generically, so it needs its own organization FK.
+    # services.create_relation enforces that source, target and actor share the org.
     organization = models.ForeignKey("organization.Organization", on_delete=models.CASCADE, related_name="+")
 
     source_content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, related_name="+")
@@ -271,11 +251,8 @@ class KnowledgeRelation(models.Model):
 
 
 class ArticleAttachment(models.Model):
-    """The file itself is uploaded standalone first via files.FileUploadView
-    (same two-phase pattern as OrganizationSettings.logo_id/favicon_id) -
-    this row just persists the association. No generic ContentType design
-    here since `files` has no such precedent and a per-model join table is
-    simpler with only two owning models."""
+    """Persists the association between an article and a file uploaded earlier through
+    files.FileUploadView (same two-phase pattern as OrganizationSettings.logo_id)."""
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
     article = models.ForeignKey(Article, on_delete=models.CASCADE, related_name="attachments")
@@ -310,15 +287,9 @@ class QuestionAttachment(models.Model):
 
 # --- Engineering domain (Projects/Components/Failures/SOPs) ---------------
 #
-# No draft/review/publish workflow (unlike Article/Question) - CRUD
-# permissions are still the only gate on create/update/delete. Each does
-# carry a `visibility` field though (see Visibility's docstring above):
-# PUBLIC (default, org-wide) or RESTRICTED (owner/creator, org admin, an
-# `<type>.update` holder, or an explicit RestrictedAccessGrant). See
-# docs/VISION.md #13-16 for the field lists these are drawn from, and
-# KnowledgeRelation's docstring above for how these plug into the existing
-# generic relation graph (services._RELATABLE_MODELS is the only place that
-# needs to know these models exist).
+# No draft/review workflow (unlike Article/Question); CRUD permissions are the only
+# gate. Each has a `visibility` field (see Visibility). services._RELATABLE_MODELS is
+# the only place that needs to know these models plug into the relation graph.
 
 
 class Project(models.Model):
@@ -354,10 +325,8 @@ class Project(models.Model):
 
 
 class ComponentCategory(UUIDPrimaryKeyModel, OrganizationScopedModel, TimeStampedModel):
-    """Components' own category list - parallel to (deliberately not shared
-    with) Category above, same reasoning as training.CourseCategory: a
-    workshop inventory's "Hand Tools"/"Screws & Nuts" have no business in an
-    Article's category picker, and vice versa."""
+    """Components' own category list, deliberately separate from Category so workshop
+    inventory categories don't show up in an Article's category picker."""
 
     name = models.CharField(max_length=100)
     slug = models.SlugField(max_length=120)
@@ -373,12 +342,9 @@ class ComponentCategory(UUIDPrimaryKeyModel, OrganizationScopedModel, TimeStampe
 
 
 class StorageLocation(UUIDPrimaryKeyModel, OrganizationScopedModel, TimeStampedModel):
-    """Where a component physically lives in the workshop (the inventory
-    sheet's "Grid Location", e.g. "Fuselage Box -> Hand Tools"). A managed
-    list rather than free text on Component so the same place is spelled one
-    way everywhere and the list page can filter by it - created on the fly
-    by name from the editor and from CSV import, and renamed/merged from
-    Settings. Flat: a "Box -> Shelf" path is just part of the name."""
+    """Where a component physically lives in the workshop (the inventory sheet's "Grid
+    Location"). A managed list rather than free text so each place has one spelling and
+    the list page can filter by it. Flat: a "Box -> Shelf" path is part of the name."""
 
     name = models.CharField(max_length=150)
     description = models.CharField(max_length=255, blank=True)
@@ -416,12 +382,9 @@ class Component(models.Model):
         BROKEN = "BROKEN", "Broken"
 
     class StockStatus(models.TextChoices):
-        """Labels match the inventory sheet's own Status dropdown exactly, so
-        an export pastes back into the sheet without breaking its data
-        validation or conditional colors. IN_STOCK/LOW_STOCK/MISSING follow
-        the quantity automatically unless set explicitly (see
-        services.derive_stock_status); ON_ORDER/RETIRED are only ever set by
-        a person and never overwritten."""
+        """Labels match the inventory sheet's Status dropdown so an export pastes back cleanly.
+        IN_STOCK/LOW_STOCK/MISSING follow the quantity unless set explicitly (see
+        services.derive_stock_status); ON_ORDER/RETIRED are only ever set by a person."""
 
         IN_STOCK = "IN_STOCK", "In Stock"
         LOW_STOCK = "LOW_STOCK", "Low Stock"
@@ -435,18 +398,14 @@ class Component(models.Model):
     category = models.ForeignKey(
         ComponentCategory, null=True, blank=True, on_delete=models.SET_NULL, related_name="components"
     )
-    # One representative image (a card thumbnail/hero shot), distinct from
-    # ComponentAttachment's own file gallery below - same single-FK,
-    # SET_NULL, upload-then-attach pattern as accounts.User.profile_picture.
+    # One representative image, distinct from ComponentAttachment's gallery; same
+    # upload-then-attach pattern as accounts.User.profile_picture.
     photo = models.ForeignKey(StoredFile, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
     manufacturer = models.CharField(max_length=150, blank=True)
     part_number = models.CharField(max_length=100, blank=True)
     # External reference - a datasheet, vendor/purchase page, etc.
     link = models.URLField(blank=True)
-    # Workshop inventory count on hand - deliberately a plain int, not a
-    # ledger of individual check-in/check-out events (no consumption
-    # tracking exists yet); whoever edits the component just updates this
-    # number directly.
+    # Workshop inventory count on hand: a plain int, not a check-in/check-out ledger.
     quantity_available = models.PositiveIntegerField(default=0)
     # Engineering status. Blank = not applicable, e.g. a workshop tool
     # imported from the inventory sheet, where "Testing" would be meaningless.
@@ -466,10 +425,8 @@ class Component(models.Model):
     min_quantity = models.PositiveIntegerField(null=True, blank=True)
     inventory_notes = models.TextField(blank=True)
     summary = models.TextField(blank=True)  # markdown source
-    # Ordered [{"label": "Processor", "value": "STM32H753..."}, ...] - a
-    # component's meaningful spec keys vary entirely by category (a flight
-    # controller's "Processor"/"Weight" vs a motor's "KV Rating"/"Max
-    # Thrust"), so a flexible list beats a fixed set of columns.
+    # Ordered [{"label": "Processor", "value": "STM32H753..."}, ...]; spec keys vary by
+    # category, so a flexible list beats fixed columns.
     specifications = models.JSONField(default=list, blank=True)
     visibility = models.CharField(max_length=20, choices=Visibility.choices, default=Visibility.PUBLIC)
     tags = models.ManyToManyField(Tag, blank=True, related_name="components")
@@ -519,10 +476,8 @@ class Failure(models.Model):
     date = models.DateField(null=True, blank=True)
     severity = models.CharField(max_length=20, choices=Severity.choices, default=Severity.MEDIUM)
     status = models.CharField(max_length=30, choices=Status.choices, default=Status.UNDER_INVESTIGATION)
-    # All markdown source. Symptoms/Evidence/Investigation from
-    # docs/VISION.md #16 are folded into `summary` - matches how the
-    # athar_failure_detail mockup actually presents them, as one narrative
-    # section, not three separate fields.
+    # All markdown source. Symptoms/Evidence/Investigation are folded into `summary`
+    # as one narrative section.
     summary = models.TextField(blank=True)
     root_cause = models.TextField(blank=True)
     corrective_action = models.TextField(blank=True)
@@ -553,14 +508,10 @@ class Sop(models.Model):
     title = models.CharField(max_length=200)
     category = models.ForeignKey(Category, null=True, blank=True, on_delete=models.SET_NULL, related_name="sops")
     mandatory = models.BooleanField(default=False)
-    # Rendered as a distinct warning callout, not part of the flowing body -
-    # the one thing docs/VISION.md #15 and the athar_sop_detail mockup both
-    # treat as structurally special rather than just another section.
+    # Rendered as a distinct warning callout, apart from the flowing body.
     safety_notes = models.TextField(blank=True)
-    # Purpose/Prerequisites/Required Equipment/Procedure/Verification/Common
-    # Mistakes/Troubleshooting/References (docs/VISION.md #15) collapse into
-    # one markdown body here, same shape as Article.content - reuses
-    # MarkdownEditor/Markdown as-is instead of nine separate structured fields.
+    # Purpose/Prerequisites/Equipment/Procedure/etc. collapse into one markdown body,
+    # same shape as Article.content.
     content = models.TextField(blank=True)  # markdown source
     visibility = models.CharField(max_length=20, choices=Visibility.choices, default=Visibility.PUBLIC)
     tags = models.ManyToManyField(Tag, blank=True, related_name="sops")
@@ -614,18 +565,14 @@ class Test(models.Model):
     test_type = models.CharField(max_length=20, choices=TestType.choices, default=TestType.OTHER)
     date = models.DateField(null=True, blank=True)
     location = models.CharField(max_length=150, blank=True)
-    # Direct FK (like Failure.project) since it's the most central Project
-    # relationship for a Test (docs/VISION.md #15.3 lists it first) - Component
-    # is deliberately NOT a direct FK here the way it is on Failure, since a
-    # test typically involves several components at once; that goes through
-    # the generic KnowledgeRelation graph instead (TESTED_IN/TESTS).
+    # Direct FK (like Failure.project) since Project is a Test's central relationship.
+    # Components go through the generic KnowledgeRelation graph (TESTED_IN/TESTS)
+    # because a test typically involves several.
     project = models.ForeignKey(Project, null=True, blank=True, on_delete=models.SET_NULL, related_name="tests")
     objective = models.TextField(blank=True)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PLANNED)
-    # All markdown source. Aircraft/System, Software/Firmware, and Test
-    # conditions from docs/VISION.md #10.3's "Configuration" subsection all
-    # collapse into `configuration` - same "one narrative field beats several
-    # rarely-all-filled-in structured ones" precedent as Failure.summary.
+    # All markdown source. Aircraft/System, Software/Firmware and Test conditions
+    # collapse into `configuration`.
     configuration = models.TextField(blank=True)
     procedure = models.TextField(blank=True)
     results = models.TextField(blank=True)
@@ -633,9 +580,7 @@ class Test(models.Model):
     # "show me every failed test" the way Failure.severity is, unlike the
     # free-text fields around it.
     pass_fail = models.CharField(max_length=20, choices=PassFail.choices, blank=True)
-    # Conclusion/Recommendations/Lessons-Learned (docs/VISION.md #10.3) fold
-    # into one field - same "lessons live inside the record" principle as
-    # Failure's own docstring cites from docs/VISION.md #8.4.
+    # Conclusion/Recommendations/Lessons-Learned fold into one field.
     conclusion = models.TextField(blank=True)
     visibility = models.CharField(max_length=20, choices=Visibility.choices, default=Visibility.PUBLIC)
     tags = models.ManyToManyField(Tag, blank=True, related_name="tests")
@@ -659,13 +604,10 @@ class Test(models.Model):
 
 
 class Document(models.Model):
-    """The one relatable type with `visibility` besides Article/Question (see
-    docs/VISION.md #11.4) - a single primary `file`/`url`, not a list of
-    attachments like the engineering types above (docs/VISION.md #11.5: "not
-    generic file storage"). RESTRICTED enforcement mirrors Article/Question's
-    (see services.visible_documents_for/_relatable_visible_to), simplified
-    since there's no draft/review workflow - just "not RESTRICTED, or you're
-    created_by, or you hold document.update"."""
+    """A relatable type with `visibility`: a single primary `file` or `url`, not a list of
+    attachments. RESTRICTED rules mirror Article/Question but without a draft/review
+    workflow: visible unless RESTRICTED, or you're created_by, or you hold
+    document.update."""
 
     class DocType(models.TextChoices):
         COMPETITION_REPORT = "COMPETITION_REPORT", "Competition Report"
@@ -689,18 +631,13 @@ class Document(models.Model):
     description = models.TextField(blank=True)
     doc_type = models.CharField(max_length=20, choices=DocType.choices, default=DocType.OTHER)
     source = models.CharField(max_length=10, choices=Source.choices, default=Source.INTERNAL)
-    # External author/org name (e.g. "SAE International") - distinct from
-    # created_by (the Athar user who added the record) AND from the
-    # `organization` FK above (the tenant this Document belongs to) - renamed
-    # from the field's original name `organization` once the multi-tenancy
-    # retrofit needed that name for the tenant FK on every model.
+    # External author/org name (e.g. "SAE International"); distinct from created_by
+    # and from the tenant `organization` FK above.
     author = models.CharField(max_length=200, blank=True)
     external_organization = models.CharField(max_length=200, blank=True)
     publication_date = models.DateField(null=True, blank=True)
-    # For an external reference with no file of its own (e.g. a link to a
-    # competition rules page) - `file` and `url` are both optional, but a
-    # document with neither is a title-only stub (allowed; not worth a
-    # model-level constraint for what's ultimately a data-quality concern).
+    # For references with no file of their own; a document with neither `file` nor
+    # `url` is an allowed title-only stub.
     url = models.URLField(blank=True)
     file = models.ForeignKey(StoredFile, null=True, blank=True, on_delete=models.SET_NULL, related_name="documents")
     category = models.ForeignKey(Category, null=True, blank=True, on_delete=models.SET_NULL, related_name="documents")
@@ -806,14 +743,10 @@ class TestAttachment(models.Model):
 
 
 class RestrictedAccessGrant(UUIDPrimaryKeyModel, OrganizationScopedModel, TimeStampedModel):
-    """Names a specific user who may see one RESTRICTED item, on top of its
-    owner/creator and whoever already qualifies via knowledge.visibility's
-    org-admin bypass or per-type override permission. Generic content_type/
-    object_id, same pattern as KnowledgeRelation (and for the same reason:
-    not owned by exactly one side, needs its own organization FK). First
-    knowledge model to use core.models' shared base classes - see
-    CONTRIBUTING.md §3.4; existing models keep hand-rolling their own id/
-    organization/timestamps rather than being retrofitted in this pass."""
+    """Lets a specific user see one RESTRICTED item, on top of its owner and whoever
+    already qualifies via knowledge.visibility. Generic content_type/object_id like
+    KnowledgeRelation, with its own organization FK. Uses core.models' shared base
+    classes (CONTRIBUTING.md 3.4)."""
 
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, related_name="+")
     object_id = models.UUIDField()
@@ -841,13 +774,9 @@ class RestrictedAccessGrant(UUIDPrimaryKeyModel, OrganizationScopedModel, TimeSt
 
 
 class Bookmark(UUIDPrimaryKeyModel, OrganizationScopedModel, TimeStampedModel):
-    """A user's personal "save for later" on any relatable content type.
-    Generic content_type/object_id, same pattern as KnowledgeRelation/
-    RestrictedAccessGrant above. Bookmarking something you can currently see
-    doesn't guarantee you'll always see it - services.bookmarks_for() drops
-    a bookmark from the list once its target becomes inaccessible (e.g. it
-    turns RESTRICTED and the viewer isn't granted), the same "silently omit
-    the now-hidden side" precedent relations already follow."""
+    """A user's personal "save for later" on any relatable content type. Generic
+    content_type/object_id like KnowledgeRelation. services.bookmarks_for() drops a
+    bookmark once its target becomes inaccessible to the viewer."""
 
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, related_name="+")
     object_id = models.UUIDField()

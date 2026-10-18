@@ -38,11 +38,8 @@ RELATABLE_ROUTE_PREFIX = {
     "document": "/documents",
 }
 
-# email -> (first_name, last_name, role name). Three tiers deliberately, not
-# one actor for everything - realistic authorship (a Member asking a
-# question a Mentor answers, a Subteam Head creating the project/component
-# records) exercises the same ownership/permission checks a real team would
-# hit, not just "can the seed script write rows".
+# email -> (first_name, last_name, role name). Three tiers, so authorship is realistic and
+# exercises the same ownership/permission checks a real team would hit.
 DEMO_USERS = {
     "member1@demo.local": ("Casey", "Nguyen", "Member"),
     "mentor1@demo.local": ("Priya", "Sharma", "Mentor"),
@@ -185,7 +182,7 @@ class Command(BaseCommand):
             description="This season's competition aircraft - a fixed-wing autonomous platform.",
             tag_names=["flight-ready"],
         )
-        ground_station = services.create_project(
+        services.create_project(
             actor=head,
             name="Ground Station Rework",
             description="Rebuilding the ground control station software and telemetry link.",
@@ -249,7 +246,7 @@ class Command(BaseCommand):
             specifications=[{"label": "Capacity", "value": "6000mAh"}, {"label": "Discharge Rate", "value": "25C"}],
             tag_names=["propulsion", "safety-critical"],
         )
-        wing_spar = services.create_component(
+        services.create_component(
             actor=member,
             name="Carbon Fiber Wing Spar",
             category=structures_parts,
@@ -354,7 +351,7 @@ class Command(BaseCommand):
         self._link(actor=head, source_type="test", source=flight_test, target_type="failure", target=gps_failure)
         self._link(actor=mentor, source_type="failure", source=battery_failure, target_type="sop", target=battery_sop)
 
-        rules_doc = services.create_document(
+        services.create_document(
             actor=head,
             title="2027 Competition Rules",
             description="Official rulebook for this season's competition.",
@@ -472,7 +469,7 @@ class Command(BaseCommand):
         self._link(
             actor=member, source_type="question", source=battery_question, target_type="failure", target=battery_failure
         )
-        battery_answer = services.create_answer(
+        services.create_answer(
             question=battery_question,
             actor=mentor,
             body=(

@@ -86,12 +86,8 @@ class MeUpdateSerializer(serializers.ModelSerializer):
     (those need their own verification/confirmation flows) and roles
     (permission-gated elsewhere, not something a user grants themselves)."""
 
-    # Same "upload first via files.FileUploadView, then attach by id" two-phase
-    # flow as OrganizationBrandingUpdateSerializer's logo_id/favicon_id - see
-    # that serializer's own comment on why the queryset here is deliberately
-    # global (StoredFile.objects.all()) rather than org-scoped, and
-    # validate_profile_picture_id below for the org-ownership check that
-    # actually closes the gap that leaves open.
+    # Same upload-then-attach flow as OrganizationBrandingUpdateSerializer's logo_id. The
+    # queryset is deliberately global; validate_profile_picture_id below checks org ownership.
     profile_picture_id = serializers.PrimaryKeyRelatedField(
         source="profile_picture", queryset=StoredFile.objects.all(), allow_null=True, required=False
     )

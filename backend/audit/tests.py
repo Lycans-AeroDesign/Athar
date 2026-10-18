@@ -2,23 +2,13 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from core.testing import create_test_organization
-from accounts.models import User
-from rbac.models import Role
+from core.testing import RoleLoginMixin, create_test_organization
 
 
-class AuditTestCase(APITestCase):
+class AuditTestCase(RoleLoginMixin, APITestCase):
     @classmethod
     def setUpTestData(cls):
         cls.organization = create_test_organization()
-
-    def _login_with_role(self, email, role_name):
-        user = User.objects.create_user(email=email, password="password123", organization=self.organization)
-        Role.objects.get(organization=self.organization, name=role_name).user_roles.create(user=user)
-        response = self.client.post(
-            reverse("auth-login"), {"email": email, "password": "password123"}, format="json"
-        )
-        return user, response.data["access"]
 
     def _auth(self, access_token):
         return {"HTTP_AUTHORIZATION": f"Bearer {access_token}"}

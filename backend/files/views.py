@@ -1,5 +1,4 @@
 from django.http import FileResponse
-from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import status
 from rest_framework.exceptions import PermissionDenied
@@ -9,6 +8,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from config.openapi import BAD_REQUEST, COMMON_ERRORS, NOT_FOUND, UNAUTHORIZED
+from core.shortcuts import org_object_or_404
 from rbac.permissions import require_permission
 
 from . import services
@@ -55,7 +55,7 @@ class FileDownloadView(APIView):
         # organization filter is defense in depth beyond required_permission
         # (Section 11 of the multi-tenancy plan) - required_permission alone
         # says nothing about *which org's* file.read grants access to.
-        stored_file = get_object_or_404(StoredFile, pk=pk, organization=request.user.organization)
+        stored_file = org_object_or_404(request, StoredFile, pk)
         if not request.user.has_permission(stored_file.required_permission):
             raise PermissionDenied("You do not have permission to access this file.")
         # Imported here, not at module level: knowledge already depends on
@@ -65,15 +65,9 @@ class FileDownloadView(APIView):
 
         if not can_view_file(request.user, stored_file):
             raise PermissionDenied("This file belongs to content that isn't accessible to you.")
-        # as_attachment=True (Content-Disposition: attachment) rather than
-        # inline: the frontend never navigates the browser to this URL
-        # directly (see AuthenticatedImage.tsx / lib/api/files.ts's
-        # downloadFile() - both fetch the bytes via apiFetch and hand the
-        # browser a blob: URL, which ignores this header entirely), so this
-        # has no effect on any real feature. It does stop an uploaded
-        # .svg/.html file from executing inline if this URL is ever hit by
-        # a direct browser navigation instead - defense in depth against a
-        # theoretical XSS-via-upload path.
+        # as_attachment=True: the frontend fetches bytes via apiFetch and uses blob: URLs, which
+        # ignore this header. It stops an uploaded .svg/.html from executing inline if this URL
+        # is ever navigated to directly (defense in depth against XSS-via-upload).
         return FileResponse(
             stored_file.file.open("rb"),
             filename=stored_file.original_filename,
@@ -90,6 +84,6 @@ class FileDeleteView(APIView):
         responses={204: OpenApiResponse(description="Deleted."), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def delete(self, request, pk):
-        stored_file = get_object_or_404(StoredFile, pk=pk, organization=request.user.organization)
+        stored_file = org_object_or_404(request, StoredFile, pk)
         services.delete_file(stored_file=stored_file, actor=request.user, request=request)
         return Response(status=status.HTTP_204_NO_CONTENT)

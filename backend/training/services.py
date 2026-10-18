@@ -122,9 +122,7 @@ def delete_course_category(*, category: CourseCategory, actor, request=None) -> 
 # --- Course workflow ---------------------------------------------------------
 #
 # Structurally identical to knowledge.services' submit_article/publish_article/
-# reject_article/archive_article/unarchive_article - see Course's own
-# docstring in models.py for why the status enum (and thus this workflow)
-# mirrors Article's exactly, REJECTED included.
+# reject_article/archive_article/unarchive_article (see Course in models.py).
 
 
 def create_course(
@@ -411,10 +409,8 @@ def reorder_resources(*, lesson: Lesson, actor, request=None, order: list) -> li
 
 # --- Knowledge references ------------------------------------------------------
 #
-# Deliberately NOT knowledge.services.create_relation/KnowledgeRelation - see
-# LessonKnowledgeReference's own docstring in models.py for why this is its
-# own model/allowlist instead. Mirrors knowledge.services._RELATABLE_MODELS/
-# _resolve_relatable's shape exactly, just scoped to training's own module.
+# Deliberately not knowledge.services.create_relation; see LessonKnowledgeReference. Mirrors
+# knowledge.services._RELATABLE_MODELS/_resolve_relatable, scoped to training.
 
 _KNOWLEDGE_REFERENCE_MODELS = {
     "article": Article,

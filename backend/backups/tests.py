@@ -9,7 +9,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from core import crypto
-from core.testing import create_test_organization
+from core.testing import RoleLoginMixin, create_test_organization
 from accounts.models import User
 from files.models import StoredFile
 from rbac.models import Role
@@ -47,19 +47,10 @@ from .models import BackupJob, RestoreJob
 PASSPHRASE = "correct horse battery"
 
 
-class BackupJobTestCase(APITestCase):
+class BackupJobTestCase(RoleLoginMixin, APITestCase):
     @classmethod
     def setUpTestData(cls):
         cls.organization = create_test_organization()
-
-    def _login_with_role(self, email, role_name, organization=None):
-        organization = organization or self.organization
-        user = User.objects.create_user(email=email, password="password123", organization=organization)
-        Role.objects.get(organization=organization, name=role_name).user_roles.create(user=user)
-        response = self.client.post(
-            reverse("auth-login"), {"email": email, "password": "password123"}, format="json"
-        )
-        return user, response.data["access"]
 
     def _auth(self, access_token):
         return {"HTTP_AUTHORIZATION": f"Bearer {access_token}"}
@@ -93,19 +84,11 @@ class BackupJobPermissionTests(BackupJobTestCase):
             job.archive.delete(save=False)
 
 
-class BackupJobCrossOrgIsolationTests(APITestCase):
+class BackupJobCrossOrgIsolationTests(RoleLoginMixin, APITestCase):
     @classmethod
     def setUpTestData(cls):
         cls.org_a = create_test_organization(name="Backup Org A")
         cls.org_b = create_test_organization(name="Backup Org B")
-
-    def _login_with_role(self, email, role_name, organization):
-        user = User.objects.create_user(email=email, password="password123", organization=organization)
-        Role.objects.get(organization=organization, name=role_name).user_roles.create(user=user)
-        response = self.client.post(
-            reverse("auth-login"), {"email": email, "password": "password123"}, format="json"
-        )
-        return user, response.data["access"]
 
     def _auth(self, access_token):
         return {"HTTP_AUTHORIZATION": f"Bearer {access_token}"}
@@ -717,19 +700,11 @@ class RestoreJobTests(BackupJobTestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
 
-class RestoreJobCrossOrgIsolationTests(APITestCase):
+class RestoreJobCrossOrgIsolationTests(RoleLoginMixin, APITestCase):
     @classmethod
     def setUpTestData(cls):
         cls.org_a = create_test_organization(name="Restore Org A")
         cls.org_b = create_test_organization(name="Restore Org B")
-
-    def _login_with_role(self, email, role_name, organization):
-        user = User.objects.create_user(email=email, password="password123", organization=organization)
-        Role.objects.get(organization=organization, name=role_name).user_roles.create(user=user)
-        response = self.client.post(
-            reverse("auth-login"), {"email": email, "password": "password123"}, format="json"
-        )
-        return user, response.data["access"]
 
     def _auth(self, access_token):
         return {"HTTP_AUTHORIZATION": f"Bearer {access_token}"}

@@ -3,24 +3,16 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from accounts.models import User
-from core.testing import create_test_organization
+from core.testing import RoleLoginMixin, create_test_organization
 from knowledge import services as knowledge_services
-from rbac.models import Role
 
-from .models import Course, CourseCategory, CourseEnrollment, CourseModule, CourseResource, Lesson, LessonProgress
+from .models import Course, CourseEnrollment, CourseResource, LessonProgress
 
 
-class TrainingTestCase(APITestCase):
+class TrainingTestCase(RoleLoginMixin, APITestCase):
     @classmethod
     def setUpTestData(cls):
         cls.organization = create_test_organization()
-
-    def _login_with_role(self, email, role_name, organization=None):
-        organization = organization or self.organization
-        user = User.objects.create_user(email=email, password="password123", organization=organization)
-        Role.objects.get(organization=organization, name=role_name).user_roles.create(user=user)
-        response = self.client.post(reverse("auth-login"), {"email": email, "password": "password123"}, format="json")
-        return user, response.data["access"]
 
     def _auth(self, access_token):
         return {"HTTP_AUTHORIZATION": f"Bearer {access_token}"}
@@ -432,7 +424,7 @@ class LessonKnowledgeReferenceTests(TrainingTestCase):
         self.assertEqual(len(response.data), 0)
 
 
-class MultiTenancyIsolationTests(APITestCase):
+class MultiTenancyIsolationTests(RoleLoginMixin, APITestCase):
     """Mirrors knowledge.tests.MultiTenancyIsolationTests's shape - two real
     independent organizations, proving a logged-in user from Organization A
     cannot read, list, enroll in, or reference anything belonging to
@@ -442,12 +434,6 @@ class MultiTenancyIsolationTests(APITestCase):
     def setUpTestData(cls):
         cls.org_a = create_test_organization(name="Org A")
         cls.org_b = create_test_organization(name="Org B")
-
-    def _login_with_role(self, email, role_name, organization):
-        user = User.objects.create_user(email=email, password="password123", organization=organization)
-        Role.objects.get(organization=organization, name=role_name).user_roles.create(user=user)
-        response = self.client.post(reverse("auth-login"), {"email": email, "password": "password123"}, format="json")
-        return user, response.data["access"]
 
     def _auth(self, access_token):
         return {"HTTP_AUTHORIZATION": f"Bearer {access_token}"}

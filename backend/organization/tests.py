@@ -115,15 +115,10 @@ class OrganizationSettingsTests(APITestCase):
         self.assertEqual(OrganizationSettings.load(self.organization).primary_color, "#ff0000")
 
     def test_logo_endpoint_is_public_and_streams_the_image(self):
-        # _public_organization()'s anonymous fallback prefers the oldest
-        # Organization that has a user (see its own docstring) - a bootstrap
-        # Organization already exists from a data migration by the time any
-        # test runs, with no user in it yet, so once we create one there it
-        # becomes "the oldest org with a user" and is what an anonymous
-        # request actually sees - not self.organization, which also has no
-        # user at this point. This test exercises that real, documented
-        # behavior explicitly rather than assuming the anonymous fallback is
-        # "your own org."
+        # _public_organization()'s anonymous fallback prefers the oldest Organization that has a
+        # user. The data-migration bootstrap org exists with no user, so once we create one there it
+        # becomes the org an anonymous request sees, not self.organization (which has no user yet).
+        # This exercises that documented behavior explicitly.
         public_organization = Organization.objects.order_by("created_at").first()
 
         # No logo set yet - 404.
@@ -196,13 +191,10 @@ class OrganizationSettingsTests(APITestCase):
             self.assertIn(field, response.data)
 
     def test_public_endpoints_prefer_a_populated_org_over_an_empty_older_one(self):
-        # Regression test for a real deployment bug: a single-org self-hosted
-        # install's bootstrap Organization (oldest by construction, see
-        # organization/migrations/0002_seed_bootstrap_organization.py) never
-        # gets a user if the operator instead registers via self-service org
-        # creation - plain oldest-first then permanently serves the empty
-        # bootstrap org's blank branding to every anonymous/pre-login
-        # request, never the operator's actual (younger, but populated) org.
+        # Regression test for a real deployment bug: on a single-org install whose operator used
+        # self-service org creation, the bootstrap Organization (oldest by construction, migration
+        # 0002) never gets a user, so plain oldest-first served its blank branding to every
+        # anonymous request instead of the operator's populated org.
         bootstrap_organization = Organization.objects.order_by("created_at").first()
         self.assertEqual(
             User.objects.filter(organization=bootstrap_organization).count(),
