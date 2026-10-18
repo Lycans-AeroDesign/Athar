@@ -35,13 +35,10 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      # ubuntu-latest's default apt repos only ship postgresql-client-16, but
-      # the `postgres` service above runs 18 (matching docker-compose's own
-      # db image) - pg_dump refuses to dump from a newer major server version
-      # ("aborting because of server version mismatch"), which broke
-      # core.tests.FullInstanceBackupRestoreTests. Installs matching client
-      # tools from the official PGDG apt repo instead of pinning the service
-      # down to 16.
+      # ubuntu-latest's apt only ships postgresql-client-16, but the `postgres` service runs 18
+      # (matching docker-compose), and pg_dump refuses a newer server ("server version mismatch"),
+      # which broke core.tests.FullInstanceBackupRestoreTests. Install matching client tools from
+      # the PGDG apt repo instead of pinning the service to 16.
       - name: Install PostgreSQL 18 client tools (matching the postgres:18 service)
         run: |
           sudo apt-get install -y postgresql-common
@@ -52,14 +49,10 @@ jobs:
         uses: astral-sh/setup-uv@v7
         with:
           version: latest
-          # `enable-cache` already defaults to "auto" (on for GitHub-hosted
-          # runners on ordinary push/pull_request triggers, which is all this
-          # workflow uses) - set explicitly so it's not implicit, and doesn't
-          # silently turn off if a riskier trigger (pull_request_target,
-          # release, ...) is ever added to this workflow. `cache-python`
-          # additionally caches the downloaded interpreter itself, which
-          # `enable-cache` alone does not cover - `uv python install` below
-          # would otherwise re-download Python every run regardless.
+          # `enable-cache` defaults to "auto" (on for ordinary push/pull_request triggers); set
+          # explicitly so it doesn't silently turn off if a riskier trigger is added. `cache-python`
+          # also caches the interpreter, which `enable-cache` doesn't, so `uv python install` below
+          # doesn't re-download Python each run.
           enable-cache: true
           cache-python: true
 
@@ -96,14 +89,10 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
-      # setup-node's `cache: npm` above only caches npm's own package cache
-      # (~/.npm), not Next.js's own build cache (.next/cache) - without this,
-      # `npm run build` below is a fully cold build on every single run,
-      # which is the actual slow part, not `npm ci`. Per Next.js's own
-      # documented CI-caching guidance (docs/.../ci-build-caching.mdx):
-      # key on the lockfile + every source file so a dependency bump or any
-      # source change invalidates it, falling back to a lockfile-only match
-      # (source changed, deps didn't) rather than a fully cold cache.
+      # setup-node's `cache: npm` covers only npm's package cache, not Next.js's build cache
+      # (.next/cache); without this `npm run build` is fully cold every run. Keyed on the lockfile
+      # plus all source files (per Next.js's CI-caching guidance), falling back to a lockfile-only
+      # match when only source changed.
       - name: Cache Next.js build
         uses: actions/cache@v5
         with:
