@@ -1,0 +1,64 @@
+name: Security scans
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+  schedule:
+    # Weekly, so newly published advisories surface without a code change.
+    - cron: "47 5 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  secrets:
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # Full history: a secret removed in a later commit is still leaked.
+          fetch-depth: 0
+
+      # The CLI image directly, rather than gitleaks-action, which needs a paid
+      # license for organization-owned repos. Rules and allowlist: .gitleaks.toml.
+      - name: Scan git history
+        run: |
+          docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.21.2 \
+            detect --source /repo --config /repo/.gitleaks.toml --redact --no-banner --verbose
+
+  dependencies:
+    name: Dependency scan (Trivy)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      # Lockfiles (backend/uv.lock, frontend/package-lock.json). Only fixed
+      # HIGH/CRITICAL findings fail the job; the rest are noise until upstream ships a fix.
+      - name: Scan lockfiles
+        run: |
+          docker run --rm -v "$PWD:/repo" aquasec/trivy:0.58.0 fs \
+            --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 \
+            --skip-dirs node_modules,.venv,.next /repo
+
+  images:
+    name: Image scan (Trivy)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Build backend image
+        run: docker build --target prod -t athar-backend:scan ./backend
+
+      - name: Build frontend image
+        run: docker build --target prod --build-arg NEXT_PUBLIC_API_URL= -t athar-frontend:scan ./frontend
+
+      # OS packages and language dependencies baked into the images that actually ship.
+      - name: Scan images
+        run: |
+          for image in athar-backend:scan athar-frontend:scan; do
+            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.58.0 image \
+              --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 "$image"
+          done

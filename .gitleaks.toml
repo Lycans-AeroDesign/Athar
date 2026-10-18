@@ -1,0 +1,9 @@
+title = "Athar gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Character alphabets for generating secrets are not secrets"
+regexTarget = "line"
+regexes = ['''(DJANGO_SECRET_CHARS|PASSWORD_CHARS)\s*=\s*"''']
