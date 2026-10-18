@@ -131,6 +131,11 @@ class RefreshView(APIView):
         except TokenError as exc:
             raise AuthenticationFailed(str(exc)) from exc
 
+        # A suspended organization's users can't mint new access tokens (platform_admin).
+        owner = User.objects.select_related("organization").filter(pk=probe.payload.get("user_id")).first()
+        if owner and not owner.is_superuser and not owner.organization.is_active:
+            raise AuthenticationFailed("This organization has been suspended.", code="organization_suspended")
+
         # Locking the token's row makes concurrent refreshes with the same cookie take turns, so
         # only the first rotates it; the rest then see it blacklisted.
         rejection = None

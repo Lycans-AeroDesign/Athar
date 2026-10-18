@@ -5,6 +5,7 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from .services import has_pending_policies
 
 POLICY_ACCEPTANCE_REQUIRED = "policy_acceptance_required"
+ORGANIZATION_SUSPENDED = "organization_suspended"
 
 # URL names callable while policies are unaccepted: read/accept the policies, load own
 # session (/auth/me, for the gate UI), and log out (the gate's "decline"). Admin policy
@@ -46,6 +47,8 @@ class PolicyEnforcingJWTAuthentication(JWTAuthentication):
         if result is None:
             return None
         user, _token = result
+        if not user.is_superuser and not user.organization.is_active:
+            raise PermissionDenied({"detail": "This organization has been suspended.", "code": ORGANIZATION_SUSPENDED})
         resolver_match = getattr(request._request, "resolver_match", None)
         url_name = resolver_match.url_name if resolver_match else None
         if url_name in ALLOWED_WHILE_PENDING or _is_public_view(request):

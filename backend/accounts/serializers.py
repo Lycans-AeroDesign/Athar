@@ -4,6 +4,7 @@ from django.conf import settings
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
+from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from files.models import StoredFile
@@ -70,12 +71,13 @@ class UserSerializer(serializers.ModelSerializer):
             "email_visible",
             "date_joined",
             "is_active",
+            "is_superuser",
         ]
         # is_active is read-only here on purpose - it's an admin-only action
         # (see rbac.services.set_user_active / rbac.views.UserActiveView),
         # never self-service, so MeUpdateSerializer below deliberately never
         # lists it either.
-        read_only_fields = ["is_active"]
+        read_only_fields = ["is_active", "is_superuser"]
 
     def get_permissions(self, obj: User) -> list[str]:
         return obj.permission_codenames()
@@ -119,6 +121,14 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     trusted as an authorization source, since the backend re-checks
     permissions on every request regardless of what this response contained.
     """
+
+    @classmethod
+    def get_token(cls, user):
+        # Runs before the refresh token (and its OutstandingToken row) is created, so a
+        # suspended organization's login leaves nothing behind.
+        if not user.is_superuser and not user.organization.is_active:
+            raise AuthenticationFailed("This organization has been suspended.", code="organization_suspended")
+        return super().get_token(user)
 
     def validate(self, attrs):
         data = super().validate(attrs)

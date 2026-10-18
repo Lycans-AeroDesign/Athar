@@ -134,7 +134,14 @@ ROUTES = [
 ]
 
 # Id-bearing routes that are deliberately not object lookups in another tenant's data.
-EXEMPT = {}
+EXEMPT = {
+    # Instance-operator (is_superuser) routes: cross-org by design, covered by platform_admin.tests.
+    "platform-organization-detail": "platform admin",
+    "platform-organization-users": "platform admin",
+    "platform-organization-active": "platform admin",
+    "platform-user-active": "platform admin",
+    "platform-user-password-reset-link": "platform admin",
+}
 
 # Request bodies for routes that look up a second object named in the body (else they 404 on it).
 BODIES = {

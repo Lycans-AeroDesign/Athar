@@ -13,6 +13,9 @@ class Organization(UUIDPrimaryKeyModel, TimeStampedModel):
 
     name = models.CharField(max_length=200)
     slug = models.SlugField(max_length=100, unique=True)
+    # Platform-level kill switch (platform_admin app): a suspended org's users can't log in or
+    # use the API. Not a billing/plan field.
+    is_active = models.BooleanField(default=True)
 
     class Meta:
         ordering = ["name"]

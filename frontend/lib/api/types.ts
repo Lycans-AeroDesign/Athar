@@ -34,6 +34,8 @@ export interface User {
   date_joined: string;
   /** Read-only here - toggled only via rbac.setUserActive (requires user.manage), never self-service. */
   is_active: boolean;
+  /** Instance operator - unlocks the /platform dashboard. Read-only; set server-side via bootstrap_admin. */
+  is_superuser: boolean;
 }
 
 export interface Role {

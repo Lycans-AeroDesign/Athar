@@ -128,6 +128,8 @@ def set_user_active(*, user, is_active: bool, actor, request=None):
     out with nobody left able to unblock anyone."""
     if user.id == actor.id:
         raise PermissionDenied("You can't block or unblock your own account.")
+    if user.is_superuser and not actor.is_superuser:
+        raise PermissionDenied("You can't block or unblock a platform administrator.")
     user.is_active = is_active
     user.save(update_fields=["is_active"])
     log_action(

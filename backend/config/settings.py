@@ -66,6 +66,7 @@ INSTALLED_APPS = [
     "training",
     "backups",
     "policies",
+    "platform_admin",
 ]
 
 AUTH_USER_MODEL = "accounts.User"

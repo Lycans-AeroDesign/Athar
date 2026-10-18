@@ -7,6 +7,7 @@ import { BrandMark } from "@/components/ui/BrandMark";
 import { Icon } from "@/components/ui/Icon";
 import { Link, usePathname } from "@/i18n/navigation";
 import { apiUrl } from "@/lib/api/client";
+import { useAuth } from "@/lib/auth/AuthProvider";
 import { useOrganization } from "@/lib/organization/OrganizationProvider";
 
 // `permission` is optional: omit for anything every authenticated user can see; set it once the
@@ -74,6 +75,7 @@ export function SideNav({ open, onClose }: SideNavProps) {
   const t = useTranslations("nav");
   const modalT = useTranslations("modal");
   const { settings } = useOrganization();
+  const { user } = useAuth();
 
   return (
     <>
@@ -157,6 +159,19 @@ export function SideNav({ open, onClose }: SideNavProps) {
         </div>
 
         <div className="mt-auto p-2 border-t border-outline-variant space-y-1">
+          {user?.is_superuser && (
+            <Link
+              className={
+                pathname.startsWith("/platform")
+                  ? "flex items-center gap-4 px-4 py-2 bg-primary-container text-on-primary-container font-bold rounded-xl transition-colors"
+                  : "flex items-center gap-4 px-4 py-2 text-on-surface-variant hover:bg-surface-variant transition-colors duration-150 rounded-xl"
+              }
+              href="/platform"
+            >
+              <Icon name="admin_panel_settings" />
+              {t("platform")}
+            </Link>
+          )}
           <Link
             className={
               pathname.startsWith("/settings")

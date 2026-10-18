@@ -14,6 +14,7 @@ v1_patterns = [
     path("training/", include("training.urls")),
     path("backups/", include("backups.urls")),
     path("policies/", include("policies.urls")),
+    path("platform/", include("platform_admin.urls")),
 ]
 
 urlpatterns = [
