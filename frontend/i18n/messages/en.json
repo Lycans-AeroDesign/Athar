@@ -98,6 +98,8 @@
   "platform": {
     "title": "Platform administration",
     "description": "Instance-wide view of every organization: accounts, storage and activity. Organization content is never shown here.",
+    "registrationLabel": "Allow new organizations to register",
+    "registrationDescription": "When off, public team signup is closed and the register page hides it. Existing organizations and invitation-code registration are unaffected.",
     "organizations": "Organizations",
     "users": "Users",
     "files": "Files",
@@ -148,12 +150,11 @@
     "blockBody": "{email} will be locked out on their next request.",
     "unblockTitle": "Unblock this user?",
     "unblockBody": "{email} will be able to sign in again.",
-    "resetLink": "Reset link",
+    "resetLink": "Email reset link",
     "resetLinkTitle": "Password reset link",
-    "resetLinkConfirmBody": "Generate a one-time reset link for {email}? It replaces any earlier unused link and expires in 24 hours.",
-    "resetLinkBody": "Hand this one-time link to {email}. It is shown only once.",
-    "copy": "Copy",
-    "copied": "Copied",
+    "resetLinkConfirmBody": "Email a one-time reset link to {email}? It replaces any earlier unused link and expires in 24 hours. You will not see the link.",
+    "resetLinkEmailSent": "A reset link was emailed to {email}.",
+    "resetLinkEmailFailed": "The email to {email} could not be sent. Try again.",
     "done": "Done"
   },
   "nav": {

@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema
@@ -8,7 +9,6 @@ from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from accounts.models import User
-from accounts.serializers import PasswordResetLinkCreateSerializer, PasswordResetLinkSerializer
 from accounts.services import send_password_reset_email
 from config.openapi import BAD_REQUEST, COMMON_ERRORS, NOT_FOUND
 from config.pagination import DefaultPagination, paginated_response
@@ -16,7 +16,14 @@ from organization.models import Organization
 
 from . import services
 from .permissions import IsPlatformAdmin
-from .serializers import PlatformOrganizationSerializer, PlatformSummarySerializer, PlatformUserSerializer
+from .serializers import (
+    PlatformOrganizationSerializer,
+    PlatformPasswordResetRequestSerializer,
+    PlatformPasswordResetResultSerializer,
+    PlatformSettingsSerializer,
+    PlatformSummarySerializer,
+    PlatformUserSerializer,
+)
 
 TAG = "Platform"
 
@@ -119,27 +126,49 @@ class UserPasswordResetLinkView(PlatformView):
 
     @extend_schema(
         tags=[TAG],
-        summary="Generate a one-time password reset link for a user in any organization",
-        request=PasswordResetLinkCreateSerializer,
-        responses={201: PasswordResetLinkSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
+        summary="Email a one-time password reset link to a user in any organization (the link is never returned)",
+        request=PlatformPasswordResetRequestSerializer,
+        responses={201: PlatformPasswordResetResultSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def post(self, request, pk):
         user = get_object_or_404(User, pk=pk)
-        options = PasswordResetLinkCreateSerializer(data=request.data)
+        if not settings.EMAIL_ENABLED:
+            raise ValidationError("Email isn't configured on this server.")
+        options = PlatformPasswordResetRequestSerializer(data=request.data)
         options.is_valid(raise_exception=True)
         link, token = services.issue_password_reset_link(user=user, actor=request.user, request=request)
-        email_sent = False
-        if options.validated_data["send_email"]:
-            email_sent = send_password_reset_email(
-                user=user,
-                url=f"{options.validated_data['link_base']}#{token}",
-                language=options.validated_data["language"],
-                actor=request.user,
-                request=request,
-            )
+        email_sent = send_password_reset_email(
+            user=user,
+            url=f"{options.validated_data['link_base']}#{token}",
+            language=options.validated_data["language"],
+            actor=request.user,
+            request=request,
+        )
         return Response(
-            PasswordResetLinkSerializer(
-                {"token": token, "expires_at": link.expires_at, "email": user.email, "email_sent": email_sent}
+            PlatformPasswordResetResultSerializer(
+                {"expires_at": link.expires_at, "email": user.email, "email_sent": email_sent}
             ).data,
             status=status.HTTP_201_CREATED,
         )
+
+
+class SettingsView(PlatformView):
+    @extend_schema(
+        tags=[TAG], summary="Instance-wide switches", responses={200: PlatformSettingsSerializer, **COMMON_ERRORS}
+    )
+    def get(self, request):
+        return Response(PlatformSettingsSerializer(services.get_platform_settings()).data)
+
+    @extend_schema(
+        tags=[TAG],
+        summary="Open or close public organization signup",
+        request=PlatformSettingsSerializer,
+        responses={200: PlatformSettingsSerializer, 400: BAD_REQUEST, **COMMON_ERRORS},
+    )
+    def patch(self, request):
+        body = PlatformSettingsSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+        result = services.set_organization_registration_enabled(
+            enabled=body.validated_data["organization_registration_enabled"], actor=request.user, request=request
+        )
+        return Response(PlatformSettingsSerializer(result).data)

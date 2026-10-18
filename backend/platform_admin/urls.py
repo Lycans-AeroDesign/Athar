@@ -5,12 +5,14 @@ from .views import (
     OrganizationDetailView,
     OrganizationListView,
     OrganizationUsersView,
+    SettingsView,
     SummaryView,
     UserActiveView,
     UserPasswordResetLinkView,
 )
 
 urlpatterns = [
+    path("settings/", SettingsView.as_view(), name="platform-settings"),
     path("summary/", SummaryView.as_view(), name="platform-summary"),
     path("organizations/", OrganizationListView.as_view(), name="platform-organization-list"),
     path("organizations/<uuid:pk>/", OrganizationDetailView.as_view(), name="platform-organization-detail"),

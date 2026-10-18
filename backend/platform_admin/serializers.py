@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from accounts.models import User
+from accounts.serializers import validate_reset_link_base
 
 
 class ContentCountsSerializer(serializers.Serializer):
@@ -63,3 +64,21 @@ class PlatformUserSerializer(serializers.ModelSerializer):
             "last_activity",
         ]
         read_only_fields = fields
+
+
+class PlatformPasswordResetRequestSerializer(serializers.Serializer):
+    """Platform admins can only have the reset link emailed to the user; they never receive the
+    token, so a reset can't be used to take over an account and read its organization's content."""
+
+    link_base = serializers.URLField(max_length=500, validators=[validate_reset_link_base])
+    language = serializers.ChoiceField(choices=["en", "ar"], default="en")
+
+
+class PlatformPasswordResetResultSerializer(serializers.Serializer):
+    email = serializers.EmailField(read_only=True)
+    expires_at = serializers.DateTimeField(read_only=True)
+    email_sent = serializers.BooleanField(read_only=True)
+
+
+class PlatformSettingsSerializer(serializers.Serializer):
+    organization_registration_enabled = serializers.BooleanField()

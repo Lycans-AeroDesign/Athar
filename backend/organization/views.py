@@ -10,6 +10,7 @@ from rest_framework.views import APIView
 
 from accounts.serializers import UserSerializer
 from config.openapi import BAD_REQUEST, COMMON_ERRORS
+from platform_admin.models import organization_registration_enabled
 from rbac.permissions import require_permission
 
 from . import services
@@ -183,11 +184,11 @@ class OrganizationCreateView(APIView):
         responses={
             201: UserSerializer,
             400: BAD_REQUEST,
-            404: OpenApiResponse(description="Organization signup is disabled (ENABLE_ORGANIZATION_REGISTRATION=False)."),
+            404: OpenApiResponse(description="Organization signup is disabled (by the platform operator or ENABLE_ORGANIZATION_REGISTRATION=False)."),
         },
     )
     def post(self, request):
-        if not settings.ENABLE_ORGANIZATION_REGISTRATION:
+        if not organization_registration_enabled():
             return Response(status=status.HTTP_404_NOT_FOUND)
 
         serializer = OrganizationCreateSerializer(data=request.data)

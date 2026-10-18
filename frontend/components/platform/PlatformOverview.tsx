@@ -5,11 +5,15 @@ import { useEffect, useState } from "react";
 
 import { Pagination } from "@/components/ui/Pagination";
 import { StatCard } from "@/components/ui/StatCard";
+import { Switch } from "@/components/ui/Switch";
 import { Link } from "@/i18n/navigation";
 import {
   getPlatformOrganizations,
+  getPlatformSettings,
   getPlatformSummary,
+  updatePlatformSettings,
   type PlatformOrganization,
+  type PlatformSettings,
   type PlatformSummary,
 } from "@/lib/api/platform";
 import type { Paginated } from "@/lib/api/types";
@@ -30,6 +34,26 @@ export function PlatformOverview() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [platformSettings, setPlatformSettings] = useState<PlatformSettings | null>(null);
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
+
+  useEffect(() => {
+    getPlatformSettings()
+      .then(setPlatformSettings)
+      .catch((err) => setError(errorMessage(err)));
+  }, []);
+
+  async function handleToggleRegistration(enabled: boolean) {
+    setIsSavingSettings(true);
+    setError(null);
+    try {
+      setPlatformSettings(await updatePlatformSettings({ organization_registration_enabled: enabled }));
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setIsSavingSettings(false);
+    }
+  }
 
   useEffect(() => {
     getPlatformSummary()
@@ -78,6 +102,18 @@ export function PlatformOverview() {
           />
           <StatCard label={t("files")} value={formatBytes(summary.file_bytes)} icon="folder" />
           <StatCard label={t("backups")} value={formatBytes(summary.backup_bytes)} icon="backup" />
+        </div>
+      )}
+
+      {platformSettings && (
+        <div className="bg-surface rounded-xl border border-outline-variant p-6">
+          <Switch
+            checked={platformSettings.organization_registration_enabled}
+            disabled={isSavingSettings}
+            onChange={handleToggleRegistration}
+            label={t("registrationLabel")}
+            description={t("registrationDescription")}
+          />
         </div>
       )}
 

@@ -5,6 +5,7 @@ from accounts.models import User, username_validator
 from accounts.serializers import check_password_strength, check_unique_username, normalize_unique_email
 from files.models import StoredFile
 from files.serializers import StoredFileSerializer
+from platform_admin.models import organization_registration_enabled
 
 from .models import OrganizationSettings
 
@@ -23,7 +24,7 @@ class OrganizationSettingsSerializer(serializers.ModelSerializer):
     # useful for the settings form's own bookkeeping (filename, id, ...).
     logo_url = serializers.SerializerMethodField()
     favicon_url = serializers.SerializerMethodField()
-    # Instance-wide flag mirrored from settings.ENABLE_ORGANIZATION_REGISTRATION, carried on
+    # Instance-wide flag (platform operator toggle, else settings.ENABLE_ORGANIZATION_REGISTRATION), carried on
     # this public pre-login endpoint so the register page can hide its "create organization"
     # tab. OrganizationCreateView enforces it server-side.
     organization_registration_enabled = serializers.SerializerMethodField()
@@ -57,7 +58,7 @@ class OrganizationSettingsSerializer(serializers.ModelSerializer):
         return "/api/v1/organization/settings/favicon/" if obj.favicon else None
 
     def get_organization_registration_enabled(self, obj: OrganizationSettings) -> bool:
-        return django_settings.ENABLE_ORGANIZATION_REGISTRATION
+        return organization_registration_enabled()
 
     def get_email_enabled(self, obj: OrganizationSettings) -> bool:
         return django_settings.EMAIL_ENABLED

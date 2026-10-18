@@ -10,9 +10,8 @@ import { Modal } from "@/components/ui/Modal";
 import { Pagination } from "@/components/ui/Pagination";
 import { StatCard } from "@/components/ui/StatCard";
 import { Link, getPathname } from "@/i18n/navigation";
-import { passwordResetUrl } from "@/lib/api/passwordReset";
 import {
-  createPlatformPasswordResetLink,
+  sendPlatformPasswordResetLink,
   getPlatformOrganization,
   getPlatformOrganizationUsers,
   setPlatformOrganizationActive,
@@ -39,8 +38,7 @@ export function PlatformOrganizationDetail({ id }: { id: string }) {
   const [orgConfirm, setOrgConfirm] = useState(false);
   const [userConfirm, setUserConfirm] = useState<PlatformUser | null>(null);
   const [resetTarget, setResetTarget] = useState<PlatformUser | null>(null);
-  const [resetUrl, setResetUrl] = useState<{ email: string; url: string } | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [resetResult, setResetResult] = useState<{ email: string; sent: boolean } | null>(null);
 
   useEffect(() => {
     getPlatformOrganization(id)
@@ -82,10 +80,13 @@ export function PlatformOrganizationDetail({ id }: { id: string }) {
   const generateLink = () =>
     run(async () => {
       if (!resetTarget) return;
-      const link = await createPlatformPasswordResetLink(resetTarget.id);
       const path = getPathname({ href: "/reset-password", locale });
-      setResetUrl({ email: link.email, url: passwordResetUrl(window.location.origin, path, link.token) });
-      setCopied(false);
+      const result = await sendPlatformPasswordResetLink(
+        resetTarget.id,
+        `${window.location.origin}${path}`,
+        locale,
+      );
+      setResetResult({ email: result.email, sent: result.email_sent });
       setResetTarget(null);
     });
 
@@ -261,35 +262,21 @@ export function PlatformOrganizationDetail({ id }: { id: string }) {
         onConfirm={generateLink}
       />
       <Modal
-        open={resetUrl !== null}
-        onOpenChange={(open) => !open && setResetUrl(null)}
+        open={resetResult !== null}
+        onOpenChange={(open) => !open && setResetResult(null)}
         title={t("resetLinkTitle")}
-        description={resetUrl ? t("resetLinkBody", { email: resetUrl.email }) : undefined}
         footer={
-          <Button variant="secondary" onClick={() => setResetUrl(null)}>
+          <Button variant="secondary" onClick={() => setResetResult(null)}>
             {t("done")}
           </Button>
         }
       >
-        {resetUrl && (
-          <div className="flex items-stretch gap-2">
-            <input
-              readOnly
-              value={resetUrl.url}
-              onFocus={(e) => e.target.select()}
-              aria-label={t("resetLinkTitle")}
-              className="min-w-0 flex-1 px-3 py-2 font-mono-sm text-mono-sm text-on-surface bg-surface-container border border-outline-variant rounded-lg outline-none"
-            />
-            <Button
-              variant="secondary"
-              onClick={async () => {
-                await navigator.clipboard.writeText(resetUrl.url);
-                setCopied(true);
-              }}
-            >
-              {copied ? t("copied") : t("copy")}
-            </Button>
-          </div>
+        {resetResult && (
+          <p className="font-body-md text-body-md text-on-surface">
+            {resetResult.sent
+              ? t("resetLinkEmailSent", { email: resetResult.email })
+              : t("resetLinkEmailFailed", { email: resetResult.email })}
+          </p>
         )}
       </Modal>
     </div>

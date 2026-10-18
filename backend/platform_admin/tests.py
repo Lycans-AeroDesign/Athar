@@ -1,3 +1,5 @@
+from django.core import mail
+from django.test import override_settings
 from django.urls import reverse
 from rest_framework.test import APITestCase
 
@@ -107,14 +109,23 @@ class PlatformAdminTests(RoleLoginMixin, APITestCase):
         self.assertFalse(self.other_member.is_active)
         self.client.post(url, {"is_active": True}, format="json", **headers)
 
-        reset = self.client.post(
+        with override_settings(EMAIL_ENABLED=True, CORS_ALLOWED_ORIGINS=["http://localhost:3000"]):
+            reset = self.client.post(
+                reverse("platform-user-password-reset-link", kwargs={"pk": self.other_member.pk}),
+                {"link_base": "http://localhost:3000/en/reset-password"},
+                format="json",
+                **headers,
+            )
+        self.assertEqual(reset.status_code, 201)
+        self.assertNotIn("token", reset.data)
+        self.assertEqual(len(mail.outbox), 1)
+        no_email = self.client.post(
             reverse("platform-user-password-reset-link", kwargs={"pk": self.other_member.pk}),
-            {},
+            {"link_base": "http://localhost:3000/en/reset-password"},
             format="json",
             **headers,
         )
-        self.assertEqual(reset.status_code, 201)
-        self.assertIn("token", reset.data)
+        self.assertEqual(no_email.status_code, 400)
         actions = set(AuditLog.objects.filter(organization=self.other).values_list("action", flat=True))
         self.assertTrue({"platform.user.block", "platform.user.password_reset_link"} <= actions)
 
@@ -140,5 +151,36 @@ class PlatformAdminTests(RoleLoginMixin, APITestCase):
             {"is_active": False},
             format="json",
             HTTP_AUTHORIZATION=f"Bearer {other_token}",
+        )
+        self.assertEqual(response.status_code, 403)
+
+    @override_settings(ENABLE_ORGANIZATION_REGISTRATION=True)
+    def test_registration_toggle_overrides_env_and_gates_signup(self):
+        _, headers = self._operator()
+        signup = {
+            "name": "Toggle Org",
+            "admin_email": "founder@toggle.example",
+            "admin_password": "somepassword123",
+            "admin_username": "toggler",
+        }
+        url = reverse("platform-settings")
+        self.assertTrue(self.client.get(url, **headers).data["organization_registration_enabled"])
+
+        response = self.client.patch(url, {"organization_registration_enabled": False}, format="json", **headers)
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.data["organization_registration_enabled"])
+        self.assertEqual(self.client.post(reverse("organization-create"), signup, format="json").status_code, 404)
+        self.assertFalse(self.client.get(reverse("organization-settings")).data["organization_registration_enabled"])
+        self.assertTrue(AuditLog.objects.filter(action="platform.settings.organization_registration").exists())
+
+        self.client.patch(url, {"organization_registration_enabled": True}, format="json", **headers)
+        self.assertEqual(self.client.post(reverse("organization-create"), signup, format="json").status_code, 201)
+
+    def test_settings_forbidden_for_non_superuser(self):
+        _, token = self._login_with_role("admin2@a.example", "Organization Admin")
+        headers = {"HTTP_AUTHORIZATION": f"Bearer {token}"}
+        self.assertEqual(self.client.get(reverse("platform-settings"), **headers).status_code, 403)
+        response = self.client.patch(
+            reverse("platform-settings"), {"organization_registration_enabled": False}, format="json", **headers
         )
         self.assertEqual(response.status_code, 403)

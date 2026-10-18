@@ -15,6 +15,7 @@ from backups.models import BackupJob
 from files.models import StoredFile
 from knowledge.models import Article, Component, Document, Failure, Project, Question, Sop, Test
 from organization.models import Organization
+from .models import PlatformSettings, organization_registration_enabled
 from training.models import Course
 
 CONTENT_MODELS = {
@@ -164,3 +165,21 @@ def issue_password_reset_link(*, user: User, actor, request=None):
         organization=user.organization,
     )
     return link, token
+
+
+def get_platform_settings() -> dict:
+    return {"organization_registration_enabled": organization_registration_enabled()}
+
+
+@transaction.atomic
+def set_organization_registration_enabled(*, enabled: bool, actor, request=None) -> dict:
+    row = PlatformSettings.load()
+    row.organization_registration_enabled = enabled
+    row.save(update_fields=["organization_registration_enabled", "updated_at"])
+    log_action(
+        actor=actor,
+        action="platform.settings.organization_registration",
+        metadata={"enabled": enabled},
+        request=request,
+    )
+    return get_platform_settings()

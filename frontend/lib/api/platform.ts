@@ -1,5 +1,4 @@
 import { apiJson } from "./client";
-import type { PasswordResetLink } from "./passwordReset";
 import type { Paginated } from "./types";
 
 /** Instance-operator (is_superuser) endpoints - administrative metadata only, never org content. */
@@ -91,10 +90,32 @@ export function setPlatformUserActive(id: string, isActive: boolean): Promise<Pl
   });
 }
 
-export function createPlatformPasswordResetLink(id: string): Promise<PasswordResetLink> {
-  return apiJson<PasswordResetLink>(`/api/v1/platform/users/${id}/password-reset-link/`, {
+/** The backend emails the link to the user and never returns the token (fails with a 400 when
+ * email isn't configured on the server). `linkBase` must be on this app's own origin. */
+export function sendPlatformPasswordResetLink(
+  id: string,
+  linkBase: string,
+  language: string,
+): Promise<{ email: string; expires_at: string; email_sent: boolean }> {
+  return apiJson(`/api/v1/platform/users/${id}/password-reset-link/`, {
     method: "POST",
     headers: JSON_HEADERS,
-    body: JSON.stringify({ send_email: false }),
+    body: JSON.stringify({ link_base: linkBase, language }),
+  });
+}
+
+export interface PlatformSettings {
+  organization_registration_enabled: boolean;
+}
+
+export function getPlatformSettings(): Promise<PlatformSettings> {
+  return apiJson<PlatformSettings>("/api/v1/platform/settings/");
+}
+
+export function updatePlatformSettings(settings: PlatformSettings): Promise<PlatformSettings> {
+  return apiJson<PlatformSettings>("/api/v1/platform/settings/", {
+    method: "PATCH",
+    headers: JSON_HEADERS,
+    body: JSON.stringify(settings),
   });
 }
