@@ -216,6 +216,12 @@ The frontend's test suite is new and deliberately small (see `docs/VISION.md` §
 - Never commit `.env`, `.env.local`, tokens, or production URLs/credentials. `scripts/generate_env.py` and the `.gitignore`/`.gitattributes` setup exist specifically so this doesn't happen by accident.
 - Treat every `NEXT_PUBLIC_*` variable as **public** — it ships to the browser. Never put a secret there.
 - Per `docs/VISION.md` §28: **the frontend is not a security boundary.** Every API endpoint must independently enforce authentication and authorization — hiding a button in the UI is not access control. Someone hitting the API directly (curl/Postman) must be restricted exactly the same as someone using the UI.
+- **Tenant isolation.** Look objects up through `org_object_or_404` (or an explicitly organization-scoped queryset); never trust an id from the client on its own. Any new route that takes an object id must be added to `ROUTES` in `backend/core/test_tenant_isolation.py` (a completeness test fails until it is), which asserts another organization's admin gets 404.
+- **Uploads.** Files go through `files/validation.py` (extension allowlist, magic-byte checks, a blocklist of active content such as html/svg/js/exe). Add a new format to `ALLOWED_TYPES` with a signature check where one exists; self-hosters can allow extras with `UPLOAD_EXTRA_EXTENSIONS`, but the blocklist can't be overridden.
+- **Sessions.** Replaying an already-rotated refresh token revokes all of that user's sessions (`accounts.services.handle_refresh_token_reuse`); see `RefreshTokenSecurityTests` before touching `RefreshView` or the JWT settings.
+- **Personal data.** Anything new that stores personal data should be recorded in the data inventory (the personal data an instance stores) and, if tied to a user, to the export (`accounts/data_export.py`) and to what account deletion removes or anonymizes (`accounts.services.delete_own_account`).
+- **Scanning.** CI runs CodeQL (`codeql.yml`) and, in `security.yml`, a gitleaks secret scan, a Trivy lockfile scan and a Trivy scan of the built images; Dependabot opens weekly update PRs. Fix findings rather than dismissing them; a false positive goes in `.gitleaks.toml` with a comment saying why.
+- Report vulnerabilities privately (see `SECURITY.md`); incident handling is in `docs/security/incident-response.md`, monitoring in `docs/operations/monitoring.md`.
 
 ---
 
@@ -239,7 +245,7 @@ The frontend's test suite is new and deliberately small (see `docs/VISION.md` §
 - [ ] **Backend**: `uv run manage.py test --parallel auto` passes (what `ci.yml` runs), plus `manage.py check` and `makemigrations --check --dry-run`.
 - [ ] **Frontend**: `npm run lint`, `npm run build`, and `npm test` pass; dark mode works; no secrets in `NEXT_PUBLIC_*`.
 - [ ] **i18n**: no hardcoded UI text — every string goes through `useTranslations`/`getTranslations`; new keys added to `en.json` (and kept in sync, even if untranslated, in every other locale file).
-- [ ] **Security**: no new endpoint relies on frontend-only access control; no secrets committed or logged.
+- [ ] **Security** (§6): no new endpoint relies on frontend-only access control; new id-bearing routes are in the tenant-isolation matrix; no secrets committed or logged.
 - [ ] **Permission gating** (§4.7): new gated UI uses `useHasPermission`/`<Can>` rather than ad hoc `user.permissions.includes(...)`; any new codename is added to `seed_rbac.py`'s catalogue and enforced server-side with `require_permission`.
 - [ ] **CI**: `ci.yml` passes (backend, frontend, docker jobs).
 

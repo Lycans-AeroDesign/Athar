@@ -13,3 +13,7 @@ To begin a report, please go to the top-level repository, [Lycans-AeroDesign/Ath
 Click **Report a Vulnerability** to open the advisory form. Fill in the advisory details form. Make sure your title is descriptive, and the development team can find all of the relevant details needed to verify on the description box. We recommend you add as much data as possible. We welcome logs, screenshots, photos, and videos, anything that can help us verify and identify the issues being reported.
 
 At the bottom of the form, click **Submit report**. The maintainer team will be notified and will get back to you ASAP.
+
+## What happens after a report
+
+Reports are triaged and handled as described in [docs/security/incident-response.md](docs/security/incident-response.md). Deployment-side monitoring and alerting are in [docs/operations/monitoring.md](docs/operations/monitoring.md).
