@@ -17,6 +17,7 @@ import {
   type ComponentImportRowAction,
 } from "@/lib/api/engineering";
 import type { InventoryType } from "@/lib/api/types";
+import { errorMessage } from "@/lib/errors";
 import { INVENTORY_TYPE_VALUES } from "@/lib/inventory";
 import { INVENTORY_TYPE_ICONS } from "@/lib/optionIcons";
 
@@ -111,7 +112,7 @@ export function ComponentImportModal({ open, onOpenChange, defaultInventoryType,
     try {
       await downloadComponentImportTemplate();
     } catch (err) {
-      setError(t("downloadTemplateError", { message: err instanceof Error ? err.message : String(err) }));
+      setError(t("downloadTemplateError", { message: errorMessage(err) }));
     }
   }
 
@@ -122,7 +123,7 @@ export function ComponentImportModal({ open, onOpenChange, defaultInventoryType,
     try {
       setPreview(await importComponentsCsv(selected, false, options, setProgress));
     } catch (err) {
-      setError(t("importError", { message: err instanceof Error ? err.message : String(err) }));
+      setError(t("importError", { message: errorMessage(err) }));
     } finally {
       setProgress(null);
     }
@@ -157,7 +158,7 @@ export function ComponentImportModal({ open, onOpenChange, defaultInventoryType,
     try {
       setPreview(await importComponentsCsv(file, true, currentOptions()));
     } catch (err) {
-      setError(t("importError", { message: err instanceof Error ? err.message : String(err) }));
+      setError(t("importError", { message: errorMessage(err) }));
     } finally {
       setIsCommitting(false);
     }

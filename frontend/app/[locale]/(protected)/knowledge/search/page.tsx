@@ -15,6 +15,7 @@ import { ActiveFilterChip } from "@/components/ui/ActiveFilterChip";
 import { useRouter } from "@/i18n/navigation";
 import { searchKnowledge, type SearchSort } from "@/lib/api/knowledge";
 import type { SearchResult } from "@/lib/api/types";
+import { errorMessage } from "@/lib/errors";
 
 const SORT_OPTIONS: { value: SearchSort; labelKey: string }[] = [
   { value: "relevance", labelKey: "sortRelevance" },
@@ -54,7 +55,7 @@ function SearchResults() {
         setCounts(data.counts);
         setError(null);
       })
-      .catch((err) => setError(err instanceof Error ? err.message : String(err)));
+      .catch((err) => setError(errorMessage(err)));
   }, [query, scope, page, sort]);
 
   function updateParams(next: { type?: SearchScope; sort?: SearchSort; page?: number }) {

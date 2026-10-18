@@ -5,10 +5,12 @@ import { useEffect, useState } from "react";
 
 import { Icon } from "@/components/ui/Icon";
 import { Modal } from "@/components/ui/Modal";
+import { INPUT_CLASS } from "@/components/ui/inputStyles";
 import { Link } from "@/i18n/navigation";
 import { searchKnowledge } from "@/lib/api/knowledge";
 import { createKnowledgeReference, deleteKnowledgeReference, listKnowledgeReferences } from "@/lib/api/training";
 import type { LessonKnowledgeReferenceEntry, SearchResult } from "@/lib/api/types";
+import { errorMessage } from "@/lib/errors";
 import { RELATABLE_ICON, RELATABLE_ROUTE_PREFIX } from "@/lib/knowledgeTypes";
 
 interface RelatedKnowledgePanelProps {
@@ -34,7 +36,7 @@ export function RelatedKnowledgePanel({ lessonId, canEdit }: RelatedKnowledgePan
 
   useEffect(() => {
     listKnowledgeReferences(lessonId).then(setReferences, (err) =>
-      setError(err instanceof Error ? err.message : String(err)),
+      setError(errorMessage(err)),
     );
   }, [lessonId]);
 
@@ -68,7 +70,7 @@ export function RelatedKnowledgePanel({ lessonId, canEdit }: RelatedKnowledgePan
       setReferences((prev) => [...(prev ?? []), reference]);
       closePicker();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     }
   }
 
@@ -78,7 +80,7 @@ export function RelatedKnowledgePanel({ lessonId, canEdit }: RelatedKnowledgePan
       await deleteKnowledgeReference(id);
       setReferences((prev) => (prev ?? []).filter((reference) => reference.id !== id));
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     }
   }
 
@@ -158,14 +160,14 @@ export function RelatedKnowledgePanel({ lessonId, canEdit }: RelatedKnowledgePan
       >
         <div className="space-y-3">
           <input
-            className="block w-full px-4 py-2 font-body-md text-body-md text-on-surface bg-surface-container border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
+            className={INPUT_CLASS}
             placeholder={t("searchPlaceholder")}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             autoFocus
           />
           <input
-            className="block w-full px-4 py-2 font-body-md text-body-md text-on-surface bg-surface-container border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
+            className={INPUT_CLASS}
             placeholder={t("notePlaceholder")}
             value={note}
             onChange={(e) => setNote(e.target.value)}

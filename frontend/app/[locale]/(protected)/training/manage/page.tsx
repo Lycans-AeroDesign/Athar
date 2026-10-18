@@ -14,6 +14,7 @@ import { Link } from "@/i18n/navigation";
 import { getTrainingStats, listCourses } from "@/lib/api/training";
 import type { CourseStatus, CourseStatusFilter, CourseSummary, TrainingStats } from "@/lib/api/types";
 import { useHasPermission } from "@/lib/auth/permissions";
+import { errorMessage } from "@/lib/errors";
 import { PUBLISH_STATUS_ICONS } from "@/lib/optionIcons";
 
 const STATUS_FILTERS: CourseStatusFilter[] = ["ALL", "DRAFT", "IN_REVIEW", "PUBLISHED", "REJECTED", "ARCHIVED"];
@@ -29,11 +30,11 @@ export default function TrainingManageDashboardPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (canManage) getTrainingStats().then(setStats, (err) => setError(err instanceof Error ? err.message : String(err)));
+    if (canManage) getTrainingStats().then(setStats, (err) => setError(errorMessage(err)));
   }, [canManage]);
 
   useEffect(() => {
-    listCourses({ status: statusFilter }).then(setCourses, (err) => setError(err instanceof Error ? err.message : String(err)));
+    listCourses({ status: statusFilter }).then(setCourses, (err) => setError(errorMessage(err)));
   }, [statusFilter]);
 
   return (

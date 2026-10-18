@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { TEST_PASS_FAIL_CLASSES, TEST_STATUS_CLASSES } from "@/components/engineering/statusClasses";
 import { Attachments } from "@/components/knowledge/Attachments";
 import { ContributorsRow } from "@/components/knowledge/Contributors";
 import { RelatedContent } from "@/components/knowledge/RelatedContent";
@@ -14,28 +15,10 @@ import { IconButton } from "@/components/ui/IconButton";
 import { Markdown } from "@/components/ui/Markdown";
 import { Link, useRouter } from "@/i18n/navigation";
 import { deleteTest, getTest } from "@/lib/api/engineering";
-import type { TestDetail, TestPassFail, TestRunStatus } from "@/lib/api/types";
+import type { TestDetail } from "@/lib/api/types";
 import { useHasPermission } from "@/lib/auth/permissions";
-
-const STATUS_CLASSES: Record<TestRunStatus, string> = {
-  PLANNED: "border border-outline-variant text-on-surface-variant",
-  IN_PROGRESS: "bg-tertiary-container text-on-tertiary-container",
-  COMPLETED: "bg-secondary-container text-on-secondary-container",
-};
-
-const PASS_FAIL_CLASSES: Record<Exclude<TestPassFail, "">, string> = {
-  PASS: "bg-secondary-container text-on-secondary-container",
-  FAIL: "bg-error-container text-on-error-container",
-  PARTIAL: "bg-tertiary-container text-on-tertiary-container",
-  NOT_APPLICABLE: "border border-outline-variant text-on-surface-variant",
-};
-
-// See tests/page.tsx's list for why this doesn't use lib/datetime.ts's
-// formatDate() - `date` is a plain calendar date, not a UTC timestamp.
-function formatCalendarDate(isoDate: string): string {
-  const [year, month, day] = isoDate.split("-").map(Number);
-  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(new Date(year, month - 1, day));
-}
+import { errorMessage } from "@/lib/errors";
+import { formatCalendarDate } from "@/lib/format";
 
 export default function TestDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -69,7 +52,7 @@ export default function TestDetailPage() {
       await deleteTest(test!.id);
       router.push("/tests");
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : String(err));
+      setActionError(errorMessage(err));
     }
   }
 
@@ -91,13 +74,13 @@ export default function TestDetailPage() {
               {typeT(test.test_type)}
             </span>
             <span
-              className={`inline-flex items-center px-2.5 py-1 rounded-full font-label-caps text-label-caps uppercase ${STATUS_CLASSES[test.status]}`}
+              className={`inline-flex items-center px-2.5 py-1 rounded-full font-label-caps text-label-caps uppercase ${TEST_STATUS_CLASSES[test.status]}`}
             >
               {statusT(test.status)}
             </span>
             {test.pass_fail && (
               <span
-                className={`inline-flex items-center px-2.5 py-1 rounded-full font-label-caps text-label-caps uppercase ${PASS_FAIL_CLASSES[test.pass_fail]}`}
+                className={`inline-flex items-center px-2.5 py-1 rounded-full font-label-caps text-label-caps uppercase ${TEST_PASS_FAIL_CLASSES[test.pass_fail]}`}
               >
                 {passFailT(test.pass_fail)}
               </span>

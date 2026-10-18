@@ -11,10 +11,12 @@ import { Combobox } from "@/components/ui/Combobox";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
 import { Pagination } from "@/components/ui/Pagination";
+import { INPUT_CLASS } from "@/components/ui/inputStyles";
 import { getDocuments, type DocumentOrdering } from "@/lib/api/documents";
 import { Link } from "@/i18n/navigation";
 import type { DocType, DocumentSource, DocumentSummary } from "@/lib/api/types";
 import { useEngineeringListFiltersEnabled } from "@/lib/auth/permissions";
+import { errorMessage } from "@/lib/errors";
 import { DOC_SOURCE_ICONS, DOC_TYPE_ICONS } from "@/lib/optionIcons";
 
 const DOC_TYPE_VALUES: DocType[] = [
@@ -76,7 +78,7 @@ export default function DocumentsPage() {
     }).then(
       (data) =>
         setResult({ key: filterKey, documents: data.results, hasNext: data.next !== null, count: data.count }),
-      (err) => setErrorResult({ key: filterKey, message: err instanceof Error ? err.message : String(err) }),
+      (err) => setErrorResult({ key: filterKey, message: errorMessage(err) }),
     );
   }, [docTypeFilter, sourceFilter, query, page, filterKey, ordering]);
 
@@ -106,7 +108,7 @@ export default function DocumentsPage() {
           {filtersEnabled && (
             <div className="w-56">
               <input
-                className="block w-full px-4 py-2 font-body-md text-body-md text-on-surface bg-surface-container border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
+                className={INPUT_CLASS}
                 placeholder={commonT("searchThisList")}
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}

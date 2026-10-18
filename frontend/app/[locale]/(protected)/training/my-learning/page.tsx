@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Link } from "@/i18n/navigation";
 import { getCourseProgress, listMyCourses } from "@/lib/api/training";
 import type { CourseEnrollment } from "@/lib/api/types";
+import { errorMessage } from "@/lib/errors";
 
 export default function MyLearningPage() {
   const t = useTranslations("training.myLearning");
@@ -17,7 +18,7 @@ export default function MyLearningPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const onError = (err: unknown) => setError(err instanceof Error ? err.message : String(err));
+    const onError = (err: unknown) => setError(errorMessage(err));
     listMyCourses("in_progress").then(setInProgress, onError);
     listMyCourses("completed").then(setCompleted, onError);
   }, []);

@@ -36,6 +36,7 @@ import type {
   StorageLocation,
 } from "@/lib/api/types";
 import { useEngineeringListFiltersEnabled, useHasPermission } from "@/lib/auth/permissions";
+import { errorMessage } from "@/lib/errors";
 import { INVENTORY_TYPE_VALUES, NEEDS_ORDERING_STATUSES, STOCK_STATUS_VALUES } from "@/lib/inventory";
 import { COMPONENT_STATUS_ICONS, INVENTORY_TYPE_ICONS, STOCK_STATUS_ICONS } from "@/lib/optionIcons";
 
@@ -53,12 +54,9 @@ type ViewMode = "grid" | "table";
 const VIEW_MODE_STORAGE_KEY = "components-view-mode";
 const SUMMARY_STORAGE_KEY = "components-summary-open";
 
-// useLayoutEffect (not useEffect) so the read-and-setState below runs before
-// the browser paints, avoiding a grid->table flash on load, and so the
-// react-hooks/set-state-in-effect lint rule (which flags a synchronous
-// setState in a plain effect body) doesn't apply - same pattern as
-// OrganizationProvider.tsx's own useIsomorphicLayoutEffect. Falls back to
-// useEffect during SSR, where useLayoutEffect would otherwise warn.
+// useLayoutEffect (not useEffect) so the read-and-setState runs before paint, avoiding a
+// grid->table flash, and so react-hooks/set-state-in-effect doesn't apply (same pattern as
+// OrganizationProvider.tsx's useIsomorphicLayoutEffect, which falls back to useEffect during SSR).
 const useIsomorphicLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 // Suspense boundary for useSearchParams - same as the knowledge search page.
@@ -109,14 +107,9 @@ function ComponentsPageContent() {
   const [showSummary, setShowSummary] = useState(false);
   const [ordering, setOrdering] = useState<ComponentOrdering | undefined>(undefined);
 
-  // Read after mount, not as the initial useState value - the server-rendered
-  // HTML has no access to localStorage, so starting from "grid" always keeps
-  // hydration consistent; this just switches it right after if a preference
-  // was saved. A saved "table" preference is ignored on a narrow viewport -
-  // a dense, horizontally-scrolling table isn't a good fit there, so mobile
-  // always starts from grid regardless of what was picked on a wider screen
-  // (matches Tailwind's `md` breakpoint, used the same way elsewhere in the
-  // app for "mobile vs. desktop" layout decisions).
+  // Read after mount, not as the initial useState value: the server render can't see localStorage,
+  // so starting from "grid" keeps hydration consistent. A saved "table" preference is ignored on a
+  // narrow viewport (Tailwind `md`), where a dense table fits poorly, so mobile always starts as grid.
   useIsomorphicLayoutEffect(() => {
     const isMobileViewport = window.matchMedia("(max-width: 767px)").matches;
     try {
@@ -181,7 +174,7 @@ function ComponentsPageContent() {
   const error = listsError ?? (errorResult?.key === filterKey ? errorResult.message : null);
 
   useEffect(() => {
-    const onError = (err: unknown) => setListsError(err instanceof Error ? err.message : String(err));
+    const onError = (err: unknown) => setListsError(errorMessage(err));
     getComponentCategories().then(setCategories, onError);
     getStorageLocations().then(setLocations, onError);
   }, [refreshKey]);
@@ -198,7 +191,7 @@ function ComponentsPageContent() {
       ordering,
     }).then(
       (data) => setResult({ key: filterKey, components: data.results, hasNext: data.next !== null, count: data.count }),
-      (err) => setErrorResult({ key: filterKey, message: err instanceof Error ? err.message : String(err) }),
+      (err) => setErrorResult({ key: filterKey, message: errorMessage(err) }),
     );
   }, [categoryFilter, locationFilter, statusFilter, inventoryTypeFilter, stockFilter, query, page, ordering, filterKey]);
 
@@ -212,7 +205,7 @@ function ComponentsPageContent() {
       q: query || undefined,
     }).then(
       (data) => setSummaryResult({ key: baseKey, summary: data }),
-      (err) => setListsError(err instanceof Error ? err.message : String(err)),
+      (err) => setListsError(errorMessage(err)),
     );
   }, [categoryFilter, locationFilter, statusFilter, inventoryTypeFilter, query, baseKey, showSummary]);
 
@@ -246,7 +239,7 @@ function ComponentsPageContent() {
         ordering,
       });
     } catch (err) {
-      setExportError(t("exportError", { message: err instanceof Error ? err.message : String(err) }));
+      setExportError(t("exportError", { message: errorMessage(err) }));
     } finally {
       setIsExporting(false);
     }

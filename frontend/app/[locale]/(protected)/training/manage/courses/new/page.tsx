@@ -17,6 +17,7 @@ import { Link, useRouter } from "@/i18n/navigation";
 import { uploadFile } from "@/lib/api/files";
 import { addCourseAccessGrant, createCourse, listCourseCategories } from "@/lib/api/training";
 import type { CourseCategory, CourseDifficulty, StoredFileRef, Visibility } from "@/lib/api/types";
+import { errorMessage } from "@/lib/errors";
 import { DIFFICULTY_ICONS, VISIBILITY_ICONS } from "@/lib/optionIcons";
 
 const DIFFICULTIES: CourseDifficulty[] = ["BEGINNER", "INTERMEDIATE", "ADVANCED"];
@@ -52,7 +53,7 @@ export default function NewCoursePage() {
     try {
       setCoverImage(await uploadFile(file, { onProgress: setCoverUploadProgress }));
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     } finally {
       setCoverUploadProgress(null);
     }
@@ -79,7 +80,7 @@ export default function NewCoursePage() {
       }
       router.push(`/training/manage/courses/${course.id}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
       setIsSaving(false);
     }
   }

@@ -17,6 +17,7 @@ import { Link, useRouter } from "@/i18n/navigation";
 import { deleteSop, getSop } from "@/lib/api/engineering";
 import type { SopDetail } from "@/lib/api/types";
 import { useHasPermission } from "@/lib/auth/permissions";
+import { errorMessage } from "@/lib/errors";
 
 export default function SopDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -47,7 +48,7 @@ export default function SopDetailPage() {
       await deleteSop(sop!.id);
       router.push("/sops");
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : String(err));
+      setActionError(errorMessage(err));
     }
   }
 

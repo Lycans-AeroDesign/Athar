@@ -12,6 +12,7 @@ import { Icon } from "@/components/ui/Icon";
 import { Link } from "@/i18n/navigation";
 import { getCourseProgress, listCourseCategories, listCourses, listMyCourses, searchCourses } from "@/lib/api/training";
 import type { CourseCategory, CourseDifficulty, CourseEnrollment, CourseSummary } from "@/lib/api/types";
+import { errorMessage } from "@/lib/errors";
 import { DIFFICULTY_ICONS } from "@/lib/optionIcons";
 
 const DIFFICULTIES: CourseDifficulty[] = ["BEGINNER", "INTERMEDIATE", "ADVANCED"];
@@ -29,13 +30,13 @@ export default function TrainingDiscoveryPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const onError = (err: unknown) => setError(err instanceof Error ? err.message : String(err));
+    const onError = (err: unknown) => setError(errorMessage(err));
     listCourseCategories().then(setCategories, onError);
     listMyCourses("in_progress").then(setMyEnrollments, onError);
   }, []);
 
   useEffect(() => {
-    const onError = (err: unknown) => setError(err instanceof Error ? err.message : String(err));
+    const onError = (err: unknown) => setError(errorMessage(err));
     const trimmed = query.trim();
     const handle = setTimeout(() => {
       if (trimmed) {

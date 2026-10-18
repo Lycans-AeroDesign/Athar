@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { MarkdownEditor } from "@/components/ui/MarkdownEditor";
+import { INPUT_CLASS } from "@/components/ui/inputStyles";
 import {
   getPolicyOverview,
   POLICY_KINDS,
@@ -15,6 +16,7 @@ import {
   type PolicyOverview,
 } from "@/lib/api/policies";
 import { formatDateTime } from "@/lib/datetime";
+import { errorMessage } from "@/lib/errors";
 
 // Rendered only with organization.manage (see settings/page.tsx). One card
 // per policy kind: edit a draft (invisible to members), then publish it as a
@@ -74,7 +76,7 @@ function PolicyCard({ row, onChanged }: { row: PolicyOverview; onChanged: () => 
         !row.current || draft.title !== row.current.title || draft.content !== row.current.content,
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     } finally {
       setIsSaving(false);
     }
@@ -86,7 +88,7 @@ function PolicyCard({ row, onChanged }: { row: PolicyOverview; onChanged: () => 
       await publishPolicy(kind);
       onChanged();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     }
   }
 
@@ -114,7 +116,7 @@ function PolicyCard({ row, onChanged }: { row: PolicyOverview; onChanged: () => 
       </div>
 
       <input
-        className="block w-full px-4 py-2 font-body-md text-body-md text-on-surface bg-surface-container border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
+        className={INPUT_CLASS}
         placeholder={t("titlePlaceholder")}
         aria-label={t("titlePlaceholder")}
         value={title}

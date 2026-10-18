@@ -23,6 +23,7 @@ import { createQuestion, updateQuestion, type QuestionWritePayload } from "@/lib
 import type { KnowledgeAuthor, QuestionDetail, Visibility } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { useHasPermission } from "@/lib/auth/permissions";
+import { errorMessage } from "@/lib/errors";
 import { useSaveOnce } from "@/lib/useSaveOnce";
 
 interface QuestionEditorProps {
@@ -113,7 +114,7 @@ export function QuestionEditor({ question, onDirtyChange, initialProjectId = nul
         router.push(`/knowledge/questions/${saved.id}`);
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     }
   }
 

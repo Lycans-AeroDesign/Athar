@@ -6,11 +6,13 @@ import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { PhotoDropzone } from "@/components/ui/PhotoDropzone";
+import { INPUT_CLASS } from "@/components/ui/inputStyles";
 import { ApiError } from "@/lib/api/client";
 import { updateMe } from "@/lib/api/accounts";
 import { uploadFile } from "@/lib/api/files";
 import type { StoredFileRef, User } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { errorMessage } from "@/lib/errors";
 import { getInitials } from "@/lib/format";
 
 // Matches IdentitySettingsForm.tsx's own copy of this constant (backend/config/
@@ -18,8 +20,6 @@ import { getInitials } from "@/lib/format";
 // only, not enforced client-side.
 const MAX_UPLOAD_SIZE_MB = 2;
 
-const INPUT_CLASS =
-  "block w-full px-4 py-2 font-body-md text-body-md text-on-surface bg-surface-container border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors";
 
 interface EditProfileModalProps {
   user: User;
@@ -66,7 +66,7 @@ export function EditProfileModal({ user, onClose }: EditProfileModalProps) {
       const uploaded = await uploadFile(file, { onProgress: setPictureUploadProgress });
       setPendingPicture(uploaded);
     } catch (err) {
-      setPictureError(err instanceof Error ? err.message : String(err));
+      setPictureError(errorMessage(err));
     } finally {
       setPictureUploadProgress(null);
     }
@@ -90,7 +90,7 @@ export function EditProfileModal({ user, onClose }: EditProfileModalProps) {
       if (err instanceof ApiError && err.fields.username) {
         setUsernameError(err.fields.username);
       } else {
-        setError(err instanceof Error ? err.message : String(err));
+        setError(errorMessage(err));
       }
     } finally {
       setIsSaving(false);

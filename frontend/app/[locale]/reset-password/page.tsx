@@ -8,6 +8,7 @@ import { FloatingLabelInput } from "@/components/ui/FloatingLabelInput";
 import { Link } from "@/i18n/navigation";
 import { ApiError, apiUrl } from "@/lib/api/client";
 import { checkPasswordResetLink, confirmPasswordReset } from "@/lib/api/passwordReset";
+import { errorMessage } from "@/lib/errors";
 import { useOrganization } from "@/lib/organization/OrganizationProvider";
 
 // Matches accounts/serializers.py's PasswordResetConfirmSerializer.password min_length=8.
@@ -70,7 +71,7 @@ export default function ResetPasswordPage() {
       } else if (err instanceof ApiError && err.status === 429) {
         setError(t("login.rateLimited"));
       } else {
-        setError(err instanceof Error ? err.message : String(err));
+        setError(errorMessage(err));
       }
     } finally {
       setIsSubmitting(false);

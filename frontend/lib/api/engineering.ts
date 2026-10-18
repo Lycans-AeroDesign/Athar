@@ -1,10 +1,7 @@
-// Projects/Components/Failures/SOPs - split out from knowledge.ts (which was
-// getting unwieldy) once this domain's CRUD+attachment surface reached the
-// same size as Articles/Questions combined. Same conventions as knowledge.ts,
-// except list endpoints return the full `Paginated<T>` envelope (not just
-// `.results`) so the list pages can drive a real Pagination control - write
-// payloads use `..._id`/`tag_names` field names matching the backend's
-// WriteSerializers.
+// Projects/Components/Failures/SOPs, split from knowledge.ts. Same conventions, except list
+// endpoints return the full `Paginated<T>` envelope (not just `.results`) so list pages can
+// drive a real Pagination control, and write payloads use `..._id`/`tag_names` field names
+// matching the backend's WriteSerializers.
 
 import { apiFetch, apiJson, apiUpload, apiVoid } from "./client";
 import type {
@@ -307,10 +304,9 @@ async function downloadBlob(path: string, filename: string, errorLabel: string):
   URL.revokeObjectURL(objectUrl);
 }
 
-/** Downloads the (optionally filtered) Components list as CSV through the
- * auth-gated endpoint (see backend/knowledge/views.py's ComponentExportView) -
- * a blob: URL, since a plain <a href> can't carry the Bearer header. The
- * layout pastes straight back into the workshop inventory sheet. */
+/** Downloads the (optionally filtered) Components list as CSV through the auth-gated endpoint
+ * (ComponentExportView) as a blob: URL, since a plain <a href> can't carry the Bearer header.
+ * The layout pastes straight back into the workshop inventory sheet. */
 export function exportComponentsCsv(filters?: ComponentFilters): Promise<void> {
   // Named after the sheet tab it pastes into when filtered to one.
   const filename = filters?.inventoryType ? `inventory-${filters.inventoryType.toLowerCase()}.csv` : "components.csv";
@@ -375,13 +371,10 @@ export interface ComponentImportOptions {
   inventoryType?: InventoryType;
 }
 
-/** Previews (commit=false) or applies (commit=true) a bulk CSV import of
- * components (see backend/knowledge/services.py's import_components_csv for
- * the full preview/commit contract, matching and per-row validation). Call
- * with commit=false first to get a diff to show the user, then re-call with
- * the SAME file and options and commit=true once they confirm - the backend
- * never writes anything on a commit=false call. Uses apiUpload (not apiJson)
- * for the same real-progress reason as uploadFile in lib/api/files.ts. */
+/** Previews (commit=false) or applies (commit=true) a bulk CSV import of components (see backend
+ * import_components_csv for the contract). Call with commit=false first to show a diff, then
+ * re-call with the SAME file and options and commit=true once confirmed; commit=false never
+ * writes. Uses apiUpload for real progress, like uploadFile in lib/api/files.ts. */
 export function importComponentsCsv(
   file: File,
   commit: boolean,

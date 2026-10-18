@@ -15,6 +15,7 @@ import { completeLesson, enrollInCourse, getCourse, getCourseProgress, getLesson
 import type { CourseDetail, CourseProgress, LessonDetail, LessonSummary } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { useHasPermission } from "@/lib/auth/permissions";
+import { errorMessage } from "@/lib/errors";
 
 const RESOURCE_TYPES_RENDERED_INLINE = new Set(["VIDEO", "DOCUMENT", "EXTERNAL"]);
 
@@ -76,7 +77,7 @@ export default function LessonViewerPage() {
       await completeLesson(lessonId);
       if (course) setProgress(await getCourseProgress(course.id));
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     } finally {
       setIsCompleting(false);
     }
@@ -90,7 +91,7 @@ export default function LessonViewerPage() {
       await enrollInCourse(course.id);
       setProgress(await getCourseProgress(course.id));
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     } finally {
       setIsEnrolling(false);
     }

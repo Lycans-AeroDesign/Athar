@@ -11,6 +11,7 @@ import { PhotoDropzone } from "@/components/ui/PhotoDropzone";
 import { uploadFile } from "@/lib/api/files";
 import { updateBrandingSettings, updateGeneralSettings } from "@/lib/api/organization";
 import type { OrganizationSettings, StoredFileRef } from "@/lib/api/types";
+import { errorMessage } from "@/lib/errors";
 import { hasLowContrast } from "@/lib/theme/brandColors";
 
 // Matches backend/config/settings.py MAX_UPLOAD_SIZE_MB's default - shown
@@ -85,7 +86,7 @@ export function IdentitySettingsForm({
       const uploaded = await uploadFile(file, { onProgress: setLogoUploadProgress });
       setPendingLogo(uploaded);
     } catch (err) {
-      setLogoError(err instanceof Error ? err.message : String(err));
+      setLogoError(errorMessage(err));
     } finally {
       setLogoUploadProgress(null);
     }
@@ -98,7 +99,7 @@ export function IdentitySettingsForm({
       const uploaded = await uploadFile(file, { onProgress: setFaviconUploadProgress });
       setPendingFavicon(uploaded);
     } catch (err) {
-      setFaviconError(err instanceof Error ? err.message : String(err));
+      setFaviconError(errorMessage(err));
     } finally {
       setFaviconUploadProgress(null);
     }

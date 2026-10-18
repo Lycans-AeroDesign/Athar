@@ -16,6 +16,7 @@ import { Icon } from "@/components/ui/Icon";
 import { Link } from "@/i18n/navigation";
 import { getArticles, getCategories, getQuestions, getTags } from "@/lib/api/knowledge";
 import type { ArticleStatusFilter, ArticleSummary, Category, QuestionSummary, Tag } from "@/lib/api/types";
+import { errorMessage } from "@/lib/errors";
 import { PUBLISH_STATUS_ICONS } from "@/lib/optionIcons";
 
 // "ALL" plus every status Article.Status defines backend-side (see
@@ -57,12 +58,12 @@ export default function KnowledgePage() {
   useEffect(() => {
     getArticles(articleStatus).then(
       (fetched) => setArticlesResult({ status: articleStatus, articles: fetched }),
-      (err) => setError(err instanceof Error ? err.message : String(err)),
+      (err) => setError(errorMessage(err)),
     );
   }, [articleStatus]);
 
   useEffect(() => {
-    const onError = (err: unknown) => setError(err instanceof Error ? err.message : String(err));
+    const onError = (err: unknown) => setError(errorMessage(err));
     getQuestions().then(setQuestions, onError);
     getCategories().then(setCategories, onError);
     getTags().then(setTags, onError);

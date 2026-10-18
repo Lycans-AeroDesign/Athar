@@ -8,6 +8,7 @@ import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
 import { Modal } from "@/components/ui/Modal";
+import { INPUT_CLASS } from "@/components/ui/inputStyles";
 import {
   createComponentCategory,
   createStorageLocation,
@@ -18,6 +19,7 @@ import {
   updateComponentCategory,
   updateStorageLocation,
 } from "@/lib/api/engineering";
+import { errorMessage } from "@/lib/errors";
 
 interface ListEntry {
   id: string;
@@ -102,7 +104,7 @@ export function InventoryListManager({ kind }: { kind: "categories" | "locations
       setEntries(await api.list());
       setEditTarget(null);
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : String(err));
+      setSaveError(errorMessage(err));
     } finally {
       setIsSaving(false);
     }
@@ -189,7 +191,7 @@ export function InventoryListManager({ kind }: { kind: "categories" | "locations
           <div className="space-y-2">
             <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase">{t("nameLabel")}</label>
             <input
-              className="block w-full px-4 py-2 font-body-md text-body-md text-on-surface bg-surface-container border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
+              className={INPUT_CLASS}
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
@@ -202,7 +204,7 @@ export function InventoryListManager({ kind }: { kind: "categories" | "locations
               {t("descriptionLabel")}
             </label>
             <input
-              className="block w-full px-4 py-2 font-body-md text-body-md text-on-surface bg-surface-container border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
+              className={INPUT_CLASS}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />

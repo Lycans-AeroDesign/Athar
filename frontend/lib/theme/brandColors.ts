@@ -25,32 +25,25 @@ function relativeLuminance(hex: string): number {
 }
 
 /**
- * Picks readable text over an arbitrary admin-picked brand color. This is a
- * luminance-threshold heuristic, not full Material Design 3 tonal palette
- * generation (which derives every role from one seed hue via HCT tone/chroma
- * math - see e.g. Google's material-color-utilities) - close enough for a
- * single custom color, not a pixel-perfect Material palette.
+ * Picks readable text over an admin-picked brand color: a luminance-threshold heuristic, not full
+ * Material 3 tonal palette generation (HCT) - close enough for a single custom color.
  */
 function contrastingOnColor(hex: string): "#000000" | "#ffffff" {
   return relativeLuminance(hex) > 0.4 ? "#000000" : "#ffffff";
 }
 
 /**
- * Derives a "container" tone from a role color: lighter in light mode (M3's
- * containers sit lighter than their base role on a light scheme) and darker
- * in dark mode (M3 inverts this - a dark scheme's primary/secondary are
- * already light/pastel, so their containers run darker/more saturated). Flat
- * linear-RGB blend, same simplification as contrastingOnColor above.
+ * Derives a "container" tone from a role color: lighter in light mode, darker in dark mode (a dark
+ * scheme's primary/secondary are already pastel, so M3 containers run darker). Flat linear-RGB
+ * blend, same simplification as contrastingOnColor.
  */
 function deriveContainer(hex: string, mode: "light" | "dark"): string {
   return mode === "dark" ? mixHex(hex, [0, 0, 0], 0.45) : mixHex(hex, [255, 255, 255], 0.75);
 }
 
 /**
- * Derives a hover tone for a container color: darker in light mode, lighter
- * in dark mode (standard state-layer darken/lighten feedback), so a brand
- * color's hover state stays visibly tied to that brand color instead of
- * falling back to a fixed default.
+ * Derives a hover tone for a container color: darker in light mode, lighter in dark mode,
+ * keeping hover tied to the brand color.
  */
 function deriveHover(hex: string, mode: "light" | "dark"): string {
   return mode === "dark" ? mixHex(hex, [255, 255, 255], 0.2) : mixHex(hex, [0, 0, 0], 0.15);
@@ -69,11 +62,9 @@ function contrastRatio(hexA: string, hexB: string): number {
 const MIN_CONTRAST_RATIO = 4.5;
 
 /**
- * Whether `hex`, used as a solid fill with its auto-picked contrasting text
- * color (see contrastingOnColor), falls below WCAG AA (4.5:1) - a color near
- * mid-gray luminance can fail contrast against both black and white text, so
- * flipping the text color alone isn't always enough. Used to warn admins
- * picking brand colors in Branding settings.
+ * Whether `hex` as a solid fill with its auto-picked text color (see contrastingOnColor) falls
+ * below WCAG AA (4.5:1). Mid-gray can fail against both black and white text, so flipping the
+ * text alone isn't enough. Used to warn admins in Branding settings.
  */
 export function hasLowContrast(hex: string): boolean {
   return contrastRatio(hex, contrastingOnColor(hex)) < MIN_CONTRAST_RATIO;
@@ -85,11 +76,9 @@ interface BrandColors {
 }
 
 /**
- * The CSS custom properties for the org's brand colors, overriding
- * globals.css's defaults - both the base primary/secondary roles and their
- * "container" tones (bg-primary-container, bg-secondary-container - used by
- * e.g. Button's primary variant and SideNav's selected-item highlight), each
- * with a matching "on" text color for contrast.
+ * The CSS custom properties for the org's brand colors, overriding globals.css's defaults: the
+ * primary/secondary roles, their "container" tones (used by Button's primary variant and SideNav's
+ * selected item) and matching "on" text colors.
  */
 export function brandColorVars(colors: BrandColors, mode: "light" | "dark"): Record<string, string> {
   const vars: Record<string, string> = {};

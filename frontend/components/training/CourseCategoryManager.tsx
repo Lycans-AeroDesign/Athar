@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Icon } from "@/components/ui/Icon";
 import { Modal } from "@/components/ui/Modal";
+import { INPUT_CLASS } from "@/components/ui/inputStyles";
 import {
   createCourseCategory,
   deleteCourseCategory,
@@ -14,6 +15,7 @@ import {
   updateCourseCategory,
 } from "@/lib/api/training";
 import type { CourseCategory } from "@/lib/api/types";
+import { errorMessage } from "@/lib/errors";
 
 // Course categories (training.models.CourseCategory) are deliberately their own
 // model, not shared with knowledge.models.Category - see that model's own
@@ -71,7 +73,7 @@ export function CourseCategoryManager() {
       }
       setEditTarget(null);
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : String(err));
+      setSaveError(errorMessage(err));
     } finally {
       setIsSaving(false);
     }
@@ -160,7 +162,7 @@ export function CourseCategoryManager() {
               {categoriesT("nameLabel")}
             </label>
             <input
-              className="block w-full px-4 py-2 font-body-md text-body-md text-on-surface bg-surface-container border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
+              className={INPUT_CLASS}
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
@@ -170,7 +172,7 @@ export function CourseCategoryManager() {
               {categoriesT("descriptionLabel")}
             </label>
             <input
-              className="block w-full px-4 py-2 font-body-md text-body-md text-on-surface bg-surface-container border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
+              className={INPUT_CLASS}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />

@@ -51,6 +51,7 @@ import type {
 } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { useHasPermission } from "@/lib/auth/permissions";
+import { errorMessage } from "@/lib/errors";
 import { DIFFICULTY_ICONS, LESSON_TYPE_ICONS, VISIBILITY_ICONS } from "@/lib/optionIcons";
 
 const DIFFICULTIES: CourseDifficulty[] = ["BEGINNER", "INTERMEDIATE", "ADVANCED"];
@@ -188,7 +189,7 @@ export default function CourseEditorPage() {
       // Re-fetch when grants changed so restricted_to reflects them.
       applyCourseToState(hadGrantChanges ? await getCourse(updated.id) : updated);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     } finally {
       setIsSaving(false);
     }
@@ -201,7 +202,7 @@ export default function CourseEditorPage() {
       const uploaded = await uploadFile(file, { onProgress: setCoverUploadProgress });
       setCourse(await updateCourse(course!.id, { cover_image_id: uploaded.id }));
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     } finally {
       setCoverUploadProgress(null);
     }
@@ -213,7 +214,7 @@ export default function CourseEditorPage() {
       await action();
       await loadCourse();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     }
   }
 
@@ -223,7 +224,7 @@ export default function CourseEditorPage() {
       await deleteCourse(course!.id);
       router.push("/training/manage");
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     }
   }
 

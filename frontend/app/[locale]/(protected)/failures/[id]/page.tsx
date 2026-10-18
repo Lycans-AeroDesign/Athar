@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { FAILURE_SEVERITY_CLASSES, FAILURE_STATUS_CLASSES } from "@/components/engineering/statusClasses";
 import { Attachments } from "@/components/knowledge/Attachments";
 import { ContributorsRow } from "@/components/knowledge/Contributors";
 import { RelatedContent } from "@/components/knowledge/RelatedContent";
@@ -14,26 +15,10 @@ import { IconButton } from "@/components/ui/IconButton";
 import { Markdown } from "@/components/ui/Markdown";
 import { Link, useRouter } from "@/i18n/navigation";
 import { deleteFailure, getFailure } from "@/lib/api/engineering";
-import type { FailureDetail, FailureSeverity, FailureStatus } from "@/lib/api/types";
+import type { FailureDetail } from "@/lib/api/types";
 import { useHasPermission } from "@/lib/auth/permissions";
-
-const SEVERITY_CLASSES: Record<FailureSeverity, string> = {
-  LOW: "bg-surface-variant text-on-surface-variant",
-  MEDIUM: "bg-tertiary-container text-on-tertiary-container",
-  HIGH: "bg-error-container text-on-error-container",
-};
-
-const STATUS_CLASSES: Record<FailureStatus, string> = {
-  UNDER_INVESTIGATION: "border border-outline-variant text-on-surface-variant",
-  RESOLVED: "bg-secondary-container text-on-secondary-container",
-};
-
-// See engineering/page.tsx's failures list for why this doesn't use
-// lib/datetime.ts's formatDate() - `date` is a plain calendar date, not a UTC timestamp.
-function formatCalendarDate(isoDate: string): string {
-  const [year, month, day] = isoDate.split("-").map(Number);
-  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(new Date(year, month - 1, day));
-}
+import { errorMessage } from "@/lib/errors";
+import { formatCalendarDate } from "@/lib/format";
 
 export default function FailureDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -66,7 +51,7 @@ export default function FailureDetailPage() {
       await deleteFailure(failure!.id);
       router.push("/failures");
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : String(err));
+      setActionError(errorMessage(err));
     }
   }
 
@@ -85,12 +70,12 @@ export default function FailureDetailPage() {
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex items-center gap-2">
             <span
-              className={`inline-flex items-center px-2.5 py-1 rounded-full font-label-caps text-label-caps uppercase ${SEVERITY_CLASSES[failure.severity]}`}
+              className={`inline-flex items-center px-2.5 py-1 rounded-full font-label-caps text-label-caps uppercase ${FAILURE_SEVERITY_CLASSES[failure.severity]}`}
             >
               {severityT(failure.severity)}
             </span>
             <span
-              className={`inline-flex items-center px-2.5 py-1 rounded-full font-label-caps text-label-caps uppercase ${STATUS_CLASSES[failure.status]}`}
+              className={`inline-flex items-center px-2.5 py-1 rounded-full font-label-caps text-label-caps uppercase ${FAILURE_STATUS_CLASSES[failure.status]}`}
             >
               {statusT(failure.status)}
             </span>

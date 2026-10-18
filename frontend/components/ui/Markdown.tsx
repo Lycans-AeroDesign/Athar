@@ -21,14 +21,10 @@ import { downloadFile } from "@/lib/api/files";
 import { CALLOUT_TYPES, remarkCallouts, type CalloutType } from "@/lib/markdownCallouts";
 import { slugify } from "@/lib/slug";
 
-// Matches ImageRenderer's own /api/v1/files/ check below - a non-image file
-// uploaded through the editor (see MarkdownEditor.tsx's uploadAndInsert)
-// embeds as [filename](/api/v1/files/<id>/download/), which is the same
-// auth-gated (Bearer-only) endpoint AuthenticatedImage works around. A plain
-// <a href> to it is a direct browser navigation with no Bearer header, which
-// the backend can't authenticate - it doesn't 404, it errors out (see
-// backend/files/views.py). Downloading via apiFetch instead of navigating
-// fixes that the same way AuthenticatedImage does for images.
+// Matches ImageRenderer's /api/v1/files/ check below: a non-image file uploaded through the editor
+// embeds as [filename](/api/v1/files/<id>/download/), the same Bearer-only endpoint
+// AuthenticatedImage works around. A plain <a href> is a browser navigation with no Bearer header
+// and errors out (backend/files/views.py), so downloads go through apiFetch instead.
 const FILE_DOWNLOAD_HREF_PATTERN = /^\/api\/v1\/files\/([^/]+)\/download\/?$/;
 
 // react-markdown gives each fenced ```code block``` to `pre` as a single
@@ -92,16 +88,12 @@ function CodeBlock({ children }: { children?: ReactNode }) {
   );
 }
 
-// Files uploaded through the editor (see MarkdownEditor.tsx's paste/drop
-// handling) embed as ![alt](/api/v1/files/<id>/download/) - that endpoint
-// is auth-gated (Bearer header only, see backend/files/views.py), which a
-// plain <img src> can never send, so it's routed through AuthenticatedImage
-// instead. Anything else (an external URL someone pasted or typed by hand)
-// renders as a normal <img>. Named (not inline in COMPONENTS) so the `p`
-// component below can recognize "a paragraph containing only an image" by
-// element type and unwrap it - see that comment for why.
-// Clicking any image opens it full-screen (ImageLightbox), captioned with
-// its alt text when that alt text is a real description.
+// Files uploaded through the editor embed as ![alt](/api/v1/files/<id>/download/). That endpoint
+// is auth-gated (Bearer header only, backend/files/views.py), which a plain <img src> can't send,
+// so it's routed through AuthenticatedImage; other URLs render as a normal <img>. Named (not inline
+// in COMPONENTS) so the `p` component below can recognize "a paragraph containing only an image"
+// and unwrap it. Clicking an image opens it full-screen (ImageLightbox), captioned with its alt
+// text when that is a real description.
 function ImageRenderer({ src, alt }: { src?: string | Blob; alt?: string }) {
   const t = useTranslations("markdown");
   const [zoomed, setZoomed] = useState(false);
@@ -143,15 +135,10 @@ function imageCaption(alt: string | undefined): string | undefined {
   return trimmed;
 }
 
-// A markdown line that's just `![alt](url)` parses as a <p> containing only
-// an <img> - CommonMark has no "block image" syntax of its own. Rendering
-// that literally would put ImageRenderer's <img>/<AuthenticatedImage>
-// (which has a <span> loading placeholder) inside a <p>, which is fine for
-// a bare <img> but invalid HTML the moment there's any wrapper element
-// involved. Unwrapping the <p> whenever an image is its only real content
-// sidesteps that entirely rather than trying to keep every possible
-// image-adjacent element inline-safe.
-// Returns that image's alt text (possibly "") when it is, null otherwise -
+// A markdown line that's just `![alt](url)` parses as a <p> containing only an <img> (CommonMark
+// has no block image syntax). Rendering that literally nests ImageRenderer's output (an
+// AuthenticatedImage has a <span> placeholder) inside a <p>, which is invalid HTML, so a <p> whose
+// only real content is an image is unwrapped. Returns that image's alt text (possibly "") or null;
 // a standalone image renders as a <figure> with its alt as the caption.
 function standaloneImageAlt(children: ReactNode): string | null {
   const nodes = Array.isArray(children) ? children : [children];

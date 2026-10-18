@@ -16,14 +16,10 @@ interface BookmarkButtonProps {
 
 const LABEL_DISPLAY_MS = 1500;
 
-// Icon-only by default (like IconButton) - a click toggles the bookmark and
-// briefly expands the button to show a text label confirming the new state
-// (same "temporary text feedback" idea as ShareButton's "Copied!" swap, but
-// collapsing back to icon-only after a beat instead of staying expanded).
-// No extra lookup needed since `bookmarkId` comes straight off the Detail
-// payload (the id to delete on unbookmark). Callers must pass
-// `key={objectId}` (see the detail pages) so navigating to a different item
-// remounts this with fresh initial state, rather than syncing via an effect.
+// Icon-only by default (like IconButton); a click toggles the bookmark and briefly expands to a
+// text label confirming the new state. `bookmarkId` comes straight off the Detail payload (the id to
+// delete on unbookmark). Callers must pass `key={objectId}` (see the detail pages) so navigating to
+// another item remounts this with fresh state rather than syncing via an effect.
 export function BookmarkButton({ type, objectId, bookmarkId: initialBookmarkId }: BookmarkButtonProps) {
   const t = useTranslations("common");
   const [bookmarkId, setBookmarkId] = useState(initialBookmarkId);

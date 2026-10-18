@@ -31,6 +31,7 @@ import {
 import type { ArticleDetail, Category, KnowledgeAuthor, Visibility } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { useHasPermission } from "@/lib/auth/permissions";
+import { errorMessage } from "@/lib/errors";
 import { useSaveOnce } from "@/lib/useSaveOnce";
 
 interface ArticleEditorProps {
@@ -150,7 +151,7 @@ export function ArticleEditor({ article, onDirtyChange, initialProjectId = null 
         router.push(`/knowledge/articles/${saved.id}`);
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     }
   }
 

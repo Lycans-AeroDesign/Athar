@@ -4,25 +4,22 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 import { Can } from "@/components/auth/Can";
+import { PROJECT_STATUS_CLASSES } from "@/components/engineering/statusClasses";
 import { ActiveFilterChip } from "@/components/ui/ActiveFilterChip";
 import { Button } from "@/components/ui/Button";
 import { Combobox } from "@/components/ui/Combobox";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
 import { Pagination } from "@/components/ui/Pagination";
+import { INPUT_CLASS } from "@/components/ui/inputStyles";
 import { Link } from "@/i18n/navigation";
 import { getProjects } from "@/lib/api/engineering";
 import type { ProjectStatus, ProjectSummary } from "@/lib/api/types";
 import { useEngineeringListFiltersEnabled } from "@/lib/auth/permissions";
+import { errorMessage } from "@/lib/errors";
 import { PROJECT_STATUS_ICONS } from "@/lib/optionIcons";
 
 const STATUS_VALUES: ProjectStatus[] = ["ACTIVE", "ON_HOLD", "COMPLETED"];
-
-const STATUS_CLASSES: Record<ProjectStatus, string> = {
-  ACTIVE: "bg-primary-container text-on-primary-container",
-  ON_HOLD: "bg-tertiary-container text-on-tertiary-container",
-  COMPLETED: "bg-surface-variant text-on-surface-variant",
-};
 
 export default function ProjectsPage() {
   const t = useTranslations("engineering.project");
@@ -62,7 +59,7 @@ export default function ProjectsPage() {
   useEffect(() => {
     getProjects({ status: statusFilter ?? undefined, q: query || undefined, page }).then(
       (data) => setResult({ key: filterKey, projects: data.results, hasNext: data.next !== null, count: data.count }),
-      (err) => setErrorResult({ key: filterKey, message: err instanceof Error ? err.message : String(err) }),
+      (err) => setErrorResult({ key: filterKey, message: errorMessage(err) }),
     );
   }, [statusFilter, query, page, filterKey]);
 
@@ -82,7 +79,7 @@ export default function ProjectsPage() {
           {filtersEnabled && (
             <div className="w-56">
               <input
-                className="block w-full px-4 py-2 font-body-md text-body-md text-on-surface bg-surface-container border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
+                className={INPUT_CLASS}
                 placeholder={commonT("searchThisList")}
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
@@ -155,7 +152,7 @@ export default function ProjectsPage() {
             >
               <div className="flex items-center justify-between mb-2">
                 <span
-                  className={`font-label-caps text-label-caps uppercase rounded-full px-2.5 py-1 ${STATUS_CLASSES[project.status]}`}
+                  className={`font-label-caps text-label-caps uppercase rounded-full px-2.5 py-1 ${PROJECT_STATUS_CLASSES[project.status]}`}
                 >
                   {statusT(project.status)}
                 </span>

@@ -20,6 +20,7 @@ import { deleteComponent, getComponent } from "@/lib/api/engineering";
 import type { ComponentDetail } from "@/lib/api/types";
 import { useHasPermission } from "@/lib/auth/permissions";
 import { formatDate } from "@/lib/datetime";
+import { errorMessage } from "@/lib/errors";
 import { formatPersonName } from "@/lib/format";
 import { CONDITION_ICONS, INVENTORY_TYPE_ICONS } from "@/lib/optionIcons";
 
@@ -54,7 +55,7 @@ export default function ComponentDetailPage() {
       await deleteComponent(component!.id);
       router.push("/components");
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : String(err));
+      setActionError(errorMessage(err));
     }
   }
 

@@ -11,10 +11,12 @@ import { Combobox } from "@/components/ui/Combobox";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
 import { Pagination } from "@/components/ui/Pagination";
+import { INPUT_CLASS } from "@/components/ui/inputStyles";
 import { Link } from "@/i18n/navigation";
 import { getFailures, type FailureOrdering } from "@/lib/api/engineering";
 import type { FailureSeverity, FailureStatus, FailureSummary } from "@/lib/api/types";
 import { useEngineeringListFiltersEnabled } from "@/lib/auth/permissions";
+import { errorMessage } from "@/lib/errors";
 import { FAILURE_SEVERITY_ICONS, FAILURE_STATUS_ICONS } from "@/lib/optionIcons";
 
 const SEVERITY_VALUES: FailureSeverity[] = ["LOW", "MEDIUM", "HIGH"];
@@ -65,7 +67,7 @@ export default function FailuresPage() {
       ordering,
     }).then(
       (data) => setResult({ key: filterKey, failures: data.results, hasNext: data.next !== null, count: data.count }),
-      (err) => setErrorResult({ key: filterKey, message: err instanceof Error ? err.message : String(err) }),
+      (err) => setErrorResult({ key: filterKey, message: errorMessage(err) }),
     );
   }, [severityFilter, statusFilter, query, page, filterKey, ordering]);
 
@@ -95,7 +97,7 @@ export default function FailuresPage() {
           {filtersEnabled && (
             <div className="w-56">
               <input
-                className="block w-full px-4 py-2 font-body-md text-body-md text-on-surface bg-surface-container border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
+                className={INPUT_CLASS}
                 placeholder={commonT("searchThisList")}
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}

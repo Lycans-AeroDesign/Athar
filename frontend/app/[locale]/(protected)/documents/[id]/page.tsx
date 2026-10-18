@@ -18,13 +18,8 @@ import { downloadFile } from "@/lib/api/files";
 import type { DocumentDetail } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { useHasPermission } from "@/lib/auth/permissions";
-
-// See knowledge/articles/[id]/page.tsx's matching comment - `date` here is a
-// plain "YYYY-MM-DD" calendar date (Django DateField), not a UTC timestamp.
-function formatCalendarDate(isoDate: string): string {
-  const [year, month, day] = isoDate.split("-").map(Number);
-  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(new Date(year, month - 1, day));
-}
+import { errorMessage } from "@/lib/errors";
+import { formatCalendarDate } from "@/lib/format";
 
 export default function DocumentDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -63,7 +58,7 @@ export default function DocumentDetailPage() {
       await deleteDocument(document!.id);
       router.push("/documents");
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : String(err));
+      setActionError(errorMessage(err));
     }
   }
 
@@ -73,7 +68,7 @@ export default function DocumentDetailPage() {
     try {
       await downloadFile(document!.file.id, document!.file.original_filename);
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : String(err));
+      setActionError(errorMessage(err));
     }
   }
 

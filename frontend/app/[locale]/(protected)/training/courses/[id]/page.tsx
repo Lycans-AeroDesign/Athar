@@ -17,6 +17,7 @@ import { IconButton } from "@/components/ui/IconButton";
 import { Markdown } from "@/components/ui/Markdown";
 import { Modal } from "@/components/ui/Modal";
 import { Link, useRouter } from "@/i18n/navigation";
+import { errorMessage } from "@/lib/errors";
 import { formatPersonName } from "@/lib/format";
 import {
   archiveCourse,
@@ -97,7 +98,7 @@ export default function CourseDetailPage() {
       await enrollInCourse(course!.id);
       setProgress(await getCourseProgress(course!.id));
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : String(err));
+      setActionError(errorMessage(err));
     } finally {
       setIsWorking(false);
     }
@@ -109,7 +110,7 @@ export default function CourseDetailPage() {
     try {
       setCourse(await submitCourse(course!.id));
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : String(err));
+      setActionError(errorMessage(err));
     } finally {
       setIsWorking(false);
     }
@@ -121,7 +122,7 @@ export default function CourseDetailPage() {
     try {
       setCourse(await publishCourse(course!.id));
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : String(err));
+      setActionError(errorMessage(err));
     } finally {
       setIsWorking(false);
     }
@@ -133,7 +134,7 @@ export default function CourseDetailPage() {
       setCourse(await rejectCourse(course!.id, rejectReason.trim()));
       setRejectReason("");
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : String(err));
+      setActionError(errorMessage(err));
     }
   }
 
@@ -142,7 +143,7 @@ export default function CourseDetailPage() {
     try {
       setCourse(await archiveCourse(course!.id));
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : String(err));
+      setActionError(errorMessage(err));
     }
   }
 
@@ -152,7 +153,7 @@ export default function CourseDetailPage() {
     try {
       setCourse(await unarchiveCourse(course!.id));
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : String(err));
+      setActionError(errorMessage(err));
     } finally {
       setIsWorking(false);
     }
@@ -164,7 +165,7 @@ export default function CourseDetailPage() {
       await deleteCourse(course!.id);
       router.push("/training");
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : String(err));
+      setActionError(errorMessage(err));
     }
   }
 

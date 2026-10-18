@@ -8,8 +8,10 @@ import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
 import { Modal } from "@/components/ui/Modal";
+import { INPUT_CLASS } from "@/components/ui/inputStyles";
 import { createCategory, deleteCategory, getCategories, updateCategory } from "@/lib/api/knowledge";
 import type { Category } from "@/lib/api/types";
+import { errorMessage } from "@/lib/errors";
 
 // Rendered only when the viewer has category.manage (see settings/page.tsx),
 // which also gates the underlying POST/PATCH/DELETE endpoints - see
@@ -62,7 +64,7 @@ export function CategorySettingsForm() {
       }
       setEditTarget(null);
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : String(err));
+      setSaveError(errorMessage(err));
     } finally {
       setIsSaving(false);
     }
@@ -158,7 +160,7 @@ export function CategorySettingsForm() {
               {t("nameLabel")}
             </label>
             <input
-              className="block w-full px-4 py-2 font-body-md text-body-md text-on-surface bg-surface-container border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
+              className={INPUT_CLASS}
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
@@ -168,7 +170,7 @@ export function CategorySettingsForm() {
               {t("descriptionLabel")}
             </label>
             <input
-              className="block w-full px-4 py-2 font-body-md text-body-md text-on-surface bg-surface-container border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
+              className={INPUT_CLASS}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />

@@ -15,17 +15,14 @@ import { getUsers, setUserActive } from "@/lib/api/rbac";
 import type { User } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { formatDateTime } from "@/lib/datetime";
+import { errorMessage } from "@/lib/errors";
 import { useOrganization } from "@/lib/organization/OrganizationProvider";
 
-// Rendered only when the viewer has user.manage (see settings/page.tsx),
-// same gate RolesSettingsForm's own user-assignment section and
-// InvitationsSettingsForm use. Structured like InvitationsSettingsForm.tsx:
-// fetch-all list (filtered client-side by the search box), per-row actions in
-// a "..." Menu, ConfirmModal for the destructive one - block goes through it
-// (danger), unblock is a direct action (like RolesSettingsForm's "Undo
-// delete" button). The viewer's own row never
-// shows a block/unblock control - see rbac.services.set_user_active's
-// matching backend guard against self-block.
+// Rendered only for user.manage holders (see settings/page.tsx), like RolesSettingsForm's
+// user-assignment section and InvitationsSettingsForm, which this is structured after: a fetch-all
+// list filtered client-side, per-row actions in a "..." Menu, and a ConfirmModal for the
+// destructive one (block; unblock is direct, like RolesSettingsForm's "Undo delete"). The viewer's
+// own row has no block/unblock control, matching rbac.services.set_user_active's self-block guard.
 export function UsersSettingsForm() {
   const t = useTranslations("settings.users");
   const commonT = useTranslations("common");
@@ -65,7 +62,7 @@ export function UsersSettingsForm() {
       const updated = await setUserActive(blockTarget.id, false);
       setUsers((prev) => (prev ?? []).map((u) => (u.id === updated.id ? updated : u)));
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     } finally {
       setWorkingId(null);
       setBlockTarget(null);
@@ -79,7 +76,7 @@ export function UsersSettingsForm() {
       const updated = await setUserActive(user.id, true);
       setUsers((prev) => (prev ?? []).map((u) => (u.id === updated.id ? updated : u)));
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     } finally {
       setWorkingId(null);
     }
@@ -105,7 +102,7 @@ export function UsersSettingsForm() {
       });
       setLinkCopied(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     } finally {
       setWorkingId(null);
       setResetTarget(null);

@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { Icon } from "./Icon";
 import { Markdown } from "./Markdown";
 import { Link } from "@/i18n/navigation";
+import { errorMessage } from "@/lib/errors";
 import { CALLOUT_TYPES, type CalloutType } from "@/lib/markdownCallouts";
 import { updateMe } from "@/lib/api/accounts";
 import { createRelation, searchKnowledge } from "@/lib/api/knowledge";
@@ -147,15 +148,11 @@ export function MarkdownEditor({ value, onChange, placeholder, relateFrom }: Mar
   const [relationError, setRelationError] = useState<string | null>(null);
   const [calloutMenuOpen, setCalloutMenuOpen] = useState(false);
 
-  // Formatting tips popover: opens itself once per user (like the product
-  // tour's has_completed_tour - see lib/onboarding/tour.ts) rather than
-  // requiring a click to discover it exists at all, then stays a normal
-  // click-to-open/close popover from then on. The lazy initializer (not an
-  // effect-driven setState, which react-hooks flags as a cascading-render
-  // anti-pattern) reads has_seen_markdown_help once at mount - safe because
-  // every route that can render this component is gated behind the
-  // protected layout's `!user` loading check, so `user` is always already
-  // resolved by the time this component exists.
+  // Formatting tips popover: opens itself once per user (like the product tour's
+  // has_completed_tour) so it's discoverable, then behaves as a normal click-to-open popover. The
+  // lazy initializer (not an effect-driven setState, which react-hooks flags) reads
+  // has_seen_markdown_help once at mount; safe because every route rendering this is behind the
+  // protected layout's `!user` loading check, so `user` is already resolved.
   const { user, updateUser } = useAuth();
   const [helpOpen, setHelpOpen] = useState(() => Boolean(user && !user.preferences.has_seen_markdown_help));
   const hasMarkedHelpSeen = useRef(false);
@@ -166,15 +163,11 @@ export function MarkdownEditor({ value, onChange, placeholder, relateFrom }: Mar
     updateMe({ preferences: { ...user.preferences, has_seen_markdown_help: true } }).then(updateUser);
   }, [user, updateUser]);
 
-  // "@"-mention picker: typing "@query" opens a dropdown searching across
-  // every relatable type (searchKnowledge already covers all of them);
-  // picking a result replaces "@query" with a real markdown link AND, when
-  // `relateFrom` names this content's own item, links the two as Related
-  // Knowledge (createRelation is get_or_create-backed server-side, so
-  // mentioning the same thing twice is a harmless no-op, not a duplicate
-  // error) - the inline link and the sidebar relation are one action from
-  // here, though the "Related Knowledge" picker (RelatedContent.tsx) still
-  // exists as the way to link *without* writing an inline mention.
+  // "@"-mention picker: typing "@query" opens a dropdown searching every relatable type
+  // (searchKnowledge covers them all); picking one replaces "@query" with a markdown link and, when
+  // `relateFrom` names this content's item, also links the two as Related Knowledge (createRelation
+  // is get_or_create-backed, so a repeat mention is a no-op). RelatedContent.tsx still links
+  // *without* an inline mention.
   const [mention, setMention] = useState<{ start: number; query: string } | null>(null);
   // Keyed by the query it was fetched for (rather than reset with a plain
   // setMentionResults([]) at the top of the search effect below) - see
@@ -260,7 +253,7 @@ export function MarkdownEditor({ value, onChange, placeholder, relateFrom }: Mar
         target_id: result.id,
       }).catch((err) => {
         setRelationError(
-          t("relationError", { title: result.title, message: err instanceof Error ? err.message : String(err) }),
+          t("relationError", { title: result.title, message: errorMessage(err) }),
         );
       });
     }
@@ -346,7 +339,7 @@ export function MarkdownEditor({ value, onChange, placeholder, relateFrom }: Mar
       valueRef.current = next;
       onChange(next);
       setUploadError(
-        t("uploadError", { filename: file.name, message: err instanceof Error ? err.message : String(err) }),
+        t("uploadError", { filename: file.name, message: errorMessage(err) }),
       );
       return insertPos;
     }

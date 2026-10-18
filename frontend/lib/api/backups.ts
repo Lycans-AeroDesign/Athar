@@ -25,11 +25,9 @@ export function createRestoreJob(backupJobId: string): Promise<RestoreJob> {
   });
 }
 
-/** Restores from a backup file the admin uploads (e.g. onto a fresh server)
- * rather than one still stored server-side - see backend/backups/views.py's
- * RestoreJobUploadView. `passphrase` decrypts an encrypted .athar backup; a
- * plaintext .zip from before backups were encrypted needs none. Over
- * apiUpload for real progress on a large file. */
+/** Restores from a backup file the admin uploads (e.g. onto a fresh server) rather than one
+ * stored server-side (RestoreJobUploadView). `passphrase` decrypts an encrypted .athar backup;
+ * a plaintext .zip from before encryption needs none. Uses apiUpload for real progress. */
 export function uploadRestoreArchive(
   file: File,
   passphrase: string,
@@ -56,17 +54,14 @@ type SaveFilePicker = (options: {
   types?: { description?: string; accept: Record<string, string[]> }[];
 }) => Promise<{ createWritable: () => Promise<WritableStream<Uint8Array>> }>;
 
-/** Downloads a finished backup, encrypted with `passphrase`, through the
- * auth-gated endpoint (see backend/backups/views.py's BackupJobDownloadView -
- * POST so the passphrase stays out of URLs). A plain <a href> can't carry the
- * Bearer header, so this fetches it from JS.
+/** Downloads a finished backup, encrypted with `passphrase`, through the auth-gated endpoint
+ * (BackupJobDownloadView; POST so the passphrase stays out of URLs). A plain <a href> can't
+ * carry the Bearer header, so this fetches from JS.
  *
- * Where the browser supports it, the response is streamed straight into a
- * file the admin picks, never held in memory: a backup can be gigabytes, and
- * Chrome fails `res.blob()` outright ("Failed to fetch") once a blob outgrows
- * what it's willing to keep in memory/on a nearly-full disk. Elsewhere it
- * falls back to the same blob: URL approach as lib/api/files.ts's
- * downloadFile. Resolves false if the admin cancels the save dialog. */
+ * Where supported, the response is streamed straight into a file the admin picks, never held
+ * in memory: a backup can be gigabytes and Chrome fails `res.blob()` once a blob outgrows its
+ * limit. Elsewhere it falls back to the blob: URL approach of lib/api/files.ts's downloadFile.
+ * Resolves false if the admin cancels the save dialog. */
 export async function downloadBackupJob(id: string, passphrase: string, filename: string): Promise<boolean> {
   const showSaveFilePicker = (window as Window & { showSaveFilePicker?: SaveFilePicker }).showSaveFilePicker;
   let writable: WritableStream<Uint8Array> | null = null;

@@ -2,16 +2,11 @@ import { refreshRequest } from "@/lib/api/auth";
 import { redirectToLogin } from "@/lib/auth/redirect";
 import { tokenStore } from "@/lib/auth/token-store";
 
-// Empty by default (not just in dev) - the published prod image ships with
-// no domain baked in at all, since docker-compose.prod.yml's bundled nginx
-// (see nginx/templates/locations.inc.template) already proxies both `/api/`
-// and `/` under the one external domain the frontend itself is served from,
-// so a schemeless/hostless path here already resolves to the right place.
-// Only set NEXT_PUBLIC_API_URL to an absolute origin (scheme+host, no /api
-// suffix - the paths below already include it) when the frontend is reached
-// through something other than that bundled nginx, e.g. bare `npm run dev`
-// against a differently-hosted backend (see frontend/.env.example) - the
-// docker-compose.yml dev default of http://localhost:8000 is exactly that.
+// Empty by default: the prod image bakes in no domain, and its bundled nginx proxies `/api/` and
+// `/` under one external domain, so a hostless path resolves correctly. Set NEXT_PUBLIC_API_URL
+// to an absolute origin (no /api suffix) only when the frontend isn't behind that nginx, e.g.
+// bare `npm run dev` against another backend (see frontend/.env.example; the docker-compose.yml
+// dev default http://localhost:8000 is that case).
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 /** Absolute URL for a public, unauthenticated backend path (e.g. the org
@@ -89,18 +84,12 @@ async function notifyIfPolicyRequired(res: Response): Promise<void> {
   }
 }
 
-/** Thrown by apiJson/apiVoid (and loginRequest) instead of a plain Error so
- * callers can branch on the HTTP status - e.g. the login page telling a 429
- * (rate-limited) apart from a 401 (wrong credentials) instead of showing the
- * same "invalid email or password" copy for both. */
+/** Thrown by apiJson/apiVoid (and loginRequest) so callers can branch on HTTP status, e.g. login
+ * telling a 429 (rate-limited) from a 401 (wrong credentials). */
 export class ApiError extends Error {
   status: number;
-  /** Field-level messages from a DRF serializer.is_valid(raise_exception=True)
-   * 400 response (e.g. {"username": ["A user with that username already
-   * exists."]}) - empty for a plain {"detail": "..."} error. Callers that
-   * want to show an error next to a specific field (e.g. the Account/Register
-   * pages' username input) use this instead of parsing `message`, which
-   * stays a single flattened string for callers that just show one banner. */
+  /** Field-level messages from a DRF 400 (e.g. {"username": ["..."]}); empty for a plain
+   * {"detail"} error. Use for inline field errors; `message` is the flattened banner string. */
   fields: Record<string, string>;
 
   constructor(message: string, status: number, fields: Record<string, string> = {}) {
@@ -111,35 +100,18 @@ export class ApiError extends Error {
   }
 }
 
-// DRF error bodies are either {"detail": "message"} (PermissionDenied, a
-// plain-string ValidationError, throttling, ...) or a field-error dict like
-// {"title": ["This field is required."], "non_field_errors": [...]} from
-// serializer.is_valid(raise_exception=True) - this flattens either shape
-// into one human-readable string (for callers that just show one banner)
-// alongside the per-field breakdown (for callers that show inline errors),
-// instead of the status-code-only message apiJson used to throw, which meant
-// every backend validation/permission message (e.g. "Only a draft or
-// in-review article can be published.") never reached the user.
-// Shared by extractApiError (fetch Response) and apiUpload's XHR error path
-// below - both end up with a parsed JSON body and a status, just from
-// different transports.
+// DRF error bodies are {"detail": "..."} or a field-error dict; this flattens either into one
+// banner string plus a per-field breakdown, so backend validation/permission messages reach the
+// user. Shared by extractApiError (fetch) and apiUpload's XHR error path.
 function parseErrorBody(
   body: unknown,
   status: number,
   path: string,
 ): { message: string; fields: Record<string, string> } {
-  // DRF's own exception_handler special-cases this: raising
-  // rest_framework.exceptions.ValidationError("some message") - the
-  // shape training/services.py (and every other app's services.py) uses for
-  // a plain business-rule rejection like "A course with enrollments can't
-  // be deleted" - wraps the string in a *bare* top-level JSON array
-  // (["some message"]), not {"detail": "some message"}. That still passes
-  // `typeof body === "object"` (arrays do in JS), so without this check it
-  // silently fell through the field-dict branch below (Object.entries on an
-  // array yields index->string pairs, and a string never satisfies the
-  // Array.isArray(value) check) all the way to the generic fallback -
-  // exactly the "every backend validation message reaches the user" gap
-  // this function's own docstring says it fixed, just for this one shape.
+  // DRF wraps a bare ValidationError("msg") (every services.py uses these for business-rule
+  // rejections) as a top-level array ["msg"], not {"detail": "msg"}. Arrays pass
+  // `typeof body === "object"`, so handle them explicitly or the message falls through to the
+  // generic fallback.
   if (Array.isArray(body) && body.every((entry): entry is string => typeof entry === "string") && body.length > 0) {
     return { message: body.join(" "), fields: {} };
   }
@@ -191,11 +163,9 @@ export async function apiVoid(path: string, options: RequestInit = {}): Promise<
   }
 }
 
-/** Same auth/refresh-retry/error-shape contract as apiJson, but over
- * XMLHttpRequest instead of fetch - fetch has no cross-browser way to report
- * upload progress, while XHR's `upload.onprogress` does. Only worth the
- * extra transport for large-file POSTs that show a progress bar; everything
- * else should keep using apiJson. `onProgress` receives a 0-1 fraction. */
+/** Same auth/refresh-retry/error contract as apiJson, but over XMLHttpRequest because fetch can't
+ * report upload progress. Use only for large uploads with a progress bar. `onProgress` receives
+ * a 0-1 fraction. */
 export function apiUpload<T>(
   path: string,
   formData: FormData,

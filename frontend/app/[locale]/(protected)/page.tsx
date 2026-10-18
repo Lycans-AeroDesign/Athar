@@ -15,6 +15,7 @@ import { getKnowledgeActivity } from "@/lib/api/audit";
 import { getArticleCount, getArticles, getLeaderboard, getOpenQuestionCount, getQuestions } from "@/lib/api/knowledge";
 import type { ActivityEntry, ArticleSummary, ContributionPeriod, LeaderboardEntry, QuestionSummary } from "@/lib/api/types";
 import { formatRelativeTime } from "@/lib/datetime";
+import { errorMessage } from "@/lib/errors";
 import { formatPersonName } from "@/lib/format";
 import { RELATABLE_ROUTE_PREFIX } from "@/lib/knowledgeTypes";
 import { useAuth } from "@/lib/auth/AuthProvider";
@@ -68,7 +69,7 @@ export default function DashboardPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
-    const onError = (err: unknown) => setLoadError(err instanceof Error ? err.message : String(err));
+    const onError = (err: unknown) => setLoadError(errorMessage(err));
     getArticleCount().then(setArticleCount, onError);
     getOpenQuestionCount().then(setOpenQuestionCount, onError);
     getArticles().then(setArticles, onError);
@@ -77,7 +78,7 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    const onError = (err: unknown) => setLoadError(err instanceof Error ? err.message : String(err));
+    const onError = (err: unknown) => setLoadError(errorMessage(err));
     getLeaderboard(leaderboardPeriod).then(
       (entries) => setLeaderboardResult({ period: leaderboardPeriod, entries }),
       onError,

@@ -22,6 +22,7 @@ import { TagChip } from "@/components/ui/TagChip";
 import { CoAuthorsByline } from "@/components/knowledge/CoAuthorsByline";
 import { Link, useRouter } from "@/i18n/navigation";
 import { formatDateTime } from "@/lib/datetime";
+import { errorMessage } from "@/lib/errors";
 import { formatPersonName } from "@/lib/format";
 import {
   archiveArticle,
@@ -67,7 +68,7 @@ export default function ArticleDetailPage() {
     if (!article) return;
     getArticleRevisions(article.id)
       .then(setRevisions)
-      .catch((err) => setActionError(err instanceof Error ? err.message : String(err)));
+      .catch((err) => setActionError(errorMessage(err)));
     // Only the article's id matters here - re-running this on every setArticle()
     // from the action handlers below would refetch revisions that haven't changed.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -107,7 +108,7 @@ export default function ArticleDetailPage() {
     try {
       setArticle(await submitArticle(article!.id));
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : String(err));
+      setActionError(errorMessage(err));
     } finally {
       setIsWorking(false);
     }
@@ -119,7 +120,7 @@ export default function ArticleDetailPage() {
     try {
       setArticle(await publishArticle(article!.id));
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : String(err));
+      setActionError(errorMessage(err));
     } finally {
       setIsWorking(false);
     }
@@ -131,7 +132,7 @@ export default function ArticleDetailPage() {
       setArticle(await rejectArticle(article!.id, rejectReason.trim()));
       setRejectReason("");
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : String(err));
+      setActionError(errorMessage(err));
     }
   }
 
@@ -140,7 +141,7 @@ export default function ArticleDetailPage() {
     try {
       setArticle(await archiveArticle(article!.id));
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : String(err));
+      setActionError(errorMessage(err));
     }
   }
 
@@ -150,7 +151,7 @@ export default function ArticleDetailPage() {
     try {
       setArticle(await unarchiveArticle(article!.id));
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : String(err));
+      setActionError(errorMessage(err));
     } finally {
       setIsWorking(false);
     }
@@ -162,7 +163,7 @@ export default function ArticleDetailPage() {
       await deleteArticle(article!.id);
       router.push("/knowledge");
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : String(err));
+      setActionError(errorMessage(err));
     }
   }
 

@@ -26,6 +26,7 @@ import {
   updateResource,
 } from "@/lib/api/training";
 import type { CourseResource, CourseResourceProvider, LessonDetail, LessonType } from "@/lib/api/types";
+import { errorMessage } from "@/lib/errors";
 import { LESSON_TYPE_ICONS, RESOURCE_PROVIDER_ICONS } from "@/lib/optionIcons";
 
 const LESSON_TYPES: LessonType[] = ["TEXT", "VIDEO", "DOCUMENT", "EXTERNAL", "EXERCISE"];
@@ -104,7 +105,7 @@ export default function LessonEditorPage() {
   }
 
   useEffect(() => {
-    loadLesson().catch((err) => setError(err instanceof Error ? err.message : String(err)));
+    loadLesson().catch((err) => setError(errorMessage(err)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lessonId]);
 
@@ -148,7 +149,7 @@ export default function LessonEditorPage() {
       await action();
       await loadLesson();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     }
   }
 
@@ -166,7 +167,7 @@ export default function LessonEditorPage() {
       });
       applyLessonToState(updated);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     } finally {
       setIsSaving(false);
     }
@@ -196,7 +197,7 @@ export default function LessonEditorPage() {
       }
       await loadLesson();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     } finally {
       setIsSavingMainResource(false);
     }
@@ -224,7 +225,7 @@ export default function LessonEditorPage() {
       }
       await loadLesson();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     } finally {
       setMainResourceFileUploadProgress(null);
     }
@@ -291,7 +292,7 @@ export default function LessonEditorPage() {
       setNewResourceTitle("");
       setNewResourceIsPrimary(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     } finally {
       setResourceFileUploadProgress(null);
     }

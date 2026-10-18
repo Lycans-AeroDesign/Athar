@@ -11,19 +11,15 @@ import { useRouter } from "@/i18n/navigation";
 import { acceptPolicies, getCurrentPolicies, POLICY_REQUIRED_EVENT, type CurrentPolicy } from "@/lib/api/policies";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { formatDateTime } from "@/lib/datetime";
+import { errorMessage } from "@/lib/errors";
 
-// Wraps the whole signed-in app shell: while the user has a published policy
-// version they haven't accepted (a new policy, or a new version of one they
-// accepted before), this renders a blocking acceptance screen *instead of*
-// the app - nothing behind it can be used (or start, like the product tour).
-// The backend enforces the same rule on every API call (see
-// backend/policies/authentication.py); this is the UX for it. Re-checks when
-// any API call is refused for that reason mid-session (POLICY_REQUIRED_EVENT,
-// dispatched from lib/api/client.ts) - e.g. an admin published a new version.
-// With several policies pending, it guides the user through all of them: a
-// progress stepper up top, auto-scroll to the next unaccepted one after each
-// checkbox, and a footer hint naming what's still missing - people would
-// otherwise tick the first one and not notice the rest below the fold.
+// Wraps the signed-in app shell: while the user has an unaccepted published policy version, it
+// renders a blocking acceptance screen instead of the app (nothing behind it can be used or
+// start, like the product tour). The backend enforces the same rule on every API call
+// (backend/policies/authentication.py); this is the UX. It re-checks when an API call is refused
+// for that reason mid-session (POLICY_REQUIRED_EVENT from lib/api/client.ts). With several
+// policies pending it guides through all of them: a progress stepper, auto-scroll to the next
+// unaccepted one after each checkbox, and a footer hint naming what's missing.
 export function PolicyGate({ children }: { children: ReactNode }) {
   const t = useTranslations("policies");
   const { logout } = useAuth();
@@ -83,7 +79,7 @@ export function PolicyGate({ children }: { children: ReactNode }) {
       await acceptPolicies(pending!.map((policy) => policy.id));
       setPending([]);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     } finally {
       setIsSubmitting(false);
     }

@@ -7,6 +7,7 @@ import { Pagination } from "@/components/ui/Pagination";
 import { formatDateTime } from "@/lib/datetime";
 import { getAuditLogs } from "@/lib/api/audit";
 import type { AuditLogEntry, Paginated } from "@/lib/api/types";
+import { errorMessage } from "@/lib/errors";
 
 // Rendered only when the viewer has audit.read (see settings/page.tsx) -
 // that's also what GET /audit/logs/ itself requires. Read-only paged
@@ -23,7 +24,7 @@ export function AuditLogSettingsForm() {
   useEffect(() => {
     getAuditLogs(page)
       .then(setData)
-      .catch((err) => setError(err instanceof Error ? err.message : String(err)));
+      .catch((err) => setError(errorMessage(err)));
   }, [page]);
 
   return (

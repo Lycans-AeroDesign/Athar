@@ -10,11 +10,13 @@ import { Combobox } from "@/components/ui/Combobox";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
 import { Pagination } from "@/components/ui/Pagination";
+import { INPUT_CLASS } from "@/components/ui/inputStyles";
 import { Link } from "@/i18n/navigation";
 import { getSops } from "@/lib/api/engineering";
 import { getCategories } from "@/lib/api/knowledge";
 import type { Category, SopSummary } from "@/lib/api/types";
 import { useEngineeringListFiltersEnabled } from "@/lib/auth/permissions";
+import { errorMessage } from "@/lib/errors";
 
 export default function SopsPage() {
   const t = useTranslations("engineering.sop");
@@ -49,13 +51,13 @@ export default function SopsPage() {
   const error = categoriesError ?? (errorResult?.key === filterKey ? errorResult.message : null);
 
   useEffect(() => {
-    getCategories().then(setCategories, (err) => setCategoriesError(err instanceof Error ? err.message : String(err)));
+    getCategories().then(setCategories, (err) => setCategoriesError(errorMessage(err)));
   }, []);
 
   useEffect(() => {
     getSops({ category: categoryFilter ?? undefined, q: query || undefined, page }).then(
       (data) => setResult({ key: filterKey, sops: data.results, hasNext: data.next !== null, count: data.count }),
-      (err) => setErrorResult({ key: filterKey, message: err instanceof Error ? err.message : String(err) }),
+      (err) => setErrorResult({ key: filterKey, message: errorMessage(err) }),
     );
   }, [categoryFilter, query, page, filterKey]);
 
@@ -75,7 +77,7 @@ export default function SopsPage() {
           {filtersEnabled && (
             <div className="w-56">
               <input
-                className="block w-full px-4 py-2 font-body-md text-body-md text-on-surface bg-surface-container border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
+                className={INPUT_CLASS}
                 placeholder={commonT("searchThisList")}
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}

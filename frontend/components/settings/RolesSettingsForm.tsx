@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Combobox } from "@/components/ui/Combobox";
 import { Icon } from "@/components/ui/Icon";
 import { Modal } from "@/components/ui/Modal";
+import { INPUT_CLASS } from "@/components/ui/inputStyles";
 import { useHasPermission } from "@/lib/auth/permissions";
 import {
   assignRole,
@@ -20,6 +21,7 @@ import {
   unassignRole,
 } from "@/lib/api/rbac";
 import type { Permission, Role, User } from "@/lib/api/types";
+import { errorMessage } from "@/lib/errors";
 
 // A role plus whatever local edits haven't been committed to the backend yet
 // - nothing in this component calls the API until "Save Changes", so every
@@ -238,7 +240,7 @@ export function RolesSettingsForm() {
       if (canManageUserRoles) setUsers(freshUsers);
       setSelectedRoleId((current) => (current && freshRoles.some((r) => r.id === current) ? current : null));
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : String(err));
+      setSaveError(errorMessage(err));
     } finally {
       setIsSaving(false);
     }
@@ -543,7 +545,7 @@ export function RolesSettingsForm() {
               {t("roleNameLabel")}
             </label>
             <input
-              className="block w-full px-4 py-2 font-body-md text-body-md text-on-surface bg-surface-container border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
+              className={INPUT_CLASS}
               value={newRoleName}
               onChange={(e) => setNewRoleName(e.target.value)}
             />
@@ -553,7 +555,7 @@ export function RolesSettingsForm() {
               {t("roleDescriptionLabel")}
             </label>
             <input
-              className="block w-full px-4 py-2 font-body-md text-body-md text-on-surface bg-surface-container border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
+              className={INPUT_CLASS}
               value={newRoleDescription}
               onChange={(e) => setNewRoleDescription(e.target.value)}
             />

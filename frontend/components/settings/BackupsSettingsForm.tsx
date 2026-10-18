@@ -22,6 +22,7 @@ import {
 } from "@/lib/api/backups";
 import type { BackupJob, RestoreJob } from "@/lib/api/types";
 import { formatDateTime } from "@/lib/datetime";
+import { errorMessage } from "@/lib/errors";
 
 const POLL_INTERVAL_MS = 2000;
 
@@ -103,7 +104,7 @@ export function BackupsSettingsForm() {
       setJobs((prev) => [job, ...(prev ?? [])]);
       pollJob(job.id);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     } finally {
       setIsCreating(false);
     }
@@ -139,7 +140,7 @@ export function BackupsSettingsForm() {
       // Cancelling the browser's save dialog keeps the modal open to retry.
       if (saved) setDownloadTarget(null);
     } catch (err) {
-      setDownloadError(err instanceof Error ? err.message : String(err));
+      setDownloadError(errorMessage(err));
     } finally {
       setIsDownloading(false);
     }
@@ -153,7 +154,7 @@ export function BackupsSettingsForm() {
       setRestoreJobs((prev) => [job, ...(prev ?? [])]);
       pollRestoreJob(job.id);
     } catch (err) {
-      setRestoreError(err instanceof Error ? err.message : String(err));
+      setRestoreError(errorMessage(err));
     }
   }
 
@@ -170,7 +171,7 @@ export function BackupsSettingsForm() {
       setRestoreJobs((prev) => [job, ...(prev ?? [])]);
       pollRestoreJob(job.id);
     } catch (err) {
-      setRestoreError(err instanceof Error ? err.message : String(err));
+      setRestoreError(errorMessage(err));
     } finally {
       setUploadProgress(null);
     }

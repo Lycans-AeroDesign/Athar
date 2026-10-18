@@ -9,6 +9,7 @@ import { Icon } from "@/components/ui/Icon";
 import { Link } from "@/i18n/navigation";
 import { createRelation, deleteRelation, getRelations, updateRelation } from "@/lib/api/knowledge";
 import type { KnowledgeRelation, RelatableType, SearchResult } from "@/lib/api/types";
+import { errorMessage } from "@/lib/errors";
 import { RELATABLE_ICON as ICON_BY_TYPE, RELATABLE_ROUTE_PREFIX as ROUTE_PREFIX } from "@/lib/knowledgeTypes";
 
 interface RelatedContentProps {
@@ -44,15 +45,11 @@ export const GROUP_LABEL_KEYS: Record<RelatableType, string> = {
   document: "groupDocuments",
 };
 
-// "This article is related to that question" (and now also Project/
-// Component/Failure/Sop/Test/Document) - a light, self-contained cross-link
-// between Knowledge content. Rendered as a sticky sidebar panel (see the
-// caller's own layout - a `grid-cols-[1fr_320px]`-shaped page with this as
-// the right column), grouped by type with a colored accent bar per group.
-// Adding goes through RelationPickerModal (search, then a relationship type
-// when the pair has any); each link can then have its relationship type
-// changed or be removed - both actions always visible (not hover-only) so
-// they work on touch screens too.
+// A light cross-link between Knowledge content (Article/Question/Project/Component/Failure/Sop/
+// Test/Document), rendered as a sticky sidebar panel grouped by type with a colored accent bar.
+// Adding goes through RelationPickerModal (search, then a relationship type when the pair has
+// any); each link's type can be changed or removed, with actions always visible (not hover-only)
+// so they work on touch screens.
 export function RelatedContent({ type, id, canEdit }: RelatedContentProps) {
   const t = useTranslations("knowledge.relations");
   const [relations, setRelations] = useState<KnowledgeRelation[] | null>(null);
@@ -64,7 +61,7 @@ export function RelatedContent({ type, id, canEdit }: RelatedContentProps) {
   useEffect(() => {
     getRelations(type, id)
       .then(setRelations)
-      .catch((err) => setError(err instanceof Error ? err.message : String(err)));
+      .catch((err) => setError(errorMessage(err)));
   }, [type, id]);
 
   async function handleAdd(result: SearchResult, relationType?: string) {
@@ -79,7 +76,7 @@ export function RelatedContent({ type, id, canEdit }: RelatedContentProps) {
       });
       setRelations((prev) => [...(prev ?? []).filter((r) => r.id !== relation.id), relation]);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     }
   }
 
@@ -89,7 +86,7 @@ export function RelatedContent({ type, id, canEdit }: RelatedContentProps) {
       const updated = await updateRelation(relation.id, { from_type: type, from_id: id, relation_type: relationType });
       setRelations((prev) => (prev ?? []).map((r) => (r.id === updated.id ? updated : r)));
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     }
   }
 
@@ -99,7 +96,7 @@ export function RelatedContent({ type, id, canEdit }: RelatedContentProps) {
       await deleteRelation(relationId);
       setRelations((prev) => (prev ?? []).filter((relation) => relation.id !== relationId));
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     }
   }
 

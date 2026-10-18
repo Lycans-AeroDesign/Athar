@@ -14,6 +14,7 @@ import {
   RestrictedAccessPicker,
   type RestrictedAccessDraft,
 } from "@/components/knowledge/RestrictedAccessPicker";
+import { INPUT_CLASS } from "@/components/ui/inputStyles";
 import { addAccessGrant, removeAccessGrant } from "@/lib/api/accessGrants";
 import { createDocument, updateDocument, type DocumentWritePayload } from "@/lib/api/documents";
 import { uploadFile } from "@/lib/api/files";
@@ -24,6 +25,7 @@ import { PendingRelations, toRelationInputs, type PendingRelation } from "@/comp
 import { effectiveVisibility, VisibilitySelect } from "@/components/knowledge/VisibilitySelect";
 import { ProjectSelect } from "@/components/knowledge/ProjectSelect";
 import { useRouter } from "@/i18n/navigation";
+import { errorMessage } from "@/lib/errors";
 import { useSaveOnce } from "@/lib/useSaveOnce";
 import { DOC_SOURCE_ICONS, DOC_TYPE_ICONS } from "@/lib/optionIcons";
 
@@ -126,7 +128,7 @@ export function DocumentEditor({ document, onDirtyChange, initialProjectId = nul
       setFileId(uploaded.id);
       setFileName(uploaded.original_filename);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     } finally {
       setUploadProgress(null);
     }
@@ -177,7 +179,7 @@ export function DocumentEditor({ document, onDirtyChange, initialProjectId = nul
         router.push(`/documents/${saved.id}`);
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     }
   }
 
@@ -221,7 +223,7 @@ export function DocumentEditor({ document, onDirtyChange, initialProjectId = nul
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <ChangedIndicator changed={fieldChanged.author}>
             <input
-              className="block w-full px-4 py-2 font-body-md text-body-md text-on-surface bg-surface-container border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
+              className={INPUT_CLASS}
               placeholder={t("authorPlaceholder")}
               value={author}
               onChange={(e) => setAuthor(e.target.value)}
@@ -229,7 +231,7 @@ export function DocumentEditor({ document, onDirtyChange, initialProjectId = nul
           </ChangedIndicator>
           <ChangedIndicator changed={fieldChanged.organization}>
             <input
-              className="block w-full px-4 py-2 font-body-md text-body-md text-on-surface bg-surface-container border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
+              className={INPUT_CLASS}
               placeholder={t("organizationPlaceholder")}
               value={organization}
               onChange={(e) => setOrganization(e.target.value)}
@@ -246,14 +248,14 @@ export function DocumentEditor({ document, onDirtyChange, initialProjectId = nul
             </label>
             <input
               type="date"
-              className="block w-full px-4 py-2 font-body-md text-body-md text-on-surface bg-surface-container border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
+              className={INPUT_CLASS}
               value={publicationDate ?? ""}
               onChange={(e) => setPublicationDate(e.target.value || null)}
             />
           </ChangedIndicator>
           <ChangedIndicator changed={fieldChanged.url}>
             <input
-              className="block w-full px-4 py-2 font-body-md text-body-md text-on-surface bg-surface-container border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
+              className={INPUT_CLASS}
               placeholder={t("urlPlaceholder")}
               value={url}
               onChange={(e) => setUrl(e.target.value)}

@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useState } from "react";
 
+import { errorMessage } from "@/lib/errors";
 import { useTheme } from "@/lib/theme/ThemeProvider";
 
 interface MermaidDiagramProps {
@@ -53,7 +54,7 @@ export function MermaidDiagram({ code }: MermaidDiagramProps) {
         const { svg } = await mermaid.render(`mermaid-${id}`, code);
         if (!cancelled) setResult({ key, svg });
       } catch (err) {
-        if (!cancelled) setResult({ key, error: err instanceof Error ? err.message : String(err) });
+        if (!cancelled) setResult({ key, error: errorMessage(err) });
       }
     });
 

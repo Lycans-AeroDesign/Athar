@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { PROJECT_STATUS_CLASSES } from "@/components/engineering/statusClasses";
 import { Attachments } from "@/components/knowledge/Attachments";
 import { ContributorsRow } from "@/components/knowledge/Contributors";
 import { RelatedContent } from "@/components/knowledge/RelatedContent";
@@ -15,14 +16,9 @@ import { Markdown } from "@/components/ui/Markdown";
 import { TagChip } from "@/components/ui/TagChip";
 import { Link, useRouter } from "@/i18n/navigation";
 import { deleteProject, getProject } from "@/lib/api/engineering";
-import type { ProjectDetail, ProjectStatus } from "@/lib/api/types";
+import type { ProjectDetail } from "@/lib/api/types";
 import { useHasPermission } from "@/lib/auth/permissions";
-
-const STATUS_CLASSES: Record<ProjectStatus, string> = {
-  ACTIVE: "bg-primary-container text-on-primary-container",
-  ON_HOLD: "bg-tertiary-container text-on-tertiary-container",
-  COMPLETED: "bg-surface-variant text-on-surface-variant",
-};
+import { errorMessage } from "@/lib/errors";
 
 export default function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -54,7 +50,7 @@ export default function ProjectDetailPage() {
       await deleteProject(project!.id);
       router.push("/projects");
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : String(err));
+      setActionError(errorMessage(err));
     }
   }
 
@@ -72,7 +68,7 @@ export default function ProjectDetailPage() {
       <div className="border-t-4 border-primary rounded-t-xl bg-surface pt-6 space-y-3">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <span
-            className={`font-label-caps text-label-caps uppercase rounded-full px-2.5 py-1 ${STATUS_CLASSES[project.status]}`}
+            className={`font-label-caps text-label-caps uppercase rounded-full px-2.5 py-1 ${PROJECT_STATUS_CLASSES[project.status]}`}
           >
             {statusT(project.status)}
           </span>

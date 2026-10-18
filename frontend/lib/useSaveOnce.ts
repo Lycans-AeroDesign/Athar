@@ -12,15 +12,15 @@ interface SaveContext {
   markCreated: (id: string) => void;
 }
 
-/** Guards an editor's save so it can only ever create its item once:
+/** Guards an editor's save so it creates its item only once:
  *
- * - A ref (not just the isSaving state) blocks re-entry, so a fast double
- *   click can't fire two requests before React re-renders the disabled button.
- * - The created item's id is remembered across attempts, so retrying after a
- *   failed follow-up step updates that item rather than creating a duplicate.
+ * - A ref (not just the isSaving state) blocks re-entry, so a fast double click can't fire two
+ *   requests before React re-renders the disabled button.
+ * - The created item's id is remembered across attempts, so retrying after a failed follow-up step
+ *   updates that item rather than creating a duplicate.
  *
- * On success isSaving deliberately stays true - every editor navigates away
- * right after, and the saving overlay should stay up until it does. */
+ * On success isSaving deliberately stays true: every editor navigates away right after, and the
+ * saving overlay should stay up until it does. */
 export function useSaveOnce() {
   const savingRef = useRef(false);
   const createdIdRef = useRef<string | null>(null);

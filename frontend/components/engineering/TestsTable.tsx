@@ -2,24 +2,12 @@
 
 import { useTranslations } from "next-intl";
 
+import { TEST_PASS_FAIL_CLASSES, TEST_STATUS_CLASSES } from "@/components/engineering/statusClasses";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { Link } from "@/i18n/navigation";
 import type { TestOrdering } from "@/lib/api/engineering";
-import type { TestPassFail, TestRunStatus, TestSummary } from "@/lib/api/types";
+import type { TestSummary } from "@/lib/api/types";
 import { formatCalendarDate } from "@/lib/format";
-
-const STATUS_CLASSES: Record<TestRunStatus, string> = {
-  PLANNED: "border border-outline-variant text-on-surface-variant",
-  IN_PROGRESS: "bg-tertiary-container text-on-tertiary-container",
-  COMPLETED: "bg-secondary-container text-on-secondary-container",
-};
-
-const PASS_FAIL_CLASSES: Record<Exclude<TestPassFail, "">, string> = {
-  PASS: "bg-secondary-container text-on-secondary-container",
-  FAIL: "bg-error-container text-on-error-container",
-  PARTIAL: "bg-tertiary-container text-on-tertiary-container",
-  NOT_APPLICABLE: "border border-outline-variant text-on-surface-variant",
-};
 
 interface TestsTableProps {
   tests: TestSummary[];
@@ -74,7 +62,7 @@ export function TestsTable({ tests, ordering, onOrderingChange }: TestsTableProp
       labelKey: "colStatus",
       render: (test) => (
         <span
-          className={`inline-flex items-center px-2 py-1 rounded-full font-label-caps text-label-caps uppercase ${STATUS_CLASSES[test.status]}`}
+          className={`inline-flex items-center px-2 py-1 rounded-full font-label-caps text-label-caps uppercase ${TEST_STATUS_CLASSES[test.status]}`}
         >
           {statusT(test.status)}
         </span>
@@ -86,7 +74,7 @@ export function TestsTable({ tests, ordering, onOrderingChange }: TestsTableProp
       render: (test) =>
         test.pass_fail ? (
           <span
-            className={`inline-flex items-center px-2 py-1 rounded-full font-label-caps text-label-caps uppercase ${PASS_FAIL_CLASSES[test.pass_fail]}`}
+            className={`inline-flex items-center px-2 py-1 rounded-full font-label-caps text-label-caps uppercase ${TEST_PASS_FAIL_CLASSES[test.pass_fail]}`}
           >
             {passFailT(test.pass_fail)}
           </span>

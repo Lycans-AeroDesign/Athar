@@ -22,6 +22,7 @@ import { TagChip } from "@/components/ui/TagChip";
 import { CoAuthorsByline } from "@/components/knowledge/CoAuthorsByline";
 import { Link, useRouter } from "@/i18n/navigation";
 import { formatRelativeTime } from "@/lib/datetime";
+import { errorMessage } from "@/lib/errors";
 import { formatPersonName } from "@/lib/format";
 import {
   acceptAnswer,
@@ -81,7 +82,7 @@ export default function QuestionDetailPage() {
       setNewAnswerBody("");
       setQuestion(await getQuestion(question!.id));
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : String(err));
+      setActionError(errorMessage(err));
     } finally {
       setIsSubmittingAnswer(false);
     }
@@ -93,7 +94,7 @@ export default function QuestionDetailPage() {
     try {
       setQuestion(await acceptAnswer(question!.id, currentlyAccepted ? null : answerId));
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : String(err));
+      setActionError(errorMessage(err));
     } finally {
       setWorkingAnswerId(null);
     }
@@ -105,7 +106,7 @@ export default function QuestionDetailPage() {
     try {
       setQuestion(question!.status === "CLOSED" ? await reopenQuestion(question!.id) : await closeQuestion(question!.id));
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : String(err));
+      setActionError(errorMessage(err));
     } finally {
       setIsWorking(false);
     }
@@ -117,7 +118,7 @@ export default function QuestionDetailPage() {
       await deleteQuestion(question!.id);
       router.push("/knowledge");
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : String(err));
+      setActionError(errorMessage(err));
     }
   }
 
@@ -128,7 +129,7 @@ export default function QuestionDetailPage() {
       const article = await promoteQuestion(question!.id);
       setQuestion({ ...question!, promoted_to_article: article.id });
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : String(err));
+      setActionError(errorMessage(err));
     } finally {
       setIsWorking(false);
     }

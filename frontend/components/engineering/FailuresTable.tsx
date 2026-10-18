@@ -2,22 +2,12 @@
 
 import { useTranslations } from "next-intl";
 
+import { FAILURE_SEVERITY_CLASSES, FAILURE_STATUS_CLASSES } from "@/components/engineering/statusClasses";
 import { DataTable, type DataTableColumn } from "@/components/ui/DataTable";
 import { Link } from "@/i18n/navigation";
 import type { FailureOrdering } from "@/lib/api/engineering";
-import type { FailureSeverity, FailureStatus, FailureSummary } from "@/lib/api/types";
+import type { FailureSummary } from "@/lib/api/types";
 import { formatCalendarDate } from "@/lib/format";
-
-const SEVERITY_CLASSES: Record<FailureSeverity, string> = {
-  LOW: "bg-surface-variant text-on-surface-variant",
-  MEDIUM: "bg-tertiary-container text-on-tertiary-container",
-  HIGH: "bg-error-container text-on-error-container",
-};
-
-const STATUS_CLASSES: Record<FailureStatus, string> = {
-  UNDER_INVESTIGATION: "border border-outline-variant text-on-surface-variant",
-  RESOLVED: "bg-secondary-container text-on-secondary-container",
-};
 
 interface FailuresTableProps {
   failures: FailureSummary[];
@@ -55,7 +45,7 @@ export function FailuresTable({ failures, ordering, onOrderingChange }: Failures
       labelKey: "colSeverity",
       render: (failure) => (
         <span
-          className={`inline-flex items-center px-2 py-1 rounded-full font-label-caps text-label-caps uppercase ${SEVERITY_CLASSES[failure.severity]}`}
+          className={`inline-flex items-center px-2 py-1 rounded-full font-label-caps text-label-caps uppercase ${FAILURE_SEVERITY_CLASSES[failure.severity]}`}
         >
           {severityT(failure.severity)}
         </span>
@@ -75,7 +65,7 @@ export function FailuresTable({ failures, ordering, onOrderingChange }: Failures
       labelKey: "colStatus",
       render: (failure) => (
         <span
-          className={`inline-flex items-center px-2 py-1 rounded-full font-label-caps text-label-caps uppercase ${STATUS_CLASSES[failure.status]}`}
+          className={`inline-flex items-center px-2 py-1 rounded-full font-label-caps text-label-caps uppercase ${FAILURE_STATUS_CLASSES[failure.status]}`}
         >
           {statusT(failure.status)}
         </span>

@@ -1,18 +1,10 @@
-// Timezone convention for the whole app: the backend always sends/receives
-// timestamps as UTC ISO 8601 strings (Django's USE_TZ=True guarantees the
-// "Z" suffix on every DateTimeField). Every value crossing that boundary
-// must go through these helpers so the UTC<->local conversion happens in
-// exactly one place, never ad hoc at each call site.
+// Timezone convention: the backend sends/receives timestamps as UTC ISO 8601 strings (USE_TZ=True
+// guarantees the "Z" suffix). Every value crossing that boundary goes through these helpers, so
+// UTC<->local conversion happens in one place. `new Date("...Z")` parses an absolute instant and
+// Intl.DateTimeFormat renders it in the browser's local zone; `toISOString()` always serializes UTC.
 //
-// `new Date(utcIsoString)` already parses a "...Z"-suffixed string as an
-// absolute instant, and `Intl.DateTimeFormat`/`date.toLocaleString()` render
-// it in the browser's local timezone by default - so "converting to local"
-// is really just "format without forcing a timeZone". Going the other way,
-// `date.toISOString()` always serializes in UTC regardless of local zone.
-//
-// This module is for timestamps (an instant), not timezone-less calendar
-// dates (e.g. a birthday) - those should be stored/sent as plain
-// "YYYY-MM-DD" strings with no UTC conversion at all.
+// For instants only: timezone-less calendar dates (e.g. a birthday) should be plain "YYYY-MM-DD"
+// strings with no UTC conversion.
 
 export function utcToLocalDate(utcIsoString: string | null | undefined): Date | null {
   if (!utcIsoString) return null;
@@ -30,7 +22,6 @@ const dateTimeFormatter = new Intl.DateTimeFormat(undefined, {
   timeStyle: "short",
 });
 const dateFormatter = new Intl.DateTimeFormat(undefined, { dateStyle: "medium" });
-const timeFormatter = new Intl.DateTimeFormat(undefined, { timeStyle: "short" });
 
 /** Formats a backend UTC timestamp for display in the viewer's local timezone. */
 export function formatDateTime(utcIsoString: string | null | undefined): string {
@@ -41,11 +32,6 @@ export function formatDateTime(utcIsoString: string | null | undefined): string 
 export function formatDate(utcIsoString: string | null | undefined): string {
   const date = utcToLocalDate(utcIsoString);
   return date ? dateFormatter.format(date) : "—";
-}
-
-export function formatTime(utcIsoString: string | null | undefined): string {
-  const date = utcToLocalDate(utcIsoString);
-  return date ? timeFormatter.format(date) : "—";
 }
 
 const relativeTimeFormatter = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });

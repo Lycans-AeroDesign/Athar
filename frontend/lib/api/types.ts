@@ -1,4 +1,4 @@
-/** Standard DRF pagination envelope (see backend/config/pagination.py) - every list endpoint returns this shape now. */
+/** Standard DRF pagination envelope (backend/config/pagination.py) returned by every list endpoint. */
 export interface Paginated<T> {
   count: number;
   next: string | null;
@@ -8,11 +8,11 @@ export interface Paginated<T> {
 
 /** Personal UI settings, self-service via PATCH /auth/me/ (see backend/accounts/models.py's User.preferences) - add keys as features need them. */
 export interface UserPreferences {
-  /** Show the per-page search filter (with its active-filter chip) on the Projects/Components/Failures/SOPs list pages. Defaults to on. */
+  /** Show the per-page search filter on the Projects/Components/Failures/SOPs lists. Defaults to on. */
   engineering_list_filters?: boolean;
-  /** Whether this user has finished (or skipped) the first-run interactive product tour - see lib/onboarding/tour.ts. Defaults to off (not yet seen). */
+  /** Whether this user finished or skipped the first-run product tour (lib/onboarding/tour.ts). */
   has_completed_tour?: boolean;
-  /** Whether this user has seen the MarkdownEditor's "Formatting tips" popover at least once - see components/ui/MarkdownEditor.tsx. Defaults to off (not yet seen), which auto-opens it once. */
+  /** Whether this user has seen the MarkdownEditor's "Formatting tips" popover (auto-opens once). */
   has_seen_markdown_help?: boolean;
 }
 
@@ -156,11 +156,11 @@ export interface OrganizationSettings {
   secondary_color: string;
   primary_color_dark: string;
   secondary_color_dark: string;
-  /** Org-wide kill switch for the first-run interactive product tour - see UserPreferences.has_completed_tour for the per-user "already seen it" flag. */
+  /** Org-wide kill switch for the first-run product tour; UserPreferences.has_completed_tour is the per-user flag. */
   product_tour_enabled: boolean;
-  /** Instance-wide (not per-org) - mirrors the backend's ENABLE_ORGANIZATION_REGISTRATION setting. Controls whether the register page's "create a new organization" tab is shown. */
+  /** Instance-wide: mirrors the backend's ENABLE_ORGANIZATION_REGISTRATION; shows the register page's "create organization" tab. */
   organization_registration_enabled: boolean;
-  /** Instance-wide - mirrors the backend's EMAIL_ENABLED (an SMTP server is configured). Controls whether admins can email password reset links. */
+  /** Instance-wide: mirrors the backend's EMAIL_ENABLED (SMTP configured); lets admins email reset links. */
   email_enabled: boolean;
   updated_at: string;
 }
@@ -286,9 +286,8 @@ export type RelatableType =
   | "test"
   | "document";
 
-/** One related-content link chosen on a creation form, before the item exists -
- * sent in the create request's `relations` list and saved in the same
- * transaction as the item itself (see backend services.create_with_links). */
+/** One related-content link chosen on a creation form, sent in the create request's `relations`
+ * and saved in the same transaction as the item (backend services.create_with_links). */
 export interface CreationRelationInput {
   target_type: RelatableType;
   target_id: string;
@@ -301,9 +300,8 @@ export interface CreationExtrasPayload {
   relations?: CreationRelationInput[];
 }
 
-/** For types linked to a project by a relation rather than their own FK
- * (Article/Question/Component/Sop/Document) - omitting `visibility` while
- * setting this makes the new item inherit the project's visibility. */
+/** For types linked to a project by a relation rather than their own FK (Article/Question/
+ * Component/Sop/Document): omitting `visibility` while setting this inherits the project's. */
 export interface ProjectLinkPayload extends CreationExtrasPayload {
   project_id?: string | null;
 }
@@ -313,10 +311,9 @@ export type SearchResult = { type: RelatableType; id: string; title: string; exc
 export interface KnowledgeRelation {
   id: string;
   relation_type: string;
-  /** Direction-aware display verb (e.g. "USES" from the source's side, "USED_IN" from
-   * the target's - see backend/knowledge/relationships.py) - use this, not relation_type,
-   * for anything shown to the user. Falls back to "RELATED" (symmetric) when no more
-   * specific relationship applies. */
+  /** Direction-aware display verb (e.g. "USES" from the source's side, "USED_IN" from the target's;
+   * backend/knowledge/relationships.py) - show this, not relation_type. Falls back to the
+   * symmetric "RELATED". */
   relation_label: string;
   other_type: RelatableType;
   other_id: string;
@@ -333,9 +330,8 @@ export interface KnowledgeAttachment {
 }
 
 // --- Engineering domain -----------------------------------------------------
-// No draft/review workflow on any of these (see backend/knowledge/models.py's
-// module docstring), but each does carry `visibility` (same RESTRICTED rule
-// as Article/Question/Document - see backend/knowledge/visibility.py).
+// No draft/review workflow, but each type carries `visibility` (same RESTRICTED rule as
+// Article/Question/Document - backend/knowledge/visibility.py).
 
 export type ProjectStatus = "ACTIVE" | "ON_HOLD" | "COMPLETED";
 
@@ -362,9 +358,8 @@ export type ComponentStatus = "CERTIFIED" | "TESTING" | "DEPRECATED";
 /** The workshop inventory sheet's two tabs. */
 export type InventoryType = "MECHANICAL" | "ELECTRICAL";
 export type ComponentCondition = "NEW" | "GOOD" | "FAIR" | "WORN" | "NEEDS_REPAIR" | "BROKEN";
-/** IN_STOCK/LOW_STOCK/MISSING follow the quantity automatically unless set by
- * hand; ON_ORDER/RETIRED are only ever set by a person - see
- * backend/knowledge/services.py's derive_stock_status. */
+/** IN_STOCK/LOW_STOCK/MISSING follow the quantity unless set by hand; ON_ORDER/RETIRED are only
+ * set by a person (backend derive_stock_status). */
 export type StockStatus = "IN_STOCK" | "LOW_STOCK" | "MISSING" | "ON_ORDER" | "RETIRED";
 
 /** Components' own category list - separate from the knowledge Category. */
@@ -602,10 +597,8 @@ export interface LeaderboardEntry {
   score: number;
 }
 
-/** Query param for both GET /knowledge/leaderboard/ and the per-window
- * breakdown in UserProfile.periods below - "month"/"year" are calendar
- * to-date, "all" is lifetime (see backend knowledge/services.py's
- * period_since). */
+/** Query param for GET /knowledge/leaderboard/ and UserProfile.periods: "month"/"year" are calendar
+ * to-date, "all" is lifetime (backend knowledge/services.py's period_since). */
 export type ContributionPeriod = "month" | "year" | "all";
 
 export interface ContributionPeriodStat {
@@ -633,9 +626,9 @@ export interface UserProfile {
 }
 
 // --- Training -----------------------------------------------------------
-// See backend/training/models.py - Course mirrors Article's 5-state
-// workflow exactly (REJECTED included), but has no `visibility` field:
-// gating is status-based only (see training/views.py's _ensure_course_visible).
+// See backend/training/models.py. Course mirrors Article's 5-state workflow (REJECTED included)
+// and has `visibility` (PUBLIC/RESTRICTED) combined with status-based gating
+// (training/views.py's _ensure_course_visible).
 
 export type CourseStatus = "DRAFT" | "IN_REVIEW" | "PUBLISHED" | "REJECTED" | "ARCHIVED";
 export type CourseStatusFilter = CourseStatus | "ALL";

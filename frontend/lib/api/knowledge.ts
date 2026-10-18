@@ -23,12 +23,10 @@ import type {
   Visibility,
 } from "./types";
 
-// Every list endpoint returns a paginated {count, next, previous, results}
-// envelope now (see backend/config/pagination.py) - these wrappers unwrap
-// .results and keep returning a bare array so existing callers are
-// unaffected. That means "page 1 only" (20 items) for now; screens that
-// need real page-through UI (search results, admin settings screens) get
-// their own dedicated handling elsewhere rather than through these.
+// Every list endpoint returns a paginated {count, next, previous, results} envelope
+// (backend/config/pagination.py); these wrappers unwrap .results and return a bare array, so
+// they cover page 1 only (20 items). Screens needing real paging (search results, admin
+// settings) handle it elsewhere.
 export function getCategories(): Promise<Category[]> {
   return apiJson<Paginated<Category>>("/api/v1/knowledge/categories/").then((data) => data.results);
 }
@@ -97,12 +95,9 @@ export function searchKnowledge(
   return runSearch(params);
 }
 
-/** Everything tagged with `tagId`, across every taggable type at once -
- * same endpoint/pagination/visibility rules as searchKnowledge, just keyed
- * by tag instead of a text query (see backend/knowledge/views.py's
- * SearchView, which doubles as this "browse by tag" endpoint). `sort`
- * defaults to "newest" here since there's no relevance score to rank a
- * tag-only request by. */
+/** Everything tagged with `tagId` across every taggable type; same endpoint, pagination and
+ * visibility rules as searchKnowledge, keyed by tag (backend SearchView doubles as this
+ * endpoint). `sort` defaults to "newest" since a tag-only request has no relevance score. */
 export function getItemsByTag(
   tagId: string,
   type?: RelatableType,
@@ -313,9 +308,8 @@ export function deleteRelation(id: string): Promise<void> {
   return apiVoid(`/api/v1/knowledge/relations/${id}/`, { method: "DELETE" });
 }
 
-/** Every user in the caller's own organization, for the RESTRICTED-access people-picker
- * (see RestrictedAccessPicker.tsx) - deliberately not rbac.getUsers(), which requires
- * user.manage and most creators of a RESTRICTED item won't hold. */
+/** Every user in the caller's organization, for the RESTRICTED-access people picker
+ * (RestrictedAccessPicker.tsx). Not rbac.getUsers(), which needs user.manage. */
 export function getOrgMembers(): Promise<KnowledgeAuthor[]> {
   return apiJson<Paginated<KnowledgeAuthor>>("/api/v1/knowledge/org-members/").then((data) => data.results);
 }

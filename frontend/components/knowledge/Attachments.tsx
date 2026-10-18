@@ -33,6 +33,7 @@ import {
   removeQuestionAttachment,
 } from "@/lib/api/knowledge";
 import type { KnowledgeAttachment, RelatableType } from "@/lib/api/types";
+import { errorMessage } from "@/lib/errors";
 
 // Document is deliberately excluded - it has a single primary `file`/`url`
 // field, not a list of attachments (see backend/knowledge/models.py's
@@ -88,7 +89,7 @@ export function Attachments({ type, id, canEdit }: AttachmentsProps) {
     ATTACHMENT_API[type]
       .get(id)
       .then(setAttachments)
-      .catch((err) => setError(err instanceof Error ? err.message : String(err)));
+      .catch((err) => setError(errorMessage(err)));
   }, [type, id]);
 
   async function handleFileSelected(file: File) {
@@ -99,7 +100,7 @@ export function Attachments({ type, id, canEdit }: AttachmentsProps) {
       const attachment = await ATTACHMENT_API[type].add(id, uploaded.id);
       setAttachments((prev) => [...(prev ?? []), attachment]);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     } finally {
       setUploadProgress(null);
     }
@@ -111,7 +112,7 @@ export function Attachments({ type, id, canEdit }: AttachmentsProps) {
       await ATTACHMENT_API[type].remove(id, attachmentId);
       setAttachments((prev) => (prev ?? []).filter((attachment) => attachment.id !== attachmentId));
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     }
   }
 
@@ -120,7 +121,7 @@ export function Attachments({ type, id, canEdit }: AttachmentsProps) {
     try {
       await downloadFile(attachment.file.id, attachment.file.original_filename);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     }
   }
 

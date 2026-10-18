@@ -9,15 +9,10 @@ import { Link, usePathname } from "@/i18n/navigation";
 import { apiUrl } from "@/lib/api/client";
 import { useOrganization } from "@/lib/organization/OrganizationProvider";
 
-// Routes are placeholders - pages get filled in later. Keeping the list here
-// (rather than inline in JSX) makes it a single place to add the next page.
-// `permission` is optional: omit it for anything every authenticated user can
-// see; set it once a route enforces a real permission on its backing
-// endpoint(s), and this list stops showing it to users who'd just hit a 403.
-// `separatorBefore` draws a divider above that item - used for Bookmarks,
-// which is a personal feature set apart from the shared content sections above it.
-// `tourId` maps to a step target in lib/onboarding/tour.ts (data-tour="<tourId>") -
-// only set on the couple of items the tour actually points at.
+// `permission` is optional: omit for anything every authenticated user can see; set it once the
+// backing endpoint enforces a permission, so users who'd get a 403 don't see the item.
+// `separatorBefore` draws a divider above the item (Bookmarks is a personal feature). `tourId`
+// maps to a step target in lib/onboarding/tour.ts (data-tour="<tourId>").
 const NAV_ITEMS: ReadonlyArray<{
   href: string;
   labelKey: string;
@@ -92,23 +87,13 @@ export function SideNav({ open, onClose }: SideNavProps) {
       )}
 
       <nav
-        // The "hidden below lg" classes are deliberately max-lg-scoped, not
-        // just unprefixed - Tailwind's rtl variant compiles to a :where(...)
-        // -based selector (zero added specificity, same as a plain class),
-        // and in the compiled stylesheet the rtl-scoped hide rule happens to
-        // land after the lg-scoped show rule. On an equal-specificity tie the
-        // later rule wins regardless of the media query it's in, so the
-        // unscoped rtl hide rule was overriding the lg show rule at desktop
-        // widths in Arabic, pushing the whole sidebar off-screen. Scoping
-        // both hide classes to max-lg means they simply don't exist as
-        // applicable rules at lg+, so there's no rule left to win a tie.
+        // The "hidden below lg" classes are max-lg-scoped on purpose: Tailwind's rtl variant compiles
+        // to a zero-specificity :where() selector that lands after the lg show rule, so an unscoped
+        // rtl hide rule overrode it at desktop widths in Arabic. Scoped to max-lg, no hide rule
+        // exists at lg+ to win the tie.
         //
-        // h-dvh, not h-screen - the Settings/About block at the bottom is
-        // mt-auto inside this fixed, non-page-scrolling nav, so on mobile
-        // browsers h-screen's 100vh (sized as if the URL bar were hidden)
-        // pushed it below the actually-visible viewport whenever that chrome
-        // was showing, which is the default state. dvh tracks the real
-        // visible height as the chrome shows/hides.
+        // h-dvh, not h-screen: the Settings/About block is mt-auto in a fixed nav, and on mobile
+        // 100vh ignores the URL bar, pushing it off-screen. dvh tracks the visible height.
         className={`bg-surface-container-low text-primary font-body-md text-body-md h-dvh w-64 border-e border-outline-variant flex flex-col fixed start-0 top-0 z-40 transition-transform duration-200 lg:translate-x-0 ${
           open ? "translate-x-0" : "max-lg:-translate-x-full max-lg:rtl:translate-x-full"
         }`}

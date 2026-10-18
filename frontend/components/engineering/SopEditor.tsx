@@ -18,6 +18,7 @@ import { PendingRelations, toRelationInputs, type PendingRelation } from "@/comp
 import { effectiveVisibility, VisibilitySelect } from "@/components/knowledge/VisibilitySelect";
 import { ProjectSelect } from "@/components/knowledge/ProjectSelect";
 import { useRouter } from "@/i18n/navigation";
+import { errorMessage } from "@/lib/errors";
 import { useSaveOnce } from "@/lib/useSaveOnce";
 import { addAccessGrant, removeAccessGrant } from "@/lib/api/accessGrants";
 import { createSop, updateSop, type SopWritePayload } from "@/lib/api/engineering";
@@ -127,7 +128,7 @@ export function SopEditor({ sop, onDirtyChange, initialProjectId = null }: SopEd
         router.push(`/sops/${saved.id}`);
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     }
   }
 

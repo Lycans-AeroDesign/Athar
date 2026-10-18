@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 import { Icon } from "@/components/ui/Icon";
 import { Modal } from "@/components/ui/Modal";
+import { INPUT_CLASS } from "@/components/ui/inputStyles";
 import { searchKnowledge } from "@/lib/api/knowledge";
 import type { RelatableType, SearchResult } from "@/lib/api/types";
 import { RELATABLE_ICON as ICON_BY_TYPE, relationshipChoicesFor } from "@/lib/knowledgeTypes";
@@ -152,7 +153,7 @@ export function RelationPickerModal({
       ) : (
         <div className="space-y-3">
           <input
-            className="block w-full px-4 py-2 font-body-md text-body-md text-on-surface bg-surface-container border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
+            className={INPUT_CLASS}
             placeholder={t("searchPlaceholder")}
             value={query}
             onChange={(e) => setQuery(e.target.value)}

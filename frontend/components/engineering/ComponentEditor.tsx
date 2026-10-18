@@ -19,7 +19,9 @@ import { SavingOverlay } from "@/components/ui/SavingOverlay";
 import { PendingRelations, toRelationInputs, type PendingRelation } from "@/components/knowledge/PendingRelations";
 import { effectiveVisibility, VisibilitySelect } from "@/components/knowledge/VisibilitySelect";
 import { ProjectSelect } from "@/components/knowledge/ProjectSelect";
+import { INPUT_CLASS } from "@/components/ui/inputStyles";
 import { useRouter } from "@/i18n/navigation";
+import { errorMessage } from "@/lib/errors";
 import { useSaveOnce } from "@/lib/useSaveOnce";
 import { addAccessGrant, removeAccessGrant } from "@/lib/api/accessGrants";
 import {
@@ -47,8 +49,6 @@ import { COMPONENT_STATUS_ICONS, CONDITION_ICONS, INVENTORY_TYPE_ICONS, STOCK_ST
 
 const STATUS_VALUES: ComponentStatus[] = ["CERTIFIED", "TESTING", "DEPRECATED"];
 
-const INPUT_CLASS =
-  "block w-full px-4 py-2 font-body-md text-body-md text-on-surface bg-surface-container border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors";
 const FIELD_LABEL_CLASS = "block font-label-caps text-label-caps text-on-surface-variant uppercase mb-2";
 
 interface ComponentEditorProps {
@@ -124,7 +124,7 @@ export function ComponentEditor({ component, onDirtyChange, initialProjectId = n
     try {
       setPhoto(await uploadFile(file, { onProgress: setPhotoUploadProgress }));
     } catch (err) {
-      setPhotoError(err instanceof Error ? err.message : String(err));
+      setPhotoError(errorMessage(err));
     } finally {
       setPhotoUploadProgress(null);
     }
@@ -227,7 +227,7 @@ export function ComponentEditor({ component, onDirtyChange, initialProjectId = n
         router.push(`/components/${saved.id}`);
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(errorMessage(err));
     }
   }
 
@@ -294,7 +294,7 @@ export function ComponentEditor({ component, onDirtyChange, initialProjectId = n
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <ChangedIndicator changed={fieldChanged.manufacturer}>
             <input
-              className="block w-full px-4 py-2 font-body-md text-body-md text-on-surface bg-surface-container border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
+              className={INPUT_CLASS}
               placeholder={t("manufacturerPlaceholder")}
               value={manufacturer}
               onChange={(e) => setManufacturer(e.target.value)}
@@ -311,7 +311,7 @@ export function ComponentEditor({ component, onDirtyChange, initialProjectId = n
           <ChangedIndicator changed={fieldChanged.link}>
             <input
               type="url"
-              className="block w-full px-4 py-2 font-body-md text-body-md text-on-surface bg-surface-container border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
+              className={INPUT_CLASS}
               placeholder={t("linkPlaceholder")}
               value={link}
               onChange={(e) => setLink(e.target.value)}
