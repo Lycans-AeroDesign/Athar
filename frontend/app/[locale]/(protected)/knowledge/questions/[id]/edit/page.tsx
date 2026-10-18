@@ -2,16 +2,17 @@
 
 import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { QuestionEditor } from "@/components/knowledge/QuestionEditor";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { DetailMessage } from "@/components/ui/DetailMessage";
 import { Icon } from "@/components/ui/Icon";
 import { Link, useRouter } from "@/i18n/navigation";
 import { getQuestion } from "@/lib/api/knowledge";
-import type { QuestionDetail } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { useHasPermission } from "@/lib/auth/permissions";
+import { useResource } from "@/lib/useResource";
 
 export default function EditQuestionPage() {
   const { id } = useParams<{ id: string }>();
@@ -25,20 +26,15 @@ export default function EditQuestionPage() {
   // update_question enforces via _require_owner_or_permission.
   const canModerate = useHasPermission("question.moderate");
 
-  const [question, setQuestion] = useState<QuestionDetail | null>(null);
-  const [notFound, setNotFound] = useState(false);
+  const { data: question, notFound } = useResource(id, getQuestion);
   const [isDirty, setIsDirty] = useState(false);
   const [confirmLeaveOpen, setConfirmLeaveOpen] = useState(false);
 
-  useEffect(() => {
-    getQuestion(id).then(setQuestion, () => setNotFound(true));
-  }, [id]);
-
   if (notFound) {
-    return <p className="font-body-md text-body-md text-error">{t("notFound")}</p>;
+    return <DetailMessage error>{t("notFound")}</DetailMessage>;
   }
   if (!question) {
-    return <p className="font-body-md text-body-md text-on-surface-variant">{t("loading")}</p>;
+    return <DetailMessage>{t("loading")}</DetailMessage>;
   }
 
   const canEdit =

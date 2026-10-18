@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { TEST_PASS_FAIL_CLASSES, TEST_STATUS_CLASSES } from "@/components/engineering/statusClasses";
 import { Attachments } from "@/components/knowledge/Attachments";
@@ -10,15 +10,16 @@ import { ContributorsRow } from "@/components/knowledge/Contributors";
 import { RelatedContent } from "@/components/knowledge/RelatedContent";
 import { BookmarkButton } from "@/components/ui/BookmarkButton";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { DetailMessage } from "@/components/ui/DetailMessage";
 import { Icon } from "@/components/ui/Icon";
 import { IconButton } from "@/components/ui/IconButton";
 import { Markdown } from "@/components/ui/Markdown";
 import { Link, useRouter } from "@/i18n/navigation";
 import { deleteTest, getTest } from "@/lib/api/engineering";
-import type { TestDetail } from "@/lib/api/types";
 import { useHasPermission } from "@/lib/auth/permissions";
 import { errorMessage } from "@/lib/errors";
 import { formatCalendarDate } from "@/lib/format";
+import { useResource } from "@/lib/useResource";
 
 export default function TestDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -30,20 +31,15 @@ export default function TestDetailPage() {
   const canUpdate = useHasPermission("test.update");
   const canDelete = useHasPermission("test.delete");
 
-  const [test, setTest] = useState<TestDetail | null>(null);
-  const [notFound, setNotFound] = useState(false);
+  const { data: test, notFound } = useResource(id, getTest);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
-  useEffect(() => {
-    getTest(id).then(setTest, () => setNotFound(true));
-  }, [id]);
-
   if (notFound) {
-    return <p className="font-body-md text-body-md text-error">{t("notFound")}</p>;
+    return <DetailMessage error>{t("notFound")}</DetailMessage>;
   }
   if (!test) {
-    return <p className="font-body-md text-body-md text-on-surface-variant">{t("loading")}</p>;
+    return <DetailMessage>{t("loading")}</DetailMessage>;
   }
 
   async function handleDelete() {

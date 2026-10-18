@@ -2,16 +2,17 @@
 
 import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { DocumentEditor } from "@/components/engineering/DocumentEditor";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { DetailMessage } from "@/components/ui/DetailMessage";
 import { Icon } from "@/components/ui/Icon";
 import { Link, useRouter } from "@/i18n/navigation";
 import { getDocument } from "@/lib/api/documents";
-import type { DocumentDetail } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { useHasPermission } from "@/lib/auth/permissions";
+import { useResource } from "@/lib/useResource";
 
 export default function EditDocumentPage() {
   const { id } = useParams<{ id: string }>();
@@ -22,20 +23,15 @@ export default function EditDocumentPage() {
   const canUpdateAny = useHasPermission("document.update");
   const router = useRouter();
 
-  const [document, setDocument] = useState<DocumentDetail | null>(null);
-  const [notFound, setNotFound] = useState(false);
+  const { data: document, notFound } = useResource(id, getDocument);
   const [isDirty, setIsDirty] = useState(false);
   const [confirmLeaveOpen, setConfirmLeaveOpen] = useState(false);
 
-  useEffect(() => {
-    getDocument(id).then(setDocument, () => setNotFound(true));
-  }, [id]);
-
   if (notFound) {
-    return <p className="font-body-md text-body-md text-error">{t("notFound")}</p>;
+    return <DetailMessage error>{t("notFound")}</DetailMessage>;
   }
   if (!document) {
-    return <p className="font-body-md text-body-md text-on-surface-variant">{t("loading")}</p>;
+    return <DetailMessage>{t("loading")}</DetailMessage>;
   }
   const canEdit = user?.id === document.created_by?.id || canUpdateAny;
   if (!canEdit) {

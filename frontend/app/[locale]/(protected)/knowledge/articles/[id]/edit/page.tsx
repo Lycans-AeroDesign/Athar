@@ -2,16 +2,17 @@
 
 import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { ArticleEditor } from "@/components/knowledge/ArticleEditor";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { DetailMessage } from "@/components/ui/DetailMessage";
 import { Icon } from "@/components/ui/Icon";
 import { Link, useRouter } from "@/i18n/navigation";
 import { getArticle } from "@/lib/api/knowledge";
-import type { ArticleDetail } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { useHasPermission } from "@/lib/auth/permissions";
+import { useResource } from "@/lib/useResource";
 
 export default function EditArticlePage() {
   const { id } = useParams<{ id: string }>();
@@ -22,20 +23,15 @@ export default function EditArticlePage() {
   const router = useRouter();
   const canUpdateAny = useHasPermission("article.update");
 
-  const [article, setArticle] = useState<ArticleDetail | null>(null);
-  const [notFound, setNotFound] = useState(false);
+  const { data: article, notFound } = useResource(id, getArticle);
   const [isDirty, setIsDirty] = useState(false);
   const [confirmLeaveOpen, setConfirmLeaveOpen] = useState(false);
 
-  useEffect(() => {
-    getArticle(id).then(setArticle, () => setNotFound(true));
-  }, [id]);
-
   if (notFound) {
-    return <p className="font-body-md text-body-md text-error">{t("notFound")}</p>;
+    return <DetailMessage error>{t("notFound")}</DetailMessage>;
   }
   if (!article) {
-    return <p className="font-body-md text-body-md text-on-surface-variant">{t("loading")}</p>;
+    return <DetailMessage>{t("loading")}</DetailMessage>;
   }
 
   const canEdit =

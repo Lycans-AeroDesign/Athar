@@ -2,15 +2,16 @@
 
 import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { TestEditor } from "@/components/engineering/TestEditor";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { DetailMessage } from "@/components/ui/DetailMessage";
 import { Icon } from "@/components/ui/Icon";
 import { Link, useRouter } from "@/i18n/navigation";
 import { getTest } from "@/lib/api/engineering";
-import type { TestDetail } from "@/lib/api/types";
 import { useHasPermission } from "@/lib/auth/permissions";
+import { useResource } from "@/lib/useResource";
 
 export default function EditTestPage() {
   const { id } = useParams<{ id: string }>();
@@ -20,20 +21,15 @@ export default function EditTestPage() {
   const router = useRouter();
   const canUpdate = useHasPermission("test.update");
 
-  const [test, setTest] = useState<TestDetail | null>(null);
-  const [notFound, setNotFound] = useState(false);
+  const { data: test, notFound } = useResource(id, getTest);
   const [isDirty, setIsDirty] = useState(false);
   const [confirmLeaveOpen, setConfirmLeaveOpen] = useState(false);
 
-  useEffect(() => {
-    getTest(id).then(setTest, () => setNotFound(true));
-  }, [id]);
-
   if (notFound) {
-    return <p className="font-body-md text-body-md text-error">{t("notFound")}</p>;
+    return <DetailMessage error>{t("notFound")}</DetailMessage>;
   }
   if (!test) {
-    return <p className="font-body-md text-body-md text-on-surface-variant">{t("loading")}</p>;
+    return <DetailMessage>{t("loading")}</DetailMessage>;
   }
   if (!canUpdate) {
     return <p className="font-body-md text-body-md text-on-surface-variant">{t("editPermissionRequired")}</p>;

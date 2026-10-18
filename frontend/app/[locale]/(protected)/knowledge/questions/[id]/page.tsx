@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { Can } from "@/components/auth/Can";
 import { QuestionStatusPill } from "@/components/knowledge/QuestionStatusPill";
@@ -13,6 +13,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { BookmarkButton } from "@/components/ui/BookmarkButton";
 import { Button } from "@/components/ui/Button";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { DetailMessage } from "@/components/ui/DetailMessage";
 import { Icon } from "@/components/ui/Icon";
 import { IconButton } from "@/components/ui/IconButton";
 import { Markdown } from "@/components/ui/Markdown";
@@ -33,9 +34,9 @@ import {
   promoteQuestion,
   reopenQuestion,
 } from "@/lib/api/knowledge";
-import type { QuestionDetail } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { useHasPermission } from "@/lib/auth/permissions";
+import { useResource } from "@/lib/useResource";
 
 export default function QuestionDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -45,8 +46,7 @@ export default function QuestionDetailPage() {
   const canModerate = useHasPermission("question.moderate");
   const canCreateArticle = useHasPermission("article.create");
 
-  const [question, setQuestion] = useState<QuestionDetail | null>(null);
-  const [notFound, setNotFound] = useState(false);
+  const { data: question, setData: setQuestion, notFound } = useResource(id, getQuestion);
   const [newAnswerBody, setNewAnswerBody] = useState("");
   const [isSubmittingAnswer, setIsSubmittingAnswer] = useState(false);
   const [workingAnswerId, setWorkingAnswerId] = useState<string | null>(null);
@@ -54,15 +54,11 @@ export default function QuestionDetailPage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
-  useEffect(() => {
-    getQuestion(id).then(setQuestion, () => setNotFound(true));
-  }, [id]);
-
   if (notFound) {
-    return <p className="font-body-md text-body-md text-error">{t("notFound")}</p>;
+    return <DetailMessage error>{t("notFound")}</DetailMessage>;
   }
   if (!question) {
-    return <p className="font-body-md text-body-md text-on-surface-variant">{t("loading")}</p>;
+    return <DetailMessage>{t("loading")}</DetailMessage>;
   }
 
   const canManage = user?.id === question.author?.id || canModerate;

@@ -13,6 +13,7 @@ import { BookmarkButton } from "@/components/ui/BookmarkButton";
 import { Button } from "@/components/ui/Button";
 import { CategoryBadge } from "@/components/ui/CategoryBadge";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { DetailMessage } from "@/components/ui/DetailMessage";
 import { Icon } from "@/components/ui/Icon";
 import { IconButton } from "@/components/ui/IconButton";
 import { Markdown } from "@/components/ui/Markdown";
@@ -34,10 +35,11 @@ import {
   submitArticle,
   unarchiveArticle,
 } from "@/lib/api/knowledge";
-import type { ArticleDetail, ArticleRevision } from "@/lib/api/types";
+import type { ArticleRevision } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { useHasPermission } from "@/lib/auth/permissions";
 import { extractHeadings } from "@/lib/toc";
+import { useResource } from "@/lib/useResource";
 
 export default function ArticleDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -50,8 +52,7 @@ export default function ArticleDetailPage() {
   const canReview = useHasPermission("article.review");
   const canArchive = useHasPermission("article.archive");
 
-  const [article, setArticle] = useState<ArticleDetail | null>(null);
-  const [notFound, setNotFound] = useState(false);
+  const { data: article, setData: setArticle, notFound } = useResource(id, getArticle);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [rejectOpen, setRejectOpen] = useState(false);
@@ -59,10 +60,6 @@ export default function ArticleDetailPage() {
   const [revisions, setRevisions] = useState<ArticleRevision[] | null>(null);
   const [isWorking, setIsWorking] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
-
-  useEffect(() => {
-    getArticle(id).then(setArticle, () => setNotFound(true));
-  }, [id]);
 
   useEffect(() => {
     if (!article) return;
@@ -77,10 +74,10 @@ export default function ArticleDetailPage() {
   const headings = useMemo(() => (article ? extractHeadings(article.content) : []), [article]);
 
   if (notFound) {
-    return <p className="font-body-md text-body-md text-error">{t("notFound")}</p>;
+    return <DetailMessage error>{t("notFound")}</DetailMessage>;
   }
   if (!article) {
-    return <p className="font-body-md text-body-md text-on-surface-variant">{t("loading")}</p>;
+    return <DetailMessage>{t("loading")}</DetailMessage>;
   }
 
   // Co-authors share the author's edit/submit rights (backend visibility.is_owner_of).

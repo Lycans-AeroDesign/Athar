@@ -2,12 +2,13 @@
 
 import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { ContributorsRow } from "@/components/knowledge/Contributors";
 import { RelatedContent } from "@/components/knowledge/RelatedContent";
 import { BookmarkButton } from "@/components/ui/BookmarkButton";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { DetailMessage } from "@/components/ui/DetailMessage";
 import { FilePreviewModal } from "@/components/ui/FilePreviewModal";
 import { Icon } from "@/components/ui/Icon";
 import { IconButton } from "@/components/ui/IconButton";
@@ -15,11 +16,11 @@ import { Markdown } from "@/components/ui/Markdown";
 import { Link, useRouter } from "@/i18n/navigation";
 import { deleteDocument, getDocument } from "@/lib/api/documents";
 import { downloadFile } from "@/lib/api/files";
-import type { DocumentDetail } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { useHasPermission } from "@/lib/auth/permissions";
 import { errorMessage } from "@/lib/errors";
 import { formatCalendarDate } from "@/lib/format";
+import { useResource } from "@/lib/useResource";
 
 export default function DocumentDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -30,21 +31,16 @@ export default function DocumentDetailPage() {
   const canUpdateAny = useHasPermission("document.update");
   const router = useRouter();
 
-  const [document, setDocument] = useState<DocumentDetail | null>(null);
-  const [notFound, setNotFound] = useState(false);
+  const { data: document, notFound } = useResource(id, getDocument);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
-  useEffect(() => {
-    getDocument(id).then(setDocument, () => setNotFound(true));
-  }, [id]);
-
   if (notFound) {
-    return <p className="font-body-md text-body-md text-error">{t("notFound")}</p>;
+    return <DetailMessage error>{t("notFound")}</DetailMessage>;
   }
   if (!document) {
-    return <p className="font-body-md text-body-md text-on-surface-variant">{t("loading")}</p>;
+    return <DetailMessage>{t("loading")}</DetailMessage>;
   }
 
   // Ownership-or-document.update, mirroring update_document/delete_document's

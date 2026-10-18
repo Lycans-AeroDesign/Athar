@@ -2,15 +2,16 @@
 
 import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { ProjectEditor } from "@/components/engineering/ProjectEditor";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { DetailMessage } from "@/components/ui/DetailMessage";
 import { Icon } from "@/components/ui/Icon";
 import { Link, useRouter } from "@/i18n/navigation";
 import { getProject } from "@/lib/api/engineering";
-import type { ProjectDetail } from "@/lib/api/types";
 import { useHasPermission } from "@/lib/auth/permissions";
+import { useResource } from "@/lib/useResource";
 
 export default function EditProjectPage() {
   const { id } = useParams<{ id: string }>();
@@ -20,20 +21,15 @@ export default function EditProjectPage() {
   const router = useRouter();
   const canUpdate = useHasPermission("project.update");
 
-  const [project, setProject] = useState<ProjectDetail | null>(null);
-  const [notFound, setNotFound] = useState(false);
+  const { data: project, notFound } = useResource(id, getProject);
   const [isDirty, setIsDirty] = useState(false);
   const [confirmLeaveOpen, setConfirmLeaveOpen] = useState(false);
 
-  useEffect(() => {
-    getProject(id).then(setProject, () => setNotFound(true));
-  }, [id]);
-
   if (notFound) {
-    return <p className="font-body-md text-body-md text-error">{t("notFound")}</p>;
+    return <DetailMessage error>{t("notFound")}</DetailMessage>;
   }
   if (!project) {
-    return <p className="font-body-md text-body-md text-on-surface-variant">{t("loading")}</p>;
+    return <DetailMessage>{t("loading")}</DetailMessage>;
   }
   if (!canUpdate) {
     return <p className="font-body-md text-body-md text-on-surface-variant">{t("editPermissionRequired")}</p>;

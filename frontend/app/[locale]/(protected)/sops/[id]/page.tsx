@@ -2,22 +2,23 @@
 
 import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { Attachments } from "@/components/knowledge/Attachments";
 import { ContributorsRow } from "@/components/knowledge/Contributors";
 import { RelatedContent } from "@/components/knowledge/RelatedContent";
 import { BookmarkButton } from "@/components/ui/BookmarkButton";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { DetailMessage } from "@/components/ui/DetailMessage";
 import { Icon } from "@/components/ui/Icon";
 import { IconButton } from "@/components/ui/IconButton";
 import { Markdown } from "@/components/ui/Markdown";
 import { TagChip } from "@/components/ui/TagChip";
 import { Link, useRouter } from "@/i18n/navigation";
 import { deleteSop, getSop } from "@/lib/api/engineering";
-import type { SopDetail } from "@/lib/api/types";
 import { useHasPermission } from "@/lib/auth/permissions";
 import { errorMessage } from "@/lib/errors";
+import { useResource } from "@/lib/useResource";
 
 export default function SopDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -26,20 +27,15 @@ export default function SopDetailPage() {
   const canUpdate = useHasPermission("sop.update");
   const canDelete = useHasPermission("sop.delete");
 
-  const [sop, setSop] = useState<SopDetail | null>(null);
-  const [notFound, setNotFound] = useState(false);
+  const { data: sop, notFound } = useResource(id, getSop);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
-  useEffect(() => {
-    getSop(id).then(setSop, () => setNotFound(true));
-  }, [id]);
-
   if (notFound) {
-    return <p className="font-body-md text-body-md text-error">{t("notFound")}</p>;
+    return <DetailMessage error>{t("notFound")}</DetailMessage>;
   }
   if (!sop) {
-    return <p className="font-body-md text-body-md text-on-surface-variant">{t("loading")}</p>;
+    return <DetailMessage>{t("loading")}</DetailMessage>;
   }
 
   async function handleDelete() {

@@ -12,6 +12,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { CategoryBadge } from "@/components/ui/CategoryBadge";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { DetailMessage } from "@/components/ui/DetailMessage";
 import { Icon } from "@/components/ui/Icon";
 import { IconButton } from "@/components/ui/IconButton";
 import { Markdown } from "@/components/ui/Markdown";
@@ -30,9 +31,10 @@ import {
   submitCourse,
   unarchiveCourse,
 } from "@/lib/api/training";
-import type { CourseDetail, CourseProgress } from "@/lib/api/types";
+import type { CourseProgress } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { useHasPermission } from "@/lib/auth/permissions";
+import { useResource } from "@/lib/useResource";
 
 export default function CourseDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -49,19 +51,14 @@ export default function CourseDetailPage() {
   const canReview = useHasPermission("training.review");
   const canArchive = useHasPermission("training.archive");
 
-  const [course, setCourse] = useState<CourseDetail | null>(null);
+  const { data: course, setData: setCourse, notFound } = useResource(id, getCourse);
   const [progress, setProgress] = useState<CourseProgress | null>(null);
-  const [notFound, setNotFound] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [isWorking, setIsWorking] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
-
-  useEffect(() => {
-    getCourse(id).then(setCourse, () => setNotFound(true));
-  }, [id]);
 
   useEffect(() => {
     if (!course) return;
@@ -74,10 +71,10 @@ export default function CourseDetailPage() {
   const completedLessonIds = useMemo(() => new Set(progress?.completed_lesson_ids ?? []), [progress]);
 
   if (notFound) {
-    return <p className="font-body-md text-body-md text-error">{t("notFound")}</p>;
+    return <DetailMessage error>{t("notFound")}</DetailMessage>;
   }
   if (!course) {
-    return <p className="font-body-md text-body-md text-on-surface-variant">{t("loading")}</p>;
+    return <DetailMessage>{t("loading")}</DetailMessage>;
   }
 
   const isAuthor = user?.id === course.author?.id;

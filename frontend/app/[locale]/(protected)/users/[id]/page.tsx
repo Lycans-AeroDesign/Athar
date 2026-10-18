@@ -2,32 +2,27 @@
 
 import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
 
 import { ContributionsPanel } from "@/components/knowledge/ContributionsPanel";
 import { Avatar } from "@/components/ui/Avatar";
+import { DetailMessage } from "@/components/ui/DetailMessage";
 import { Icon } from "@/components/ui/Icon";
 import { getUserProfile } from "@/lib/api/knowledge";
-import type { UserProfile } from "@/lib/api/types";
 import { formatDate } from "@/lib/datetime";
 import { formatPersonName } from "@/lib/format";
+import { useResource } from "@/lib/useResource";
 
 export default function UserProfilePage() {
   const { id } = useParams<{ id: string }>();
   const t = useTranslations("userProfile");
 
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [notFound, setNotFound] = useState(false);
-
-  useEffect(() => {
-    getUserProfile(id).then(setProfile, () => setNotFound(true));
-  }, [id]);
+  const { data: profile, notFound } = useResource(id, getUserProfile);
 
   if (notFound) {
-    return <p className="font-body-md text-body-md text-error">{t("notFound")}</p>;
+    return <DetailMessage error>{t("notFound")}</DetailMessage>;
   }
   if (!profile) {
-    return <p className="font-body-md text-body-md text-on-surface-variant">{t("loading")}</p>;
+    return <DetailMessage>{t("loading")}</DetailMessage>;
   }
 
   const name = formatPersonName(profile);
