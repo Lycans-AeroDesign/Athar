@@ -160,6 +160,7 @@ Follow the [Angular commit message conventions](https://github.com/angular/angul
 - Styling uses Tailwind CSS; follow existing class naming and responsive breakpoints.
 - Shared frontend helpers — use these rather than re-declaring them per file:
   - `errorMessage(err)` from `@/lib/errors` for turning a caught value into display text (instead of `err instanceof Error ? err.message : String(err)`).
+  - `useResource(id, getX)` from `@/lib/useResource` for a detail/edit page that loads one record by id (returns `{ data, setData, notFound }`), with `<DetailMessage>` from `@/components/ui/DetailMessage` for its "loading" / "not found" lines.
   - `INPUT_CLASS` from `@/components/ui/inputStyles` for a plain text input/textarea/select (matches `FloatingLabelInput`'s look).
   - `components/engineering/statusClasses.ts` for the failure/test/project status and severity pill colors, shared by the list tables and detail pages (`ComponentBadges.tsx` does the same for components).
   - `formatCalendarDate` from `@/lib/format` for plain `YYYY-MM-DD` dates and `formatDate`/`formatDateTime` from `@/lib/datetime` for UTC timestamps — don't define a local copy.
