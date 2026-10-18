@@ -7,6 +7,7 @@ updates:
     directory: /backend
     schedule:
       interval: weekly
+    open-pull-requests-limit: 5
     groups:
       python-minor-and-patch:
         update-types: [minor, patch]
@@ -15,9 +16,17 @@ updates:
     directory: /frontend
     schedule:
       interval: weekly
+    open-pull-requests-limit: 5
     groups:
       npm-minor-and-patch:
         update-types: [minor, patch]
+    ignore:
+      # Type definitions must track the Node version the images run (24), not the newest major.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+      # ESLint 10 breaks eslint-plugin-react (via eslint-config-next); revisit when it supports it.
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
     directory: /
