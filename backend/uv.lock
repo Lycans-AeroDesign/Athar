@@ -59,7 +59,7 @@ requires-dist = [
     { name = "django", specifier = ">=6.1" },
     { name = "django-cors-headers", specifier = ">=4.9.0" },
     { name = "django-environ", specifier = ">=0.14.0" },
-    { name = "django-storages", extras = ["s3"], specifier = ">=1.14.4" },
+    { name = "django-storages", extras = ["s3"], specifier = ">=1.14.6" },
     { name = "djangorestframework", specifier = ">=3.18.0" },
     { name = "djangorestframework-simplejwt", specifier = ">=5.5.1" },
     { name = "drf-spectacular", specifier = ">=0.30.0" },
