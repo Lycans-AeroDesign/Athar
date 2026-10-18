@@ -1,3 +1,14 @@
+## [1.15.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.14.0...v1.15.0) (2026-10-18)
+
+### Features
+
+* **backend:** add token reuse detection, tenant isolation tests, upload validation, data export and deletion, and opt-in error tracking ([80592dd](https://github.com/Lycans-AeroDesign/Athar/commit/80592dd58f4d64eddb79639ac6ce2cff6121b824))
+* **frontend:** add Privacy & data tab for data export and account deletion ([cb1c05f](https://github.com/Lycans-AeroDesign/Athar/commit/cb1c05fdbb2e99fc78f8fbf1eeb5e43a0e3aad1e))
+
+### Bug Fixes
+
+* **docker:** drop npm from the frontend runtime image ([674137c](https://github.com/Lycans-AeroDesign/Athar/commit/674137c9771cf5bb79c21833974ad650a3666e93))
+
 ## [1.14.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.13.1...v1.14.0) (2026-10-18)
 
 ### Features
