@@ -36,7 +36,12 @@ RUN --mount=type=cache,target=/app/.next/cache \
 # ---- prod: minimal runtime image, only the standalone server output ----
 FROM base AS prod
 ENV NODE_ENV=production
-RUN addgroup -S nodejs && adduser -S nextjs -G nodejs
+# The server starts with `node server.js`; npm and corepack aren't needed at runtime, and the copy
+# bundled in the base image carries its own dependencies (brace-expansion, undici, ...) that trip
+# image scans. Removing them keeps those out of the shipped image.
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+        /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack \
+    && addgroup -S nodejs && adduser -S nextjs -G nodejs
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
