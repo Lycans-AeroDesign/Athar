@@ -1,3 +1,9 @@
+## [1.14.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.13.1...v1.14.0) (2026-10-18)
+
+### Features
+
+* encrypt backups, tighten data privacy, and index hot queries ([3f36555](https://github.com/Lycans-AeroDesign/Athar/commit/3f3655554ef4139abfefbbf0f16a2bf88b78e330))
+
 ## [1.13.1](https://github.com/Lycans-AeroDesign/Athar/compare/v1.13.0...v1.13.1) (2026-10-14)
 
 ### Bug Fixes
