@@ -369,6 +369,7 @@ class AnswerWriteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Answer
         fields = ["body"]
+        extra_kwargs = {"body": {"required": True}}
 
 
 class QuestionListSerializer(serializers.ModelSerializer):

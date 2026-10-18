@@ -1,4 +1,7 @@
 from django.conf import settings
+from django.db import transaction
+from django.http import JsonResponse
+from django.utils import timezone
 from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import status
 from rest_framework.exceptions import AuthenticationFailed
@@ -8,6 +11,7 @@ from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
+from rest_framework_simplejwt.token_blacklist.models import OutstandingToken
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 
@@ -17,8 +21,10 @@ from config.pagination import paginated_response
 from core.shortcuts import org_object_or_404
 from rbac.permissions import require_permission
 
+from .data_export import build_user_export
 from .models import InvitationCode, User
 from .serializers import (
+    AccountDeleteSerializer,
     CustomTokenObtainPairSerializer,
     InvitationCodeCreateSerializer,
     InvitationCodeSerializer,
@@ -35,10 +41,13 @@ from .serializers import (
 )
 from .services import (
     create_invitation_code,
+    delete_own_account,
     create_password_reset_link,
     get_valid_password_reset_link,
+    handle_refresh_token_reuse,
     register_user,
     reset_password_with_link,
+    RotationProbeToken,
     send_password_reset_email,
     revoke_invitation_code,
     update_own_profile,
@@ -117,17 +126,67 @@ class RefreshView(APIView):
         if not refresh_token:
             raise AuthenticationFailed("No refresh token cookie present.")
 
-        serializer = TokenRefreshSerializer(data={"refresh": refresh_token})
         try:
-            serializer.is_valid(raise_exception=True)
+            probe = RotationProbeToken(refresh_token)
         except TokenError as exc:
             raise AuthenticationFailed(str(exc)) from exc
+
+        # Locking the token's row makes concurrent refreshes with the same cookie take turns, so
+        # only the first rotates it; the rest then see it blacklisted.
+        rejection = None
+        with transaction.atomic():
+            OutstandingToken.objects.select_for_update().filter(jti=probe.payload["jti"]).first()
+            serializer = TokenRefreshSerializer(data={"refresh": refresh_token})
+            try:
+                serializer.is_valid(raise_exception=True)
+            except TokenError as exc:
+                rejection = exc
+        if rejection is not None:
+            handle_refresh_token_reuse(probe, request=request)
+            raise AuthenticationFailed(str(rejection)) from rejection
 
         data = dict(serializer.validated_data)
         rotated_refresh = data.pop("refresh", None)
         response = Response(data, status=status.HTTP_200_OK)
         if rotated_refresh:
             _set_refresh_cookie(response, rotated_refresh)
+        return response
+
+
+class MyDataExportView(APIView):
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "auth"
+
+    @extend_schema(
+        tags=["Auth"],
+        summary="Download everything Athar holds about the current user as a JSON file",
+        responses={200: OpenApiResponse(description="A JSON attachment."), 401: UNAUTHORIZED},
+    )
+    def get(self, request, *args, **kwargs):
+        log_action(actor=request.user, action="account.export", request=request)
+        response = JsonResponse(build_user_export(request.user), json_dumps_params={"indent": 2})
+        response["Content-Disposition"] = f'attachment; filename="athar-my-data-{timezone.now():%Y%m%d}.json"'
+        return response
+
+
+class MyAccountDeleteView(APIView):
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "auth"
+
+    @extend_schema(
+        tags=["Auth"],
+        summary="Permanently delete the current user's own account (requires their password)",
+        request=AccountDeleteSerializer,
+        responses={204: OpenApiResponse(description="Deleted."), 400: BAD_REQUEST, 401: UNAUTHORIZED},
+    )
+    def post(self, request, *args, **kwargs):
+        serializer = AccountDeleteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        delete_own_account(user=request.user, password=serializer.validated_data["password"], request=request)
+        response = Response(status=status.HTTP_204_NO_CONTENT)
+        _clear_refresh_cookie(response)
         return response
 
 

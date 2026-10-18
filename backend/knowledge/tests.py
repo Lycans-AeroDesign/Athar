@@ -233,6 +233,24 @@ class QuestionAndAnswerTests(KnowledgeTestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertFalse(response.data["is_accepted"])
 
+    def test_answer_without_a_body_is_a_validation_error(self):
+        asker, asker_access = self._login_with_role("asker-nobody@example.com", "Member")
+        question = self.client.post(
+            reverse("knowledge-question-list-create"),
+            {"title": "Why does it beep?", "body": "It beeps a lot."},
+            format="json",
+            **self._auth(asker_access),
+        ).data
+
+        response = self.client.post(
+            reverse("knowledge-answer-list-create", args=[question["id"]]),
+            {},
+            format="json",
+            **self._auth(asker_access),
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
     def test_accept_only_by_question_author_or_moderator_and_replaces_previous(self):
         asker, asker_access = self._login_with_role("asker2@example.com", "Member")
         question = self.client.post(

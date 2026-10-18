@@ -4,6 +4,7 @@ from rest_framework import serializers
 from rbac.models import Permission
 
 from .models import StoredFile
+from .validation import validate_upload
 
 
 class StoredFileSerializer(serializers.ModelSerializer):
@@ -47,4 +48,6 @@ class StoredFileUploadInputSerializer(serializers.Serializer):
                 f"File too large ({uploaded_file.size / (1024 * 1024):.1f}MB) - "
                 f"the limit is {settings.MAX_UPLOAD_SIZE_MB}MB."
             )
+        # Stored as the allowlist's canonical type, never the client-supplied one.
+        uploaded_file.content_type = validate_upload(uploaded_file)
         return uploaded_file

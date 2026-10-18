@@ -6,6 +6,8 @@ from .views import (
     LoginView,
     LogoutView,
     MeView,
+    MyAccountDeleteView,
+    MyDataExportView,
     PasswordResetCheckView,
     PasswordResetConfirmView,
     PasswordResetRequestView,
@@ -20,6 +22,8 @@ urlpatterns = [
     path("refresh/", RefreshView.as_view(), name="auth-refresh"),
     path("logout/", LogoutView.as_view(), name="auth-logout"),
     path("me/", MeView.as_view(), name="auth-me"),
+    path("me/export/", MyDataExportView.as_view(), name="auth-me-export"),
+    path("me/delete/", MyAccountDeleteView.as_view(), name="auth-me-delete"),
     path("invitations/", InvitationCodeListCreateView.as_view(), name="auth-invitation-list-create"),
     path("invitations/<uuid:pk>/revoke/", InvitationCodeRevokeView.as_view(), name="auth-invitation-revoke"),
     path(

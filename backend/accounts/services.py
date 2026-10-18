@@ -10,6 +10,8 @@ from django.db import transaction
 from django.template.loader import render_to_string
 from django.utils import timezone
 from rest_framework.exceptions import PermissionDenied, ValidationError
+from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
+from rest_framework_simplejwt.tokens import RefreshToken
 
 from audit.services import log_action
 from files.services import confirm_stored_files
@@ -18,6 +20,7 @@ from rbac.models import Role
 from .models import InvitationCode, PasswordResetLink, User
 
 logger = logging.getLogger(__name__)
+security_logger = logging.getLogger("athar.security")
 
 
 def consume_invitation_code(code: str) -> InvitationCode:
@@ -355,3 +358,88 @@ def reset_password_with_link(*, link: PasswordResetLink, password: str, request=
             BlacklistedToken.objects.get_or_create(token=outstanding)
         log_action(actor=user, action="user.password_reset", target=user, request=request)
     return user
+
+
+class RotationProbeToken(RefreshToken):
+    """A refresh token that is verified (signature, expiry, type) but not rejected for being
+    blacklisted, so a replayed, already-rotated token can still be identified."""
+
+    def check_blacklist(self) -> None:
+        return None
+
+
+def revoke_all_refresh_tokens(user: User) -> int:
+    """Blacklists every outstanding, unexpired refresh token of `user` (all their sessions)."""
+    live = list(
+        OutstandingToken.objects.filter(user=user, expires_at__gt=timezone.now()).exclude(
+            blacklistedtoken__isnull=False
+        )
+    )
+    BlacklistedToken.objects.bulk_create([BlacklistedToken(token=token) for token in live], ignore_conflicts=True)
+    return len(live)
+
+
+def handle_refresh_token_reuse(probe: RotationProbeToken, *, request=None) -> bool:
+    """Called when a refresh was rejected. If `probe` is a token that was already rotated or logged
+    out, the cookie was copied somewhere: revoke all of the user's sessions and audit it. A replay
+    within JWT_REFRESH_REUSE_GRACE_SECONDS of the rotation is a benign race (e.g. two tabs) and
+    only fails that request. Returns True when sessions were revoked."""
+    blacklisted = (
+        BlacklistedToken.objects.filter(token__jti=probe.payload["jti"]).select_related("token__user").first()
+    )
+    if blacklisted is None:
+        return False
+    age = (timezone.now() - blacklisted.blacklisted_at).total_seconds()
+    if age <= settings.JWT_REFRESH_REUSE_GRACE_SECONDS:
+        return False
+    user = blacklisted.token.user
+    if user is None:
+        return False
+    revoked = revoke_all_refresh_tokens(user)
+    log_action(
+        actor=user,
+        action="auth.refresh_reuse",
+        target=user,
+        metadata={"revoked_sessions": revoked},
+        request=request,
+    )
+    security_logger.error("Refresh token reuse detected for user %s; revoked %s sessions", user.pk, revoked)
+    return True
+
+
+def delete_own_account(*, user: User, password: str, request=None) -> None:
+    """Permanently deletes the user's own account after re-checking their password.
+
+    Their authored content stays with the organization with the author cleared (the FKs are
+    SET_NULL); personal records (bookmarks, enrollments, grants, role links) are deleted with them.
+    The IP address and browser of their audit entries are erased now rather than at the retention
+    deadline, and their sessions are revoked. Refused for the organization's only admin, who would
+    otherwise leave it unmanageable."""
+    if not user.check_password(password):
+        raise ValidationError({"password": "That password is incorrect."})
+    if user.has_permission("organization.manage"):
+        other_admins = [
+            other
+            for other in User.objects.filter(organization=user.organization, is_active=True).exclude(pk=user.pk)
+            if other.has_permission("organization.manage")
+        ]
+        if not other_admins:
+            raise ValidationError("You're this organization's only admin. Give someone else the admin role first.")
+
+    from audit.models import AuditLog
+
+    with transaction.atomic():
+        revoke_all_refresh_tokens(user)
+        AuditLog.objects.filter(actor=user).update(ip_address=None, user_agent="")
+        # The entry keeps the id only (no email or name), and its actor is cleared by the delete.
+        log_action(
+            actor=None,
+            action="account.delete",
+            metadata={"user_id": str(user.pk)},
+            request=request,
+            organization=user.organization,
+        )
+        if user.profile_picture_id:
+            user.profile_picture.file.delete(save=False)
+            user.profile_picture.delete()
+        user.delete()

@@ -1,19 +1,27 @@
+import datetime
+import json
+import threading
 from unittest.mock import patch
 
 from django.conf import settings
+from django.contrib.contenttypes.models import ContentType
 from django.core import mail
 from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
 
-from django.test import override_settings
+from django.db import connection
+from django.test import TransactionTestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework import status
-from rest_framework.test import APITestCase
+from rest_framework.test import APIClient, APITestCase
 from rest_framework.throttling import ScopedRateThrottle
+from rest_framework_simplejwt.tokens import RefreshToken
 
+from audit.models import AuditLog
 from core.testing import RoleLoginMixin, create_test_organization
 from files.models import StoredFile
+from knowledge.models import Article, Bookmark
 from rbac.models import Permission, Role
 
 from .models import InvitationCode, PasswordResetLink, User
@@ -805,3 +813,249 @@ class PasswordResetLinkTests(APITestCase):
         self.assertIn('href="http://app.example.com"', html)
         self.assertNotIn("github.com", html)
         self.assertIn("Sent by Athar", mail.outbox[0].body)
+
+
+def _login_client(email: str, password: str = "password123") -> APIClient:
+    """A client holding a fresh refresh cookie for `email` (one browser session)."""
+    client = APIClient()
+    response = client.post(reverse("auth-login"), {"email": email, "password": password}, format="json")
+    assert response.status_code == 200, response.data
+    return client
+
+
+def _refresh_cookie(client: APIClient) -> str:
+    return client.cookies[settings.JWT_REFRESH_COOKIE_NAME].value
+
+
+class RefreshTokenSecurityTests(APITestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.organization = create_test_organization()
+        cls.user = User.objects.create_user(email="rt@example.com", password="password123", organization=cls.organization)
+        cls.other_user = User.objects.create_user(
+            email="rt-other@example.com", password="password123", organization=cls.organization
+        )
+
+    def _refresh_with(self, cookie: str):
+        client = APIClient()
+        client.cookies[settings.JWT_REFRESH_COOKIE_NAME] = cookie
+        return client.post(reverse("auth-refresh"))
+
+    def test_refresh_rotates_the_cookie_and_returns_an_access_token(self):
+        client = _login_client("rt@example.com")
+        old_cookie = _refresh_cookie(client)
+
+        response = client.post(reverse("auth-refresh"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("access", response.data)
+        self.assertNotEqual(_refresh_cookie(client), old_cookie)
+
+    def test_expired_refresh_token_is_rejected(self):
+        token = RefreshToken.for_user(self.user)
+        token.set_exp(lifetime=-datetime.timedelta(seconds=5))
+
+        self.assertEqual(self._refresh_with(str(token)).status_code, 401)
+
+    def test_garbage_cookie_is_rejected_without_revoking_sessions(self):
+        session = _login_client("rt@example.com")
+
+        self.assertEqual(self._refresh_with("not-a-token").status_code, 401)
+        self.assertEqual(session.post(reverse("auth-refresh")).status_code, 200)
+
+    def test_logout_blacklists_the_refresh_token(self):
+        client = _login_client("rt@example.com")
+        cookie = _refresh_cookie(client)
+
+        self.assertEqual(client.post(reverse("auth-logout")).status_code, 204)
+
+        self.assertEqual(self._refresh_with(cookie).status_code, 401)
+
+    def test_replaying_a_rotated_token_after_the_grace_window_revokes_every_session(self):
+        stolen_session = _login_client("rt@example.com")
+        other_device = _login_client("rt@example.com")
+        old_cookie = _refresh_cookie(stolen_session)
+        stolen_session.post(reverse("auth-refresh"))  # the legitimate holder rotates it
+        legit_cookie = _refresh_cookie(stolen_session)
+
+        with override_settings(JWT_REFRESH_REUSE_GRACE_SECONDS=0):
+            self.assertEqual(self._refresh_with(old_cookie).status_code, 401)  # the thief replays it
+
+        self.assertEqual(self._refresh_with(legit_cookie).status_code, 401)
+        self.assertEqual(other_device.post(reverse("auth-refresh")).status_code, 401)
+        entry = AuditLog.objects.get(action="auth.refresh_reuse")
+        self.assertEqual(entry.actor, self.user)
+        self.assertEqual(entry.metadata["revoked_sessions"], 2)
+
+    def test_token_reuse_is_reported_on_the_security_logger_for_alerting(self):
+        client = _login_client("rt@example.com")
+        old_cookie = _refresh_cookie(client)
+        client.post(reverse("auth-refresh"))
+
+        with override_settings(JWT_REFRESH_REUSE_GRACE_SECONDS=0), self.assertLogs("athar.security", "ERROR") as logs:
+            self._refresh_with(old_cookie)
+
+        self.assertIn("Refresh token reuse detected", logs.output[0])
+
+    def test_replay_inside_the_grace_window_fails_only_that_request(self):
+        client = _login_client("rt@example.com")
+        old_cookie = _refresh_cookie(client)
+        client.post(reverse("auth-refresh"))
+
+        self.assertEqual(self._refresh_with(old_cookie).status_code, 401)
+
+        self.assertEqual(client.post(reverse("auth-refresh")).status_code, 200)
+        self.assertFalse(AuditLog.objects.filter(action="auth.refresh_reuse").exists())
+
+    def test_reuse_does_not_touch_other_users_sessions(self):
+        victim = _login_client("rt@example.com")
+        bystander = _login_client("rt-other@example.com")
+        old_cookie = _refresh_cookie(victim)
+        victim.post(reverse("auth-refresh"))
+
+        with override_settings(JWT_REFRESH_REUSE_GRACE_SECONDS=0):
+            self._refresh_with(old_cookie)
+
+        self.assertEqual(bystander.post(reverse("auth-refresh")).status_code, 200)
+
+    def test_replaying_a_logged_out_token_revokes_sessions(self):
+        client = _login_client("rt@example.com")
+        other_device = _login_client("rt@example.com")
+        cookie = _refresh_cookie(client)
+        client.post(reverse("auth-logout"))
+
+        with override_settings(JWT_REFRESH_REUSE_GRACE_SECONDS=0):
+            self.assertEqual(self._refresh_with(cookie).status_code, 401)
+
+        self.assertEqual(other_device.post(reverse("auth-refresh")).status_code, 401)
+
+
+class RefreshTokenConcurrencyTests(TransactionTestCase):
+    """Real threads and connections (hence TransactionTestCase): the row lock in RefreshView must
+    let exactly one of two simultaneous refreshes with the same cookie rotate it."""
+
+    def test_only_one_of_two_simultaneous_refreshes_succeeds(self):
+        organization = create_test_organization()
+        User.objects.create_user(email="race@example.com", password="password123", organization=organization)
+        cookie = _refresh_cookie(_login_client("race@example.com"))
+        barrier = threading.Barrier(2)
+        statuses = []
+
+        def refresh():
+            try:
+                client = APIClient()
+                client.cookies[settings.JWT_REFRESH_COOKIE_NAME] = cookie
+                barrier.wait(timeout=10)
+                statuses.append(client.post(reverse("auth-refresh")).status_code)
+            finally:
+                connection.close()
+
+        threads = [threading.Thread(target=refresh) for _ in range(2)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(timeout=30)
+
+        self.assertEqual(sorted(statuses), [200, 401])
+        self.assertFalse(AuditLog.objects.filter(action="auth.refresh_reuse").exists())
+
+
+class AccountDataTests(RoleLoginMixin, APITestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.organization = create_test_organization()
+
+    def _auth(self, access):
+        return {"HTTP_AUTHORIZATION": f"Bearer {access}"}
+
+    def _article(self, author, title):
+        return Article.objects.create(organization=self.organization, title=title, slug=title.lower(), author=author)
+
+    def test_export_contains_the_users_data_and_nothing_else(self):
+        user, access = self._login_with_role("me@example.com", "Member")
+        other, _ = self._login_with_role("other@example.com", "Member")
+        mine = self._article(user, "Mine")
+        self._article(other, "Theirs")
+        Bookmark.objects.create(
+            organization=self.organization,
+            content_type=ContentType.objects.get_for_model(Article),
+            object_id=mine.pk,
+            user=user,
+        )
+
+        response = self.client.get(reverse("auth-me-export"), **self._auth(access))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("attachment", response["Content-Disposition"])
+        data = json.loads(response.content)
+        self.assertEqual(data["profile"]["email"], "me@example.com")
+        self.assertEqual(data["profile"]["roles"], ["Member"])
+        self.assertEqual([row["title"] for row in data["authored_content"]["articles"]], ["Mine"])
+        self.assertEqual(len(data["personal_records"]["bookmarks"]), 1)
+        self.assertTrue(any(entry["action"] == "auth.login" for entry in data["activity_log"]))
+        self.assertNotIn("password", response.content.decode().lower())
+        self.assertNotIn("other@example.com", response.content.decode())
+        self.assertTrue(AuditLog.objects.filter(actor=user, action="account.export").exists())
+
+    def test_export_requires_authentication(self):
+        self.assertEqual(self.client.get(reverse("auth-me-export")).status_code, 401)
+
+    def test_delete_requires_the_correct_password(self):
+        user, access = self._login_with_role("keep@example.com", "Member")
+
+        response = self.client.post(reverse("auth-me-delete"), {"password": "wrong"}, format="json", **self._auth(access))
+
+        self.assertEqual(response.status_code, 400)
+        self.assertTrue(User.objects.filter(pk=user.pk).exists())
+
+    def test_delete_removes_the_account_but_keeps_its_content_anonymously(self):
+        user, access = self._login_with_role("leaving@example.com", "Member")
+        article = self._article(user, "Kept")
+        Bookmark.objects.create(
+            organization=self.organization,
+            content_type=ContentType.objects.get_for_model(Article),
+            object_id=article.pk,
+            user=user,
+        )
+        own_entries = list(AuditLog.objects.filter(actor=user).values_list("pk", flat=True))
+        self.assertTrue(AuditLog.objects.filter(pk__in=own_entries, ip_address__isnull=False).exists())
+
+        response = self.client.post(
+            reverse("auth-me-delete"), {"password": "password123"}, format="json", **self._auth(access)
+        )
+
+        self.assertEqual(response.status_code, 204)
+        self.assertFalse(User.objects.filter(pk=user.pk).exists())
+        article.refresh_from_db()
+        self.assertIsNone(article.author)
+        self.assertFalse(Bookmark.objects.filter(object_id=article.pk).exists())
+        scrubbed = AuditLog.objects.filter(pk__in=own_entries)
+        self.assertTrue(scrubbed.exists())
+        self.assertFalse(scrubbed.exclude(ip_address=None).exists())
+        self.assertFalse(scrubbed.exclude(user_agent="").exists())
+        deleted_entry = AuditLog.objects.get(action="account.delete")
+        self.assertIsNone(deleted_entry.actor)
+        self.assertEqual(deleted_entry.metadata, {"user_id": str(user.pk)})
+        self.assertNotIn("leaving@example.com", str(deleted_entry.metadata) + deleted_entry.target_repr)
+
+    def test_deleting_an_account_ends_its_sessions(self):
+        user, access = self._login_with_role("sessions@example.com", "Member")
+        other_device = _login_client("sessions@example.com")
+
+        self.client.post(reverse("auth-me-delete"), {"password": "password123"}, format="json", **self._auth(access))
+
+        self.assertEqual(other_device.post(reverse("auth-refresh")).status_code, 401)
+        self.assertEqual(self.client.get(reverse("auth-me"), **self._auth(access)).status_code, 401)
+
+    def test_the_only_organization_admin_cannot_delete_their_account(self):
+        admin, access = self._login_with_role("solo-admin@example.com", "Organization Admin")
+
+        response = self.client.post(reverse("auth-me-delete"), {"password": "password123"}, format="json", **self._auth(access))
+
+        self.assertEqual(response.status_code, 400)
+        self.assertTrue(User.objects.filter(pk=admin.pk).exists())
+
+        self._login_with_role("second-admin@example.com", "Organization Admin")
+        response = self.client.post(reverse("auth-me-delete"), {"password": "password123"}, format="json", **self._auth(access))
+
+        self.assertEqual(response.status_code, 204)

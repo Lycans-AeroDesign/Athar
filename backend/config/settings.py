@@ -202,6 +202,9 @@ if AWS_STORAGE_BUCKET_NAME:
 
 # Branding uploads are the main use of the generic upload endpoint, hence the small default.
 MAX_UPLOAD_SIZE_MB = env.int("MAX_UPLOAD_SIZE_MB", default=2)
+# Extra file extensions to accept beyond files/validation.py's allowlist (stored as
+# application/octet-stream). Active-content types such as html/svg/js/exe stay blocked.
+UPLOAD_EXTRA_EXTENSIONS = env.list("UPLOAD_EXTRA_EXTENSIONS", default=[])
 # Much larger cap for restore uploads (backups/views.py RestoreJobUploadView); nginx's
 # body-size limit for that route must be at least this.
 BACKUP_UPLOAD_MAX_SIZE_MB = env.int("BACKUP_UPLOAD_MAX_SIZE_MB", default=5120)
@@ -296,6 +299,9 @@ SIMPLE_JWT = {
 
 # The refresh token only ever travels as this httpOnly cookie, never in a JSON body.
 JWT_REFRESH_COOKIE_NAME = env("JWT_REFRESH_COOKIE_NAME", default="refresh_token")
+# Replaying an already-rotated refresh token is treated as theft and revokes the user's sessions,
+# unless it happens within this many seconds of the rotation (two tabs refreshing at once).
+JWT_REFRESH_REUSE_GRACE_SECONDS = env.int("JWT_REFRESH_REUSE_GRACE_SECONDS", default=10)
 # Deliberately "/", not scoped to /api/v1/auth/: the Next.js proxy (proxy.ts) must see
 # this cookie on every page route to decide whether to redirect to /login.
 JWT_REFRESH_COOKIE_PATH = "/"
@@ -367,3 +373,32 @@ MAILERS = {
         else {"BACKEND": "django.core.mail.backends.console.EmailBackend"}
     ),
 }
+
+
+# Logging and error tracking
+LOG_LEVEL = env("LOG_LEVEL", default="INFO")
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {"standard": {"format": "%(asctime)s %(levelname)s %(name)s: %(message)s"}},
+    "handlers": {"console": {"class": "logging.StreamHandler", "formatter": "standard"}},
+    "root": {"handlers": ["console"], "level": LOG_LEVEL},
+    # Security events (e.g. refresh-token reuse) are logged here at ERROR so error tracking
+    # alerts on them.
+    "loggers": {"athar.security": {"level": "ERROR"}},
+}
+
+# Opt-in: errors (and ERROR-level logs, including athar.security) are sent to Sentry only when a DSN
+# is set. No request bodies, cookies, auth headers or user identity are attached.
+SENTRY_DSN = env("SENTRY_DSN", default="")
+if SENTRY_DSN:
+    import sentry_sdk
+
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        environment=env("SENTRY_ENVIRONMENT", default="") or ("development" if DEBUG else "production"),
+        release=env("SENTRY_RELEASE", default=None),
+        send_default_pii=False,
+        max_request_body_size="never",
+        traces_sample_rate=env.float("SENTRY_TRACES_SAMPLE_RATE", default=0.0),
+    )

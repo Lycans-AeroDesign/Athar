@@ -81,6 +81,10 @@ class UserSerializer(serializers.ModelSerializer):
         return obj.permission_codenames()
 
 
+class AccountDeleteSerializer(serializers.Serializer):
+    password = serializers.CharField(write_only=True, style={"input_type": "password"})
+
+
 class MeUpdateSerializer(serializers.ModelSerializer):
     """Self-service profile edit - deliberately excludes email/password
     (those need their own verification/confirmation flows) and roles
