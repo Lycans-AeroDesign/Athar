@@ -108,8 +108,19 @@ Follow the [Angular commit message conventions](https://github.com/angular/angul
 - Search `utils.py`/`services.py` (this app and others) before writing a new helper — don't duplicate logic that already exists.
 - Reuse existing serializers, permission classes, and validation helpers instead of re-implementing them in a view.
 - If logic is needed in more than one app, put it in the app that owns the domain, or in a small shared module if it's clearly cross-cutting — avoid circular imports.
+- Shared helpers to reach for before hand-rolling the same thing:
+  - **`core.shortcuts.org_object_or_404(request, Model, pk)`** — fetch a row scoped to the caller's organization (404 otherwise). Use it instead of `get_object_or_404(..., organization=request.user.organization)`.
+  - **`_require_permission(actor, codename, message)`** in `knowledge/services.py` — the "raise `PermissionDenied` unless the actor holds this permission" guard; `_require_owner_or_permission` / `_require_co_owner_or_permission` cover the "your own content, or an override permission" case.
+  - **`core.testing`** — `create_test_organization()` for a seeded tenant, and `RoleLoginMixin` (`self._login_with_role(email, role_name)` → `(user, access_token)`) for `APITestCase`s that need a logged-in user with a given role. Don't add another per-app copy of the login helper.
 
-### 3.6 Logging
+### 3.6 Comments and docstrings
+
+- Comment the *why* — a hidden constraint, an ordering requirement, a security reason, a non-obvious invariant — not what the next line plainly does. Keep it to a few lines.
+- Docstrings: one summary line is the default; add detail only for a contract a caller can't read off the signature (return shape, side effects, permission rules). Don't repeat an `@extend_schema` summary in the view's docstring.
+- Don't cite planning documents ("the plan's §1.5", "docs/VISION.md #12") in code comments — they go stale. Link to the code that holds the rule instead (`knowledge/visibility.py`, `training.services.create_resource`, ...).
+- Delete comments that go stale with the change you're making (e.g. one that says a model has no field it now has).
+
+### 3.7 Logging
 
 - Log meaningful actions (auth events, content publish/approve/reject, permission/role changes, failed authorization checks) with enough context to answer who/what/when/object/action later — this feeds the audit system described in `docs/VISION.md` §30.
 - **Never** log raw passwords, tokens, session cookies, or authorization headers, even in debug-level logs.
@@ -147,6 +158,12 @@ Follow the [Angular commit message conventions](https://github.com/angular/angul
 
 - Reuse the shared UI primitives in `frontend/components/ui/` (`Button`, `Modal`, `ConfirmModal`, `Combobox`, `DatePicker`, `FloatingLabelInput`, `Markdown`, `MarkdownEditor`, `AuthenticatedImage`, ...) and existing layout patterns instead of one-off component styling. This custom Radix/cmdk-based kit is the current primitive layer; `shadcn/ui` (see `docs/VISION.md` §32) is only under evaluation as a possible future replacement, not yet adopted.
 - Styling uses Tailwind CSS; follow existing class naming and responsive breakpoints.
+- Shared frontend helpers — use these rather than re-declaring them per file:
+  - `errorMessage(err)` from `@/lib/errors` for turning a caught value into display text (instead of `err instanceof Error ? err.message : String(err)`).
+  - `INPUT_CLASS` from `@/components/ui/inputStyles` for a plain text input/textarea/select (matches `FloatingLabelInput`'s look).
+  - `components/engineering/statusClasses.ts` for the failure/test/project status and severity pill colors, shared by the list tables and detail pages (`ComponentBadges.tsx` does the same for components).
+  - `formatCalendarDate` from `@/lib/format` for plain `YYYY-MM-DD` dates and `formatDate`/`formatDateTime` from `@/lib/datetime` for UTC timestamps — don't define a local copy.
+- Comments follow the backend rule in §3.6: explain *why*, briefly, and don't cite planning documents.
 - **Dark mode**: all UI must work in both themes. Don't use a hardcoded light background/text class (`bg-white`, `text-slate-900`) without its dark counterpart (`dark:bg-slate-900`, `dark:text-white`). Prefer CSS variables that adapt automatically where the design system provides them.
 
 ### 4.6 Internationalization (i18n)
@@ -217,6 +234,7 @@ The frontend's test suite is new and deliberately small (see `docs/VISION.md` §
 - [ ] **Migrations**: new model changes have a matching migration; no edits to already-applied migrations; hand-written ones follow the `NNNN_manual_...` naming convention.
 - [ ] **Utils vs services**: helpers in `utils.py`, business logic in `services.py`; no duplicated logic.
 - [ ] **Reuse**: existing utils/services/serializers/components used instead of parallel implementations.
+- [ ] **Comments** (§3.6): brief, explain *why*, no references to planning documents.
 - [ ] **Backend**: `uv run manage.py test --parallel auto` passes (what `ci.yml` runs), plus `manage.py check` and `makemigrations --check --dry-run`.
 - [ ] **Frontend**: `npm run lint`, `npm run build`, and `npm test` pass; dark mode works; no secrets in `NEXT_PUBLIC_*`.
 - [ ] **i18n**: no hardcoded UI text — every string goes through `useTranslations`/`getTranslations`; new keys added to `en.json` (and kept in sync, even if untranslated, in every other locale file).
