@@ -3,6 +3,7 @@
 import { useLocale, useTranslations } from "next-intl";
 
 import { Combobox } from "@/components/ui/Combobox";
+import { Switch } from "@/components/ui/Switch";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { locales, localeNames, type Locale } from "@/i18n/request";
 import { updateMe } from "@/lib/api/accounts";
@@ -77,37 +78,21 @@ export function PreferencesPanel() {
       </div>
 
       {user && (
-        <label className="flex items-start gap-3 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={user.preferences.engineering_list_filters ?? true}
-            onChange={(e) => handleEngineeringListFiltersChange(e.target.checked)}
-            className="mt-1 rounded border-outline-variant text-primary focus:ring-primary w-4 h-4 shrink-0"
-          />
-          <span>
-            <span className="block font-body-md text-body-md text-on-surface">{t("engineeringListFiltersLabel")}</span>
-            <span className="block font-body-md text-body-md text-on-surface-variant">
-              {t("engineeringListFiltersDescription")}
-            </span>
-          </span>
-        </label>
+        <Switch
+          checked={user.preferences.engineering_list_filters ?? true}
+          onChange={handleEngineeringListFiltersChange}
+          label={t("engineeringListFiltersLabel")}
+          description={t("engineeringListFiltersDescription")}
+        />
       )}
 
       {user && (
-        <label className="flex items-start gap-3 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={user.email_visible}
-            onChange={(e) => handleEmailVisibleChange(e.target.checked)}
-            className="mt-1 rounded border-outline-variant text-primary focus:ring-primary w-4 h-4 shrink-0"
-          />
-          <span>
-            <span className="block font-body-md text-body-md text-on-surface">{t("emailVisibleLabel")}</span>
-            <span className="block font-body-md text-body-md text-on-surface-variant">
-              {t("emailVisibleDescription")}
-            </span>
-          </span>
-        </label>
+        <Switch
+          checked={user.email_visible}
+          onChange={handleEmailVisibleChange}
+          label={t("emailVisibleLabel")}
+          description={t("emailVisibleDescription")}
+        />
       )}
     </div>
   );

@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { ChangedIndicator } from "@/components/ui/ChangedIndicator";
+import { Switch } from "@/components/ui/Switch";
 import { updateGeneralSettings } from "@/lib/api/organization";
 import type { OrganizationSettings } from "@/lib/api/types";
 
@@ -50,21 +51,13 @@ export function FeaturesSettingsForm({ settings, onUpdate, canEdit, onDirtyChang
       </div>
 
       <ChangedIndicator changed={isDirty} className="w-fit">
-        <label className="flex items-start gap-3 cursor-pointer">
-          <input
-            type="checkbox"
-            disabled={!canEdit}
-            checked={productTourEnabled}
-            onChange={(e) => setProductTourEnabled(e.target.checked)}
-            className="mt-1 rounded border-outline-variant text-primary focus:ring-primary w-4 h-4 shrink-0 disabled:opacity-60"
-          />
-          <span>
-            <span className="block font-body-md text-body-md text-on-surface">{t("productTourLabel")}</span>
-            <span className="block font-body-md text-body-md text-on-surface-variant">
-              {t("productTourDescription")}
-            </span>
-          </span>
-        </label>
+        <Switch
+          disabled={!canEdit}
+          checked={productTourEnabled}
+          onChange={setProductTourEnabled}
+          label={t("productTourLabel")}
+          description={t("productTourDescription")}
+        />
       </ChangedIndicator>
 
       {canEdit && (

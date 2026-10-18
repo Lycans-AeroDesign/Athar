@@ -14,6 +14,7 @@ import {
   type RestrictedAccessDraft,
 } from "@/components/knowledge/RestrictedAccessPicker";
 import { SavingOverlay } from "@/components/ui/SavingOverlay";
+import { Switch } from "@/components/ui/Switch";
 import { PendingRelations, toRelationInputs, type PendingRelation } from "@/components/knowledge/PendingRelations";
 import { effectiveVisibility, VisibilitySelect } from "@/components/knowledge/VisibilitySelect";
 import { ProjectSelect } from "@/components/knowledge/ProjectSelect";
@@ -156,15 +157,7 @@ export function SopEditor({ sop, onDirtyChange, initialProjectId = null }: SopEd
             <TagInput value={tags} onChange={setTags} placeholder={t("tagsPlaceholder")} className="w-full" />
           </ChangedIndicator>
           <ChangedIndicator changed={fieldChanged.mandatory} className="inline-block">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={mandatory}
-                onChange={(e) => setMandatory(e.target.checked)}
-                className="rounded border-outline-variant text-primary focus:ring-primary w-4 h-4"
-              />
-              <span className="font-body-md text-body-md text-on-surface">{t("mandatoryLabel")}</span>
-            </label>
+            <Switch checked={mandatory} onChange={setMandatory} label={t("mandatoryLabel")} />
           </ChangedIndicator>
           <ChangedIndicator changed={fieldChanged.visibility} className="w-56">
             <VisibilitySelect

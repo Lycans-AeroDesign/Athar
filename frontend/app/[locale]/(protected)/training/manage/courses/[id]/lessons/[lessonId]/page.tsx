@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 
 import { RelatedKnowledgePanel } from "@/components/training/RelatedKnowledgePanel";
 import { Button } from "@/components/ui/Button";
+import { Switch } from "@/components/ui/Switch";
 import { Combobox } from "@/components/ui/Combobox";
 import { FileDropzone } from "@/components/ui/FileDropzone";
 import { Icon } from "@/components/ui/Icon";
@@ -388,10 +389,9 @@ export default function LessonEditorPage() {
               onChange={(e) => setEstimatedMinutes(Number(e.target.value) || 0)}
             />
           </div>
-          <label className="flex items-center gap-2 font-body-md text-body-md text-on-surface pt-6">
-            <input type="checkbox" checked={isRequired} onChange={(e) => setIsRequired(e.target.checked)} />
-            {t("requiredToggleLabel")}
-          </label>
+          <div className="pt-6">
+            <Switch checked={isRequired} onChange={setIsRequired} label={t("requiredToggleLabel")} />
+          </div>
         </div>
 
         {showMainContentEditor && (
@@ -532,14 +532,11 @@ export default function LessonEditorPage() {
                   </div>
                 )}
                 <div className="flex items-center justify-between">
-                  <label className="flex items-center gap-2 font-body-md text-body-md text-on-surface">
-                    <input
-                      type="checkbox"
-                      checked={editResourceIsPrimary}
-                      onChange={(e) => setEditResourceIsPrimary(e.target.checked)}
-                    />
-                    {resourceT("primaryLabel")}
-                  </label>
+                  <Switch
+                    checked={editResourceIsPrimary}
+                    onChange={setEditResourceIsPrimary}
+                    label={resourceT("primaryLabel")}
+                  />
                   <div className="flex items-center gap-2">
                     <Button variant="secondary" onClick={cancelEditResource}>
                       {commonT("cancel")}
@@ -575,10 +572,11 @@ export default function LessonEditorPage() {
               onChange={(e) => setNewResourceTitle(e.target.value)}
             />
             {!showMainContentEditor && (
-              <label className="flex items-center gap-2 font-body-md text-body-md text-on-surface">
-                <input type="checkbox" checked={newResourceIsPrimary} onChange={(e) => setNewResourceIsPrimary(e.target.checked)} />
-                {resourceT("primaryLabel")}
-              </label>
+              <Switch
+                checked={newResourceIsPrimary}
+                onChange={setNewResourceIsPrimary}
+                label={resourceT("primaryLabel")}
+              />
             )}
           </div>
           <div className="flex flex-wrap items-end gap-3">

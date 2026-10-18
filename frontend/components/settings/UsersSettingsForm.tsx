@@ -9,6 +9,7 @@ import { Icon } from "@/components/ui/Icon";
 import { IconButton } from "@/components/ui/IconButton";
 import { Menu, type MenuEntry } from "@/components/ui/Menu";
 import { Modal } from "@/components/ui/Modal";
+import { Switch } from "@/components/ui/Switch";
 import { getPathname } from "@/i18n/navigation";
 import { createPasswordResetLink, passwordResetUrl } from "@/lib/api/passwordReset";
 import { getUsers, setUserActive } from "@/lib/api/rbac";
@@ -248,17 +249,11 @@ export function UsersSettingsForm() {
         onConfirm={handleGenerateResetLink}
       >
         {emailEnabled && resetTarget && (
-          <label className="flex items-start gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              className="mt-1 h-4 w-4 accent-primary"
-              checked={sendEmail}
-              onChange={(e) => setSendEmail(e.target.checked)}
-            />
-            <span className="font-body-md text-body-md text-on-surface">
-              {t("resetLinkSendEmail", { email: resetTarget.email })}
-            </span>
-          </label>
+          <Switch
+            checked={sendEmail}
+            onChange={setSendEmail}
+            label={t("resetLinkSendEmail", { email: resetTarget.email })}
+          />
         )}
       </ConfirmModal>
 

@@ -8,6 +8,7 @@ import { Combobox } from "@/components/ui/Combobox";
 import { FileDropzone } from "@/components/ui/FileDropzone";
 import { Icon } from "@/components/ui/Icon";
 import { Modal } from "@/components/ui/Modal";
+import { Switch } from "@/components/ui/Switch";
 import {
   downloadComponentImportTemplate,
   importComponentsCsv,
@@ -265,10 +266,11 @@ export function ComponentImportModal({ open, onOpenChange, defaultInventoryType,
               <p className="font-body-md text-body-md text-on-surface-variant">{t("importNothingToApply")}</p>
             )}
             {preview.rows.length > 0 && (
-              <label className="flex items-center gap-2 font-body-md text-body-md text-on-surface-variant">
-                <input type="checkbox" checked={showAllRows} onChange={(e) => setShowAllRows(e.target.checked)} />
-                {t("importShowAllRows", { count: preview.rows.length })}
-              </label>
+              <Switch
+                checked={showAllRows}
+                onChange={setShowAllRows}
+                label={t("importShowAllRows", { count: preview.rows.length })}
+              />
             )}
             <ul className="max-h-72 overflow-y-auto space-y-2">
               {visibleRows.map((row) => (
