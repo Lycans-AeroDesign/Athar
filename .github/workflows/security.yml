@@ -17,7 +17,7 @@ jobs:
     name: Secret scan (gitleaks)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           # Full history: a secret removed in a later commit is still leaked.
           fetch-depth: 0
@@ -33,7 +33,7 @@ jobs:
     name: Dependency scan (Trivy)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       # Lockfiles (backend/uv.lock, frontend/package-lock.json). Only fixed
       # HIGH/CRITICAL findings fail the job; the rest are noise until upstream ships a fix.
@@ -47,7 +47,7 @@ jobs:
     name: Image scan (Trivy)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - name: Build backend image
         run: docker build --target prod -t athar-backend:scan ./backend
