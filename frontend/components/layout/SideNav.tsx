@@ -101,18 +101,18 @@ export function SideNav({ open, onClose }: SideNavProps) {
         }`}
       >
         <div className="p-6 border-b border-outline-variant">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             {settings?.logo_url ? (
               // eslint-disable-next-line @next/next/no-img-element -- external backend URL, not a local asset next/image can optimize.
               <img
                 src={apiUrl(settings.logo_url)}
                 alt={settings.name}
-                className="h-8 w-8 rounded-lg object-contain"
+                className="h-14 w-14 shrink-0 rounded-lg object-contain"
               />
             ) : (
-              <BrandMark className="h-8 w-8" />
+              <BrandMark className="h-14 w-14 shrink-0" />
             )}
-            <div className="flex flex-col flex-1">
+            <div className="flex flex-col flex-1 min-w-0">
               <span className="font-headline-md text-headline-md font-bold text-primary">
                 {settings?.name ?? "Athar"}
               </span>

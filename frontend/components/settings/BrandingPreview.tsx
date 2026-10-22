@@ -125,11 +125,11 @@ function PreviewPane({ mode, label, orgName, logo, primary, secondary }: Preview
               <AuthenticatedImage
                 src={logo.download_url}
                 alt=""
-                className="h-5 w-5 rounded object-contain"
-                fallback={<BrandMark className="h-5 w-5" />}
+                className="h-7 w-7 shrink-0 rounded object-contain"
+                fallback={<BrandMark className="h-7 w-7 shrink-0" />}
               />
             ) : (
-              <BrandMark className="h-5 w-5" />
+              <BrandMark className="h-7 w-7 shrink-0" />
             )}
             <span className="truncate text-[11px] font-bold text-primary">{orgName}</span>
           </div>
