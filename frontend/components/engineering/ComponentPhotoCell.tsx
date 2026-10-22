@@ -92,16 +92,13 @@ export function ComponentPhotoCell({ photo, alt }: ComponentPhotoCellProps) {
             <img src={url} alt={alt} className="h-9 w-9 rounded-lg object-cover border border-outline-variant" />
           </span>
         </Popover.Anchor>
-        <Popover.Portal forceMount>
+        <Popover.Portal>
           <Popover.Content
-            forceMount
             side="bottom"
             align="start"
             sideOffset={4}
             onOpenAutoFocus={(event) => event.preventDefault()}
-            className={`pointer-events-none z-50 origin-top transition-all duration-150 ${
-              isHovering ? "opacity-100 scale-100" : "opacity-0 scale-95"
-            }`}
+            className="pointer-events-none z-50 origin-top animate-fade-in-up"
           >
             {/* max-h/max-w with auto width/height (not a fixed square box) - most
                 component photos aren't square, and a fixed box with object-contain

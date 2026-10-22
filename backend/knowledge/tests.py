@@ -3330,16 +3330,34 @@ class CreationFlowTests(KnowledgeTestCase):
         self.assertEqual(response.data["visibility"], "PUBLIC")
         self.assertFalse(RestrictedAccessGrant.objects.filter(object_id=response.data["id"]).exists())
 
-    def test_failure_inherits_from_project_fk(self):
+    def test_failure_inherits_from_project_fk_and_creates_component_and_project_relations(self):
         project = self._project("RESTRICTED")
+        component = self.client.post(
+            reverse("knowledge-component-list-create"),
+            {"name": "Pixhawk 6X"},
+            format="json",
+            **self._auth(self.head_access),
+        ).data
         response = self.client.post(
             reverse("knowledge-failure-list-create"),
-            {"title": "Crash", "project_id": project["id"]},
+            {"title": "Crash", "project_id": project["id"], "component_id": component["id"]},
             format="json",
             **self._auth(self.head_access),
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data["visibility"], "RESTRICTED")
+        failure_id = response.data["id"]
+
+        failure_relations = self.client.get(
+            reverse("knowledge-failure-relations", args=[failure_id]), **self._auth(self.head_access)
+        ).data
+        self.assertEqual(
+            {(r["other_type"], r["other_id"], r["relation_label"]) for r in failure_relations},
+            {
+                ("project", project["id"], "OCCURRED_IN"),
+                ("component", component["id"], "INVOLVES"),
+            },
+        )
 
     def test_invisible_project_is_rejected_and_nothing_is_created(self):
         project = self._project("RESTRICTED")

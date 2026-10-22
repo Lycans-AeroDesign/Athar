@@ -780,6 +780,29 @@ def delete_component(*, component: Component, actor, request=None) -> None:
     component.delete()
 
 
+def _sync_failure_relations(failure: Failure, *, actor, request=None) -> None:
+    if failure.component is not None:
+        _store_relation(
+            actor=actor,
+            request=request,
+            source_type="component",
+            source=failure.component,
+            target_type="failure",
+            target=failure,
+            relation_type="INVOLVED_IN",
+        )
+    if failure.project is not None:
+        _store_relation(
+            actor=actor,
+            request=request,
+            source_type="project",
+            source=failure.project,
+            target_type="failure",
+            target=failure,
+            relation_type="HAS_FAILURE",
+        )
+
+
 def create_failure(
     *, actor, request=None, title, component=None, project=None, aircraft="", date=None,
     severity=Failure.Severity.MEDIUM, status=Failure.Status.UNDER_INVESTIGATION,
@@ -801,6 +824,7 @@ def create_failure(
         created_by=actor,
         visibility=visibility,
     )
+    _sync_failure_relations(failure, actor=actor, request=request)
     confirm_stored_files_in_text(summary, root_cause, corrective_action, preventive_action, organization=actor.organization)
     log_action(actor=actor, action="failure.create", target=failure, request=request)
     return failure
@@ -811,6 +835,8 @@ def update_failure(*, failure: Failure, actor, request=None, **fields) -> Failur
     for field, value in fields.items():
         setattr(failure, field, value)
     failure.save(update_fields=[*fields.keys(), "updated_at"])
+    if "component" in fields or "project" in fields:
+        _sync_failure_relations(failure, actor=actor, request=request)
     confirm_stored_files_in_text(
         *(fields[f] for f in ("summary", "root_cause", "corrective_action", "preventive_action") if f in fields),
         organization=failure.organization,
@@ -901,6 +927,16 @@ def create_test(
         visibility=visibility,
     )
     _sync_tags(test, tag_names)
+    if test.project is not None:
+        _store_relation(
+            actor=actor,
+            request=request,
+            source_type="project",
+            source=test.project,
+            target_type="test",
+            target=test,
+            relation_type="HAS_TEST",
+        )
     confirm_stored_files_in_text(objective, configuration, procedure, results, conclusion, organization=actor.organization)
     log_action(actor=actor, action="test.create", target=test, request=request)
     return test
@@ -913,6 +949,16 @@ def update_test(*, test: Test, actor, request=None, **fields) -> Test:
         setattr(test, field, value)
     test.save(update_fields=[*fields.keys(), "updated_at"])
     _sync_tags(test, tag_names)
+    if "project" in fields and test.project is not None:
+        _store_relation(
+            actor=actor,
+            request=request,
+            source_type="project",
+            source=test.project,
+            target_type="test",
+            target=test,
+            relation_type="HAS_TEST",
+        )
     confirm_stored_files_in_text(
         *(fields[f] for f in ("objective", "configuration", "procedure", "results", "conclusion") if f in fields),
         organization=test.organization,
@@ -1346,12 +1392,12 @@ def create_with_links(model_name: str, create_fn, *, actor, request=None, data: 
         instance = create_fn(actor=actor, request=request, **data)
         if inherited and project.visibility == Visibility.RESTRICTED:
             _copy_restricted_grants(source=project, target=instance, actor=actor)
-        if link_project is not None:
+        if project is not None:
             _store_relation(
                 actor=actor,
                 request=request,
                 source_type="project",
-                source=link_project,
+                source=project,
                 target_type=model_name,
                 target=instance,
                 relation_type=_project_link_verb(model_name),
