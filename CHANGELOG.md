@@ -1,3 +1,13 @@
+## [1.17.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.16.0...v1.17.0) (2026-10-22)
+
+### Features
+
+* **frontend:** replace plain loading messages with per-page skeleton loaders ([8191606](https://github.com/Lycans-AeroDesign/Athar/commit/8191606900941b399f5c27e74515490a50648803))
+
+### Bug Fixes
+
+* **engineering:** link failure component/project relations and stop photo popovers blocking table clicks ([53f88bb](https://github.com/Lycans-AeroDesign/Athar/commit/53f88bbff343c0f0d5d540d654ce7e9f47cbea48))
+
 ## [1.16.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.15.0...v1.16.0) (2026-10-18)
 
 ### Features
