@@ -11,6 +11,7 @@ import { Combobox } from "@/components/ui/Combobox";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
 import { Pagination } from "@/components/ui/Pagination";
+import { CardGridSkeleton } from "@/components/ui/Skeleton";
 import { INPUT_CLASS } from "@/components/ui/inputStyles";
 import { Link } from "@/i18n/navigation";
 import { getProjects } from "@/lib/api/engineering";
@@ -126,7 +127,7 @@ export default function ProjectsPage() {
           {error}
         </p>
       ) : projects === null ? (
-        <p className="font-body-md text-body-md text-on-surface-variant">{commonT("loading")}</p>
+        <CardGridSkeleton count={6} />
       ) : projects.length === 0 ? (
         <EmptyState
           icon="architecture"

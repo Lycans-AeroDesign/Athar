@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { MarkdownEditor } from "@/components/ui/MarkdownEditor";
+import { FormSectionSkeleton } from "@/components/ui/Skeleton";
 import { INPUT_CLASS } from "@/components/ui/inputStyles";
 import {
   getPolicyOverview,
@@ -24,7 +25,6 @@ import { errorMessage } from "@/lib/errors";
 // accept it before they can keep using the app (see PolicyGate).
 export function PoliciesSettingsForm() {
   const t = useTranslations("settings.policies");
-  const commonT = useTranslations("common");
   const [overview, setOverview] = useState<PolicyOverview[] | null>(null);
 
   function reload() {
@@ -36,7 +36,7 @@ export function PoliciesSettingsForm() {
   }, []);
 
   if (!overview) {
-    return <p className="font-body-md text-body-md text-on-surface-variant">{commonT("loading")}</p>;
+    return <FormSectionSkeleton fields={2} />;
   }
 
   return (

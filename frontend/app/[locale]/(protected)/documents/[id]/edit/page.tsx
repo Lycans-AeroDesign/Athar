@@ -8,6 +8,7 @@ import { DocumentEditor } from "@/components/engineering/DocumentEditor";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { DetailMessage } from "@/components/ui/DetailMessage";
 import { Icon } from "@/components/ui/Icon";
+import { EditorPageSkeleton } from "@/components/ui/Skeleton";
 import { Link, useRouter } from "@/i18n/navigation";
 import { getDocument } from "@/lib/api/documents";
 import { useAuth } from "@/lib/auth/AuthProvider";
@@ -31,7 +32,7 @@ export default function EditDocumentPage() {
     return <DetailMessage error>{t("notFound")}</DetailMessage>;
   }
   if (!document) {
-    return <DetailMessage>{t("loading")}</DetailMessage>;
+    return <EditorPageSkeleton />;
   }
   const canEdit = user?.id === document.created_by?.id || canUpdateAny;
   if (!canEdit) {

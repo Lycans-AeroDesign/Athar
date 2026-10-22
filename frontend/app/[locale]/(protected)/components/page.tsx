@@ -17,6 +17,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
 import { Menu, type MenuEntry } from "@/components/ui/Menu";
 import { Pagination } from "@/components/ui/Pagination";
+import { CardGridSkeleton, TableSkeleton } from "@/components/ui/Skeleton";
 import { Link } from "@/i18n/navigation";
 import {
   exportComponentsCsv,
@@ -433,7 +434,11 @@ function ComponentsPageContent() {
           {error}
         </p>
       ) : components === null ? (
-        <p className="font-body-md text-body-md text-on-surface-variant">{commonT("loading")}</p>
+        viewMode === "grid" ? (
+          <CardGridSkeleton count={6} hasCover />
+        ) : (
+          <TableSkeleton rows={6} columns={6} />
+        )
       ) : components.length === 0 ? (
         <EmptyState
           icon="settings_input_component"

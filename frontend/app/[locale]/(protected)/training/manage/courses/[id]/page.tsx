@@ -19,6 +19,7 @@ import { Markdown } from "@/components/ui/Markdown";
 import { MarkdownEditor } from "@/components/ui/MarkdownEditor";
 import { Modal } from "@/components/ui/Modal";
 import { PhotoDropzone } from "@/components/ui/PhotoDropzone";
+import { EditorPageSkeleton } from "@/components/ui/Skeleton";
 import { Link, useRouter } from "@/i18n/navigation";
 import { uploadFile } from "@/lib/api/files";
 import {
@@ -144,7 +145,7 @@ export default function CourseEditorPage() {
     return <p className="font-body-md text-body-md text-error">Not found.</p>;
   }
   if (!course) {
-    return <p className="font-body-md text-body-md text-on-surface-variant">{t("loading")}</p>;
+    return <EditorPageSkeleton />;
   }
 
   const isAuthor = user?.id === course.author?.id;

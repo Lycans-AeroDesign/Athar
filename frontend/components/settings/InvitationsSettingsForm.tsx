@@ -9,6 +9,7 @@ import { DatePicker } from "@/components/ui/DatePicker";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
 import { Modal } from "@/components/ui/Modal";
+import { ListSkeleton } from "@/components/ui/Skeleton";
 import { INPUT_CLASS } from "@/components/ui/inputStyles";
 import { formatDateTime } from "@/lib/datetime";
 import { getPathname } from "@/i18n/navigation";
@@ -90,7 +91,7 @@ export function InvitationsSettingsForm() {
         </div>
 
         {!codes ? (
-          <p className="font-body-md text-body-md text-on-surface-variant">{commonT("loading")}</p>
+          <ListSkeleton rows={3} compact />
         ) : codes.length === 0 ? (
           <EmptyState
             icon="mail"

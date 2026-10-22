@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 import { Markdown } from "@/components/ui/Markdown";
+import { ListSkeleton } from "@/components/ui/Skeleton";
 import { getCurrentPolicies, type CurrentPolicy } from "@/lib/api/policies";
 import { formatDateTime } from "@/lib/datetime";
 
@@ -11,7 +12,6 @@ import { formatDateTime } from "@/lib/datetime";
 // has accepted to get past PolicyGate), linked from the account menu.
 export default function PoliciesPage() {
   const t = useTranslations("policies");
-  const commonT = useTranslations("common");
   const [policies, setPolicies] = useState<CurrentPolicy[] | null>(null);
 
   useEffect(() => {
@@ -22,7 +22,7 @@ export default function PoliciesPage() {
     <section className="max-w-3xl space-y-8">
       <h1 className="font-display text-display text-on-surface">{t("pageTitle")}</h1>
       {!policies ? (
-        <p className="font-body-md text-body-md text-on-surface-variant">{commonT("loading")}</p>
+        <ListSkeleton rows={3} />
       ) : policies.length === 0 ? (
         <p className="font-body-md text-body-md text-on-surface-variant">{t("noneYet")}</p>
       ) : (

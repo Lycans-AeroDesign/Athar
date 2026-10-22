@@ -19,6 +19,7 @@ import { IconButton } from "@/components/ui/IconButton";
 import { Markdown } from "@/components/ui/Markdown";
 import { MarkdownEditor } from "@/components/ui/MarkdownEditor";
 import { ShareButton } from "@/components/ui/ShareButton";
+import { DetailPageSkeleton } from "@/components/ui/Skeleton";
 import { TagChip } from "@/components/ui/TagChip";
 import { CoAuthorsByline } from "@/components/knowledge/CoAuthorsByline";
 import { Link, useRouter } from "@/i18n/navigation";
@@ -58,7 +59,7 @@ export default function QuestionDetailPage() {
     return <DetailMessage error>{t("notFound")}</DetailMessage>;
   }
   if (!question) {
-    return <DetailMessage>{t("loading")}</DetailMessage>;
+    return <DetailPageSkeleton />;
   }
 
   const canManage = user?.id === question.author?.id || canModerate;

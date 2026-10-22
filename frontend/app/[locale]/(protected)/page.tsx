@@ -9,6 +9,7 @@ import { Can } from "@/components/auth/Can";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
+import { CardGridSkeleton, Skeleton } from "@/components/ui/Skeleton";
 import { StatCard } from "@/components/ui/StatCard";
 import { Link } from "@/i18n/navigation";
 import { getKnowledgeActivity } from "@/lib/api/audit";
@@ -130,8 +131,8 @@ export default function DashboardPage() {
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <StatCard label={t("statArticlesLabel")} value={articleCount ?? "..."} icon="menu_book" />
-        <StatCard label={t("statQuestionsLabel")} value={openQuestionCount ?? "..."} icon="forum" />
+        <StatCard label={t("statArticlesLabel")} value={articleCount} icon="menu_book" />
+        <StatCard label={t("statQuestionsLabel")} value={openQuestionCount} icon="forum" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -144,7 +145,7 @@ export default function DashboardPage() {
           </div>
 
           {recentItems === null ? (
-            <p className="font-body-md text-body-md text-on-surface-variant">{t("activityLoading")}</p>
+            <CardGridSkeleton count={4} columns={2} />
           ) : recentItems.length === 0 ? (
             <p className="font-body-md text-body-md text-on-surface-variant">{t("recentEmptyState")}</p>
           ) : (
@@ -183,7 +184,16 @@ export default function DashboardPage() {
             </div>
 
             {leaderboard === null ? (
-              <p className="font-body-md text-body-md text-on-surface-variant">{t("activityLoading")}</p>
+              <div className="space-y-3" role="status" aria-busy="true">
+                {Array.from({ length: 5 }).map((_, index) => (
+                  <div key={index} className="flex items-center gap-3">
+                    <Skeleton className="h-4 w-4 rounded" />
+                    <Skeleton className="h-7 w-7 rounded-full shrink-0" />
+                    <Skeleton className="h-4 flex-1" />
+                    <Skeleton className="h-4 w-12" />
+                  </div>
+                ))}
+              </div>
             ) : leaderboard.length === 0 ? (
               <p className="font-body-md text-body-md text-on-surface-variant">{t("leaderboardEmptyState")}</p>
             ) : (
@@ -215,7 +225,17 @@ export default function DashboardPage() {
         <h2 className="font-headline-md text-headline-md text-on-surface">{t("activityTitle")}</h2>
 
         {activity === null ? (
-          <p className="font-body-md text-body-md text-on-surface-variant">{t("activityLoading")}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-x-6 gap-y-4" role="status" aria-busy="true">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <div key={index} className="flex gap-2.5">
+                <Skeleton className="mt-1.5 size-2 rounded-full shrink-0" />
+                <div className="min-w-0 flex-1 space-y-1.5">
+                  <Skeleton className="h-4 w-4/5" />
+                  <Skeleton className="h-3 w-20" />
+                </div>
+              </div>
+            ))}
+          </div>
         ) : activity.length === 0 ? (
           <p className="font-body-md text-body-md text-on-surface-variant">{t("activityEmptyState")}</p>
         ) : (

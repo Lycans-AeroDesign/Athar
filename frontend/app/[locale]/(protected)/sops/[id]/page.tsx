@@ -13,6 +13,7 @@ import { DetailMessage } from "@/components/ui/DetailMessage";
 import { Icon } from "@/components/ui/Icon";
 import { IconButton } from "@/components/ui/IconButton";
 import { Markdown } from "@/components/ui/Markdown";
+import { DetailPageSkeleton } from "@/components/ui/Skeleton";
 import { TagChip } from "@/components/ui/TagChip";
 import { Link, useRouter } from "@/i18n/navigation";
 import { deleteSop, getSop } from "@/lib/api/engineering";
@@ -35,7 +36,7 @@ export default function SopDetailPage() {
     return <DetailMessage error>{t("notFound")}</DetailMessage>;
   }
   if (!sop) {
-    return <DetailMessage>{t("loading")}</DetailMessage>;
+    return <DetailPageSkeleton />;
   }
 
   async function handleDelete() {

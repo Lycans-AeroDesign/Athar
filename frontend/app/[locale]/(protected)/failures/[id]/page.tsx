@@ -14,6 +14,7 @@ import { DetailMessage } from "@/components/ui/DetailMessage";
 import { Icon } from "@/components/ui/Icon";
 import { IconButton } from "@/components/ui/IconButton";
 import { Markdown } from "@/components/ui/Markdown";
+import { DetailPageSkeleton } from "@/components/ui/Skeleton";
 import { Link, useRouter } from "@/i18n/navigation";
 import { deleteFailure, getFailure } from "@/lib/api/engineering";
 import { useHasPermission } from "@/lib/auth/permissions";
@@ -38,7 +39,7 @@ export default function FailureDetailPage() {
     return <DetailMessage error>{t("notFound")}</DetailMessage>;
   }
   if (!failure) {
-    return <DetailMessage>{t("loading")}</DetailMessage>;
+    return <DetailPageSkeleton />;
   }
 
   async function handleDelete() {

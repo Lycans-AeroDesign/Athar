@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 import { Icon } from "@/components/ui/Icon";
 import { Pagination } from "@/components/ui/Pagination";
+import { ListSkeleton } from "@/components/ui/Skeleton";
 import { Link } from "@/i18n/navigation";
 import { deleteBookmark, getBookmarks } from "@/lib/api/bookmarks";
 import type { BookmarkEntry, RelatableType } from "@/lib/api/types";
@@ -68,7 +69,7 @@ export function BookmarksPanel() {
       </div>
 
       {entries === null ? (
-        <p className="font-body-md text-body-md text-on-surface-variant">{t("loading")}</p>
+        <ListSkeleton rows={5} compact />
       ) : entries.length === 0 ? (
         <p className="font-body-md text-body-md text-on-surface-variant">{t("emptyState")}</p>
       ) : (

@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 import { Pagination } from "@/components/ui/Pagination";
+import { TableSkeleton } from "@/components/ui/Skeleton";
 import { StatCard } from "@/components/ui/StatCard";
 import { Switch } from "@/components/ui/Switch";
 import { Link } from "@/i18n/navigation";
@@ -27,7 +28,6 @@ const COLUMNS = ["nameColumn", "statusColumn", "usersColumn", "storageColumn", "
 // activity timestamps), never organization content. The backend enforces is_superuser.
 export function PlatformOverview() {
   const t = useTranslations("platform");
-  const commonT = useTranslations("common");
 
   const [summary, setSummary] = useState<PlatformSummary | null>(null);
   const [data, setData] = useState<Paginated<PlatformOrganization> | null>(null);
@@ -134,7 +134,9 @@ export function PlatformOverview() {
         </div>
 
         {!data ? (
-          <p className="px-6 pb-6 font-body-md text-body-md text-on-surface-variant">{commonT("loading")}</p>
+          <div className="p-6 pt-0">
+            <TableSkeleton rows={5} columns={5} />
+          </div>
         ) : data.results.length === 0 ? (
           <p className="px-6 pb-6 font-body-md text-body-md text-on-surface-variant">{t("emptyState")}</p>
         ) : (

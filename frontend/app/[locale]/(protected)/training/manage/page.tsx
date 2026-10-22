@@ -9,6 +9,7 @@ import { COURSE_STATUS_LABEL_KEYS, CourseStatusPill } from "@/components/trainin
 import { Button } from "@/components/ui/Button";
 import { Combobox } from "@/components/ui/Combobox";
 import { Icon } from "@/components/ui/Icon";
+import { ListSkeleton } from "@/components/ui/Skeleton";
 import { StatCard } from "@/components/ui/StatCard";
 import { Link } from "@/i18n/navigation";
 import { getTrainingStats, listCourses } from "@/lib/api/training";
@@ -116,7 +117,7 @@ export default function TrainingManageDashboardPage() {
           </div>
         </div>
         {courses === null ? (
-          <p className="font-body-md text-body-md text-on-surface-variant">{t("loading")}</p>
+          <ListSkeleton rows={4} compact />
         ) : (
           <div className="divide-y divide-outline-variant border border-outline-variant rounded-xl overflow-hidden">
             {courses.map((course) => (

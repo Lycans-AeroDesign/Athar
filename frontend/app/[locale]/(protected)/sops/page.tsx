@@ -10,6 +10,7 @@ import { Combobox } from "@/components/ui/Combobox";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
 import { Pagination } from "@/components/ui/Pagination";
+import { ListSkeleton } from "@/components/ui/Skeleton";
 import { INPUT_CLASS } from "@/components/ui/inputStyles";
 import { Link } from "@/i18n/navigation";
 import { getSops } from "@/lib/api/engineering";
@@ -121,7 +122,7 @@ export default function SopsPage() {
           {error}
         </p>
       ) : sops === null ? (
-        <p className="font-body-md text-body-md text-on-surface-variant">{commonT("loading")}</p>
+        <ListSkeleton rows={5} />
       ) : sops.length === 0 ? (
         <EmptyState
           icon="description"

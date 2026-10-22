@@ -5,6 +5,7 @@ import { useParams, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 
 import { EMPTY_SEARCH_COUNTS, SearchResultsPanel, type SearchCounts, type SearchScope } from "@/components/knowledge/SearchResultsPanel";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { useRouter } from "@/i18n/navigation";
 import { getItemsByTag } from "@/lib/api/knowledge";
 import type { SearchResult, Tag } from "@/lib/api/types";
@@ -66,10 +67,17 @@ function TagItems() {
   return (
     <div className="space-y-6">
       <div>
-        {tag && (
-          <p className="font-label-caps text-label-caps text-on-surface-variant uppercase">{t("eyebrow")}</p>
+        {tag ? (
+          <>
+            <p className="font-label-caps text-label-caps text-on-surface-variant uppercase">{t("eyebrow")}</p>
+            <h1 className="font-display text-display text-on-surface">#{tag.name}</h1>
+          </>
+        ) : (
+          <div className="space-y-2">
+            <Skeleton className="h-3 w-20" />
+            <Skeleton className="h-9 w-48" />
+          </div>
         )}
-        <h1 className="font-display text-display text-on-surface">{tag ? `#${tag.name}` : t("loading")}</h1>
       </div>
 
       <SearchResultsPanel

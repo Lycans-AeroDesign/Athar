@@ -1,8 +1,9 @@
 import { Icon } from "./Icon";
+import { Skeleton } from "./Skeleton";
 
 interface StatCardProps {
   label: string;
-  value: number | string;
+  value: number | string | null;
   icon: string;
   /** Small line under the value (e.g. "12 this week") - omitted entirely when
    * there's no real data behind it, rather than shown fake (see Dashboard's
@@ -17,7 +18,11 @@ export function StatCard({ label, value, icon, trend }: StatCardProps) {
         <span className="font-body-md text-body-md text-on-surface-variant">{label}</span>
         <Icon name={icon} size={18} className="text-on-surface-variant" />
       </div>
-      <div className="font-display text-display text-on-surface">{value}</div>
+      {value === null ? (
+        <Skeleton className="h-9 w-16 my-0.5" />
+      ) : (
+        <div className="font-display text-display text-on-surface">{value}</div>
+      )}
       {trend && <div className="font-mono-sm text-mono-sm text-on-surface-variant mt-1">{trend}</div>}
     </div>
   );

@@ -8,6 +8,7 @@ import { ComponentEditor } from "@/components/engineering/ComponentEditor";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { DetailMessage } from "@/components/ui/DetailMessage";
 import { Icon } from "@/components/ui/Icon";
+import { EditorPageSkeleton } from "@/components/ui/Skeleton";
 import { Link, useRouter } from "@/i18n/navigation";
 import { getComponent } from "@/lib/api/engineering";
 import { useHasPermission } from "@/lib/auth/permissions";
@@ -29,7 +30,7 @@ export default function EditComponentPage() {
     return <DetailMessage error>{t("notFound")}</DetailMessage>;
   }
   if (!component) {
-    return <DetailMessage>{t("loading")}</DetailMessage>;
+    return <EditorPageSkeleton />;
   }
   if (!canUpdate) {
     return <p className="font-body-md text-body-md text-on-surface-variant">{t("editPermissionRequired")}</p>;

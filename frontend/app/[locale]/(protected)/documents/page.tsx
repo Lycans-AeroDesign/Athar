@@ -11,6 +11,7 @@ import { Combobox } from "@/components/ui/Combobox";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
 import { Pagination } from "@/components/ui/Pagination";
+import { TableSkeleton } from "@/components/ui/Skeleton";
 import { INPUT_CLASS } from "@/components/ui/inputStyles";
 import { getDocuments, type DocumentOrdering } from "@/lib/api/documents";
 import { Link } from "@/i18n/navigation";
@@ -166,7 +167,7 @@ export default function DocumentsPage() {
           {error}
         </p>
       ) : documents === null ? (
-        <p className="font-body-md text-body-md text-on-surface-variant">{commonT("loading")}</p>
+        <TableSkeleton rows={6} columns={5} />
       ) : documents.length === 0 ? (
         <EmptyState
           icon="folder"

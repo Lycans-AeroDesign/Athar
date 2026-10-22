@@ -1,6 +1,5 @@
 "use client";
 
-import { useTranslations } from "next-intl";
 import { use, useEffect } from "react";
 
 import { InventoryListManager } from "@/components/engineering/InventoryListManager";
@@ -16,12 +15,12 @@ import { useSettingsPermissions, useVisibleSettingsGroups } from "@/components/s
 import { useReportSettingsDirty } from "@/components/settings/SettingsShell";
 import { UsersSettingsForm } from "@/components/settings/UsersSettingsForm";
 import { CourseCategoryManager } from "@/components/training/CourseCategoryManager";
+import { FormSectionSkeleton } from "@/components/ui/Skeleton";
 import { useRouter } from "@/i18n/navigation";
 import { useOrganization } from "@/lib/organization/OrganizationProvider";
 
 export default function SettingsSectionPage({ params }: { params: Promise<{ section: string }> }) {
   const { section } = use(params);
-  const commonT = useTranslations("common");
   const router = useRouter();
   const { settings, setSettings } = useOrganization();
   const reportDirty = useReportSettingsDirty();
@@ -41,7 +40,7 @@ export default function SettingsSectionPage({ params }: { params: Promise<{ sect
     case "identity":
     case "features":
       if (!settings) {
-        return <p className="font-body-md text-body-md text-on-surface-variant">{commonT("loading")}</p>;
+        return <FormSectionSkeleton fields={3} />;
       }
       return section === "identity" ? (
         <IdentitySettingsForm

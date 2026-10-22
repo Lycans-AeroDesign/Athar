@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 
 import { Icon } from "@/components/ui/Icon";
 import { Pagination } from "@/components/ui/Pagination";
+import { ListSkeleton } from "@/components/ui/Skeleton";
 import { Link } from "@/i18n/navigation";
 import type { RelatableType, SearchResult } from "@/lib/api/types";
 import { RELATABLE_ICON, RELATABLE_ROUTE_PREFIX } from "@/lib/knowledgeTypes";
@@ -93,8 +94,8 @@ interface SearchResultsPanelProps {
   query?: string;
   /** Shown once `results` is non-null but empty. */
   emptyMessage: string;
-  /** Shown while `results` is still null. */
-  loadingMessage: string;
+  /** Deprecated text fallback; skeleton loader is shown while `results` is null. */
+  loadingMessage?: string;
   page: number;
   hasMore: boolean;
   onPageChange: (page: number) => void;
@@ -113,7 +114,6 @@ export function SearchResultsPanel({
   onScopeChange,
   query = "",
   emptyMessage,
-  loadingMessage,
   page,
   hasMore,
   onPageChange,
@@ -162,7 +162,7 @@ export function SearchResultsPanel({
         {headerExtra}
 
         {results === null ? (
-          <p className="font-body-md text-body-md text-on-surface-variant">{loadingMessage}</p>
+          <ListSkeleton rows={5} />
         ) : results.length === 0 ? (
           <p className="font-body-md text-body-md text-on-surface-variant">{emptyMessage}</p>
         ) : (

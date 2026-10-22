@@ -8,6 +8,7 @@ import { QuestionEditor } from "@/components/knowledge/QuestionEditor";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { DetailMessage } from "@/components/ui/DetailMessage";
 import { Icon } from "@/components/ui/Icon";
+import { EditorPageSkeleton } from "@/components/ui/Skeleton";
 import { Link, useRouter } from "@/i18n/navigation";
 import { getQuestion } from "@/lib/api/knowledge";
 import { useAuth } from "@/lib/auth/AuthProvider";
@@ -34,7 +35,7 @@ export default function EditQuestionPage() {
     return <DetailMessage error>{t("notFound")}</DetailMessage>;
   }
   if (!question) {
-    return <DetailMessage>{t("loading")}</DetailMessage>;
+    return <EditorPageSkeleton />;
   }
 
   const canEdit =

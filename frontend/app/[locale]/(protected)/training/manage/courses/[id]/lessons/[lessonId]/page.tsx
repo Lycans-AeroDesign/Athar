@@ -12,6 +12,7 @@ import { FileDropzone } from "@/components/ui/FileDropzone";
 import { Icon } from "@/components/ui/Icon";
 import { IconButton } from "@/components/ui/IconButton";
 import { MarkdownEditor } from "@/components/ui/MarkdownEditor";
+import { EditorPageSkeleton } from "@/components/ui/Skeleton";
 import { Link } from "@/i18n/navigation";
 import { uploadFile } from "@/lib/api/files";
 import {
@@ -111,7 +112,7 @@ export default function LessonEditorPage() {
   }, [lessonId]);
 
   if (!lesson) {
-    return <p className="font-body-md text-body-md text-on-surface-variant">{t("loading")}</p>;
+    return <EditorPageSkeleton />;
   }
 
   const primaryResource = lesson.resources.find((resource) => resource.is_primary) ?? null;

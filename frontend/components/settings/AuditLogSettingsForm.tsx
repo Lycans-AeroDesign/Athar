@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 import { Pagination } from "@/components/ui/Pagination";
+import { TableSkeleton } from "@/components/ui/Skeleton";
 import { formatDateTime } from "@/lib/datetime";
 import { getAuditLogs } from "@/lib/api/audit";
 import type { AuditLogEntry, Paginated } from "@/lib/api/types";
@@ -15,7 +16,6 @@ import { errorMessage } from "@/lib/errors";
 // CategorySettingsForm) since there's no local editing happening here.
 export function AuditLogSettingsForm() {
   const t = useTranslations("settings.audit");
-  const commonT = useTranslations("common");
 
   const [page, setPage] = useState(1);
   const [data, setData] = useState<Paginated<AuditLogEntry> | null>(null);
@@ -42,7 +42,9 @@ export function AuditLogSettingsForm() {
         )}
 
         {!data ? (
-          <p className="px-6 pb-6 font-body-md text-body-md text-on-surface-variant">{commonT("loading")}</p>
+          <div className="p-6 pt-0">
+            <TableSkeleton rows={6} columns={4} />
+          </div>
         ) : data.results.length === 0 ? (
           <p className="px-6 pb-6 font-body-md text-body-md text-on-surface-variant">{t("emptyState")}</p>
         ) : (

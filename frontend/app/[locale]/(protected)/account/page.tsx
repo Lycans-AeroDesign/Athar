@@ -10,6 +10,7 @@ import { ContributionsPanel } from "@/components/knowledge/ContributionsPanel";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
+import { ListSkeleton } from "@/components/ui/Skeleton";
 import { getUserProfile } from "@/lib/api/knowledge";
 import type { UserProfile } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth/AuthProvider";
@@ -24,7 +25,6 @@ type AccountTab = "contributions" | "preferences" | "data";
 // preferences.
 export default function AccountPage() {
   const t = useTranslations("account");
-  const commonT = useTranslations("common");
   const profileT = useTranslations("userProfile");
   const { user } = useAuth();
   const [tab, setTab] = useState<AccountTab>("contributions");
@@ -111,7 +111,7 @@ export default function AccountPage() {
         profile ? (
           <ContributionsPanel profile={profile} />
         ) : (
-          <p className="font-body-md text-body-md text-on-surface-variant">{commonT("loading")}</p>
+          <ListSkeleton rows={4} />
         )
       ) : tab === "preferences" ? (
         <div className="max-w-2xl">

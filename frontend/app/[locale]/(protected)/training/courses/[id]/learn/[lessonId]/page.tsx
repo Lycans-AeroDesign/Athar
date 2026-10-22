@@ -10,6 +10,7 @@ import { LessonResourceList } from "@/components/training/LessonResourceList";
 import { RelatedKnowledgePanel } from "@/components/training/RelatedKnowledgePanel";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
+import { CourseLearnPageSkeleton } from "@/components/ui/Skeleton";
 import { Link } from "@/i18n/navigation";
 import { completeLesson, enrollInCourse, getCourse, getCourseProgress, getLesson } from "@/lib/api/training";
 import type { CourseDetail, CourseProgress, LessonDetail, LessonSummary } from "@/lib/api/types";
@@ -101,7 +102,7 @@ export default function LessonViewerPage() {
     return <p className="font-body-md text-body-md text-error">{t("notFound")}</p>;
   }
   if (!course || !lesson) {
-    return <p className="font-body-md text-body-md text-on-surface-variant">{t("loading")}</p>;
+    return <CourseLearnPageSkeleton />;
   }
 
   const supplementaryResources = lesson.resources.filter(

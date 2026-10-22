@@ -14,6 +14,7 @@ import { DetailMessage } from "@/components/ui/DetailMessage";
 import { Icon } from "@/components/ui/Icon";
 import { IconButton } from "@/components/ui/IconButton";
 import { Markdown } from "@/components/ui/Markdown";
+import { DetailPageSkeleton } from "@/components/ui/Skeleton";
 import { TagChip } from "@/components/ui/TagChip";
 import { Link, useRouter } from "@/i18n/navigation";
 import { deleteProject, getProject } from "@/lib/api/engineering";
@@ -37,7 +38,7 @@ export default function ProjectDetailPage() {
     return <DetailMessage error>{t("notFound")}</DetailMessage>;
   }
   if (!project) {
-    return <DetailMessage>{t("loading")}</DetailMessage>;
+    return <DetailPageSkeleton />;
   }
 
   async function handleDelete() {

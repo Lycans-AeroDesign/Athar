@@ -7,6 +7,7 @@ import { ContributionsPanel } from "@/components/knowledge/ContributionsPanel";
 import { Avatar } from "@/components/ui/Avatar";
 import { DetailMessage } from "@/components/ui/DetailMessage";
 import { Icon } from "@/components/ui/Icon";
+import { ProfilePageSkeleton } from "@/components/ui/Skeleton";
 import { getUserProfile } from "@/lib/api/knowledge";
 import { formatDate } from "@/lib/datetime";
 import { formatPersonName } from "@/lib/format";
@@ -22,7 +23,7 @@ export default function UserProfilePage() {
     return <DetailMessage error>{t("notFound")}</DetailMessage>;
   }
   if (!profile) {
-    return <DetailMessage>{t("loading")}</DetailMessage>;
+    return <ProfilePageSkeleton />;
   }
 
   const name = formatPersonName(profile);

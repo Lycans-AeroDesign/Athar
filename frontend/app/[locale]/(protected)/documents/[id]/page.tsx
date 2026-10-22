@@ -13,6 +13,7 @@ import { FilePreviewModal } from "@/components/ui/FilePreviewModal";
 import { Icon } from "@/components/ui/Icon";
 import { IconButton } from "@/components/ui/IconButton";
 import { Markdown } from "@/components/ui/Markdown";
+import { DetailPageSkeleton } from "@/components/ui/Skeleton";
 import { Link, useRouter } from "@/i18n/navigation";
 import { deleteDocument, getDocument } from "@/lib/api/documents";
 import { downloadFile } from "@/lib/api/files";
@@ -40,7 +41,7 @@ export default function DocumentDetailPage() {
     return <DetailMessage error>{t("notFound")}</DetailMessage>;
   }
   if (!document) {
-    return <DetailMessage>{t("loading")}</DetailMessage>;
+    return <DetailPageSkeleton />;
   }
 
   // Ownership-or-document.update, mirroring update_document/delete_document's

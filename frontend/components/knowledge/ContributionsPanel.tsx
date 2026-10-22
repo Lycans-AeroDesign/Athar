@@ -8,6 +8,7 @@ import { QuestionCard } from "@/components/knowledge/QuestionCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
 import { Pagination } from "@/components/ui/Pagination";
+import { CardGridSkeleton, Skeleton } from "@/components/ui/Skeleton";
 import { Link } from "@/i18n/navigation";
 import { getUserActivity } from "@/lib/api/audit";
 import { getUserContributions } from "@/lib/api/knowledge";
@@ -65,7 +66,17 @@ function RecentActivity({ userId }: { userId: string }) {
         {t("recentActivityTitle")}
       </h3>
       {activity === null ? (
-        <p className="font-body-md text-body-md text-on-surface-variant">{t("loadingTab")}</p>
+        <div className="space-y-3" role="status" aria-busy="true">
+          {Array.from({ length: 4 }).map((_, idx) => (
+            <div key={idx} className="flex gap-2.5">
+              <Skeleton className="mt-1.5 size-2 rounded-full shrink-0" />
+              <div className="min-w-0 flex-1 space-y-1.5">
+                <Skeleton className="h-4 w-4/5" />
+                <Skeleton className="h-3 w-20" />
+              </div>
+            </div>
+          ))}
+        </div>
       ) : activity.length === 0 ? (
         <p className="font-body-md text-body-md text-on-surface-variant">{t("recentActivityEmptyState")}</p>
       ) : (
@@ -282,7 +293,7 @@ export function ContributionsPanel({ profile }: ContributionsPanelProps) {
               </h3>
 
               {items === null ? (
-                <p className="font-body-md text-body-md text-on-surface-variant">{t("loadingTab")}</p>
+                <CardGridSkeleton count={4} columns={2} />
               ) : items.length === 0 ? (
                 <p className="font-body-md text-body-md text-on-surface-variant">{t("emptyState")}</p>
               ) : (

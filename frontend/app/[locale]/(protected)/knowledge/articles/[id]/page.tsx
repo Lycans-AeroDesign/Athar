@@ -19,6 +19,7 @@ import { IconButton } from "@/components/ui/IconButton";
 import { Markdown } from "@/components/ui/Markdown";
 import { Modal } from "@/components/ui/Modal";
 import { ShareButton } from "@/components/ui/ShareButton";
+import { DetailPageSkeleton } from "@/components/ui/Skeleton";
 import { TagChip } from "@/components/ui/TagChip";
 import { CoAuthorsByline } from "@/components/knowledge/CoAuthorsByline";
 import { Link, useRouter } from "@/i18n/navigation";
@@ -77,7 +78,7 @@ export default function ArticleDetailPage() {
     return <DetailMessage error>{t("notFound")}</DetailMessage>;
   }
   if (!article) {
-    return <DetailMessage>{t("loading")}</DetailMessage>;
+    return <DetailPageSkeleton />;
   }
 
   // Co-authors share the author's edit/submit rights (backend visibility.is_owner_of).

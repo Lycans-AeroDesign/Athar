@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 
 import { Icon } from "@/components/ui/Icon";
+import { Skeleton } from "@/components/ui/Skeleton";
 import type { InventorySummary, StockStatus } from "@/lib/api/types";
 import { STOCK_STATUS_VALUES } from "@/lib/inventory";
 import { STOCK_STATUS_ICONS } from "@/lib/optionIcons";
@@ -21,10 +22,31 @@ interface InventorySummaryPanelProps {
 export function InventorySummaryPanel({ summary, activeStatus, onStatusSelect }: InventorySummaryPanelProps) {
   const t = useTranslations("engineering.component");
   const stockT = useTranslations("engineering.stockStatus");
-  const commonT = useTranslations("common");
 
   if (!summary) {
-    return <p className="font-body-md text-body-md text-on-surface-variant">{commonT("loading")}</p>;
+    return (
+      <section
+        role="status"
+        aria-busy="true"
+        className="space-y-4 rounded-xl border border-outline-variant bg-surface-container-lowest p-4"
+      >
+        <div className="flex items-center justify-between gap-2">
+          <Skeleton className="h-6 w-40" />
+          <Skeleton className="h-4 w-28" />
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          {Array.from({ length: 5 }).map((_, idx) => (
+            <div
+              key={idx}
+              className="rounded-xl border border-outline-variant bg-surface-container-low p-3 space-y-2"
+            >
+              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-7 w-12" />
+            </div>
+          ))}
+        </div>
+      </section>
+    );
   }
 
   const categories = summary.by_category.filter((row) => row.total > 0);

@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/Button";
 import { Combobox } from "@/components/ui/Combobox";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
+import { CardGridSkeleton } from "@/components/ui/Skeleton";
 import { Link } from "@/i18n/navigation";
 import { getArticles, getCategories, getQuestions, getTags } from "@/lib/api/knowledge";
 import type { ArticleStatusFilter, ArticleSummary, Category, QuestionSummary, Tag } from "@/lib/api/types";
@@ -177,7 +178,7 @@ export default function KnowledgePage() {
           </div>
 
           {articles === null || questions === null ? (
-            <p className="font-body-md text-body-md text-on-surface-variant">{t("loading")}</p>
+            <CardGridSkeleton count={4} columns={2} />
           ) : recentItems.length === 0 ? (
             <EmptyState
               icon="menu_book"
