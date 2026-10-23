@@ -71,6 +71,17 @@ class PlatformAdminTests(RoleLoginMixin, APITestCase):
 
         self.assertEqual(response.data["organization_count"] >= 2, True)
         self.assertEqual(response.data["file_bytes"], 2048)
+        # disk_usage() reports the filesystem hosting uploads - even under the
+        # test runner the default storage stays FileSystemStorage, so these
+        # are real numbers of the test container's disk.
+        self.assertIsNotNone(response.data["disk_total_bytes"])
+        self.assertIsNotNone(response.data["disk_used_bytes"])
+        self.assertGreater(response.data["disk_used_bytes"], 0)
+        self.assertLess(response.data["disk_used_bytes"], response.data["disk_total_bytes"])
+        self.assertEqual(
+            response.data["disk_free_bytes"],
+            response.data["disk_total_bytes"] - response.data["disk_used_bytes"],
+        )
 
     def test_suspended_org_users_are_locked_out_and_audit_logged(self):
         operator, headers = self._operator()

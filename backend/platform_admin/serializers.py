@@ -41,6 +41,11 @@ class PlatformSummarySerializer(serializers.Serializer):
     file_bytes = serializers.IntegerField()
     backup_bytes = serializers.IntegerField()
     total_bytes = serializers.IntegerField()
+    # Null when uploads live in object storage instead of the VM's disk
+    # (services.disk_usage) - the frontend hides the disk card then.
+    disk_total_bytes = serializers.IntegerField(allow_null=True)
+    disk_used_bytes = serializers.IntegerField(allow_null=True)
+    disk_free_bytes = serializers.IntegerField(allow_null=True)
 
 
 class PlatformUserSerializer(serializers.ModelSerializer):

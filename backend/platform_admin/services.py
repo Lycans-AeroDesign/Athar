@@ -5,7 +5,10 @@ return organization content (articles, answers, file names, ...)."""
 
 from django.db import transaction
 from django.db.models import Count, Max, Q, Sum
+from django.conf import settings
 from rest_framework.exceptions import PermissionDenied, ValidationError
+
+import shutil
 
 from accounts.models import User
 from accounts.services import create_password_reset_link
@@ -98,6 +101,26 @@ def organization_stats(organizations) -> list[dict]:
     return result
 
 
+def disk_usage() -> dict:
+    """Space on the filesystem hosting MEDIA_ROOT - i.e. the disk the uploads
+    actually land on (the VM's disk for local-disk storage installs). None
+    values when files are served from object storage (S3); the serializer
+    passes those through so the frontend can drop the disk card instead of
+    showing a number that doesn't match reality."""
+    blanks = {"disk_total_bytes": None, "disk_used_bytes": None, "disk_free_bytes": None}
+    if "django.core.files.storage.FileSystemStorage" not in settings.STORAGES["default"]["BACKEND"]:
+        return blanks
+    try:
+        usage = shutil.disk_usage(settings.MEDIA_ROOT)
+    except OSError:
+        return blanks
+    return {
+        "disk_total_bytes": usage.total,
+        "disk_used_bytes": usage.used,
+        "disk_free_bytes": usage.free,
+    }
+
+
 def instance_summary() -> dict:
     stats = organization_stats(Organization.objects.all())
     return {
@@ -108,6 +131,7 @@ def instance_summary() -> dict:
         "file_bytes": sum(row["file_bytes"] for row in stats),
         "backup_bytes": sum(row["backup_bytes"] for row in stats),
         "total_bytes": sum(row["total_bytes"] for row in stats),
+        **disk_usage(),
     }
 
 

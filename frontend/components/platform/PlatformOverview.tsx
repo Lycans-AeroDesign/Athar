@@ -87,7 +87,7 @@ export function PlatformOverview() {
       )}
 
       {summary && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
           <StatCard
             label={t("organizations")}
             value={summary.organization_count}
@@ -102,6 +102,20 @@ export function PlatformOverview() {
           />
           <StatCard label={t("files")} value={formatBytes(summary.file_bytes)} icon="folder" />
           <StatCard label={t("backups")} value={formatBytes(summary.backup_bytes)} icon="backup" />
+          {summary.disk_total_bytes != null && summary.disk_used_bytes != null ? (
+            <StatCard
+              label={t("diskUsage")}
+              value={t("diskUsedOfTotal", { used: formatBytes(summary.disk_used_bytes), total: formatBytes(summary.disk_total_bytes) })}
+              icon="hard_drive"
+              trend={
+                summary.disk_total_bytes > 0
+                  ? t("diskPercentUsed", { percent: Math.round((summary.disk_used_bytes / summary.disk_total_bytes) * 100) })
+                  : undefined
+              }
+            />
+          ) : (
+            <StatCard label={t("diskUsage")} value={t("diskUnavailable")} icon="hard_drive" />
+          )}
         </div>
       )}
 

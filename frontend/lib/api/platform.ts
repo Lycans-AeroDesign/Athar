@@ -10,6 +10,11 @@ export interface PlatformSummary {
   file_bytes: number;
   backup_bytes: number;
   total_bytes: number;
+  /** Space on the filesystem hosting uploads (services.disk_usage). Null when
+   * uploads live in object storage instead of the VM's disk. */
+  disk_total_bytes: number | null;
+  disk_used_bytes: number | null;
+  disk_free_bytes: number | null;
 }
 
 export interface PlatformContentCounts {
