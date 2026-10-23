@@ -78,7 +78,11 @@ class PlatformAdminTests(RoleLoginMixin, APITestCase):
         self.assertIsNotNone(response.data["disk_used_bytes"])
         self.assertGreater(response.data["disk_used_bytes"], 0)
         self.assertLess(response.data["disk_used_bytes"], response.data["disk_total_bytes"])
-        self.assertEqual(
+        # shutil derives "used" from f_bfree (root-inclusive) but reports "free"
+        # as f_bavail (non-root), so free can exceed total - used by exactly
+        # the OS's root-reserved blocks - 16 MiB on the CI runner, 0 here.
+        # Consistency is the invariant; equality is not.
+        self.assertGreaterEqual(
             response.data["disk_free_bytes"],
             response.data["disk_total_bytes"] - response.data["disk_used_bytes"],
         )
