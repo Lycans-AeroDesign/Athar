@@ -796,3 +796,114 @@ class Bookmark(UUIDPrimaryKeyModel, OrganizationScopedModel, TimeStampedModel):
 
     def __str__(self):
         return f"{self.user_id} bookmarked {self.target}"
+
+
+class Collection(UUIDPrimaryKeyModel, OrganizationScopedModel, TimeStampedModel):
+    """A topic grouping or ordered step sequence over relatable content -
+    the "XFLR5 Wing Sizing" use case: Grouping related SOPs/Articles together
+    so they don't get lost in a flat list, AND expressing sequential phases
+    ("Phase 1: 2D airfoil analysis" -> "Phase 2: 3D wing planform/VLM" -> ...)
+    with prev/next navigation on each item's detail page.
+
+    Mode is the distinction: a FOLDER is a flat topic grouping (order is a
+    display hint only); a SERIES numbers its phases and drives the phase
+    stepper. Items may mix content types (a series can open with a theory
+    Article and continue with SOPs) - see CollectionItem.
+
+    Uses core's shared base classes (CONTRIBUTING.md 3.4). Visibility follows
+    the standard RESTRICTED rule (see visibility.py's OWNER_FIELD/
+    OVERRIDE_PERMISSIONS entries) rather than anything collection-specific."""
+
+    class Mode(models.TextChoices):
+        """Ordered phases/steps with prev/next navigation (SERIES) vs a topic
+        grouping where order is only a display hint (FOLDER)."""
+
+        SERIES = "SERIES", "Series"
+        FOLDER = "FOLDER", "Folder"
+
+    class ContentScope(models.TextChoices):
+        """What the collection is presented as: a list-page shelf shows only
+        the scopes matching that page (SOPs page: SOP/MIXED, Articles page:
+        ARTICLE/MIXED). An enforcement hint, not a data check - a collection
+        may freely hold any relatable type."""
+
+        SOP = "SOP", "SOPs"
+        ARTICLE = "ARTICLE", "Articles"
+        MIXED = "MIXED", "Mixed"
+
+    title = models.CharField(max_length=200)
+    slug = models.SlugField(max_length=220)
+    # Markdown overview of the topic/workflow, shown above the item list on
+    # the collection's page.
+    description = models.TextField(blank=True)
+    mode = models.CharField(max_length=10, choices=Mode.choices, default=Mode.SERIES)
+    content_scope = models.CharField(
+        max_length=10, choices=ContentScope.choices, default=ContentScope.MIXED
+    )
+    visibility = models.CharField(max_length=20, choices=Visibility.choices, default=Visibility.PUBLIC)
+    category = models.ForeignKey(
+        Category, null=True, blank=True, on_delete=models.SET_NULL, related_name="collections"
+    )
+    tags = models.ManyToManyField(Tag, blank=True, related_name="collections")
+    # SET_NULL matches every content model's creator FK: deleting a user must
+    # not delete their content (files.StoredFile.uploaded_by's precedent).
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="created_collections"
+    )
+
+    search_vector, search_text = search_columns("title", ("description",))
+
+    class Meta:
+        ordering = ["-updated_at"]
+        indexes = [
+            models.Index(fields=["organization", "-updated_at"], name="kn_collection_org_updated"),
+            *search_indexes("kn_collection"),
+        ]
+        # slug was globally unique - now per-org (same as Article).
+        unique_together = [("organization", "slug")]
+
+    def __str__(self):
+        return self.title
+
+
+class CollectionItem(models.Model):
+    """One entry in a Collection, generically pointing at any relatable
+    content type (same GenericForeignKey shape as KnowledgeRelation above).
+    `order` sorts the phases/steps (normalized to 0..n-1 on every reorder);
+    `phase_title` labels the step in SERIES mode ("Phase 1 - 2D Airfoil
+    Analysis") but is optional, falling back to the content's own title.
+
+    Structurally scoped through `collection` (no organization FK of its own -
+    same rationale as ArticleRevision above; it's only ever reached through
+    an already-scoped parent)."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
+    collection = models.ForeignKey(Collection, on_delete=models.CASCADE, related_name="items")
+
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, related_name="+")
+    object_id = models.UUIDField()
+    content = GenericForeignKey("content_type", "object_id")
+
+    order = models.PositiveIntegerField()
+    phase_title = models.CharField(max_length=200, blank=True)
+    note = models.CharField(max_length=300, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["order", "created_at"]
+        indexes = [
+            models.Index(fields=["order"], name="kn_collection_item_order"),
+            models.Index(fields=["content_type", "object_id"]),
+        ]
+        constraints = [
+            # A given piece of content appears at most once per collection
+            # (it can, however, live in several collections at once - an SOP
+            # can be part of one sizing series and a separate workflow).
+            models.UniqueConstraint(
+                fields=["collection", "content_type", "object_id"],
+                name="unique_collection_item",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.collection_id} # {self.order}: {self.content}"

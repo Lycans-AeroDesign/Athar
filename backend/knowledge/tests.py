@@ -1,3 +1,4 @@
+from django.contrib.contenttypes.models import ContentType
 from django.core.files.uploadedfile import SimpleUploadedFile
 
 from django.urls import reverse
@@ -18,6 +19,8 @@ from .models import (
     ArticleRevision,
     Bookmark,
     Category,
+    Collection,
+    CollectionItem,
     Component,
     ComponentCategory,
     Document,
@@ -27,6 +30,7 @@ from .models import (
     Question,
     QuestionAttachment,
     RestrictedAccessGrant,
+    Sop,
     StorageLocation,
     Tag,
     Test,
@@ -3596,3 +3600,212 @@ class WriteSerializerScopingTests(RoleLoginMixin, APITestCase):
         failure.refresh_from_db()
         self.assertEqual(failure.title, "Linked v2")
         self.assertEqual(failure.project_id, restricted.id)
+
+
+class CollectionTests(KnowledgeTestCase):
+    """Folders / series over existing content: CRUD + item ordering +
+    RESTRICTED visibility scoping + the detail-page context injection."""
+
+    def _sop(self, title, visibility="PUBLIC", created_by=None):
+        return Sop.objects.create(
+            organization=self.organization, title=title, visibility=visibility, created_by=created_by
+        )
+
+    def _create_series(self, access, **overrides):
+        payload = {"title": "Wing Sizing Series", "mode": "SERIES", **overrides}
+        return self.client.post(
+            reverse("knowledge-collection-list"), payload, format="json", **self._auth(access)
+        )
+
+    def _add_item(self, access, collection_id, content_type, object_id, **extra):
+        return self.client.post(
+            reverse("knowledge-collection-item-add", args=[collection_id]),
+            {"content_type": content_type, "object_id": str(object_id), **extra},
+            format="json",
+            **self._auth(access),
+        )
+
+    def test_create_requires_collection_manage_and_lists_scoped(self):
+        _, member_access = self._login_with_role("colmember@example.com", "Member")
+        response = self._create_series(member_access)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        mentor, mentor_access = self._login_with_role("colcreator@example.com", "Mentor")
+        response = self._create_series(mentor_access)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
+        self.assertEqual(response.data["mode"], "SERIES")
+        self.assertEqual(response.data["slug"], "wing-sizing-series")
+        self.assertEqual(response.data["created_by"]["id"], str(mentor.pk))
+
+        # A collection is also a first-class search/list result.
+        response = self.client.get(
+            reverse("knowledge-collection-list"), {"q": "wing sizing"}, **self._auth(mentor_access)
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data["results"]), 1)
+
+    def test_add_reorder_and_item_scoping(self):
+        _, mentor_access = self._login_with_role("colcurator@example.com", "Mentor")
+        collection_id = self._create_series(mentor_access).data["id"]
+        sop_a = self._sop("Airfoil 2D")
+        sop_b = self._sop("Wing 3D")
+
+        response = self._add_item(mentor_access, collection_id, "sop", sop_a.pk, phase_title="Phase 1")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
+        response = self._add_item(mentor_access, collection_id, "sop", sop_b.pk)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        detail = self.client.get(
+            reverse("knowledge-collection-detail", args=[collection_id]), **self._auth(mentor_access)
+        ).data
+        item_a, item_b = (item["id"] for item in detail["items"])
+
+        # Duplicate content in the same collection is a 400 (other collections may repeat it).
+        response = self._add_item(mentor_access, collection_id, "sop", sop_a.pk)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        detail = self.client.get(
+            reverse("knowledge-collection-detail", args=[collection_id]), **self._auth(mentor_access)
+        ).data
+        self.assertEqual([item["order"] for item in detail["items"]], [0, 1])
+        self.assertEqual([item["content"]["title"] for item in detail["items"]], ["Airfoil 2D", "Wing 3D"])
+        self.assertIsNone(detail["items"][1]["phase_title"])
+
+        # Reorder swaps them; a foreign/duplicate id is a 400, not skipped.
+        item_ids = [item["id"] for item in detail["items"]]
+        response = self.client.post(
+            reverse("knowledge-collection-reorder", args=[collection_id]),
+            {"item_ids": list(reversed(item_ids))},
+            format="json",
+            **self._auth(mentor_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            [item["content"]["title"] for item in response.data["items"]], ["Wing 3D", "Airfoil 2D"]
+        )
+        response = self.client.post(  # same id twice -> a duplicate, not a reorder
+            reverse("knowledge-collection-reorder", args=[collection_id]),
+            {"item_ids": [item_a, item_a]},
+            format="json",
+            **self._auth(mentor_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_series_embeds_prev_next_navigation_in_the_sop_detail(self):
+        mentor, mentor_access = self._login_with_role("colnav@example.com", "Mentor")
+        collection_id = self._create_series(mentor_access).data["id"]
+        sop_a = self._sop("Airfoil 2D")
+        sop_b = self._sop("Wing 3D", created_by=mentor)
+        self._add_item(mentor_access, collection_id, "sop", sop_a.pk)
+        self._add_item(mentor_access, collection_id, "sop", sop_b.pk)
+
+        detail = self.client.get(
+            reverse("knowledge-sop-detail", args=[sop_a.id]), **self._auth(mentor_access)
+        ).data
+        self.assertEqual(len(detail["collections"]), 1)
+        context = detail["collections"][0]
+        self.assertEqual(context["id"], collection_id)
+        self.assertEqual(context["position"], 1)
+        self.assertEqual(context["total"], 2)
+        self.assertIsNone(context["prev_item"])
+        self.assertEqual(context["next_item"]["id"], str(sop_b.pk))
+
+        detail = self.client.get(
+            reverse("knowledge-sop-detail", args=[sop_b.id]), **self._auth(mentor_access)
+        ).data
+        context = detail["collections"][0]
+        self.assertEqual(context["prev_item"]["id"], str(sop_a.pk))
+        self.assertIsNone(context["next_item"])
+
+    def test_restricted_content_is_hidden_from_unprivileged_viewers_everywhere(self):
+        mentor, mentor_access = self._login_with_role("colscope@example.com", "Mentor")
+        collection_id = self._create_series(mentor_access).data["id"]
+        public_sop = self._sop("Open Wing")
+        restricted_sop = self._sop("Secret Wing", visibility="RESTRICTED", created_by=mentor)
+        self._add_item(mentor_access, collection_id, "sop", public_sop.pk)
+        self._add_item(mentor_access, collection_id, "sop", restricted_sop.pk)
+
+        _, member_access = self._login_with_role("colviewer@example.com", "Member")
+
+        # The collection detail only ever lists what this viewer can see.
+        detail = self.client.get(
+            reverse("knowledge-collection-detail", args=[collection_id]), **self._auth(member_access)
+        ).data
+        self.assertEqual([item["content"]["title"] for item in detail["items"]], ["Open Wing"])
+
+        # So the phase stepper on the public SOP never links into the secret one.
+        context = self.client.get(
+            reverse("knowledge-sop-detail", args=[public_sop.id]), **self._auth(member_access)
+        ).data["collections"][0]
+        self.assertEqual((context["position"], context["total"]), (1, 1))
+        self.assertIsNone(context["next_item"])
+
+        # The mentor (allowed via the type's override permission) still sees both.
+        detail = self.client.get(
+            reverse("knowledge-collection-detail", args=[collection_id]), **self._auth(mentor_access)
+        ).data
+        self.assertEqual(len(detail["items"]), 2)
+        context = self.client.get(
+            reverse("knowledge-sop-detail", args=[public_sop.id]), **self._auth(mentor_access)
+        ).data["collections"][0]
+        self.assertEqual(context["total"], 2)
+        self.assertEqual(context["next_item"]["id"], str(restricted_sop.pk))
+
+    def test_restricted_collection_is_hidden_from_unprivileged_viewers(self):
+        _, mentor_access = self._login_with_role("colprivate@example.com", "Mentor")
+        collection_id = self._create_series(mentor_access, visibility="RESTRICTED").data["id"]
+
+        _, member_access = self._login_with_role("colpeeker@example.com", "Member")
+        response = self.client.get(
+            reverse("knowledge-collection-detail", args=[collection_id]), **self._auth(member_access)
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        # ...and it never appears in the member's collection list either.
+        response = self.client.get(reverse("knowledge-collection-list"), **self._auth(member_access))
+        self.assertEqual(response.data["count"], 0)
+
+    def test_deleting_content_prunes_its_collection_items(self):
+        _, mentor_access = self._login_with_role("colprune@example.com", "Mentor")
+        _, admin_access = self._login_with_role("colpruneadmin@example.com", "Organization Admin")
+        collection_id = self._create_series(mentor_access).data["id"]
+        sop = self._sop("Ephemeral Wing")
+        self._add_item(mentor_access, collection_id, "sop", sop.pk)
+        article = Article.objects.create(
+            organization=self.organization, title="Ephemeral Theory", slug="ephemeral-theory"
+        )
+        self._add_item(mentor_access, collection_id, "article", article.pk)
+
+        self.assertEqual(CollectionItem.objects.filter(collection_id=collection_id).count(), 2)
+        response = self.client.delete(
+            reverse("knowledge-sop-detail", args=[sop.id]), **self._auth(admin_access)
+        )
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+        remaining = CollectionItem.objects.filter(collection_id=collection_id)
+        # The SOP is gone and took its phase entry with it; whether the draft
+        # article could be deleted by this actor is a pre-existing rule, and
+        # if it wasn't, its item legitimately remains.
+        remaining_types = {item.content_type.model for item in remaining}
+        if Article.objects.filter(pk=article.pk).exists():
+            self.assertEqual(remaining_types, {"article"})
+        else:
+            self.assertEqual(remaining.count(), 0)
+
+    def test_other_organizations_admin_gets_404_on_collections(self):
+        other_org = create_test_organization(name="Other Col Org")
+        collection = Collection.objects.create(
+            organization=self.organization, title="Theirs", slug="theirs"
+        )
+        CollectionItem.objects.create(
+            collection=collection,
+            content_type=ContentType.objects.get_for_model(Sop),
+            object_id=self._sop("Home SOP").pk,
+            order=0,
+        )
+
+        _, other_access = self._login_with_role("othercoladmin@example.com", "Organization Admin", other_org)
+        response = self.client.get(
+            reverse("knowledge-collection-detail", args=[collection.id]), **self._auth(other_access)
+        )
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+

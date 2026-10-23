@@ -8,6 +8,7 @@ import { ChangedIndicator } from "@/components/ui/ChangedIndicator";
 import { Combobox } from "@/components/ui/Combobox";
 import { MarkdownEditor } from "@/components/ui/MarkdownEditor";
 import { TagInput } from "@/components/ui/TagInput";
+import { CollectionMembershipPicker } from "@/components/knowledge/CollectionMembershipPicker";
 import {
   EMPTY_RESTRICTED_ACCESS_DRAFT,
   RestrictedAccessPicker,
@@ -19,11 +20,13 @@ import { PendingRelations, toRelationInputs, type PendingRelation } from "@/comp
 import { effectiveVisibility, VisibilitySelect } from "@/components/knowledge/VisibilitySelect";
 import { ProjectSelect } from "@/components/knowledge/ProjectSelect";
 import { useRouter } from "@/i18n/navigation";
+import { useHasPermission } from "@/lib/auth/permissions";
 import { errorMessage } from "@/lib/errors";
 import { useSaveOnce } from "@/lib/useSaveOnce";
 import { addAccessGrant, removeAccessGrant } from "@/lib/api/accessGrants";
 import { createSop, updateSop, type SopWritePayload } from "@/lib/api/engineering";
-import { getCategories } from "@/lib/api/knowledge";
+import { syncCollectionMembership } from "@/lib/api/collections";
+import { createCategory, getCategories } from "@/lib/api/knowledge";
 import type { Category, SopDetail, Visibility } from "@/lib/api/types";
 
 interface SopEditorProps {
@@ -47,6 +50,10 @@ export function SopEditor({ sop, onDirtyChange, initialProjectId = null }: SopEd
   const [categories, setCategories] = useState<Category[]>([]);
   const [title, setTitle] = useState(sop?.title ?? "");
   const [categoryId, setCategoryId] = useState<string | null>(sop?.category?.id ?? null);
+  // Quick-create for the category dropdown (Combobox's onCreate) - shown
+  // only to category.manage holders, same permission Settings' category
+  // screen requires, but without leaving the editor.
+  const canCreateCategory = useHasPermission("category.manage");
   const [mandatory, setMandatory] = useState(sop?.mandatory ?? false);
   const [safetyNotes, setSafetyNotes] = useState(sop?.safety_notes ?? "");
   const [content, setContent] = useState(sop?.content ?? "");
@@ -61,6 +68,14 @@ export function SopEditor({ sop, onDirtyChange, initialProjectId = null }: SopEd
   );
   const { isSaving, run } = useSaveOnce();
   const [error, setError] = useState<string | null>(null);
+  const canManageCollections = useHasPermission("collection.manage");
+  // Membership diff baseline: the item's collections as fetched (empty on a
+  // new item) - syncCollectionMembership turns the picker's selection
+  // into add/remove item calls after the save settles.
+  const [collectionSelection, setCollectionSelection] = useState<string[]>(
+    sop?.collections.map((context) => context.id) ?? [],
+  );
+  const initialCollections = sop?.collections ?? [];
 
   const inheritVisibilityFrom: Visibility | null = sop ? null : projectVisibility;
   const resolvedVisibility = effectiveVisibility(visibility, inheritVisibilityFrom);
@@ -79,6 +94,9 @@ export function SopEditor({ sop, onDirtyChange, initialProjectId = null }: SopEd
     visibility: visibility !== (sop?.visibility ?? null),
     relations: pendingRelations.length > 0,
     linkProject: !sop && linkProjectId !== initialProjectId,
+    collections:
+      canManageCollections &&
+      collectionSelection.join(",") !== (sop ? initialCollections.map((c) => c.id).join(",") : ""),
     restrictedAccess:
       restrictedAccessDraft.pendingAdd.length > 0 || restrictedAccessDraft.pendingRemoveGrantIds.length > 0,
   };
@@ -126,6 +144,12 @@ export function SopEditor({ sop, onDirtyChange, initialProjectId = null }: SopEd
             });
         markCreated(saved.id);
         await syncRestrictedAccess(saved.id);
+        if (canManageCollections) {
+          // A new item starts with a clean membership baseline, so the full
+          // selection is the diff; an existing one diffs against its fetched
+          // collections (initialCollections above).
+          await syncCollectionMembership("sop", saved.id, initialCollections, collectionSelection);
+        }
         router.push(`/sops/${saved.id}`);
       });
     } catch (err) {
@@ -151,6 +175,20 @@ export function SopEditor({ sop, onDirtyChange, initialProjectId = null }: SopEd
               options={categories.map((category) => ({ value: category.id, label: category.name }))}
               value={categoryId}
               onChange={setCategoryId}
+              {...(canCreateCategory
+                ? {
+                    onCreate: async (name) => {
+                      try {
+                        setError(null);
+                        const category = await createCategory({ name });
+                        setCategories((existing) => [...existing, category]);
+                        setCategoryId(category.id);
+                      } catch (err) {
+                        setError(errorMessage(err));
+                      }
+                    },
+                  }
+                : {})}
             />
           </ChangedIndicator>
           <ChangedIndicator changed={fieldChanged.tags} className="flex-1 min-w-[200px]">
@@ -187,6 +225,18 @@ export function SopEditor({ sop, onDirtyChange, initialProjectId = null }: SopEd
               onChange={setRestrictedAccessDraft}
             />
           </ChangedIndicator>
+        )}
+        {canManageCollections && (
+          <div className="space-y-1">
+            <span className="block font-label-caps text-label-caps text-on-surface-variant uppercase">
+              {t("collectionsLabel")}
+            </span>
+            <CollectionMembershipPicker
+              itemType="sop"
+              selectedIds={collectionSelection}
+              onChange={setCollectionSelection}
+            />
+          </div>
         )}
       </div>
 

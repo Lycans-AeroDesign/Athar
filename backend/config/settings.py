@@ -206,6 +206,11 @@ MAX_UPLOAD_SIZE_MB = env.int("MAX_UPLOAD_SIZE_MB", default=2)
 # Extra file extensions to accept beyond files/validation.py's allowlist (stored as
 # application/octet-stream). Active-content types such as html/svg/js/exe stay blocked.
 UPLOAD_EXTRA_EXTENSIONS = env.list("UPLOAD_EXTRA_EXTENSIONS", default=[])
+# Highest value an org admin may set per-org (OrganizationSettings.
+# max_upload_size_mb; platform default is MAX_UPLOAD_SIZE_MB above). Requests
+# above this are rejected by nginx anyway, so keep nginx's client_max_body_size
+# for /api/ (nginx/templates/*.conf.template) at least this big.
+MAX_ORG_UPLOAD_SIZE_CEILING_MB = env.int("MAX_ORG_UPLOAD_SIZE_CEILING_MB", default=20)
 # Much larger cap for restore uploads (backups/views.py RestoreJobUploadView); nginx's
 # body-size limit for that route must be at least this.
 BACKUP_UPLOAD_MAX_SIZE_MB = env.int("BACKUP_UPLOAD_MAX_SIZE_MB", default=5120)

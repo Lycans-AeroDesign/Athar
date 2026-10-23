@@ -41,6 +41,7 @@ SEARCH_FIELDS: dict[str, tuple[str, tuple[str, ...]]] = {
     "sop": ("title", ("content",)),
     "test": ("title", ("objective", "results", "conclusion")),
     "document": ("title", ("description",)),
+    "collection": ("title", ("description",)),
 }
 
 # word_similarity() scores the best-matching substring of the target rather than diluting

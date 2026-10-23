@@ -98,6 +98,11 @@ location = /api/v1/health/ {
 
 # ------------------------------------------------
 # BACKEND API (DJANGO)
+# n.b. client_max_body_size for /api/ (20 in prod.conf.template, the server
+# default 1m in dev.conf.template's absence) must stay at least as big as the
+# backend's MAX_ORG_UPLOAD_SIZE_CEILING_MB (config/settings.py) - a per-org
+# limit above nginx's cap would silently truncate to nginx's instead, and the
+# backup-upload route below carves out its own, much larger allowance.
 # ------------------------------------------------
 location /api/ {
     limit_req zone=api_limit burst=50 nodelay;

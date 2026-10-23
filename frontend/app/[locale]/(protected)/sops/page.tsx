@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 import { Can } from "@/components/auth/Can";
+import { CollectionShelf } from "@/components/knowledge/CollectionShelf";
 import { ActiveFilterChip } from "@/components/ui/ActiveFilterChip";
 import { Button } from "@/components/ui/Button";
 import { Combobox } from "@/components/ui/Combobox";
@@ -116,6 +117,8 @@ export default function SopsPage() {
           />
         </div>
       )}
+
+      {!query && <CollectionShelf scope="SOP" />}
 
       {error ? (
         <p className="font-body-md text-body-md text-error" role="alert">

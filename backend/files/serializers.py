@@ -42,11 +42,17 @@ class StoredFileUploadInputSerializer(serializers.Serializer):
         return codename
 
     def validate_file(self, uploaded_file):
-        max_bytes = settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024
+        # Per-org limit (Settings > Identity), falling back to the platform
+        # default - see organization.services.effective_max_upload_size_mb.
+        # Request is passed in context by files.views.FileUploadView.
+        from organization.services import effective_max_upload_size_mb
+
+        request = self.context.get("request")
+        limit_mb = effective_max_upload_size_mb(request.user.organization) if request else settings.MAX_UPLOAD_SIZE_MB
+        max_bytes = limit_mb * 1024 * 1024
         if uploaded_file.size > max_bytes:
             raise serializers.ValidationError(
-                f"File too large ({uploaded_file.size / (1024 * 1024):.1f}MB) - "
-                f"the limit is {settings.MAX_UPLOAD_SIZE_MB}MB."
+                f"File too large ({uploaded_file.size / (1024 * 1024):.1f}MB) - the limit is {limit_mb}MB."
             )
         # Stored as the allowlist's canonical type, never the client-supplied one.
         uploaded_file.content_type = validate_upload(uploaded_file)

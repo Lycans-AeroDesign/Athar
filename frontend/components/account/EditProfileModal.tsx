@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
@@ -9,16 +9,16 @@ import { PhotoDropzone } from "@/components/ui/PhotoDropzone";
 import { INPUT_CLASS } from "@/components/ui/inputStyles";
 import { ApiError } from "@/lib/api/client";
 import { updateMe } from "@/lib/api/accounts";
-import { uploadFile } from "@/lib/api/files";
+import { DEFAULT_UPLOAD_LIMIT_MB, getUploadLimitMb, uploadFile } from "@/lib/api/files";
 import type { StoredFileRef, User } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { errorMessage } from "@/lib/errors";
 import { getInitials } from "@/lib/format";
 
-// Matches IdentitySettingsForm.tsx's own copy of this constant (backend/config/
-// settings.py's MAX_UPLOAD_SIZE_MB default) - shown for the description text
-// only, not enforced client-side.
-const MAX_UPLOAD_SIZE_MB = 2;
+// The hint text starts at the platform default and swaps to the org's live
+// limit from the settings endpoint once it resolves (see
+// lib/api/files.ts getUploadLimitMb) - never enforced here, uploadFile is.
+const MAX_UPLOAD_SIZE_MB = DEFAULT_UPLOAD_LIMIT_MB;
 
 
 interface EditProfileModalProps {
@@ -48,6 +48,18 @@ export function EditProfileModal({ user, onClose }: EditProfileModalProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [usernameError, setUsernameError] = useState<string | null>(null);
+  // The org's live upload limit (may differ from the platform default above).
+  const [uploadLimitMb, setUploadLimitMb] = useState<number>(MAX_UPLOAD_SIZE_MB);
+
+  useEffect(() => {
+    let cancelled = false;
+    void getUploadLimitMb().then((limitMb) => {
+      if (!cancelled) setUploadLimitMb(limitMb);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const isDirty =
     username !== (user.username ?? "") ||
@@ -141,7 +153,7 @@ export function EditProfileModal({ user, onClose }: EditProfileModalProps) {
               {t("profilePictureLabel")}
             </p>
             <p className="font-body-md text-body-md text-on-surface-variant mt-1">
-              {t("profilePictureHint", { maxSize: MAX_UPLOAD_SIZE_MB })}
+              {t("profilePictureHint", { maxSize: uploadLimitMb })}
             </p>
           </div>
         </div>

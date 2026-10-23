@@ -82,8 +82,6 @@ class FileServingTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_upload_rejects_file_over_the_configured_size_limit(self):
-        from django.test import override_settings
-
         access = self._login_with_role("uploader3@example.com", "Member")
         oversized = SimpleUploadedFile(
             "big.bin", b"x" * (3 * 1024 * 1024), content_type="application/octet-stream"
@@ -96,7 +94,32 @@ class FileServingTests(APITestCase):
                 format="multipart",
                 **self._auth(access),
             )
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        # 413, not 400: the view's Content-Length gate refuses the request
+        # before the parser buffers the whole body, and it runs on the same
+        # effective limit as the serializer's exact per-file check.
+        self.assertEqual(response.status_code, status.HTTP_413_REQUEST_ENTITY_TOO_LARGE)
+
+    def test_org_upload_limit_override_takes_precedence_over_the_platform_default(self):
+        from organization.models import OrganizationSettings
+
+        OrganizationSettings.load(self.organization)
+        OrganizationSettings.objects.filter(pk=self.organization.pk).update(max_upload_size_mb=2)
+        access = self._login_with_role("uploader5@example.com", "Member")
+        oversized = SimpleUploadedFile(
+            "big.bin", b"x" * (3 * 1024 * 1024), content_type="application/octet-stream"
+        )
+
+        # Platform default raised high enough that only the per-org override
+        # could reject this upload.
+        with override_settings(MAX_UPLOAD_SIZE_MB=5120):
+            response = self.client.post(
+                reverse("files-upload"),
+                {"file": oversized, "required_permission": "file.read"},
+                format="multipart",
+                **self._auth(access),
+            )
+        self.assertEqual(response.status_code, status.HTTP_413_REQUEST_ENTITY_TOO_LARGE)
+        self.assertIn("the limit is 2MB", response.data["detail"])
 
     def test_upload_rejects_unknown_required_permission_codename(self):
         access = self._login_with_role("uploader4@example.com", "Member")

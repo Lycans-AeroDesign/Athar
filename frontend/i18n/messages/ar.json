@@ -12,6 +12,7 @@
     "selectDate": "اختر تاريخًا",
     "typeToSearch": "اكتب للبحث...",
     "noResultsFound": "لا توجد نتائج.",
+    "comboboxCreate": "إنشاء \"{query}\"",
     "copyCode": "نسخ الكود",
     "copied": "تم النسخ!",
     "share": "مشاركة",
@@ -296,7 +297,10 @@
     "general": {
       "nameLabel": "اسم المؤسسة",
       "productTourLabel": "جولة تعريفية تفاعلية",
-      "productTourDescription": "تعرض للأعضاء الجدد جولة تعريفية قصيرة بالقائمة الجانبية والبحث وقائمة الحساب عند تسجيل الدخول لأول مرة. تعطيل هذا الخيار يخفي الجولة على مستوى المؤسسة بالكامل، بما في ذلك خيار \"بدء جولة تعريفية\" في قائمة الحساب."
+      "productTourDescription": "تعرض للأعضاء الجدد جولة تعريفية قصيرة بالقائمة الجانبية والبحث وقائمة الحساب عند تسجيل الدخول لأول مرة. تعطيل هذا الخيار يخفي الجولة على مستوى المؤسسة بالكامل، بما في ذلك خيار \"بدء جولة تعريفية\" في قائمة الحساب.",
+      "uploadLimitLabel": "الحد الأقصى لحجم الملفات (ميجابايت)",
+      "uploadLimitDescription": "أقصى حجم لملف واحد يمكن لأي عضو رفعه - المرفقات والصور المضمنة والمستندات وملفات CSV. اتركه فارغًا لاستخدام الحد الافتراضي من الخادم ({default} ميجابايت).",
+      "uploadLimitInvalid": "أدخل عددًا صحيحًا بالميجابايت بين 1 وبحد أقصى {max} ميجابايت، أو اترك الحقل فارغًا."
     },
     "features": {
       "title": "الميزات",
@@ -888,7 +892,54 @@
       "tableOfContents": "المحتويات",
       "visibilityLabel": "مستوى الظهور",
       "visibilityPUBLIC": "عام",
-      "visibilityRESTRICTED": "مقيّد"
+      "visibilityRESTRICTED": "مقيّد",
+      "collectionsLabel": "السلاسل والمجموعات"
+    },
+    "collections": {
+      "mode": {
+        "SERIES": "سلسلة",
+        "FOLDER": "مجموعة"
+      },
+      "shelf": {
+        "title": "السلاسل والمجموعات",
+        "itemCount": "{count, plural, =0 {لا عناصر} one {عنصر واحد} two {عنصران} few {# عناصر} many {# عنصرًا} other {# عنصر}}",
+        "newButton": "جديد",
+        "empty": "لا يوجد بعد."
+      },
+      "create": {
+        "title": "مجموعة جديدة",
+        "nameLabel": "الاسم",
+        "namePlaceholder": "مثال: سلسلة تحليل الجناح",
+        "typeLabel": "النوع",
+        "seriesDescription": "مراحل مرتبة بخطوات تالت/سابق",
+        "folderDescription": "تجميع موضوعي، الترتيب إرشادي فقط",
+        "createButton": "إنشاء"
+      },
+      "stepper": {
+        "phase": "المرحلة {position} من {total}",
+        "inFolder": "{total, plural, =0 {لا عناصر} one {عنصر واحد} two {عنصران} few {# عناصر} many {# عنصرًا} other {# عنصر}}",
+        "previous": "السابق",
+        "next": "التالي"
+      },
+      "picker": {
+        "createNew": "مجموعة جديدة",
+        "browseNote": "الأعضاء ذوو صلاحية التنظيم هم من يدبّر هذه القوائم."
+      },
+      "notFound": "هذه المجموعة غير موجودة أو ليس لديك صلاحية الوصول إليها.",
+      "deleteButton": "حذف",
+      "deleteConfirmTitle": "حذف هذه المجموعة؟",
+      "deleteConfirmBody": "تُحذف المجموعة وتنقسم هيكلتها، لكن إجراءات التشغيل والمقالات الواردة فيها لا تُحذف.",
+      "emptySeries": "لا مراحل في هذه السلسلة بعد - يمكن للمنظم إضافة إجراءات تشغيل أو مقالات إليها.",
+      "emptyFolder": "لا شيء في هذه المجموعة بعد - يمكن للمنظم إضافة إجراءات تشغيل أو مقالات إليها.",
+      "missingContent": "محتوى غير متاح",
+      "backToKnowledge": "العودة إلى قاعدة المعرفة",
+      "backToSops": "العودة إلى إجراءات التشغيل",
+      "item": {
+        "dragHandle": "اسحب لإعادة الترتيب",
+        "moveUp": "إلى الأعلى",
+        "moveDown": "إلى الأسفل",
+        "remove": "إزالة من المجموعة"
+      }
     },
     "question": {
       "badgeLabel": "سؤال",
@@ -1246,7 +1297,8 @@
       "editPermissionRequired": "لا تملك صلاحية تعديل هذا الإجراء.",
       "visibilityLabel": "مستوى الظهور",
       "visibilityPUBLIC": "عام",
-      "visibilityRESTRICTED": "مقيّد"
+      "visibilityRESTRICTED": "مقيّد",
+      "collectionsLabel": "السلاسل والمجموعات"
     },
     "test": {
       "titlePlaceholder": "عنوان الاختبار/التجربة",

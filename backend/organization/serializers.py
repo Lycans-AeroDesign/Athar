@@ -31,6 +31,18 @@ class OrganizationSettingsSerializer(serializers.ModelSerializer):
     # Same idea, mirrors settings.EMAIL_ENABLED - lets the Users tab offer
     # "email the reset link" only when the server can actually send email.
     email_enabled = serializers.SerializerMethodField()
+    # The org's own upload limit override (None = platform default), plus the
+    # limit actually in force right now - upload hint texts and the Settings
+    # form both want the *effective* number, serialization-wide.
+    max_upload_size_mb = serializers.IntegerField(read_only=True)
+    effective_max_upload_size_mb = serializers.SerializerMethodField()
+    # Exposed so the Settings form can cap the input without hardcoding a
+    # value that the deployment may have raised via
+    # MAX_ORG_UPLOAD_SIZE_CEILING_MB (settings.py).
+    max_upload_size_ceiling = serializers.SerializerMethodField()
+    # The platform-wide default the org falls back to when its own override is
+    # null - the Settings form's "empty = server default" hint needs it.
+    max_upload_size_platform_default = serializers.SerializerMethodField()
 
     class Meta:
         model = OrganizationSettings
@@ -46,6 +58,10 @@ class OrganizationSettingsSerializer(serializers.ModelSerializer):
             "primary_color_dark",
             "secondary_color_dark",
             "product_tour_enabled",
+            "max_upload_size_mb",
+            "effective_max_upload_size_mb",
+            "max_upload_size_ceiling",
+            "max_upload_size_platform_default",
             "organization_registration_enabled",
             "email_enabled",
             "updated_at",
@@ -62,6 +78,17 @@ class OrganizationSettingsSerializer(serializers.ModelSerializer):
 
     def get_email_enabled(self, obj: OrganizationSettings) -> bool:
         return django_settings.EMAIL_ENABLED
+
+    def get_effective_max_upload_size_mb(self, obj: OrganizationSettings) -> int:
+        from .services import effective_max_upload_size_mb
+
+        return effective_max_upload_size_mb(obj.organization)
+
+    def get_max_upload_size_ceiling(self, obj: OrganizationSettings) -> int:
+        return django_settings.MAX_ORG_UPLOAD_SIZE_CEILING_MB
+
+    def get_max_upload_size_platform_default(self, obj: OrganizationSettings) -> int:
+        return django_settings.MAX_UPLOAD_SIZE_MB
 
 
 class OrganizationCreateSerializer(serializers.Serializer):
@@ -105,9 +132,27 @@ class OrganizationCreateSerializer(serializers.Serializer):
 
 
 class OrganizationGeneralUpdateSerializer(serializers.ModelSerializer):
+    max_upload_size_mb = serializers.IntegerField(allow_null=True, required=False, min_value=1)
+
     class Meta:
         model = OrganizationSettings
-        fields = ["name", "product_tour_enabled"]
+        fields = ["name", "product_tour_enabled", "max_upload_size_mb"]
+
+    def validate_max_upload_size_mb(self, value):
+        # None here means an explicit clean (the request body sent
+        # "max_upload_size_mb": null) - reset to the platform default rather
+        # than keeping any override.
+        if value is None:
+            return value
+        from django.conf import settings as django_settings
+
+        ceiling = django_settings.MAX_ORG_UPLOAD_SIZE_CEILING_MB
+        if value > ceiling:
+            raise serializers.ValidationError(
+                f"The upload limit can't exceed {ceiling}MB (raise the deployment's "
+                f"MAX_ORG_UPLOAD_SIZE_CEILING_MB and nginx's client_max_body_size to go higher)."
+            )
+        return value
 
 
 class OrganizationBrandingUpdateSerializer(serializers.ModelSerializer):

@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Attachments } from "@/components/knowledge/Attachments";
 import { ContributorsRow } from "@/components/knowledge/Contributors";
 import { RelatedContent } from "@/components/knowledge/RelatedContent";
+import { SeriesStepper } from "@/components/knowledge/SeriesStepper";
 import { StatusPill } from "@/components/knowledge/StatusPill";
 import { Avatar } from "@/components/ui/Avatar";
 import { BookmarkButton } from "@/components/ui/BookmarkButton";
@@ -296,6 +297,10 @@ export default function ArticleDetailPage() {
         )}
 
         <Markdown content={article.content} />
+
+        {article.collections.map((context) => (
+          <SeriesStepper key={context.id} context={context} />
+        ))}
 
         <Attachments type="article" id={article.id} canEdit={canEdit} />
 

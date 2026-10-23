@@ -10,6 +10,7 @@ import { MarkdownEditor } from "@/components/ui/MarkdownEditor";
 import { SavingOverlay } from "@/components/ui/SavingOverlay";
 import { TagInput } from "@/components/ui/TagInput";
 import { CoAuthorPicker } from "@/components/knowledge/CoAuthorPicker";
+import { CollectionMembershipPicker } from "@/components/knowledge/CollectionMembershipPicker";
 import { PendingRelations, toRelationInputs, type PendingRelation } from "@/components/knowledge/PendingRelations";
 import { ProjectSelect } from "@/components/knowledge/ProjectSelect";
 import { effectiveVisibility, VisibilitySelect } from "@/components/knowledge/VisibilitySelect";
@@ -20,9 +21,11 @@ import {
 } from "@/components/knowledge/RestrictedAccessPicker";
 import { useRouter } from "@/i18n/navigation";
 import { addAccessGrant, removeAccessGrant } from "@/lib/api/accessGrants";
+import { syncCollectionMembership } from "@/lib/api/collections";
 import {
   type ArticleWritePayload,
   createArticle,
+  createCategory,
   getCategories,
   publishArticle,
   submitArticle,
@@ -61,6 +64,10 @@ export function ArticleEditor({ article, onDirtyChange, initialProjectId = null 
   const [excerpt, setExcerpt] = useState(article?.excerpt ?? "");
   const [content, setContent] = useState(article?.content ?? "");
   const [categoryId, setCategoryId] = useState<string | null>(article?.category?.id ?? null);
+  // Quick-create for the category dropdown (Combobox's onCreate) - shown
+  // only to category.manage holders, same permission Settings' category
+  // screen requires, but without leaving the editor.
+  const canCreateCategory = useHasPermission("category.manage");
   const [tags, setTags] = useState<string[]>(article?.tags.map((tag) => tag.name) ?? []);
   // null = not explicitly chosen (new article only): inherits the project's visibility if one is picked.
   const [visibility, setVisibility] = useState<Visibility | null>(article?.visibility ?? null);
@@ -73,6 +80,12 @@ export function ArticleEditor({ article, onDirtyChange, initialProjectId = null 
   );
   const { isSaving, run } = useSaveOnce();
   const [error, setError] = useState<string | null>(null);
+  const canManageCollections = useHasPermission("collection.manage");
+  // Same membership sync as SopEditor (see its comment).
+  const [collectionSelection, setCollectionSelection] = useState<string[]>(
+    article?.collections.map((context) => context.id) ?? [],
+  );
+  const initialCollections = article?.collections ?? [];
 
   const resolvedVisibility = effectiveVisibility(visibility, article ? null : projectVisibility);
   const canEditCoAuthors = !article || article.author?.id === user?.id || canOverride;
@@ -91,6 +104,9 @@ export function ArticleEditor({ article, onDirtyChange, initialProjectId = null 
     coAuthors: coAuthors.map((u) => u.id).join(",") !== (article?.co_authors ?? []).map((u) => u.id).join(","),
     project: !article && projectId !== initialProjectId,
     relations: pendingRelations.length > 0,
+    collections:
+      canManageCollections &&
+      collectionSelection.join(",") !== (article ? initialCollections.map((c) => c.id).join(",") : ""),
     restrictedAccess:
       restrictedAccessDraft.pendingAdd.length > 0 || restrictedAccessDraft.pendingRemoveGrantIds.length > 0,
   };
@@ -122,6 +138,7 @@ export function ArticleEditor({ article, onDirtyChange, initialProjectId = null 
     setTags(article?.tags.map((tag) => tag.name) ?? []);
     setVisibility(article?.visibility ?? null);
     setCoAuthors(article?.co_authors ?? []);
+    setCollectionSelection(article?.collections.map((context) => context.id) ?? []);
     setRestrictedAccessDraft(EMPTY_RESTRICTED_ACCESS_DRAFT);
     setError(null);
   }
@@ -147,6 +164,9 @@ export function ArticleEditor({ article, onDirtyChange, initialProjectId = null 
           : await createArticle(buildPayload(true));
         markCreated(saved.id);
         await syncRestrictedAccess(saved.id);
+        if (canManageCollections) {
+          await syncCollectionMembership("article", saved.id, initialCollections, collectionSelection);
+        }
         if (after) await after(saved.id);
         router.push(`/knowledge/articles/${saved.id}`);
       });
@@ -178,6 +198,20 @@ export function ArticleEditor({ article, onDirtyChange, initialProjectId = null 
               options={categories.map((category) => ({ value: category.id, label: category.name }))}
               value={categoryId}
               onChange={setCategoryId}
+              {...(canCreateCategory
+                ? {
+                    onCreate: async (name) => {
+                      try {
+                        setError(null);
+                        const category = await createCategory({ name });
+                        setCategories((existing) => [...existing, category]);
+                        setCategoryId(category.id);
+                      } catch (err) {
+                        setError(errorMessage(err));
+                      }
+                    },
+                  }
+                : {})}
             />
           </ChangedIndicator>
           <ChangedIndicator changed={fieldChanged.tags} className="flex-1 min-w-[200px]">
@@ -227,6 +261,18 @@ export function ArticleEditor({ article, onDirtyChange, initialProjectId = null 
               onChange={setRestrictedAccessDraft}
             />
           </ChangedIndicator>
+        )}
+        {canManageCollections && (
+          <div className="space-y-1">
+            <span className="block font-label-caps text-label-caps text-on-surface-variant uppercase">
+              {t("collectionsLabel")}
+            </span>
+            <CollectionMembershipPicker
+              itemType="article"
+              selectedIds={collectionSelection}
+              onChange={setCollectionSelection}
+            />
+          </div>
         )}
       </div>
 

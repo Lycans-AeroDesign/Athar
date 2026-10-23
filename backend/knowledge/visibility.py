@@ -34,6 +34,9 @@ OWNER_FIELD = {
     "failure": "created_by",
     "sop": "created_by",
     "test": "created_by",
+    # Collections are curated by whoever created them, until a
+    # collection.manage holder overrides (same shape as document.update).
+    "collection": "created_by",
 }
 
 # model_name -> a many-to-many of users who share ownership with OWNER_FIELD
@@ -67,6 +70,8 @@ OVERRIDE_PERMISSIONS = {
     "failure": ("failure.update",),
     "sop": ("sop.update",),
     "test": ("test.update",),
+    # Curating collections is the same gate as updating them.
+    "collection": ("collection.manage",),
 }
 
 

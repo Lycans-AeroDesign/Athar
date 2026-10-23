@@ -7,6 +7,7 @@ import { useState } from "react";
 import { Attachments } from "@/components/knowledge/Attachments";
 import { ContributorsRow } from "@/components/knowledge/Contributors";
 import { RelatedContent } from "@/components/knowledge/RelatedContent";
+import { SeriesStepper } from "@/components/knowledge/SeriesStepper";
 import { BookmarkButton } from "@/components/ui/BookmarkButton";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { DetailMessage } from "@/components/ui/DetailMessage";
@@ -108,6 +109,10 @@ export default function SopDetailPage() {
           {actionError}
         </p>
       )}
+
+      {sop.collections.map((context) => (
+        <SeriesStepper key={context.id} context={context} />
+      ))}
 
       {sop.safety_notes && (
         <div className="bg-error-container border-s-4 border-error rounded-e-xl p-4 flex gap-3 items-start">

@@ -4,6 +4,7 @@
 // matching the backend's WriteSerializers.
 
 import { apiFetch, apiJson, apiUpload, apiVoid } from "./client";
+import { assertFileWithinUploadLimit } from "./files";
 import type {
   ComponentCategory,
   CreationExtrasPayload,
@@ -375,12 +376,16 @@ export interface ComponentImportOptions {
  * import_components_csv for the contract). Call with commit=false first to show a diff, then
  * re-call with the SAME file and options and commit=true once confirmed; commit=false never
  * writes. Uses apiUpload for real progress, like uploadFile in lib/api/files.ts. */
-export function importComponentsCsv(
+export async function importComponentsCsv(
   file: File,
   commit: boolean,
   options?: ComponentImportOptions,
   onProgress?: (fraction: number) => void,
 ): Promise<ComponentImportPreview> {
+  // Same pre-flight as uploadFile - this endpoint streams the file through
+  // the generic size limit too, and oversize CSVs shouldn't get reviewed
+  // (or confirmed) only to fail at the server's size check.
+  await assertFileWithinUploadLimit(file);
   const formData = new FormData();
   formData.append("file", file);
   formData.append("commit", commit ? "true" : "false");

@@ -8,16 +8,16 @@ import { Button } from "@/components/ui/Button";
 import { ChangedIndicator } from "@/components/ui/ChangedIndicator";
 import { Icon } from "@/components/ui/Icon";
 import { PhotoDropzone } from "@/components/ui/PhotoDropzone";
-import { uploadFile } from "@/lib/api/files";
+import { clearUploadLimitCache, uploadFile } from "@/lib/api/files";
 import { updateBrandingSettings, updateGeneralSettings } from "@/lib/api/organization";
 import type { OrganizationSettings, StoredFileRef } from "@/lib/api/types";
 import { errorMessage } from "@/lib/errors";
 import { hasLowContrast } from "@/lib/theme/brandColors";
 
-// Matches backend/config/settings.py MAX_UPLOAD_SIZE_MB's default - shown
-// here for the description text only, not enforced client-side (the
-// backend is the real boundary; see files/serializers.py validate_file).
-const MAX_UPLOAD_SIZE_MB = 2;
+// The live per-org upload limit follows settings.effective_max_upload_size_mb;
+// the platform default it falls back to comes from the settings payload too,
+// so nothing here is hardcoded (owner of the backend rule:
+// files/serializers.py's validate_file).
 
 interface IdentitySettingsFormProps {
   settings: OrganizationSettings;
@@ -46,6 +46,11 @@ export function IdentitySettingsForm({
   const generalT = useTranslations("settings.general");
   const commonT = useTranslations("common");
   const [name, setName] = useState(settings.name);
+  // Empty string = "use the server default" (the backend's null override).
+  const [uploadLimitMb, setUploadLimitMb] = useState<string>(
+    settings.max_upload_size_mb != null ? String(settings.max_upload_size_mb) : "",
+  );
+  const [uploadLimitError, setUploadLimitError] = useState<string | null>(null);
   const [primaryColor, setPrimaryColor] = useState(settings.primary_color);
   const [secondaryColor, setSecondaryColor] = useState(settings.secondary_color);
   const [primaryColorDark, setPrimaryColorDark] = useState(settings.primary_color_dark);
@@ -61,6 +66,11 @@ export function IdentitySettingsForm({
   const [faviconError, setFaviconError] = useState<string | null>(null);
 
   const nameChanged = name !== settings.name;
+  // The override stored client-side: "" (unset) maps to null; a number maps
+  // to itself. Only genuinely different values make the form dirty.
+  const parsedUploadLimit =
+    uploadLimitMb.trim() === "" ? null : Number.isFinite(Number(uploadLimitMb)) ? Number(uploadLimitMb) : NaN;
+  const uploadLimitChanged = parsedUploadLimit !== settings.max_upload_size_mb;
   const brandingChanged =
     primaryColor !== settings.primary_color ||
     secondaryColor !== settings.secondary_color ||
@@ -68,7 +78,7 @@ export function IdentitySettingsForm({
     secondaryColorDark !== settings.secondary_color_dark ||
     pendingLogo !== undefined ||
     pendingFavicon !== undefined;
-  const isDirty = nameChanged || brandingChanged;
+  const isDirty = nameChanged || uploadLimitChanged || brandingChanged;
 
   useEffect(() => {
     onDirtyChange?.(isDirty);
@@ -107,9 +117,25 @@ export function IdentitySettingsForm({
 
   async function handleSave() {
     setIsSaving(true);
+    setUploadLimitError(null);
     try {
-      if (nameChanged) {
-        onUpdate(await updateGeneralSettings({ name }));
+      // Client-side mirror of the backend's 1..ceiling validation (the
+      // number input's min/max already block most of it).
+      if (
+        parsedUploadLimit !== null &&
+        (!Number.isInteger(parsedUploadLimit) || parsedUploadLimit < 1 || parsedUploadLimit > settings.max_upload_size_ceiling)
+      ) {
+        setUploadLimitError(generalT("uploadLimitInvalid", { max: settings.max_upload_size_ceiling }));
+        return;
+      }
+      const generalUpdate = {
+        ...(nameChanged ? { name } : {}),
+        ...(uploadLimitChanged ? { max_upload_size_mb: parsedUploadLimit } : {}),
+      };
+      if (Object.keys(generalUpdate).length > 0) {
+        onUpdate(await updateGeneralSettings(generalUpdate));
+        // The org limit every upload site checks is cached client-side.
+        clearUploadLimitCache();
       }
       if (brandingChanged) {
         onUpdate(
@@ -132,6 +158,8 @@ export function IdentitySettingsForm({
 
   function handleDiscard() {
     setName(settings.name);
+    setUploadLimitMb(settings.max_upload_size_mb != null ? String(settings.max_upload_size_mb) : "");
+    setUploadLimitError(null);
     setPrimaryColor(settings.primary_color);
     setSecondaryColor(settings.secondary_color);
     setPrimaryColorDark(settings.primary_color_dark);
@@ -168,12 +196,41 @@ export function IdentitySettingsForm({
           </ChangedIndicator>
         </div>
 
+        {canEditName && (
+          <div className="bg-surface rounded-xl border border-outline-variant p-6 space-y-2">
+            <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase">
+              {generalT("uploadLimitLabel")}
+            </label>
+            <ChangedIndicator changed={uploadLimitChanged}>
+              <input
+                type="number"
+                min={1}
+                max={settings.max_upload_size_ceiling}
+                step={1}
+                className="block w-full px-4 py-2 font-body-md text-body-md text-on-surface bg-surface-container border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors disabled:opacity-60 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
+                value={uploadLimitMb}
+                onChange={(e) => {
+                  setUploadLimitMb(e.target.value);
+                  setUploadLimitError(null);
+                }}
+              />
+            </ChangedIndicator>
+            <p
+              className={`font-body-md text-body-md ${uploadLimitError ? "text-error" : "text-on-surface-variant"}`}
+              role={uploadLimitError ? "alert" : undefined}
+            >
+              {uploadLimitError ??
+                generalT("uploadLimitDescription", { default: settings.max_upload_size_platform_default })}
+            </p>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 @md:grid-cols-2 gap-6">
           <div className="bg-surface rounded-xl border border-outline-variant p-6 space-y-4">
             <div>
               <h2 className="font-headline-md text-headline-md text-on-surface">{t("logoTitle")}</h2>
               <p className="font-body-md text-body-md text-on-surface-variant mt-1">
-                {t("logoDescription", { maxSize: MAX_UPLOAD_SIZE_MB })}
+                {t("logoDescription", { maxSize: settings.effective_max_upload_size_mb })}
               </p>
             </div>
             <ChangedIndicator changed={pendingLogo !== undefined} className="inline-block">

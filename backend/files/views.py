@@ -20,6 +20,29 @@ class FileUploadView(APIView):
     permission_classes = [require_permission("file.upload")]
     parser_classes = [MultiPartParser, FormParser]
 
+    def _early_size_rejection(self, request) -> Response | None:
+        """Rejected-before-parsing counterpart of the serializer's exact
+        per-file check: without this, Django buffers and spools the whole
+        multipart body to a temp file *before* the serializer ever sees it,
+        so an oversized upload ran to 100% on the client's progress bar and
+        only then failed (see DRF's lazy parser). Content-Length includes the
+        multipart framing, so a small margin keeps a legit file just under
+        the limit from being bounced here; the exact check still runs later.
+        Returns None (keep going) or a 413 Response."""
+        from organization.services import effective_max_upload_size_mb
+
+        content_length = request.META.get("CONTENT_LENGTH", "")
+        if not content_length.isdigit():
+            return None  # chunked or unknown - the exact check is the boundary
+        limit_mb = effective_max_upload_size_mb(request.user.organization)
+        margin = 64 * 1024
+        if int(content_length) > limit_mb * 1024 * 1024 + margin:
+            return Response(
+                {"detail": f"File too large - the limit is {limit_mb}MB."},
+                status=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            )
+        return None
+
     @extend_schema(
         tags=["Files"],
         summary="Upload a file",
@@ -27,7 +50,10 @@ class FileUploadView(APIView):
         responses={201: StoredFileSerializer, 400: BAD_REQUEST, **COMMON_ERRORS},
     )
     def post(self, request):
-        serializer = StoredFileUploadInputSerializer(data=request.data)
+        early = self._early_size_rejection(request)
+        if early is not None:
+            return early
+        serializer = StoredFileUploadInputSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         stored_file = services.upload_file(
             uploaded_file=serializer.validated_data["file"],

@@ -94,6 +94,64 @@ class OrganizationSettingsTests(APITestCase):
         self.assertFalse(response.data["product_tour_enabled"])
         self.assertFalse(OrganizationSettings.load(self.organization).product_tour_enabled)
 
+    def test_upload_size_limit_is_admin_configurable(self):
+        settings_row = OrganizationSettings.load(self.organization)
+        from django.conf import settings as django_settings
+
+        platform_default = django_settings.MAX_UPLOAD_SIZE_MB
+        # Starts unset: the effective limit is the platform default.
+        self.assertIsNone(settings_row.max_upload_size_mb)
+        response = self.client.get(reverse("organization-settings"))
+        self.assertEqual(response.data["effective_max_upload_size_mb"], platform_default)
+
+        admin_access = self._login_with_role("limitadmin@example.com", "Organization Admin")
+        limit = max(1, min(25, django_settings.MAX_ORG_UPLOAD_SIZE_CEILING_MB - 5))
+        response = self.client.patch(
+            reverse("organization-general-update"),
+            {"max_upload_size_mb": limit},
+            format="json",
+            **self._auth(admin_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(OrganizationSettings.load(self.organization).max_upload_size_mb, limit)
+        # Now in force: effective reports the override, not the platform default.
+        response = self.client.get(reverse("organization-settings"))
+        self.assertEqual(response.data["effective_max_upload_size_mb"], limit)
+
+        # Clearing (null) falls back to the platform default.
+        response = self.client.patch(
+            reverse("organization-general-update"),
+            {"max_upload_size_mb": None},
+            format="json",
+            **self._auth(admin_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIsNone(OrganizationSettings.load(self.organization).max_upload_size_mb)
+        response = self.client.get(reverse("organization-settings"))
+        self.assertEqual(response.data["effective_max_upload_size_mb"], platform_default)
+
+    def test_upload_size_limit_respects_the_ceiling_and_requires_organization_manage(self):
+        from django.conf import settings as django_settings
+
+        ceiling = django_settings.MAX_ORG_UPLOAD_SIZE_CEILING_MB
+        admin_access = self._login_with_role("limitadmin2@example.com", "Organization Admin")
+        response = self.client.patch(
+            reverse("organization-general-update"),
+            {"max_upload_size_mb": ceiling + 1},
+            format="json",
+            **self._auth(admin_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        member_access = self._login_with_role("member-limit@example.com", "Member")
+        response = self.client.patch(
+            reverse("organization-general-update"),
+            {"max_upload_size_mb": 10},
+            format="json",
+            **self._auth(member_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
     def test_branding_update_requires_branding_manage(self):
         access = self._login_with_role("member3@example.com", "Member")
         response = self.client.patch(

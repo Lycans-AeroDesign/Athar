@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { ArticleCard } from "@/components/knowledge/ArticleCard";
 import { CategoryPanel } from "@/components/knowledge/CategoryPanel";
+import { CollectionShelf } from "@/components/knowledge/CollectionShelf";
 import { QuestionCard } from "@/components/knowledge/QuestionCard";
 import { ARTICLE_STATUS_LABEL_KEYS } from "@/components/knowledge/StatusPill";
 import { TagPanel } from "@/components/knowledge/TagPanel";
@@ -148,6 +149,9 @@ export default function KnowledgePage() {
         </div>
 
         <div className="lg:col-span-8 space-y-6">
+          {(articleStatus === "PUBLISHED" || articleStatus === "ALL") && !selectedCategoryId && !selectedTagId && (
+            <CollectionShelf scope="ARTICLE" />
+          )}
           {featuredArticle && !selectedCategoryId && !selectedTagId && (
             <Link
               href={`/knowledge/articles/${featuredArticle.id}`}

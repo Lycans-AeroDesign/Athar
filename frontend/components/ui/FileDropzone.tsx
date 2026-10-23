@@ -22,6 +22,10 @@ interface FileDropzoneProps {
    * another" trigger (e.g. Attachments' list, a lesson's resource list) -
    * omit/null for the latter, where the box always shows its empty state. */
   fileName?: string | null;
+  /** Failure message (e.g. the upload limit 413) shown directly under the
+   * box, not as a detached page-level banner - callers own their state;
+   * this is purely where it renders. */
+  error?: string | null;
   label: string;
   className?: string;
 }
@@ -37,6 +41,7 @@ export function FileDropzone({
   disabled,
   progress,
   fileName,
+  error,
   label,
   className,
 }: FileDropzoneProps) {
@@ -129,6 +134,12 @@ export function FileDropzone({
           e.target.value = "";
         }}
       />
+
+      {error && (
+        <p className="mt-2 font-body-md text-body-md text-error" role="alert">
+          {error}
+        </p>
+      )}
 
       {fileName && onRemove && !uploading && (
         <IconButton

@@ -27,6 +27,7 @@ PERMISSION_CATALOGUE = [
     ("article.archive", "Archive published articles"),
     ("category.manage", "Add and delete knowledge categories, component categories and storage locations"),
     ("tag.manage", "Delete knowledge tags"),
+    ("collection.manage", "Create and organize knowledge collections (folders and series)"),
     ("failure.read", "View failure reports"),
     ("failure.create", "Report failures"),
     ("failure.update", "Update failure reports"),
@@ -107,6 +108,9 @@ MENTOR_PERMISSIONS = MEMBER_PERMISSIONS + [
     # Mentor+ rather than Member, unlike Component.
     "sop.create",
     "sop.update",
+    # Curating collections/series goes with the SOP/article editing tier -
+    # whoever can author safety-critical SOPs can group them into a series.
+    "collection.manage",
     "test.update",
     "document.update",
     "training.create",

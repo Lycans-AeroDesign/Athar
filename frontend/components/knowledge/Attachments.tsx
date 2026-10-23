@@ -136,6 +136,10 @@ export function Attachments({ type, id, canEdit }: AttachmentsProps) {
           onFileSelected={handleFileSelected}
           progress={uploadProgress}
           label={t("addButton")}
+          // Also covers remove/download failures for this section - they all
+          // share one error state, and the dropzone is the natural anchor
+          // near the top instead of after a long attachment list.
+          error={error}
           className="max-w-sm"
         />
       )}
@@ -183,7 +187,9 @@ export function Attachments({ type, id, canEdit }: AttachmentsProps) {
         </ul>
       )}
 
-      {error && (
+      {/* Viewer case (no dropzone to anchor on) only - editors see the same
+          error under the upload box above instead of this detached spot. */}
+      {error && !canEdit && (
         <p className="font-body-md text-body-md text-error" role="alert">
           {error}
         </p>

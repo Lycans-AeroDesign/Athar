@@ -56,6 +56,15 @@ class OrganizationSettings(models.Model):
     # On by default.
     product_tour_enabled = models.BooleanField(default=True)
 
+    # Per-org upload size limit (MB) for the generic upload endpoint
+    # (files.FileUploadView). None = platform default (config.settings'
+    # MAX_UPLOAD_SIZE_MB); an org admin sets it from Settings > Identity (max
+    # capped at config.settings' MAX_ORG_UPLOAD_SIZE_CEILING_MB, which must
+    # stay within nginx's client_max_body_size for /api/ - see
+    # nginx/templates). Backups/restore uploads have their own separate,
+    # much larger platform-level limit (BACKUP_UPLOAD_MAX_SIZE_MB).
+    max_upload_size_mb = models.PositiveIntegerField(null=True, blank=True)
+
     updated_at = models.DateTimeField(auto_now=True)
 
     @classmethod

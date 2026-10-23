@@ -14,6 +14,8 @@ from .models import (
     ArticleRevision,
     Bookmark,
     Category,
+    Collection,
+    CollectionItem,
     Component,
     ComponentAttachment,
     ComponentCategory,
@@ -192,6 +194,20 @@ class RestrictedAccessMixin:
         ]
 
 
+class CollectionsContextMixin:
+    """get_collections for a `collections` SerializerMethodField each
+    *DetailSerializer declares itself (same DRF reason as ContributorsMixin):
+    every visible collection this item belongs to, with its position and
+    prev/next neighbors - see services.collections_context_for."""
+
+    def get_collections(self, obj) -> list:
+        request = self.context.get("request")
+        viewer = getattr(request, "user", None)
+        if viewer is None or not viewer.is_authenticated:
+            return []  # fails closed, like every other viewer-scoped block
+        return services.collections_context_for(obj, viewer)
+
+
 class BookmarkMixin:
     """get_bookmark_id backing a `bookmark_id` SerializerMethodField each
     *DetailSerializer below declares directly. None when the caller isn't
@@ -279,6 +295,109 @@ class TagWriteSerializer(serializers.ModelSerializer):
         fields = ["name"]
 
 
+class CollectionListSerializer(serializers.ModelSerializer):
+    category = CategorySerializer(read_only=True)
+    tags = TagSerializer(many=True, read_only=True)
+    created_by = AuthorSerializer(read_only=True)
+    # Count of *visible* items is viewer-dependent, so lists count all of them
+    # for the shelf badge; detail views list the viewer-scoped items instead.
+    item_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Collection
+        fields = [
+            "id",
+            "title",
+            "slug",
+            "description",
+            "mode",
+            "content_scope",
+            "visibility",
+            "category",
+            "tags",
+            "created_by",
+            "item_count",
+            "created_at",
+            "updated_at",
+        ]
+
+    def get_item_count(self, obj: Collection) -> int:
+        return obj.items.count()
+
+
+class CollectionDetailSerializer(CollectionListSerializer):
+    # Viewer-scoped: only items whose content this viewer can see, in
+    # collection order - see services.collection_items_for.
+    items = serializers.SerializerMethodField()
+
+    class Meta(CollectionListSerializer.Meta):
+        fields = [*CollectionListSerializer.Meta.fields, "items"]
+
+    def get_items(self, obj: Collection) -> list:
+        request = self.context.get("request")
+        viewer = getattr(request, "user", None)
+        if viewer is None or not viewer.is_authenticated:
+            return []  # fails closed, like every other viewer-scoped block
+        return services.collection_items_for(obj, viewer)
+
+
+class CollectionWriteSerializer(serializers.ModelSerializer):
+    category_id = OrgScopedPrimaryKeyRelatedField(
+        source="category", queryset=Category.objects.all(), allow_null=True, required=False
+    )
+    tag_names = serializers.ListField(child=serializers.CharField(), required=False)
+
+    class Meta:
+        model = Collection
+        fields = [
+            "title",
+            "description",
+            "mode",
+            "content_scope",
+            "visibility",
+            "category_id",
+            "tag_names",
+        ]
+
+
+class CollectionItemSerializer(serializers.ModelSerializer):
+    # "type" is the model_name key used everywhere else ('article', 'sop', ...)
+    # and what the frontend routes by; content is the minimal nav summary
+    # (services.content_summary).
+    type = serializers.SerializerMethodField()
+    content = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CollectionItem
+        fields = ["id", "collection_id", "type", "order", "phase_title", "note", "content", "created_at"]
+
+    def get_type(self, obj: CollectionItem) -> str:
+        return obj.content_type.model
+
+    def get_content(self, obj: CollectionItem) -> dict | None:
+        return services.content_summary(obj.content) if obj.content is not None else None
+
+
+class AddCollectionItemSerializer(serializers.Serializer):
+    content_type = serializers.ChoiceField(choices=RELATABLE_TYPE_CHOICES)
+    object_id = serializers.UUIDField()
+    order = serializers.IntegerField(min_value=0, required=False)
+    phase_title = serializers.CharField(max_length=200, required=False, allow_blank=True, default="")
+    note = serializers.CharField(max_length=300, required=False, allow_blank=True, default="")
+
+
+class UpdateCollectionItemSerializer(serializers.Serializer):
+    phase_title = serializers.CharField(max_length=200, required=False, allow_blank=True)
+    note = serializers.CharField(max_length=300, required=False, allow_blank=True)
+    order = serializers.IntegerField(min_value=0, required=False)
+
+
+class ReorderCollectionItemsSerializer(serializers.Serializer):
+    item_ids = serializers.ListField(
+        child=serializers.UUIDField(), required=True, allow_empty=False
+    )
+
+
 class ArticleRevisionSerializer(serializers.ModelSerializer):
     edited_by = AuthorSerializer(read_only=True)
 
@@ -310,11 +429,14 @@ class ArticleListSerializer(serializers.ModelSerializer):
         ]
 
 
-class ArticleDetailSerializer(ContributorsMixin, RestrictedAccessMixin, BookmarkMixin, ArticleListSerializer):
+class ArticleDetailSerializer(
+    ContributorsMixin, RestrictedAccessMixin, BookmarkMixin, CollectionsContextMixin, ArticleListSerializer
+):
     co_authors = AuthorSerializer(many=True, read_only=True)
     contributors = serializers.SerializerMethodField()
     restricted_to = serializers.SerializerMethodField()
     bookmark_id = serializers.SerializerMethodField()
+    collections = serializers.SerializerMethodField()
 
     class Meta(ArticleListSerializer.Meta):
         fields = [
@@ -324,6 +446,7 @@ class ArticleDetailSerializer(ContributorsMixin, RestrictedAccessMixin, Bookmark
             "contributors",
             "restricted_to",
             "bookmark_id",
+            "collections",
         ]
 
 
@@ -874,10 +997,13 @@ class SopListSerializer(serializers.ModelSerializer):
         fields = ["id", "title", "category", "mandatory", "visibility", "tags", "created_by", "created_at", "updated_at"]
 
 
-class SopDetailSerializer(ContributorsMixin, RestrictedAccessMixin, BookmarkMixin, SopListSerializer):
+class SopDetailSerializer(
+    ContributorsMixin, RestrictedAccessMixin, BookmarkMixin, CollectionsContextMixin, SopListSerializer
+):
     contributors = serializers.SerializerMethodField()
     restricted_to = serializers.SerializerMethodField()
     bookmark_id = serializers.SerializerMethodField()
+    collections = serializers.SerializerMethodField()
 
     class Meta(SopListSerializer.Meta):
         fields = [
@@ -887,6 +1013,7 @@ class SopDetailSerializer(ContributorsMixin, RestrictedAccessMixin, BookmarkMixi
             "contributors",
             "restricted_to",
             "bookmark_id",
+            "collections",
         ]
 
 

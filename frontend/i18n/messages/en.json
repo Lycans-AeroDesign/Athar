@@ -12,6 +12,7 @@
     "selectDate": "Select a date",
     "typeToSearch": "Type to search...",
     "noResultsFound": "No results found.",
+    "comboboxCreate": "Create \"{query}\"",
     "copyCode": "Copy code",
     "copied": "Copied!",
     "share": "Share",
@@ -296,7 +297,10 @@
     "general": {
       "nameLabel": "Organization Name",
       "productTourLabel": "Interactive product tour",
-      "productTourDescription": "Shows new members a short guided tour of the sidebar, search, and account menu the first time they log in. Turning this off hides the tour instance-wide, including the \"Take a tour\" option in the account menu."
+      "productTourDescription": "Shows new members a short guided tour of the sidebar, search, and account menu the first time they log in. Turning this off hides the tour instance-wide, including the \"Take a tour\" option in the account menu.",
+      "uploadLimitLabel": "Upload Size Limit (MB)",
+      "uploadLimitDescription": "Maximum size of a single file any member can upload - attachments, inline images, documents, CSV imports. Leave empty to use the server default ({default}MB).",
+      "uploadLimitInvalid": "Enter a whole number of MB between 1 and the maximum of {max}MB, or leave the field empty."
     },
     "features": {
       "title": "Features",
@@ -888,7 +892,54 @@
       "tableOfContents": "Contents",
       "visibilityLabel": "Visibility",
       "visibilityPUBLIC": "Public",
-      "visibilityRESTRICTED": "Restricted"
+      "visibilityRESTRICTED": "Restricted",
+      "collectionsLabel": "Series & Collections"
+    },
+    "collections": {
+      "mode": {
+        "SERIES": "Series",
+        "FOLDER": "Folder"
+      },
+      "shelf": {
+        "title": "Series & Collections",
+        "itemCount": "{count, plural, one {# item} other {# items}}",
+        "newButton": "New",
+        "empty": "None yet."
+      },
+      "create": {
+        "title": "New collection",
+        "nameLabel": "Name",
+        "namePlaceholder": "e.g. Wing Sizing Series",
+        "typeLabel": "Type",
+        "seriesDescription": "Ordered phases with next/previous steps",
+        "folderDescription": "Topic grouping, order is just a hint",
+        "createButton": "Create"
+      },
+      "stepper": {
+        "phase": "Phase {position} of {total}",
+        "inFolder": "{total, plural, one {1 item} other {# items}}",
+        "previous": "Previous",
+        "next": "Next"
+      },
+      "picker": {
+        "createNew": "New collection",
+        "browseNote": "Members with collection rights organize these lists."
+      },
+      "notFound": "This collection doesn't exist or you don't have access to it.",
+      "deleteButton": "Delete",
+      "deleteConfirmTitle": "Delete this collection?",
+      "deleteConfirmBody": "The collection and its grouping disappear, but the SOPs and articles in it are not deleted.",
+      "emptySeries": "No phases in this series yet - an organizer can add SOPs or articles to it.",
+      "emptyFolder": "Nothing in this folder yet - an organizer can add SOPs or articles to it.",
+      "missingContent": "Content unavailable",
+      "backToKnowledge": "Back to Knowledge Base",
+      "backToSops": "Back to SOPs",
+      "item": {
+        "dragHandle": "Drag to reorder",
+        "moveUp": "Move up",
+        "moveDown": "Move down",
+        "remove": "Remove from collection"
+      }
     },
     "question": {
       "badgeLabel": "Question",
@@ -1246,7 +1297,8 @@
       "editPermissionRequired": "You don't have permission to edit this SOP.",
       "visibilityLabel": "Visibility",
       "visibilityPUBLIC": "Public",
-      "visibilityRESTRICTED": "Restricted"
+      "visibilityRESTRICTED": "Restricted",
+      "collectionsLabel": "Series & Collections"
     },
     "test": {
       "titlePlaceholder": "Test/Experiment Title",

@@ -29,6 +29,8 @@ from .models import (
     ArticleAttachment,
     Bookmark,
     Category,
+    Collection,
+    CollectionItem,
     Component,
     ComponentAttachment,
     ComponentCategory,
@@ -52,6 +54,7 @@ from .serializers import (
     AcceptAnswerSerializer,
     AccessGrantSerializer,
     AddAttachmentSerializer,
+    AddCollectionItemSerializer,
     AnswerSerializer,
     AnswerWriteSerializer,
     ArticleAttachmentSerializer,
@@ -63,6 +66,10 @@ from .serializers import (
     BookmarkSerializer,
     CategorySerializer,
     CategoryWriteSerializer,
+    CollectionDetailSerializer,
+    CollectionItemSerializer,
+    CollectionListSerializer,
+    CollectionWriteSerializer,
     ComponentAttachmentSerializer,
     ComponentCategorySerializer,
     ComponentCategoryWriteSerializer,
@@ -72,6 +79,8 @@ from .serializers import (
     CreateAccessGrantSerializer,
     CreateBookmarkSerializer,
     CreateRelationSerializer,
+    ReorderCollectionItemsSerializer,
+    UpdateCollectionItemSerializer,
     UpdateRelationSerializer,
     DocumentDetailSerializer,
     DocumentListSerializer,
@@ -502,6 +511,180 @@ def _visible_failure_or_404(request, pk):
 
 def _visible_sop_or_404(request, pk):
     return _visible_instance_or_404(request, Sop, "sop", pk)
+
+
+def _visible_collection_or_404(request, pk):
+    return _visible_instance_or_404(request, Collection, "collection", pk)
+
+
+# --- Collections (folders / series) ----------------------------------------
+
+
+class CollectionListView(APIView):
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [require_permission("collection.manage")()]
+        return [IsAuthenticated()]
+
+    @extend_schema(
+        tags=["Knowledge"],
+        summary="List collections (optional ?mode=SERIES|FOLDER, ?scope=SOP|ARTICLE|MIXED, ?category=<id>, ?q=)",
+        responses={200: CollectionListSerializer(many=True), **COMMON_ERRORS},
+    )
+    def get(self, request):
+        queryset = services.visible_collections_for(request.user).select_related(
+            "category", "created_by"
+        ).prefetch_related("tags")
+        mode = request.query_params.get("mode")
+        if mode:
+            queryset = queryset.filter(mode=mode.upper())
+        scope = request.query_params.get("scope")
+        if scope:
+            queryset = queryset.filter(content_scope=scope.upper())
+        category_id = request.query_params.get("category")
+        if category_id:
+            queryset = queryset.filter(category_id=category_id)
+        query = request.query_params.get("q", "").strip()
+        if query:
+            queryset = search.search_filter(queryset, query, "collection")
+        return paginated_response(request, queryset, CollectionListSerializer)
+
+    @extend_schema(
+        tags=["Knowledge"],
+        summary="Create a collection (requires collection.manage)",
+        request=CollectionWriteSerializer,
+        responses={201: CollectionDetailSerializer, 400: BAD_REQUEST, **COMMON_ERRORS},
+    )
+    def post(self, request):
+        serializer = CollectionWriteSerializer(data=request.data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        collection = services.create_collection(actor=request.user, request=request, **serializer.validated_data)
+        return Response(
+            CollectionDetailSerializer(collection, context={"request": request}).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class CollectionDetailView(APIView):
+    def get_permissions(self):
+        if self.request.method in ("PATCH", "DELETE"):
+            return [require_permission("collection.manage")()]
+        return [IsAuthenticated()]
+
+    @extend_schema(
+        tags=["Knowledge"],
+        summary="Get a collection with its (viewer-visible) items in order",
+        responses={200: CollectionDetailSerializer, 404: NOT_FOUND, **COMMON_ERRORS},
+    )
+    def get(self, request, pk):
+        collection = _visible_collection_or_404(request, pk)
+        return Response(CollectionDetailSerializer(collection, context={"request": request}).data)
+
+    @extend_schema(
+        tags=["Knowledge"],
+        summary="Update a collection (requires collection.manage)",
+        request=CollectionWriteSerializer,
+        responses={200: CollectionDetailSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
+    )
+    def patch(self, request, pk):
+        collection = org_object_or_404(request, Collection, pk)
+        serializer = CollectionWriteSerializer(collection, data=request.data, partial=True, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        collection = services.update_collection(
+            collection=collection, actor=request.user, request=request, **serializer.validated_data
+        )
+        return Response(CollectionDetailSerializer(collection, context={"request": request}).data)
+
+    @extend_schema(
+        tags=["Knowledge"],
+        summary="Delete a collection (requires collection.manage; the content itself is untouched)",
+        responses={204: OpenApiResponse(description="Deleted."), 404: NOT_FOUND, **COMMON_ERRORS},
+    )
+    def delete(self, request, pk):
+        collection = org_object_or_404(request, Collection, pk)
+        services.delete_collection(collection=collection, actor=request.user, request=request)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class CollectionItemListView(APIView):
+    permission_classes = [require_permission("collection.manage")]
+
+    @extend_schema(
+        tags=["Knowledge"],
+        summary="Add a piece of content to a collection (requires collection.manage)",
+        request=AddCollectionItemSerializer,
+        responses={201: CollectionItemSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
+    )
+    def post(self, request, pk):
+        collection = org_object_or_404(request, Collection, pk)
+        serializer = AddCollectionItemSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        item = services.create_collection_item(
+            collection=collection,
+            actor=request.user,
+            request=request,
+            content_type=serializer.validated_data["content_type"],
+            object_id=serializer.validated_data["object_id"],
+            order=serializer.validated_data.get("order"),
+            phase_title=serializer.validated_data["phase_title"],
+            note=serializer.validated_data["note"],
+        )
+        return Response(CollectionItemSerializer(item).data, status=status.HTTP_201_CREATED)
+
+
+class CollectionItemDetailView(APIView):
+    permission_classes = [require_permission("collection.manage")]
+
+    def _item_or_404(self, request, pk, item_pk) -> CollectionItem:
+        collection = org_object_or_404(request, Collection, pk)
+        return get_object_or_404(CollectionItem, pk=item_pk, collection=collection)
+
+    @extend_schema(
+        tags=["Knowledge"],
+        summary="Update an item's label/note/position (requires collection.manage)",
+        request=UpdateCollectionItemSerializer,
+        responses={200: CollectionItemSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
+    )
+    def patch(self, request, pk, item_pk):
+        item = self._item_or_404(request, pk, item_pk)
+        serializer = UpdateCollectionItemSerializer(data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        item = services.update_collection_item(
+            item=item, actor=request.user, request=request, **serializer.validated_data
+        )
+        return Response(CollectionItemSerializer(item).data)
+
+    @extend_schema(
+        tags=["Knowledge"],
+        summary="Remove an item from a collection (requires collection.manage; the content itself is untouched)",
+        responses={204: OpenApiResponse(description="Removed."), 404: NOT_FOUND, **COMMON_ERRORS},
+    )
+    def delete(self, request, pk, item_pk):
+        item = self._item_or_404(request, pk, item_pk)
+        services.delete_collection_item(item=item, actor=request.user, request=request)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class CollectionReorderView(APIView):
+    permission_classes = [require_permission("collection.manage")]
+
+    @extend_schema(
+        tags=["Knowledge"],
+        summary="Reorder a collection's items: send every item id in the wanted order (requires collection.manage)",
+        request=ReorderCollectionItemsSerializer,
+        responses={200: CollectionDetailSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
+    )
+    def post(self, request, pk):
+        collection = org_object_or_404(request, Collection, pk)
+        serializer = ReorderCollectionItemsSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        services.reorder_collection_items(
+            collection=collection,
+            item_ids=[str(item_id) for item_id in serializer.validated_data["item_ids"]],
+            actor=request.user,
+            request=request,
+        )
+        return Response(CollectionDetailSerializer(collection, context={"request": request}).data)
 
 
 def _visible_test_or_404(request, pk):

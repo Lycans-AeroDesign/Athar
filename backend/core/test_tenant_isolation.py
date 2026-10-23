@@ -28,6 +28,8 @@ from knowledge.models import (
     ArticleAttachment,
     Bookmark,
     Category,
+    Collection,
+    CollectionItem,
     Component,
     ComponentAttachment,
     ComponentCategory,
@@ -98,6 +100,10 @@ ROUTES = [
     ("knowledge-relation-detail", [PATCH, DELETE], {"pk": "relation"}),
     ("knowledge-access-grant-detail", [DELETE], {"pk": "access_grant"}),
     ("knowledge-bookmark-detail", [DELETE], {"pk": "bookmark"}),
+    ("knowledge-collection-detail", [GET, PATCH, DELETE], {"pk": "collection"}),
+    ("knowledge-collection-item-add", [POST], {"pk": "collection"}),
+    ("knowledge-collection-item-detail", [PATCH, DELETE], {"pk": "collection", "item_pk": "collection_item"}),
+    ("knowledge-collection-reorder", [POST], {"pk": "collection"}),
     *_entity("project", "project"),
     *_entity("component", "component"),
     *_entity("failure", "failure"),
@@ -222,6 +228,13 @@ class TenantIsolationTests(RoleLoginMixin, APITestCase):
         ids["sop"] = Sop.objects.create(organization=org, title="S")
         ids["test"] = Test.objects.create(organization=org, title="T")
         ids["document"] = Document.objects.create(organization=org, title="D")
+        ids["collection"] = Collection.objects.create(organization=org, title="Col", slug="col")
+        ids["collection_item"] = CollectionItem.objects.create(
+            collection=ids["collection"],
+            content_type=ContentType.objects.get_for_model(ids["sop"]),
+            object_id=ids["sop"].pk,
+            order=0,
+        )
         ids["component_category"] = ComponentCategory.objects.create(organization=org, name="CC", slug="cc")
         ids["storage_location"] = StorageLocation.objects.create(organization=org, name="Shelf")
         for key, model, field in (

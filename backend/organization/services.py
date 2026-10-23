@@ -1,5 +1,6 @@
 from django.db import transaction
 from django.utils.text import slugify
+from django.conf import settings
 from rest_framework.exceptions import ValidationError
 
 from audit.services import log_action
@@ -94,6 +95,16 @@ def update_general(*, settings: OrganizationSettings, actor, request=None, **fie
     settings.save(update_fields=[*fields.keys(), "updated_at"])
     log_action(actor=actor, action="organization.update", target=settings, request=request)
     return settings
+
+
+def effective_max_upload_size_mb(organization) -> int:
+    """Upload limit (MB) in force for `organization` on the generic upload
+    endpoint: its own per-org setting (OrganizationSettings.max_upload_size_mb,
+    changed from Settings > Identity), else the platform default
+    (config.settings.MAX_UPLOAD_SIZE_MB). Imported lazily by files
+    (serializers/views) - organization.services already imports files.services
+    at module level, so a top-level import the other way would be circular."""
+    return OrganizationSettings.load(organization).max_upload_size_mb or settings.MAX_UPLOAD_SIZE_MB
 
 
 def update_branding(*, settings: OrganizationSettings, actor, request=None, **fields) -> OrganizationSettings:

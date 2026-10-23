@@ -61,6 +61,10 @@ export default function LessonEditorPage() {
   const [newResourceUrl, setNewResourceUrl] = useState("");
   const [newResourceIsPrimary, setNewResourceIsPrimary] = useState(false);
   const [resourceFileUploadProgress, setResourceFileUploadProgress] = useState<number | null>(null);
+  // Upload-phase failures (e.g. the pre-flight 413 over the org's upload
+  // limit) - shown under the dropzone by FileDropzone's error prop, not as
+  // the detached page-top banner.
+  const [resourceUploadError, setResourceUploadError] = useState<string | null>(null);
 
   const [editingResourceId, setEditingResourceId] = useState<string | null>(null);
   const [editResourceTitle, setEditResourceTitle] = useState("");
@@ -77,6 +81,8 @@ export default function LessonEditorPage() {
   const [mainResourceUrl, setMainResourceUrl] = useState("");
   const [isSavingMainResource, setIsSavingMainResource] = useState(false);
   const [mainResourceFileUploadProgress, setMainResourceFileUploadProgress] = useState<number | null>(null);
+  // Same as resourceUploadError above, for the Main Content file dropzone.
+  const [mainResourceUploadError, setMainResourceUploadError] = useState<string | null>(null);
 
   // Always resyncs every local draft field from the server's response, not
   // just `lesson` itself - DRF's CharField trims whitespace server-side by
@@ -206,10 +212,20 @@ export default function LessonEditorPage() {
   }
 
   async function handleUploadMainResourceFile(file: File) {
-    setMainResourceFileUploadProgress(0);
+    setMainResourceUploadError(null);
     setError(null);
+    setMainResourceFileUploadProgress(0);
+    let uploaded;
     try {
-      const uploaded = await uploadFile(file, { onProgress: setMainResourceFileUploadProgress });
+      uploaded = await uploadFile(file, { onProgress: setMainResourceFileUploadProgress });
+    } catch (err) {
+      // The upload itself failed (e.g. the Content-Length over-limit gate) -
+      // belongs under the dropzone, not the page-top banner.
+      setMainResourceUploadError(errorMessage(err));
+      setMainResourceFileUploadProgress(null);
+      return;
+    }
+    try {
       const payload = {
         title: title.trim() || file.name,
         resource_type: "STORED_FILE" as const,
@@ -280,10 +296,19 @@ export default function LessonEditorPage() {
   }
 
   async function handleAddFileResource(file: File) {
-    setResourceFileUploadProgress(0);
+    setResourceUploadError(null);
     setError(null);
+    setResourceFileUploadProgress(0);
+    let uploaded;
     try {
-      const uploaded = await uploadFile(file, { onProgress: setResourceFileUploadProgress });
+      uploaded = await uploadFile(file, { onProgress: setResourceFileUploadProgress });
+    } catch (err) {
+      // Upload failure - lives under the dropzone (see resourceUploadError).
+      setResourceUploadError(errorMessage(err));
+      setResourceFileUploadProgress(null);
+      return;
+    }
+    try {
       await createResource(lesson!.id, {
         title: newResourceTitle.trim() || file.name,
         resource_type: "STORED_FILE",
@@ -433,6 +458,7 @@ export default function LessonEditorPage() {
                   progress={mainResourceFileUploadProgress}
                   fileName={primaryResource?.resource_type === "STORED_FILE" ? primaryResource.stored_file?.original_filename : null}
                   label={resourceT("uploadButton")}
+                  error={mainResourceUploadError}
                   className="flex-1 max-w-sm"
                 />
               </div>
@@ -605,6 +631,7 @@ export default function LessonEditorPage() {
               onFileSelected={handleAddFileResource}
               progress={resourceFileUploadProgress}
               label={resourceT("uploadButton")}
+              error={resourceUploadError}
               className="flex-1 max-w-sm"
             />
           </div>

@@ -160,6 +160,14 @@ export interface OrganizationSettings {
   secondary_color_dark: string;
   /** Org-wide kill switch for the first-run product tour; UserPreferences.has_completed_tour is the per-user flag. */
   product_tour_enabled: boolean;
+  /** The org's own generic-upload limit in MB (Settings > Identity); null = the platform default is in force. */
+  max_upload_size_mb: number | null;
+  /** The limit actually enforced against uploads right now: the override above, or the platform default. */
+  effective_max_upload_size_mb: number;
+  /** Highest value an org admin may configure; may be raised per deployment via MAX_ORG_UPLOAD_SIZE_CEILING_MB. */
+  max_upload_size_ceiling: number;
+  /** The platform-wide default (MAX_UPLOAD_SIZE_MB) that max_upload_size_mb overrides when null. */
+  max_upload_size_platform_default: number;
   /** Instance-wide: mirrors the backend's ENABLE_ORGANIZATION_REGISTRATION; shows the register page's "create organization" tab. */
   organization_registration_enabled: boolean;
   /** Instance-wide: mirrors the backend's EMAIL_ENABLED (SMTP configured); lets admins email reset links. */
@@ -233,6 +241,9 @@ export interface ArticleDetail extends ArticleSummary {
   restricted_to: AccessGrant[];
   /** This viewer's own Bookmark id if they've bookmarked this article, else null. */
   bookmark_id: string | null;
+  /** Every (viewer-visible) collection this article belongs to, with its position and
+   * prev/next neighbours - drives the "part of series" stepper on the detail page. */
+  collections: CollectionContext[];
 }
 
 export interface ArticleRevision {
@@ -490,6 +501,66 @@ export interface SopDetail extends SopSummary {
   contributors: KnowledgeAuthor[];
   restricted_to: AccessGrant[];
   bookmark_id: string | null;
+  /** Same as ArticleDetail.collections - every viewer-visible series/folder containing this SOP. */
+  collections: CollectionContext[];
+}
+
+/** One entry in a Collection - a pointer at existing content (SOP, article, ...). */
+export interface CollectionItemRef {
+  id: string;
+  order: number;
+  phase_title: string | null;
+  note: string | null;
+  content: CollectionContentRef | null;
+  created_at: string;
+}
+
+/** The minimal content summary CollectionItemSerializer embeds for navigation. */
+export interface CollectionContentRef {
+  id: string;
+  /** The model_name key ('sop', 'article', ...). */
+  type: string;
+  title: string;
+  /** Only present on types that have one (e.g. articles carry DRAFT/PUBLISHED/...). */
+  status?: string;
+}
+
+/** A topic grouping (FOLDER) or ordered phase series (SERIES) over existing content. */
+export interface CollectionSummary {
+  id: string;
+  title: string;
+  slug: string;
+  description: string;
+  mode: "SERIES" | "FOLDER";
+  content_scope: "SOP" | "ARTICLE" | "MIXED";
+  visibility: Visibility;
+  category: Category | null;
+  tags: Tag[];
+  created_by: KnowledgeAuthor | null;
+  item_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CollectionDetail extends CollectionSummary {
+  /** Viewer-scoped items in collection order (hidden/unreadable content is omitted). */
+  items: CollectionItemRef[];
+}
+
+/** A detail-page payload's "part of series" block - see services.collections_context_for. */
+export interface CollectionContext {
+  id: string;
+  title: string;
+  slug: string;
+  mode: "SERIES" | "FOLDER";
+  content_scope: "SOP" | "ARTICLE" | "MIXED";
+  /** 1-based position of *this item* among the nodes this viewer can see. */
+  position: number;
+  total: number;
+  phase_title: string | null;
+  prev_item: CollectionContentRef | null;
+  next_item: CollectionContentRef | null;
+  items: CollectionContentRef[];
 }
 
 export type TestType =

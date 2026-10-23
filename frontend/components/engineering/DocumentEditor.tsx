@@ -85,6 +85,10 @@ export function DocumentEditor({ document, onDirtyChange, initialProjectId = nul
   const [fileId, setFileId] = useState<string | null>(document?.file?.id ?? null);
   const [fileName, setFileName] = useState(document?.file?.original_filename ?? "");
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  // File-drop failures (upload limit, network) - rendered under the dropzone
+  // itself by FileDropzone's error prop, so they don't surface as a
+  // page-end banner (that's the save-error slot further down).
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const { isSaving, run } = useSaveOnce();
   const [error, setError] = useState<string | null>(null);
 
@@ -121,14 +125,16 @@ export function DocumentEditor({ document, onDirtyChange, initialProjectId = nul
   }, [isDirty, onDirtyChange]);
 
   async function handleFileSelected(file: File) {
-    setError(null);
+    setUploadError(null);
     setUploadProgress(0);
     try {
       const uploaded = await uploadFile(file, { onProgress: setUploadProgress });
       setFileId(uploaded.id);
       setFileName(uploaded.original_filename);
     } catch (err) {
-      setError(errorMessage(err));
+      // Own error, shown under the dropzone (not the page-end save error) -
+      // e.g. the upload-limit 413 should sit right where the file lands.
+      setUploadError(errorMessage(err));
     } finally {
       setUploadProgress(null);
     }
@@ -289,6 +295,7 @@ export function DocumentEditor({ document, onDirtyChange, initialProjectId = nul
             progress={uploadProgress}
             fileName={fileName || null}
             label={t("uploadFileButton")}
+            error={uploadError}
             className="max-w-sm"
           />
         </ChangedIndicator>

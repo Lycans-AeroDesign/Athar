@@ -7,7 +7,7 @@ import uuid
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
-from django.db.models import Count, QuerySet
+from django.db.models import Count, Max, QuerySet
 from django.utils import timezone
 from django.utils.text import slugify
 from rest_framework.exceptions import ValidationError
@@ -49,6 +49,8 @@ from .models import (
     Tag,
     Test,
     TestAttachment,
+    Collection,
+    CollectionItem,
     Visibility,
 )
 
@@ -341,6 +343,7 @@ def delete_article(*, article: Article, actor, request=None) -> None:
         metadata={"article_id": str(article.pk), "title": article.title},
         request=request,
     )
+    delete_collection_items_for(article)
     article.delete()
 
 
@@ -386,6 +389,7 @@ def delete_question(*, question: Question, actor, request=None) -> None:
         metadata={"question_id": str(question.pk), "title": question.title},
         request=request,
     )
+    delete_collection_items_for(question)
     question.delete()
 
 
@@ -564,6 +568,7 @@ def update_project(*, project: Project, actor, request=None, **fields) -> Projec
 def delete_project(*, project: Project, actor, request=None) -> None:
     _require_permission(actor, "project.delete", "You need project.delete to remove this project.")
     log_action(actor=actor, action="project.delete", metadata={"project_id": str(project.pk), "name": project.name}, request=request)
+    delete_collection_items_for(project)
     project.delete()
 
 
@@ -777,6 +782,7 @@ def delete_component(*, component: Component, actor, request=None) -> None:
     log_action(
         actor=actor, action="component.delete", metadata={"component_id": str(component.pk), "name": component.name}, request=request
     )
+    delete_collection_items_for(component)
     component.delete()
 
 
@@ -848,6 +854,7 @@ def update_failure(*, failure: Failure, actor, request=None, **fields) -> Failur
 def delete_failure(*, failure: Failure, actor, request=None) -> None:
     _require_permission(actor, "failure.delete", "You need failure.delete to remove this failure report.")
     log_action(actor=actor, action="failure.delete", metadata={"failure_id": str(failure.pk), "title": failure.title}, request=request)
+    delete_collection_items_for(failure)
     failure.delete()
 
 
@@ -887,6 +894,7 @@ def update_sop(*, sop: Sop, actor, request=None, **fields) -> Sop:
 def delete_sop(*, sop: Sop, actor, request=None) -> None:
     _require_permission(actor, "sop.delete", "You need sop.delete to remove this SOP.")
     log_action(actor=actor, action="sop.delete", metadata={"sop_id": str(sop.pk), "title": sop.title}, request=request)
+    delete_collection_items_for(sop)
     sop.delete()
 
 
@@ -970,7 +978,307 @@ def update_test(*, test: Test, actor, request=None, **fields) -> Test:
 def delete_test(*, test: Test, actor, request=None) -> None:
     _require_permission(actor, "test.delete", "You need test.delete to remove this test.")
     log_action(actor=actor, action="test.delete", metadata={"test_id": str(test.pk), "title": test.title}, request=request)
+    delete_collection_items_for(test)
     test.delete()
+
+
+# --- Knowledge collections (folders / series) --------------------------------
+#
+# A Collection is a curated, ordered list of *existing* content - the
+# equivalent of a folder of SOPs (mode=FOLDER) or an ordered phase series
+# (mode=SERIES) with prev/next navigation. Items point at relatable types via
+# the same GenericForeignKey pattern as KnowledgeRelation below, so any
+# current or future _RELATABLE_MODELS entry can be an item.
+
+
+def visible_collections_for(viewer) -> QuerySet[Collection]:
+    """Collections `viewer` may see: their org's rows, minus RESTRICTED ones
+    they aren't privileged for (the standard visibility rule - 'collection'
+    is wired into visibility.py's OWNER_FIELD/OVERRIDE_PERMISSIONS)."""
+    queryset = Collection.objects.filter(organization=viewer.organization)
+    return visibility_rules.exclude_inaccessible(queryset, viewer, Collection, "collection")
+
+
+def content_summary(instance) -> dict:
+    """The minimal per-item shape the collection page, the phase stepper, and
+    the detail-page "collections" context need to render and navigate to an
+    item: {id, type, title, status?}. `type` is the model_name key used
+    everywhere else ('article', 'sop', ...)."""
+    summary = {
+        "id": str(instance.pk),
+        "type": instance._meta.model_name,
+        "title": getattr(instance, "title", None) or getattr(instance, "name", "") or "",
+    }
+    status = getattr(instance, "status", None)
+    if status:
+        summary["status"] = status
+    return summary
+
+
+def _node_visible_to(viewer, model_name: str, instance) -> bool:
+    """Whether a collection node's content is shown to `viewer`. Same rule for
+    every relatable type (the standard RESTRICTED check); Articles add the
+    list-endpoint rule - only PUBLISHED ones show unless the viewer is
+    privileged for the article (author/owner, reviewer/publisher, ...), since
+    a series quietly advertising an unreadable DRAFT would leak its title."""
+    if model_name == "article":
+        if instance.status != Article.Status.PUBLISHED and not visibility_rules.is_privileged_for(
+            viewer, model_name, instance
+        ):
+            return False
+    return visibility_rules.can_view_instance(viewer, model_name, instance)
+
+
+def _visible_collection_nodes(collection: Collection, viewer) -> list[tuple[CollectionItem, dict]]:
+    """(item, summary) pairs `viewer` can see, in collection order. Two
+    staleness hazards are handled here rather than only at write time,
+    because content can change independently of the collection after the
+    item row exists:
+      - the content was deleted -> the GenericForeignKey resolves to None,
+        so the stale item is dropped *and pruned*;
+      - the content became invisible to this viewer (RESTRICTED, a draft
+        article) -> the node is hidden from them only.
+    """
+    nodes = list(collection.items.order_by("order", "created_at"))
+    model_classes: dict[str, type] = {}
+    ids_by_type: dict[str, set[str]] = {}
+    for node in nodes:
+        model_class = node.content_type.model_class()
+        if model_class is None:
+            continue
+        model_classes[node.content_type.model] = model_class
+        ids_by_type.setdefault(node.content_type.model, set()).add(str(node.object_id))
+    instances_by_id: dict[str, dict[str, object]] = {}
+    for model_name, model_class in model_classes.items():
+        found = model_class.objects.filter(organization=collection.organization, pk__in=ids_by_type[model_name])
+        instances_by_id[model_name] = {str(obj.pk): obj for obj in found}
+    result = []
+    for node in nodes:
+        instance = instances_by_id.get(node.content_type.model, {}).get(str(node.object_id))
+        if instance is None:
+            node.delete()
+            continue
+        if _node_visible_to(viewer, node.content_type.model, instance):
+            result.append((node, content_summary(instance)))
+    return result
+
+
+def collection_items_for(collection: Collection, viewer) -> list[dict]:
+    """The collection's visible nodes in serialized shape, for the detail
+    page's item list."""
+    return [
+        {
+            "id": str(node.pk),
+            "order": node.order,
+            "phase_title": node.phase_title or None,
+            "note": node.note or None,
+            "content": summary,
+        }
+        for node, summary in _visible_collection_nodes(collection, viewer)
+    ]
+
+
+def collections_context_for(instance, viewer) -> list[dict]:
+    """Everything a SopDetail/ArticleDetail payload needs to render its
+    "Part of series / folder" banner: every visible collection the item
+    belongs to, with the item's 1-based position, prev/next neighbors, and
+    the sibling list - all computed over the nodes *this viewer* can see, so
+    positions don't skip and neighbors never point somewhere unreadable."""
+    content_type = ContentType.objects.get_for_model(type(instance))
+    item_qs = CollectionItem.objects.filter(
+        content_type=content_type, object_id=instance.pk
+    ).select_related("collection")
+    contexts = []
+    for item in item_qs:
+        collection = item.collection
+        # The generic FK can't enforce tenancy; an item's org is always its
+        # collection's org (items are created org-scoped) - this is the
+        # defense-in-depth check on the read path.
+        if collection.organization_id != viewer.organization_id:
+            continue
+        if not visibility_rules.can_view_instance(viewer, "collection", collection):
+            continue
+        nodes = _visible_collection_nodes(collection, viewer)
+        summaries = [summary for _node, summary in nodes]
+        position = next(
+            (index + 1 for index, (node, _summary) in enumerate(nodes) if node.pk == item.pk), None
+        )
+        if position is None:
+            continue
+        contexts.append(
+            {
+                "id": str(collection.pk),
+                "title": collection.title,
+                "slug": collection.slug,
+                "mode": collection.mode,
+                "content_scope": collection.content_scope,
+                "position": position,
+                "total": len(nodes),
+                "phase_title": item.phase_title or None,
+                "prev_item": summaries[position - 2] if position > 1 else None,
+                "next_item": summaries[position] if position < len(nodes) else None,
+                "items": summaries,
+            }
+        )
+    return contexts
+
+
+def delete_collection_items_for(instance) -> None:
+    """Drops the collection items pointing at `instance` right before its own
+    delete_* service deletes it. GenericForeignKeys don't cascade, so without
+    this a deleted SOP would leave a permanently-dangling phase entry."""
+    CollectionItem.objects.filter(
+        content_type=ContentType.objects.get_for_model(type(instance)), object_id=instance.pk
+    ).delete()
+
+
+def create_collection(
+    *,
+    actor,
+    request=None,
+    title,
+    description="",
+    mode=Collection.Mode.SERIES,
+    content_scope=Collection.ContentScope.MIXED,
+    visibility=Visibility.PUBLIC,
+    category=None,
+    tag_names=None,
+) -> Collection:
+    _require_permission(actor, "collection.manage", "You need collection.manage to create collections.")
+    collection = Collection.objects.create(
+        organization=actor.organization,
+        title=title,
+        slug=_unique_slug(Collection, title, actor.organization),
+        description=description,
+        mode=mode,
+        content_scope=content_scope,
+        visibility=visibility,
+        category=category,
+        created_by=actor,
+    )
+    _sync_tags(collection, tag_names)
+    log_action(actor=actor, action="collection.create", target=collection, request=request)
+    return collection
+
+
+def update_collection(*, collection: Collection, actor, request=None, **fields) -> Collection:
+    _require_permission(actor, "collection.manage", "You need collection.manage to edit this collection.")
+    tag_names = fields.pop("tag_names", None)
+    for field, value in fields.items():
+        setattr(collection, field, value)
+    collection.save(update_fields=[*fields.keys(), "updated_at"])
+    _sync_tags(collection, tag_names)
+    log_action(actor=actor, action="collection.update", target=collection, request=request)
+    return collection
+
+
+def delete_collection(*, collection: Collection, actor, request=None) -> None:
+    _require_permission(actor, "collection.manage", "You need collection.manage to delete this collection.")
+    log_action(
+        actor=actor,
+        action="collection.delete",
+        metadata={"collection_id": str(collection.pk), "title": collection.title},
+        request=request,
+    )
+    collection.delete()  # Cascades to items only - the content itself is untouched.
+
+
+def create_collection_item(
+    *,
+    collection: Collection,
+    actor,
+    request=None,
+    content_type: str,
+    object_id,
+    order=None,
+    phase_title="",
+    note="",
+) -> CollectionItem:
+    _require_permission(actor, "collection.manage", "You need collection.manage to organize collections.")
+    model, target = _resolve_relatable(content_type, object_id, collection.organization)
+    # Curators organize what they can read - same principle as a write
+    # serializer's visibility-filtered queryset.
+    if not visibility_rules.can_view_instance(actor, content_type, target):
+        raise PermissionDenied("That content isn't accessible to you.")
+    if CollectionItem.objects.filter(
+        collection=collection, content_type=ContentType.objects.get_for_model(model), object_id=object_id
+    ).exists():
+        raise ValidationError({"object_id": ["That content is already in this collection."]})
+    with transaction.atomic():
+        if order is None:
+            next_order = collection.items.aggregate(Max("order"))["order__max"]
+            order = 0 if next_order is None else next_order + 1
+        item = CollectionItem.objects.create(
+            collection=collection,
+            content_type=ContentType.objects.get_for_model(model),
+            object_id=object_id,
+            order=order,
+            phase_title=phase_title,
+            note=note,
+        )
+    log_action(
+        actor=actor,
+        action="collection.item.add",
+        target=collection,
+        metadata={"item_id": str(item.pk), "content_type": content_type, "object_id": str(object_id)},
+        request=request,
+    )
+    return item
+
+
+def update_collection_item(*, item: CollectionItem, actor, request=None, **fields) -> CollectionItem:
+    _require_permission(actor, "collection.manage", "You need collection.manage to organize collections.")
+    for field, value in fields.items():
+        setattr(item, field, value)
+    item.save(update_fields=[*fields.keys()])
+    log_action(
+        actor=actor,
+        action="collection.item.update",
+        target=item.collection,
+        metadata={"item_id": str(item.pk)},
+        request=request,
+    )
+    return item
+
+
+def delete_collection_item(*, item: CollectionItem, actor, request=None) -> None:
+    _require_permission(actor, "collection.manage", "You need collection.manage to organize collections.")
+    log_action(
+        actor=actor,
+        action="collection.item.remove",
+        target=item.collection,
+        metadata={"item_id": str(item.pk)},
+        request=request,
+    )
+    item.delete()
+
+
+def reorder_collection_items(*, collection: Collection, item_ids: list[str], actor, request=None) -> None:
+    """Sets each item's `order` to its index in the given list - the frontend
+    sends the complete list after a move, and this renumbers it. A missing or
+    duplicate id is a 400, not silently skipped."""
+    _require_permission(actor, "collection.manage", "You need collection.manage to organize collections.")
+    items = {str(item.pk): item for item in collection.items.all()}
+    seen: set[str] = set()
+    for item_id in item_ids:
+        if item_id not in items:
+            raise ValidationError({"item_ids": [f"No item with id {item_id} in this collection."]})
+        if item_id in seen:
+            raise ValidationError({"item_ids": [f"Item {item_id} appears more than once."]})
+        seen.add(item_id)
+    with transaction.atomic():
+        for order, item_id in enumerate(item_ids):
+            item = items[item_id]
+            if item.order != order:
+                item.order = order
+                item.save(update_fields=["order"])
+    log_action(
+        actor=actor,
+        action="collection.reorder",
+        target=collection,
+        metadata={"item_ids": item_ids},
+        request=request,
+    )
 
 
 def create_document(
@@ -1042,6 +1350,7 @@ def delete_document(*, document: Document, actor, request=None) -> None:
     log_action(
         actor=actor, action="document.delete", metadata={"document_id": str(document.pk), "title": document.title}, request=request
     )
+    delete_collection_items_for(document)
     document.delete()
 
 

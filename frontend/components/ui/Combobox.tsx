@@ -40,6 +40,13 @@ interface ComboboxProps {
    * a plain input) that render at a different intrinsic height because
    * they use a different text/line-height scale. */
   triggerClassName?: string;
+  /** Given, the list grows a pinned "Create {typed text}" row (shown when
+   * the query is non-empty and matches no option) - e.g. a category.manage
+   * holder adding a missing category without leaving the editor. The caller
+   * owns the actual creation. */
+  onCreate?: (query: string) => void;
+  /** Overrides the create row's label template ({query} is replaced). */
+  createLabel?: string;
 }
 
 // The "dropdown list" primitive - a type-to-filter select. The Stitch
@@ -54,12 +61,28 @@ export function Combobox({
   onChange,
   emptyText,
   triggerClassName,
+  onCreate,
+  createLabel,
 }: ComboboxProps) {
   const t = useTranslations("common");
   const [open, setOpen] = useState(false);
+  // The typed search, tracked so the pinned create row (onCreate above) can
+  // echo it. Reset on close so the previous open's query doesn't linger.
+  const [query, setQuery] = useState("");
   const selected = options.find((option) => option.value === value);
   const resolvedPlaceholder = placeholder ?? t("select");
   const resolvedEmptyText = emptyText ?? t("noResultsFound");
+  const trimmedQuery = query.trim();
+  // Hide the create row when it would duplicate an existing option's label.
+  const queryMatchesAnOption = options.some(
+    (option) => option.label.toLowerCase() === trimmedQuery.toLowerCase(),
+  );
+
+  function handleCreate() {
+    onCreate?.(trimmedQuery);
+    setQuery("");
+    setOpen(false);
+  }
 
   return (
     <div className="space-y-2">
@@ -68,7 +91,13 @@ export function Combobox({
           {label}
         </label>
       )}
-      <Popover.Root open={open} onOpenChange={setOpen}>
+      <Popover.Root
+        open={open}
+        onOpenChange={(next) => {
+          setOpen(next);
+          if (!next) setQuery("");
+        }}
+      >
         <Popover.Trigger asChild>
           <button
             type="button"
@@ -89,6 +118,7 @@ export function Combobox({
             <Command className="flex flex-col" label={label ?? resolvedPlaceholder}>
               <Command.Input
                 placeholder={t("typeToSearch")}
+                onValueChange={setQuery}
                 className="w-full px-4 py-2 border-b border-outline-variant bg-transparent font-body-md text-body-md text-on-surface placeholder:text-outline outline-none"
               />
               <Command.List className="max-h-60 overflow-y-auto p-1">
@@ -101,6 +131,7 @@ export function Combobox({
                     value={option.label}
                     onSelect={() => {
                       onChange(option.value);
+                      setQuery("");
                       setOpen(false);
                     }}
                     className="flex items-center justify-between px-4 py-2 rounded-lg font-body-md text-body-md text-on-surface cursor-pointer data-[selected=true]:bg-surface-variant"
@@ -112,6 +143,18 @@ export function Combobox({
                   </Command.Item>
                 ))}
               </Command.List>
+              {onCreate && trimmedQuery !== "" && !queryMatchesAnOption && (
+                <button
+                  type="button"
+                  onClick={handleCreate}
+                  className="flex w-full items-center gap-2 border-t border-outline-variant px-4 py-2.5 font-body-md text-body-md text-primary hover:bg-surface-variant transition-colors"
+                >
+                  <Icon name="add" size={16} className="shrink-0" />
+                  {createLabel
+                    ? createLabel.replace("{query}", trimmedQuery)
+                    : t("comboboxCreate", { query: trimmedQuery })}
+                </button>
+              )}
             </Command>
           </Popover.Content>
         </Popover.Portal>
