@@ -131,3 +131,36 @@ jobs:
             type=gha,scope=frontend-prod
             type=gha,scope=frontend-ci
           cache-to: type=gha,scope=frontend-prod,mode=max
+
+  # Auto-deploy after the publish job pushes the images - the same
+  # ssh + git pull + compose pull + up -d you run by hand today. Needs three
+  # repo Secrets set up first: DEPLOY_HOST (the VM's IP), DEPLOY_USER (the
+  # ssh user on the compute engine) and DEPLOY_SSH_KEY (the PRIVATE half of
+  # a keypair whose public half is in that user's authorized_keys).
+  # Uncomment the whole job to enable. Two notes:
+  #   * `environment: production` (also commented below) plus a
+  #     required-reviewer rule on that GitHub environment makes every deploy
+  #     wait for a click and keeps a Deployment history per release on the
+  #     Actions tab.
+  #   * This deploys whatever tag this run built - rebuilding an older
+  #     release via workflow_dispatch would also re-deploy it (and older
+  #     drafts don't move `latest`). Guard it with `if:` on the publish
+  #     job's outputs if you want old-tag rebuilds to never touch the VM.
+  #
+  # deploy:
+  #   needs: [publish]
+  #   runs-on: ubuntu-latest
+  #   # environment: production
+  #   steps:
+  #     - name: Deploy on the VM
+  #       uses: appleboy/ssh-action@v1
+  #       with:
+  #         host: ${{ secrets.DEPLOY_HOST }}
+  #         username: ${{ secrets.DEPLOY_USER }}
+  #         key: ${{ secrets.DEPLOY_SSH_KEY }}
+  #         script: |
+  #           set -e
+  #           cd ~/athar
+  #           git pull
+  #           docker compose -f docker-compose.prod.yml pull
+  #           docker compose -f docker-compose.prod.yml up -d
