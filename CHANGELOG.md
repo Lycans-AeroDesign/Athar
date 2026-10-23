@@ -1,3 +1,10 @@
+## [1.18.1](https://github.com/Lycans-AeroDesign/Athar/compare/v1.18.0...v1.18.1) (2026-10-23)
+
+### Bug Fixes
+
+* **backups:** cover Collections and the upload limit in org backups ([d380d1a](https://github.com/Lycans-AeroDesign/Athar/commit/d380d1a3eebf682cda5e5ddb6248e8d7452319d9))
+* **security:** stop leaking exception text and drop CI token privileges ([6599c5b](https://github.com/Lycans-AeroDesign/Athar/commit/6599c5b32002779378d9c05fda4e4114798d07f7))
+
 ## [1.18.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.17.0...v1.18.0) (2026-10-23)
 
 ### Features
