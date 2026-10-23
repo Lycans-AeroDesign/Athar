@@ -78,14 +78,16 @@ class PlatformAdminTests(RoleLoginMixin, APITestCase):
         self.assertIsNotNone(response.data["disk_used_bytes"])
         self.assertGreater(response.data["disk_used_bytes"], 0)
         self.assertLess(response.data["disk_used_bytes"], response.data["disk_total_bytes"])
-        # shutil derives "used" from f_bfree (root-inclusive) but reports "free"
-        # as f_bavail (non-root), so free can exceed total - used by exactly
-        # the OS's root-reserved blocks - 16 MiB on the CI runner, 0 here.
-        # Consistency is the invariant; equality is not.
-        self.assertGreaterEqual(
+        # shutil derives "used" from f_bfree (blocks free to root), but
+        # reports "free" as f_bavail (blocks available to a non-root
+        # process), so total - used (i.e. f_bfree) is at least as large as
+        # the reported free - larger by exactly the OS's root-reserved
+        # blocks on filesystems that have any (16 MiB on the CI runner).
+        self.assertLessEqual(
             response.data["disk_free_bytes"],
             response.data["disk_total_bytes"] - response.data["disk_used_bytes"],
         )
+        self.assertGreater(response.data["disk_free_bytes"], 0)
 
     def test_suspended_org_users_are_locked_out_and_audit_logged(self):
         operator, headers = self._operator()
