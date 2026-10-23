@@ -1,3 +1,4 @@
+import logging
 import tempfile
 import zipfile
 from pathlib import Path
@@ -33,6 +34,8 @@ from .serializers import (
     RestoreJobSerializer,
     UploadRestoreJobSerializer,
 )
+
+logger = logging.getLogger(__name__)
 
 # organization.manage - the same permission knowledge/visibility.py's
 # ADMIN_BYPASS_PERMISSION uses as the "is this an org admin" signal - is
@@ -190,7 +193,13 @@ def _validate_archive_contents(archive_file, organization) -> None:
         try:
             manifest = restore.read_manifest(zf)
         except restore.RestoreError as exc:
-            raise ValidationError({"archive": [str(exc)]}) from exc
+            # The only RestoreError read_manifest can raise carries this exact
+            # wording (see restore.py) - restated here rather than flowing the
+            # exception's message into the response (CodeQL
+            # stack-trace-exposure); the real exception stays in the log via
+            # the chained cause.
+            logger.info("Backup archive sanity check failed: %s", exc)
+            raise ValidationError({"archive": ["This backup's manifest.json is not valid JSON."]}) from exc
     archive_file.seek(0)
     # A backup of a *different* organization that still exists on this
     # server can't be restored here: its rows' ids are still in use by that
@@ -241,7 +250,20 @@ class RestoreJobUploadView(APIView):
                     with open(plaintext_path, "wb") as plaintext:
                         crypto.decrypt_file(uploaded_file, plaintext, passphrase)
                 except crypto.DecryptionError as exc:
-                    raise ValidationError({"passphrase": [str(exc)]}) from exc
+                    # crypto deliberately raises one error for "wrong
+                    # passphrase" and "corrupted/tampered-with archive" (AES-GCM
+                    # can't tell them apart either) - so one static client
+                    # message covers every variant; the specific reason stays
+                    # server-side via the chained exception (CodeQL
+                    # stack-trace-exposure).
+                    logger.info("Backup upload decryption failed: %s", exc)
+                    raise ValidationError(
+                        {
+                            "passphrase": [
+                                "This archive couldn't be decrypted - the passphrase may be wrong, or the backup was made by an incompatible version."
+                            ]
+                        }
+                    ) from exc
                 archive_file = open(plaintext_path, "rb")
             else:
                 # A plaintext .zip downloaded before backups were encrypted.

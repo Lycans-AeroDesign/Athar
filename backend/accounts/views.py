@@ -1,3 +1,5 @@
+import logging
+
 from django.conf import settings
 from django.db import transaction
 from django.http import JsonResponse
@@ -56,6 +58,9 @@ from .services import (
 # Same response for a token that never existed, was already used, was
 # replaced by a newer link, or expired - see get_valid_password_reset_link.
 INVALID_RESET_LINK = {"detail": "This reset link is invalid or has expired."}
+
+
+logger = logging.getLogger(__name__)
 
 
 def _set_refresh_cookie(response: Response, refresh_token: str) -> None:
@@ -129,7 +134,12 @@ class RefreshView(APIView):
         try:
             probe = RotationProbeToken(refresh_token)
         except TokenError as exc:
-            raise AuthenticationFailed(str(exc)) from exc
+            # A blanket client-facing message - the underlying token classes'
+            # wording varies by failure mode and mustn't flow to the response
+            # unchanged (CodeQL stack-trace-exposure). The detail lands in
+            # server logs via the chained exception instead.
+            logger.info("Refresh probe rejected: %s", exc)
+            raise AuthenticationFailed("This session's refresh token is invalid or expired. Please sign in again.") from exc
 
         # A suspended organization's users can't mint new access tokens (platform_admin).
         owner = User.objects.select_related("organization").filter(pk=probe.payload.get("user_id")).first()
@@ -148,7 +158,10 @@ class RefreshView(APIView):
                 rejection = exc
         if rejection is not None:
             handle_refresh_token_reuse(probe, request=request)
-            raise AuthenticationFailed(str(rejection)) from rejection
+            logger.info("Refresh rotation rejected: %s", rejection)
+            # Same reasoning as the probe rejection above: nothing from the
+            # token library's message flows to the client.
+            raise AuthenticationFailed("This session is invalid or expired. Please sign in again.") from rejection
 
         data = dict(serializer.validated_data)
         rotated_refresh = data.pop("refresh", None)

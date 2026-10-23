@@ -6,6 +6,14 @@ on:
   pull_request:
     branches: [main, dev]
 
+# Least privilege for the default GITHUB_TOKEN - every job here only checks
+# out source, runs tests, and builds images (nobody comments on PRs or
+# pushes), so read-only covers everything. Without this block the token gets
+# write-all, which is the security-lint complaint (actions/missing-
+# workflow-permissions).
+permissions:
+  contents: read
+
 jobs:
   backend:
     name: Backend (Django)
