@@ -74,6 +74,8 @@ from knowledge.models import (
     ArticleRevision,
     Bookmark,
     Category,
+    Collection,
+    CollectionItem,
     Component,
     ComponentAttachment,
     ComponentCategory,
@@ -150,6 +152,8 @@ _DELETE_SPECS = [
     (ComponentCategory, "organization"),
     (StorageLocation, "organization"),
     (Project, "organization"),
+    (CollectionItem, "collection__organization"),
+    (Collection, "organization"),
     (Tag, "organization"),
     (Category, "organization"),
 ]
@@ -167,6 +171,8 @@ _TIMESTAMP_SPECS = [
     (Tag, "organization", "tags.csv"),
     (Category, "organization", "categories.csv"),
     (Project, "organization", "projects.csv"),
+    (Collection, "organization", "collections.csv"),
+    (CollectionItem, "collection__organization", "collection_items.csv"),
     (ComponentCategory, "organization", "component_categories.csv"),
     (StorageLocation, "organization", "storage_locations.csv"),
     (Component, "organization", "components.csv"),
@@ -533,6 +539,11 @@ def _restore_organization_settings(ctx: _RestoreContext, zf: zipfile.ZipFile, fi
     for color_field in ("primary_color", "secondary_color", "primary_color_dark", "secondary_color_dark"):
         if row.get(color_field):
             setattr(settings_row, color_field, row[color_field][:7])
+    # Column absent from archive generations before the per-org upload limit
+    # existed - leave the server-side value alone then.
+    if row.get("max_upload_size_mb"):
+        max_upload_size_mb = _int_or_default(row["max_upload_size_mb"], default=0)
+        settings_row.max_upload_size_mb = max_upload_size_mb or None
     if "logo_id" in row:
         settings_row.logo = files_by_id.get(_uuid_or_none(row["logo_id"]))
         settings_row.favicon = files_by_id.get(_uuid_or_none(row["favicon_id"]))
@@ -563,6 +574,60 @@ def _restore_categories(ctx: _RestoreContext, zf: zipfile.ZipFile) -> dict[uuid.
         categories_by_id[category.id] = category
     ctx.summary.created["categories"] = len(categories_by_id)
     return categories_by_id
+
+
+def _restore_collections(ctx, zf, tags_by_id, categories_by_id) -> dict[uuid.UUID, Collection]:
+    """Series/FOLDER collections themselves (no items - those come later via
+    ctx.generic_target, once the content they reference is restored). An
+    archive generation before collections existed just has no CSV - the
+    {}.get() guards keep those restores a no-op here."""
+    collections_by_id = {}
+    for row in _read_csv_rows(zf, "collections.csv"):
+        collection = Collection.objects.create(
+            id=_uuid_or_none(row["id"]),
+            organization=ctx.organization,
+            title=row["title"],
+            slug=row["slug"],
+            description=row["description"],
+            # Unrecognized enum values can only come from a hand-edited archive
+            # - a brand-new mode would break this (older) server's restore.
+            mode=row["mode"] if row["mode"] in Collection.Mode.values else Collection.Mode.SERIES,
+            content_scope=row["content_scope"] if row["content_scope"] in Collection.ContentScope.values else (
+                Collection.ContentScope.MIXED
+            ),
+            visibility=row["visibility"],
+            category=categories_by_id.get(_uuid_or_none(row.get("category_id"))),
+            created_by_id=ctx.user_id(row.get("created_by_id")),
+        )
+        _set_tags(collection, ctx, row, tags_by_id)
+        collections_by_id[collection.id] = collection
+    ctx.summary.created["collections"] = len(collections_by_id)
+    return collections_by_id
+
+
+def _restore_collection_items(ctx, zf, collections_by_id) -> None:
+    """Collection items re-run through ctx.generic_target (like relations/
+    bookmarks): an item whose content type isn't restorable here - or whose
+    content row didn't survive the restore - is skipped rather than linking
+    into nothing."""
+    count = 0
+    for row in _read_csv_rows(zf, "collection_items.csv"):
+        collection = collections_by_id.get(_uuid_or_none(row["collection_id"]))
+        target = ctx.generic_target(row["content_type"], row["object_id"]) if row.get("content_type") else None
+        if collection is None or target is None:
+            continue
+        content_type, object_id = target
+        CollectionItem.objects.create(
+            id=_uuid_or_none(row["id"]),
+            collection=collection,
+            content_type=content_type,
+            object_id=object_id,
+            order=_int_or_default(row.get("order", "")),
+            phase_title=row.get("phase_title", ""),
+            note=row.get("note", ""),
+        )
+        count += 1
+    ctx.summary.created["collection_items"] = count
 
 
 def _set_tags(obj, ctx: _RestoreContext, row: dict, tags_by_id: dict) -> None:
@@ -1352,6 +1417,7 @@ def restore_org_backup_archive(organization, archive_file, actor=None) -> Restor
 
         tags_by_id = _restore_tags(ctx, zf)
         categories_by_id = _restore_categories(ctx, zf)
+        collections_by_id = _restore_collections(ctx, zf, tags_by_id, categories_by_id)
         projects_by_id = _restore_projects(ctx, zf, tags_by_id)
         component_categories_by_id = _restore_component_categories(ctx, zf)
         locations_by_id = _restore_storage_locations(ctx, zf)
@@ -1376,6 +1442,7 @@ def restore_org_backup_archive(organization, archive_file, actor=None) -> Restor
         answers = _restore_answers(ctx, zf, questions_by_id)
         _restore_question_links(ctx, zf, answers, articles_by_id)
         # Generic-FK rows last, once every possible target has been restored.
+        _restore_collection_items(ctx, zf, collections_by_id)
         _restore_lesson_knowledge_references(ctx, zf, lessons_by_id)
         _restore_relations(ctx, zf)
         _restore_grants(ctx, zf)

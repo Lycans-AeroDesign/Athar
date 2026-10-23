@@ -43,6 +43,8 @@ from knowledge.models import (
     ArticleRevision,
     Bookmark,
     Category,
+    Collection,
+    CollectionItem,
     Component,
     ComponentAttachment,
     ComponentCategory,
@@ -449,6 +451,51 @@ def _export_specs(organization):
             ],
         ),
         (
+            # Ordered after every model a collection can reference so restore's
+            # insert order keeps content first - mirror of restore.py, which
+            # creates collections before the generic-FK items pass.
+            Collection.objects.filter(organization=organization)
+            .select_related("category", "created_by")
+            .prefetch_related("tags"),
+            "collections.csv",
+            [
+                ("id", lambda o: _s(o.id)),
+                ("title", lambda o: o.title),
+                ("slug", lambda o: o.slug),
+                ("description", lambda o: o.description),
+                ("mode", lambda o: o.mode),
+                ("content_scope", lambda o: o.content_scope),
+                ("visibility", lambda o: o.visibility),
+                ("category_id", lambda o: _s(o.category_id)),
+                ("category", lambda o: _s(o.category and o.category.name)),
+                ("tag_ids", _tag_ids),
+                ("tags", _tags),
+                ("created_by_id", lambda o: _s(o.created_by_id)),
+                ("created_by_email", lambda o: _s(o.created_by and o.created_by.email)),
+                ("created_at", lambda o: _s(o.created_at)),
+                ("updated_at", lambda o: _s(o.updated_at)),
+            ],
+        ),
+        (
+            # Items point at content via a generic FK; the CSV stores the raw
+            # model name plus id pair (same shape as knowledge_relations.csv)
+            # so restore can map them through ctx.generic_target.
+            CollectionItem.objects.filter(collection__organization=organization).order_by(
+                "collection_id", "order", "id"
+            ),
+            "collection_items.csv",
+            [
+                ("id", lambda o: _s(o.id)),
+                ("collection_id", lambda o: _s(o.collection_id)),
+                ("content_type", lambda o: o.content_type.model),
+                ("object_id", lambda o: _s(o.object_id)),
+                ("order", lambda o: _s(o.order)),
+                ("phase_title", lambda o: o.phase_title),
+                ("note", lambda o: o.note),
+                ("created_at", lambda o: _s(o.created_at)),
+            ],
+        ),
+        (
             Document.objects.filter(organization=organization)
             .select_related("category", "created_by", "file")
             .prefetch_related("tags"),
@@ -777,6 +824,7 @@ def _write_organization_settings(zf: zipfile.ZipFile, organization) -> None:
                 "secondary_color",
                 "primary_color_dark",
                 "secondary_color_dark",
+                "max_upload_size_mb",
                 "product_tour_enabled",
                 "updated_at",
             ]
@@ -790,6 +838,7 @@ def _write_organization_settings(zf: zipfile.ZipFile, organization) -> None:
                 settings_row.secondary_color,
                 settings_row.primary_color_dark,
                 settings_row.secondary_color_dark,
+                _s(settings_row.max_upload_size_mb),
                 _s(settings_row.product_tour_enabled),
                 _s(settings_row.updated_at),
             ]

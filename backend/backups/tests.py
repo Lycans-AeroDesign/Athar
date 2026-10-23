@@ -12,6 +12,7 @@ from core import crypto
 from core.testing import RoleLoginMixin, create_test_organization
 from accounts.models import User
 from files.models import StoredFile
+from organization.models import OrganizationSettings
 from rbac.models import Role
 
 from knowledge import services as knowledge_services
@@ -19,14 +20,19 @@ from knowledge.models import (
     Answer,
     Article,
     Bookmark,
+    Collection,
+    CollectionItem,
     Component,
     ComponentCategory,
     KnowledgeRelation,
+    Category,
     Project,
     Question,
     RestrictedAccessGrant,
+    Sop,
     StorageLocation,
     Tag,
+    Visibility,
 )
 from training.models import (
     Course,
@@ -263,6 +269,103 @@ class RestoreJobTests(BackupJobTestCase):
         self.assertTrue(
             KnowledgeRelation.objects.filter(source_object_id=project_id, target_object_id=article_id).exists()
         )
+
+    def test_restore_round_trips_collections_items_and_upload_limit(self):
+        author, _ = self._login_with_role("collectionauthor@example.com", "Subteam Head")
+        _, admin_access = self._login_with_role("collectionadmin@example.com", "Organization Admin")
+
+        tag = Tag.objects.create(organization=self.organization, name="series")
+        category = Category.objects.create(organization=self.organization, name="Analysis", slug="analysis")
+        article = Article.objects.create(
+            organization=self.organization,
+            title="Series Article",
+            slug="series-article",
+            content="Some content",
+            author=author,
+        )
+        sop = Sop.objects.create(
+            organization=self.organization,
+            title="Series SOP",
+            created_by=author,
+            visibility=Visibility.PUBLIC,
+        )
+        collection = Collection.objects.create(
+            organization=self.organization,
+            title="Wing Sizing Series",
+            slug="wing-sizing-series",
+            description="Phase walkthrough",
+            mode=Collection.Mode.SERIES,
+            content_scope=Collection.ContentScope.MIXED,
+            visibility=Visibility.PUBLIC,
+            category=category,
+            created_by=author,
+        )
+        collection.tags.add(tag)
+        article_item = CollectionItem.objects.create(
+            collection=collection,
+            content_type=ContentType.objects.get_for_model(Article),
+            object_id=article.id,
+            order=0,
+            phase_title="Phase 1 - 2D",
+            note="Open first",
+        )
+        sop_item = CollectionItem.objects.create(
+            collection=collection,
+            content_type=ContentType.objects.get_for_model(Sop),
+            object_id=sop.id,
+            order=1,
+            phase_title="Phase 2 - 3D",
+        )
+        org_settings = OrganizationSettings.load(self.organization)
+        org_settings.max_upload_size_mb = 7
+        org_settings.save(update_fields=["max_upload_size_mb"])
+        collection_id = collection.id
+
+        backup_job = self._run_backup(admin_access)
+
+        # Mutate/delete the originals so restore isn't a no-op check. The SOP
+        # died *after* the backup, so the archive still carries it - a restore
+        # rebuilds it (full restore semantics) along with its item.
+        Sop.objects.get(pk=sop.id).delete()
+        Collection.objects.get(pk=collection_id).delete()
+        article.title = "Tampered"
+        article.save()
+        org_settings.max_upload_size_mb = None
+        org_settings.save(update_fields=["max_upload_size_mb"])
+
+        response = self.client.post(
+            reverse("backups-restore-list-create"),
+            {"backup_job_id": str(backup_job.id)},
+            format="json",
+            **self._auth(admin_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        restore_job_id = response.data["id"]
+
+        response = self.client.get(reverse("backups-restore-detail", args=[restore_job_id]), **self._auth(admin_access))
+        self.assertEqual(response.data["status"], "DONE")
+        self.assertEqual(response.data["summary"]["created"]["collections"], 1)
+        self.assertEqual(response.data["summary"]["created"]["collection_items"], 2)
+
+        restored_collection = Collection.objects.get(pk=collection_id)
+        self.assertEqual(restored_collection.title, "Wing Sizing Series")
+        self.assertEqual(restored_collection.mode, Collection.Mode.SERIES)
+        self.assertEqual(restored_collection.content_scope, Collection.ContentScope.MIXED)
+        self.assertEqual(list(restored_collection.tags.values_list("id", flat=True)), [tag.id])
+        self.assertEqual(restored_collection.created_by_id, author.id)
+        self.assertEqual(restored_collection.category_id, category.id)
+
+        # Both membership rows came back with the same ids, order, and labels.
+        restored_items = CollectionItem.objects.filter(collection=restored_collection)
+        self.assertEqual(list(restored_items.values_list("id", flat=True)), [article_item.id, sop_item.id])
+        self.assertEqual([item.order for item in restored_items.order_by("order")], [0, 1])
+        self.assertEqual(restored_items[0].phase_title, "Phase 1 - 2D")
+        self.assertEqual(restored_items[0].note, "Open first")
+        self.assertEqual(restored_items[1].phase_title, "Phase 2 - 3D")
+
+        # The per-org upload limit made it into organization_settings.csv and
+        # back out of the restore.
+        self.assertEqual(OrganizationSettings.load(self.organization).max_upload_size_mb, 7)
 
     def test_restore_round_trips_training_content_enrollment_and_progress(self):
         author, _ = self._login_with_role("courseauthor@example.com", "Subteam Head")
