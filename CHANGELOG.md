@@ -1,3 +1,10 @@
+## [1.20.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.19.0...v1.20.0) (2026-10-23)
+
+### Features
+
+* add SOP co-authors and share, crop existing images in markdown editor ([d70464a](https://github.com/Lycans-AeroDesign/Athar/commit/d70464a5d076b81e959225eb505a3073902b0c1b))
+* **frontend:** crop pasted and dropped images in the markdown editor ([4e4c9a7](https://github.com/Lycans-AeroDesign/Athar/commit/4e4c9a79400d9d0095e2e41fefa51e7ba0c4b00e))
+
 ## [1.19.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.18.1...v1.19.0) (2026-10-23)
 
 ### Features
