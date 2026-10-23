@@ -186,7 +186,7 @@ export default function CollectionPage() {
             ))}
           </div>
         )}
-        <UpdatedBadge updatedAt={collection.updated_at} />
+        <UpdatedBadge updatedAt={collection.updated_at} createdAt={collection.created_at} />
       </div>
 
       {collection.description && <Markdown content={collection.description} />}

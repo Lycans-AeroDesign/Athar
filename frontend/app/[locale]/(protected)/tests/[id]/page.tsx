@@ -113,7 +113,7 @@ export default function TestDetailPage() {
             </span>
           )}
           {test.location && <span>{test.location}</span>}
-          <UpdatedBadge updatedAt={test.updated_at} />
+          <UpdatedBadge updatedAt={test.updated_at} createdAt={test.created_at} />
         </div>
         <ContributorsRow contributors={test.contributors} />
       </div>

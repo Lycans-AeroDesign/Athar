@@ -119,7 +119,7 @@ export default function DocumentDetailPage() {
               {t("colCategory")}: {document.category.name}
             </span>
           )}
-          <UpdatedBadge updatedAt={document.updated_at} />
+          <UpdatedBadge updatedAt={document.updated_at} createdAt={document.created_at} />
         </div>
         <ContributorsRow contributors={document.contributors} />
       </div>

@@ -157,7 +157,7 @@ export default function QuestionDetailPage() {
             )}
             <CoAuthorsByline coAuthors={question.co_authors} />
             <span>•</span>
-            <UpdatedBadge updatedAt={question.updated_at} />
+            <UpdatedBadge updatedAt={question.updated_at} createdAt={question.created_at} />
           </div>
           <div className="flex items-center gap-2">
             <BookmarkButton key={question.id} type="question" objectId={question.id} bookmarkId={question.bookmark_id} />

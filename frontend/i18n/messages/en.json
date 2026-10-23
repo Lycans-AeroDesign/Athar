@@ -18,6 +18,7 @@
     "share": "Share",
     "copiedLink": "Link copied!",
     "updatedAgo": "Updated {time}",
+    "createdExactly": "Created {time}",
     "previous": "Previous",
     "next": "Next",
     "resultCount": "{count, plural, =0 {No results} one {# result} other {# results}}",

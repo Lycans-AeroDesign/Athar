@@ -253,7 +253,7 @@ export default function ArticleDetailPage() {
               </Link>
             )}
             <CoAuthorsByline coAuthors={article.co_authors} />
-            <UpdatedBadge updatedAt={article.updated_at} />
+            <UpdatedBadge updatedAt={article.updated_at} createdAt={article.created_at} />
           </div>
           {article.tags.length > 0 && (
             <div className="flex flex-wrap gap-2">

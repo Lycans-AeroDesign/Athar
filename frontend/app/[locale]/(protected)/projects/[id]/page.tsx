@@ -98,7 +98,7 @@ export default function ProjectDetailPage() {
             ))}
           </div>
         )}
-        <UpdatedBadge updatedAt={project.updated_at} />
+        <UpdatedBadge updatedAt={project.updated_at} createdAt={project.created_at} />
         <ContributorsRow contributors={project.contributors} />
       </div>
 

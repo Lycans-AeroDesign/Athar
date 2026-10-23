@@ -1,28 +1,46 @@
-"use client";
-
-import { useState } from "react";
 import { useTranslations } from "next-intl";
 
 import { Icon } from "@/components/ui/Icon";
 import { formatDateTime, formatRelativeTime } from "@/lib/datetime";
 
 /** "Updated 2 hours ago" header marker for every content detail page.
- * On hover the shown text flips to the exact timestamp (no tooltip) -
- * the glanceable relative form by default, the precise date while
- * scrutinizing. Muted mono styling matches the metadata rows it appears
- * in so it never competes with the colored status pills beside it. */
-export function UpdatedBadge({ updatedAt, className = "" }: { updatedAt: string; className?: string }) {
+ * Hovering flips the visible text over to the creation date, labeled
+ * "Created" so the exact timestamp isn't misread as the update time -
+ * the relative line rolls up while the created line rolls in from below
+ * (two stacked grid rows inside an overflow-hidden cell, CSS transition,
+ * no tooltip). The grid keeps its width equal to the wider of the two
+ * strings, so the flip never reflows the row. Muted mono styling matches
+ * the metadata rows it appears in so it never competes with the colored
+ * status pills. */
+export function UpdatedBadge({
+  updatedAt,
+  createdAt,
+  className = "",
+}: {
+  updatedAt: string;
+  createdAt: string;
+  className?: string;
+}) {
   const t = useTranslations("common");
-  const [hovered, setHovered] = useState(false);
+  const relative = t("updatedAgo", { time: formatRelativeTime(updatedAt) });
+  const created = t("createdExactly", { time: formatDateTime(createdAt) });
 
   return (
     <span
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      className={`inline-flex items-center gap-1 whitespace-nowrap font-mono-sm text-mono-sm text-on-surface-variant ${className}`}
+      className={`group inline-flex items-center gap-1 whitespace-nowrap font-mono-sm text-mono-sm text-on-surface-variant ${className}`}
     >
       <Icon name="update" size={14} />
-      {hovered ? formatDateTime(updatedAt) : t("updatedAgo", { time: formatRelativeTime(updatedAt) })}
+      <span className="relative inline-grid overflow-hidden align-baseline leading-normal">
+        <span className="col-start-1 row-start-1 transition-transform duration-200 ease-out group-hover:-translate-y-[125%]">
+          {relative}
+        </span>
+        <span
+          aria-hidden="true"
+          className="col-start-1 row-start-1 translate-y-[125%] transition-transform duration-200 ease-out group-hover:translate-y-0"
+        >
+          {created}
+        </span>
+      </span>
     </span>
   );
 }

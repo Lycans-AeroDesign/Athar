@@ -112,7 +112,7 @@ export default function FailureDetailPage() {
             </span>
           )}
           {failure.aircraft && <span>{failure.aircraft}</span>}
-          <UpdatedBadge updatedAt={failure.updated_at} />
+          <UpdatedBadge updatedAt={failure.updated_at} createdAt={failure.created_at} />
         </div>
         <ContributorsRow contributors={failure.contributors} />
       </div>

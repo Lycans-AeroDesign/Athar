@@ -102,7 +102,7 @@ export default function SopDetailPage() {
             ))}
           </div>
         )}
-        <UpdatedBadge updatedAt={sop.updated_at} />
+        <UpdatedBadge updatedAt={sop.updated_at} createdAt={sop.created_at} />
         <ContributorsRow contributors={sop.contributors} />
       </div>
 

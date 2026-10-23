@@ -257,7 +257,7 @@ export default function CourseDetailPage() {
             <Icon name="menu_book" size={16} className="text-on-surface-variant/70" />
             {cardT("lessonCount", { count: course.lesson_count })}
           </span>
-          <UpdatedBadge updatedAt={course.updated_at} />
+          <UpdatedBadge updatedAt={course.updated_at} createdAt={course.created_at} />
         </div>
 
         {/* Tier 3: the byline - personal/attribution, set apart with a small divider. */}

@@ -148,7 +148,7 @@ export default function ComponentDetailPage() {
                   {t("viewLinkButton")}
                 </a>
               )}
-              <UpdatedBadge updatedAt={component.updated_at} />
+              <UpdatedBadge updatedAt={component.updated_at} createdAt={component.created_at} />
             </div>
           </div>
         </div>
