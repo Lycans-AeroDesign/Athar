@@ -1,3 +1,16 @@
+## [1.19.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.18.1...v1.19.0) (2026-10-23)
+
+### Features
+
+* **frontend:** flip the updated badge to the labeled creation date ([f64e8f9](https://github.com/Lycans-AeroDesign/Athar/commit/f64e8f9960e6b289205d51c736e57a61537added))
+* **frontend:** show a last-updated badge atop every content page ([ad11375](https://github.com/Lycans-AeroDesign/Athar/commit/ad11375f351990f0404fea95e84218f0940e0fe9))
+
+### Bug Fixes
+
+* **frontend:** flip the updated badge to the exact timestamp on hover ([38b27be](https://github.com/Lycans-AeroDesign/Athar/commit/38b27be03c73159f99054e004ad3a4b17dcf0fab))
+* **platform:** assert free <= total - used in the disk-summary test ([c87df1c](https://github.com/Lycans-AeroDesign/Athar/commit/c87df1cafc0d40c96876cd953449c2e6984527d6))
+* **platform:** relax the disk-summary invariant to match shutil's math ([787bbd3](https://github.com/Lycans-AeroDesign/Athar/commit/787bbd34e096074c768f2d7a2e3f064ddefff45e))
+
 ## [1.18.1](https://github.com/Lycans-AeroDesign/Athar/compare/v1.18.0...v1.18.1) (2026-10-23)
 
 ### Bug Fixes
