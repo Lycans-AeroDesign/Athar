@@ -1,3 +1,10 @@
+## [1.18.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.17.0...v1.18.0) (2026-10-23)
+
+### Features
+
+* per-org upload limits and knowledge Collections/Series ([36cde8f](https://github.com/Lycans-AeroDesign/Athar/commit/36cde8f9ccb08edd53f9863157addca0de3a88ba))
+* **platform:** show system disk usage on the instance dashboard ([28c8c1d](https://github.com/Lycans-AeroDesign/Athar/commit/28c8c1dc619edfe14bad0d70a0d5fe2bc65fc775))
+
 ## [1.17.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.16.0...v1.17.0) (2026-10-22)
 
 ### Features
