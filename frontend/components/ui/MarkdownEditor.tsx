@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 
 import { Icon } from "./Icon";
+import { ImageCropModal } from "./ImageCropModal";
 import { Markdown } from "./Markdown";
 import { Link } from "@/i18n/navigation";
 import { errorMessage } from "@/lib/errors";
@@ -147,6 +148,29 @@ export function MarkdownEditor({ value, onChange, placeholder, relateFrom }: Mar
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [relationError, setRelationError] = useState<string | null>(null);
   const [calloutMenuOpen, setCalloutMenuOpen] = useState(false);
+
+  // Crop flow: every image heading into an upload from a paste/drop is routed
+  // through ImageCropModal first - openCrop() parks it on a pending promise
+  // (resolver kept in a ref so openCrop stays async/await-friendly), and
+  // finishCrop() resolves it with the cropped File, "skip" (insert the
+  // original untouched) or null (discard that file from the queue). Both
+  // create and edit pages render this editor, so one wiring covers both.
+  const cropResolverRef = useRef<((result: File | "skip" | null) => void) | null>(null);
+  const [cropFile, setCropFile] = useState<File | null>(null);
+
+  function openCrop(file: File): Promise<File | "skip" | null> {
+    return new Promise((resolve) => {
+      cropResolverRef.current = resolve;
+      setCropFile(file);
+    });
+  }
+
+  function finishCrop(result: File | "skip" | null) {
+    setCropFile(null);
+    const resolve = cropResolverRef.current;
+    cropResolverRef.current = null;
+    resolve?.(result);
+  }
 
   // Formatting tips popover: opens itself once per user (like the product tour's
   // has_completed_tour) so it's discoverable, then behaves as a normal click-to-open popover. The
@@ -346,7 +370,9 @@ export function MarkdownEditor({ value, onChange, placeholder, relateFrom }: Mar
   }
 
   // One file at a time (a multi-file paste/drop still resolves in order),
-  // each separated by a blank line once more than one is involved.
+  // each separated by a blank line once more than one is involved. Images
+  // pause for a crop decision first; discarding one drops it (and, for later
+  // files, the blank line it would have claimed) from the queue entirely.
   async function uploadFilesAtCursor(files: File[], startPos: number, imagesOnly: boolean) {
     setUploadError(null);
     let pos = startPos;
@@ -354,6 +380,12 @@ export function MarkdownEditor({ value, onChange, placeholder, relateFrom }: Mar
     for (const file of files) {
       const isImage = file.type.startsWith("image/");
       if (imagesOnly && !isImage) continue;
+      let toUpload = file;
+      if (isImage) {
+        const decision = await openCrop(file);
+        if (decision === null) continue;
+        if (decision !== "skip") toUpload = decision;
+      }
       if (!isFirst) {
         const withSeparator = valueRef.current.slice(0, pos) + "\n\n" + valueRef.current.slice(pos);
         valueRef.current = withSeparator;
@@ -361,13 +393,18 @@ export function MarkdownEditor({ value, onChange, placeholder, relateFrom }: Mar
         pos += 2;
       }
       isFirst = false;
-      pos = await uploadAndInsert(file, pos, isImage);
+      pos = await uploadAndInsert(toUpload, pos, isImage);
     }
   }
 
   function handlePaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
     const files = Array.from(e.clipboardData.files).filter((f) => f.type.startsWith("image/"));
     if (files.length === 0) return; // plain text paste - let the browser handle it normally.
+    if (cropResolverRef.current) {
+      e.preventDefault();
+      setUploadError(t("finishCropFirst"));
+      return;
+    }
     e.preventDefault();
     void uploadFilesAtCursor(files, e.currentTarget.selectionStart, true);
   }
@@ -379,6 +416,11 @@ export function MarkdownEditor({ value, onChange, placeholder, relateFrom }: Mar
   function handleDrop(e: React.DragEvent<HTMLTextAreaElement>) {
     const files = Array.from(e.dataTransfer.files);
     if (files.length === 0) return; // e.g. dragging selected text within the page - let the browser handle it.
+    if (cropResolverRef.current) {
+      e.preventDefault();
+      setUploadError(t("finishCropFirst"));
+      return;
+    }
     e.preventDefault();
     void uploadFilesAtCursor(files, e.currentTarget.selectionStart, false);
   }
@@ -737,6 +779,7 @@ export function MarkdownEditor({ value, onChange, placeholder, relateFrom }: Mar
           )}
         </div>
       )}
+      <ImageCropModal file={cropFile} onDone={finishCrop} />
     </div>
   );
 }

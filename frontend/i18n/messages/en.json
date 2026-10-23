@@ -1038,6 +1038,7 @@
       "uploadingImage": "Uploading {filename}… {percent}%",
       "uploadingFile": "Uploading {filename}… {percent}%",
       "uploadError": "Couldn't upload {filename}: {message}",
+      "finishCropFirst": "Finish cropping the current image first - dismiss the crop dialog before uploading more.",
       "mentionSearching": "Searching...",
       "relationError": "Linked \"{title}\" in the text, but couldn't add it to Related Knowledge: {message}",
       "helpTooltip": "Formatting tips",
@@ -1479,6 +1480,15 @@
     "emptyState": "Nothing bookmarked yet.",
     "untitled": "Untitled",
     "removeBookmark": "Remove bookmark"
+  },
+  "imageCrop": {
+    "title": "Crop image",
+    "description": "Drag on the image to choose the area to keep. Use \"Keep original\" to insert it uncropped.",
+    "apply": "Crop",
+    "useOriginal": "Keep original",
+    "selectedSize": "{w} × {h} px selected",
+    "dragHint": "Drag to select the area to keep",
+    "loadFailed": "Couldn't load the image - you can still keep the original."
   },
   "modal": {
     "close": "Close",
