@@ -32,6 +32,11 @@ export function AuthenticatedImage({ src, alt, className, fallback }: Authentica
   const [result, setResult] = useState<{ src: string; url: string | null } | null>(null);
 
   useEffect(() => {
+    if (!src || !src.trim()) {
+      setResult({ src, url: null });
+      return;
+    }
+
     let cancelled = false;
     let currentUrl: string | null = null;
 

@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -84,5 +84,50 @@ describe("Markdown", () => {
     expect(captions).toHaveLength(1);
     expect(captions[0]).toHaveTextContent("Airfoil lift curve");
     expect(screen.getAllByRole("button", { name: "Enlarge image" })).toHaveLength(2);
+  });
+
+  it("renders a crop button on images when onCropImage is provided and clicking it invokes the callback", () => {
+    const onCropImage = vi.fn();
+    render(
+      <NextIntlClientProvider locale="en" messages={messages}>
+        <Markdown content="![Propeller](https://example.com/prop.png)" onCropImage={onCropImage} />
+      </NextIntlClientProvider>,
+    );
+
+    const cropBtn = screen.getByRole("button", { name: "Crop image" });
+    expect(cropBtn).toBeInTheDocument();
+    cropBtn.click();
+    expect(onCropImage).toHaveBeenCalledWith("https://example.com/prop.png", "Propeller");
+  });
+
+  it("renders a crop button in the lightbox when onCropImage is provided", async () => {
+    const onCropImage = vi.fn();
+    render(
+      <NextIntlClientProvider locale="en" messages={messages}>
+        <Markdown content="![Wing](https://example.com/wing.png)" onCropImage={onCropImage} />
+      </NextIntlClientProvider>,
+    );
+
+    // Click the image to enlarge it in the lightbox
+    const enlargeBtn = screen.getByRole("button", { name: "Enlarge image" });
+    enlargeBtn.click();
+
+    // The lightbox mounts in a modal Radix portal; the background is aria-hidden so the
+    // active, accessible "Crop image" button is the one inside the lightbox dialog.
+    const lightboxCropBtn = await screen.findByRole("button", { name: "Crop image" });
+    expect(lightboxCropBtn).toBeInTheDocument();
+    lightboxCropBtn.click();
+    expect(onCropImage).toHaveBeenCalledWith("https://example.com/wing.png", "Wing");
+  });
+
+  it("does not render an img element when markdown image src is empty or whitespace", () => {
+    const { container } = renderMarkdown("![]() and ![alt](   )");
+    expect(container.querySelectorAll("img")).toHaveLength(0);
+    expect(container.querySelectorAll("button")).toHaveLength(0);
+  });
+
+  it("renders a loading chip for in-flight uploading placeholders", () => {
+    renderMarkdown("![Uploading motor.png...](uploading:upload-123)");
+    expect(screen.getByText("Uploading motor.png...")).toBeInTheDocument();
   });
 });

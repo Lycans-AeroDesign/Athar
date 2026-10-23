@@ -1039,6 +1039,11 @@
       "uploadingFile": "جارٍ رفع {filename}… {percent}٪",
       "uploadError": "تعذّر رفع {filename}: {message}",
       "finishCropFirst": "أنهِ قص الصورة الحالية أولاً - أغلق نافذة القص قبل رفع المزيد.",
+      "cropImageTooltip": "قص الصورة",
+      "selectImageToCrop": "اختر صورة لقصها",
+      "noImagesToCrop": "لا توجد صور في المحتوى لقصها",
+      "loadingImage": "جارٍ تحميل الصورة للقص…",
+      "cropLoadError": "تعذّر تحميل الصورة للقص: {message}",
       "mentionSearching": "جارٍ البحث...",
       "relationError": "تم ربط \"{title}\" في النص، لكن تعذّرت إضافته إلى المعرفة ذات الصلة: {message}",
       "helpTooltip": "نصائح التنسيق",
@@ -1484,8 +1489,10 @@
   "imageCrop": {
     "title": "قص الصورة",
     "description": "اسحب على الصورة لتحديد الجزء الذي تريد الاحتفاظ به. استخدم \"الصورة الأصلية\" لإدراجها دون قص.",
+    "editDescription": "اسحب على الصورة لتحديد الجزء الذي تريد الاحتفاظ به.",
     "apply": "قص",
     "useOriginal": "الصورة الأصلية",
+    "cancel": "إلغاء",
     "selectedSize": "تم تحديد {w} × {h} بكسل",
     "dragHint": "اسحب لتحديد الجزء الذي تريد الاحتفاظ به",
     "loadFailed": "تعذّر تحميل الصورة - لا يزال بإمكانك استخدام الصورة الأصلية."
@@ -1772,6 +1779,8 @@
       "caution": "تنبيه خطر"
     },
     "zoomImage": "تكبير الصورة",
+    "cropImage": "قص الصورة",
+    "crop": "قص",
     "copySectionLink": "نسخ رابط هذا القسم",
     "linkCopied": "تم نسخ الرابط"
   }

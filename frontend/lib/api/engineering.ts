@@ -64,6 +64,7 @@ export interface ProjectWritePayload extends CreationExtrasPayload {
   status?: ProjectStatus;
   visibility?: Visibility;
   tag_names?: string[];
+  co_author_ids?: string[];
 }
 
 export function createProject(payload: ProjectWritePayload): Promise<ProjectDetail> {
@@ -188,6 +189,7 @@ export interface ComponentWritePayload extends ProjectLinkPayload {
   specifications?: ComponentSpecRow[];
   visibility?: Visibility;
   tag_names?: string[];
+  co_author_ids?: string[];
 }
 
 export function createComponent(payload: ComponentWritePayload): Promise<ComponentDetail> {
@@ -510,6 +512,7 @@ export interface SopWritePayload extends ProjectLinkPayload {
   content?: string;
   visibility?: Visibility;
   tag_names?: string[];
+  co_author_ids?: string[];
 }
 
 export function createSop(payload: SopWritePayload): Promise<SopDetail> {
@@ -601,6 +604,7 @@ export interface TestWritePayload extends CreationExtrasPayload {
   conclusion?: string;
   visibility?: Visibility;
   tag_names?: string[];
+  co_author_ids?: string[];
 }
 
 export function createTest(payload: TestWritePayload): Promise<TestDetail> {

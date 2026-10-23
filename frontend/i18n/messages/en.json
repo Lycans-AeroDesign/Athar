@@ -1039,6 +1039,11 @@
       "uploadingFile": "Uploading {filename}… {percent}%",
       "uploadError": "Couldn't upload {filename}: {message}",
       "finishCropFirst": "Finish cropping the current image first - dismiss the crop dialog before uploading more.",
+      "cropImageTooltip": "Crop image",
+      "selectImageToCrop": "Select image to crop",
+      "noImagesToCrop": "No images in content to crop",
+      "loadingImage": "Loading image for cropping…",
+      "cropLoadError": "Couldn't load image for cropping: {message}",
       "mentionSearching": "Searching...",
       "relationError": "Linked \"{title}\" in the text, but couldn't add it to Related Knowledge: {message}",
       "helpTooltip": "Formatting tips",
@@ -1484,8 +1489,10 @@
   "imageCrop": {
     "title": "Crop image",
     "description": "Drag on the image to choose the area to keep. Use \"Keep original\" to insert it uncropped.",
+    "editDescription": "Drag on the image to choose the area to keep.",
     "apply": "Crop",
     "useOriginal": "Keep original",
+    "cancel": "Cancel",
     "selectedSize": "{w} × {h} px selected",
     "dragHint": "Drag to select the area to keep",
     "loadFailed": "Couldn't load the image - you can still keep the original."
@@ -1772,6 +1779,8 @@
       "caution": "Caution"
     },
     "zoomImage": "Enlarge image",
+    "cropImage": "Crop image",
+    "crop": "Crop",
     "copySectionLink": "Copy link to this section",
     "linkCopied": "Link copied"
   }

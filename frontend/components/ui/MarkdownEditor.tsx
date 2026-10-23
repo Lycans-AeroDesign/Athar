@@ -11,6 +11,7 @@ import { Link } from "@/i18n/navigation";
 import { errorMessage } from "@/lib/errors";
 import { CALLOUT_TYPES, type CalloutType } from "@/lib/markdownCallouts";
 import { updateMe } from "@/lib/api/accounts";
+import { apiFetch } from "@/lib/api/client";
 import { createRelation, searchKnowledge } from "@/lib/api/knowledge";
 import { uploadFile } from "@/lib/api/files";
 import type { RelatableType, SearchResult } from "@/lib/api/types";
@@ -101,6 +102,35 @@ function newUploadId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+interface MarkdownImageMatch {
+  alt: string;
+  url: string;
+  start: number;
+  end: number;
+  fullMatch: string;
+}
+
+function findImages(text: string): MarkdownImageMatch[] {
+  const regex = /!\[([^\]]*)\]\((\S+?)(?:\s+"[^"]*")?\)/g;
+  const matches: MarkdownImageMatch[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = regex.exec(text)) !== null) {
+    matches.push({
+      alt: m[1],
+      url: m[2],
+      start: m.index,
+      end: m.index + m[0].length,
+      fullMatch: m[0],
+    });
+  }
+  return matches;
+}
+
+function findImageAtCursor(text: string, cursor: number): MarkdownImageMatch | null {
+  const images = findImages(text);
+  return images.find((img) => cursor >= img.start && cursor <= img.end) ?? null;
+}
+
 const TOOLBAR_BUTTON_CLASS =
   "p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-variant transition-colors disabled:opacity-40 disabled:cursor-not-allowed";
 
@@ -149,24 +179,29 @@ export function MarkdownEditor({ value, onChange, placeholder, relateFrom }: Mar
   const [relationError, setRelationError] = useState<string | null>(null);
   const [calloutMenuOpen, setCalloutMenuOpen] = useState(false);
 
-  // Crop flow: every image heading into an upload from a paste/drop is routed
-  // through ImageCropModal first - openCrop() parks it on a pending promise
-  // (resolver kept in a ref so openCrop stays async/await-friendly), and
-  // finishCrop() resolves it with the cropped File, "skip" (insert the
-  // original untouched) or null (discard that file from the queue). Both
-  // create and edit pages render this editor, so one wiring covers both.
+  // Crop flow: images heading into an upload from a paste/drop or an existing-image
+  // edit are routed through ImageCropModal first - openCrop() parks it on a pending
+  // promise (resolver kept in a ref so openCrop stays async/await-friendly), and
+  // finishCrop() resolves it with the cropped File, "skip" (insert the original untouched
+  // or cancel edit) or null (discard that file). Both create and edit pages render this
+  // editor, so one wiring covers both.
   const cropResolverRef = useRef<((result: File | "skip" | null) => void) | null>(null);
   const [cropFile, setCropFile] = useState<File | null>(null);
+  const [cropIsExisting, setCropIsExisting] = useState(false);
+  const [isFetchingCrop, setIsFetchingCrop] = useState(false);
+  const [cropMenuOpen, setCropMenuOpen] = useState(false);
 
-  function openCrop(file: File): Promise<File | "skip" | null> {
+  function openCrop(file: File, isExisting = false): Promise<File | "skip" | null> {
     return new Promise((resolve) => {
       cropResolverRef.current = resolve;
+      setCropIsExisting(isExisting);
       setCropFile(file);
     });
   }
 
   function finishCrop(result: File | "skip" | null) {
     setCropFile(null);
+    setCropIsExisting(false);
     const resolve = cropResolverRef.current;
     cropResolverRef.current = null;
     resolve?.(result);
@@ -397,6 +432,108 @@ export function MarkdownEditor({ value, onChange, placeholder, relateFrom }: Mar
     }
   }
 
+  async function uploadAndReplace(
+    croppedFile: File,
+    target: MarkdownImageMatch | null,
+    originalSrc: string,
+    originalAlt?: string,
+  ) {
+    const uploadId = newUploadId();
+    const altText = originalAlt ?? target?.alt ?? croppedFile.name;
+    const placeholderFor = (percent: number) =>
+      `![${t("uploadingImage", { filename: croppedFile.name, percent })}](uploading:${uploadId})`;
+    let placeholderText = placeholderFor(0);
+
+    const originalMarkdown = target?.fullMatch ?? `![${altText}](${originalSrc})`;
+    if (valueRef.current.includes(originalMarkdown)) {
+      const withPlaceholder = valueRef.current.replace(originalMarkdown, placeholderText);
+      valueRef.current = withPlaceholder;
+      onChange(withPlaceholder);
+    } else {
+      const withPlaceholder = `${valueRef.current}\n\n${placeholderText}`;
+      valueRef.current = withPlaceholder;
+      onChange(withPlaceholder);
+    }
+
+    let lastPercent = 0;
+    function handleProgress(fraction: number) {
+      const percent = Math.round(fraction * 100);
+      if (percent === lastPercent) return;
+      lastPercent = percent;
+      const nextPlaceholder = placeholderFor(percent);
+      if (valueRef.current.includes(placeholderText)) {
+        const next = valueRef.current.replace(placeholderText, nextPlaceholder);
+        valueRef.current = next;
+        onChange(next);
+      }
+      placeholderText = nextPlaceholder;
+    }
+
+    try {
+      const uploaded = await uploadFile(croppedFile, { onProgress: handleProgress });
+      const finalText = `![${altText}](${uploaded.download_url})`;
+      const current = valueRef.current;
+      const next = current.includes(placeholderText)
+        ? current.replace(placeholderText, finalText)
+        : `${current}\n${finalText}`;
+      valueRef.current = next;
+      onChange(next);
+    } catch (err) {
+      const current = valueRef.current;
+      const next = current.includes(placeholderText)
+        ? current.replace(placeholderText, originalMarkdown)
+        : current;
+      valueRef.current = next;
+      onChange(next);
+      setUploadError(
+        t("uploadError", { filename: croppedFile.name, message: errorMessage(err) }),
+      );
+    }
+  }
+
+  async function cropExistingImage(src: string, alt?: string) {
+    if (cropResolverRef.current || isFetchingCrop) {
+      setUploadError(t("finishCropFirst"));
+      return;
+    }
+    const images = findImages(valueRef.current);
+    const target =
+      images.find((img) => img.url === src && (!alt || img.alt === alt)) ??
+      images.find((img) => img.url === src) ??
+      null;
+
+    setIsFetchingCrop(true);
+    setUploadError(null);
+    try {
+      let blob: Blob;
+      if (src.startsWith("/api/")) {
+        const res = await apiFetch(src);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        blob = await res.blob();
+      } else {
+        const res = await fetch(src);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        blob = await res.blob();
+      }
+      const mime = blob.type || "image/png";
+      let filename = (alt || target?.alt || "").trim();
+      if (!filename || !/\.[a-z0-9]{2,5}$/i.test(filename)) {
+        const ext = mime === "image/jpeg" ? ".jpg" : mime === "image/webp" ? ".webp" : ".png";
+        filename = `${filename || "image"}${ext}`;
+      }
+      const file = new File([blob], filename, { type: mime });
+      setIsFetchingCrop(false);
+
+      const decision = await openCrop(file, true);
+      if (!decision || decision === "skip") return;
+
+      await uploadAndReplace(decision, target, src, alt);
+    } catch (err) {
+      setIsFetchingCrop(false);
+      setUploadError(t("cropLoadError", { message: errorMessage(err) }));
+    }
+  }
+
   function handlePaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
     const files = Array.from(e.clipboardData.files).filter((f) => f.type.startsWith("image/"));
     if (files.length === 0) return; // plain text paste - let the browser handle it normally.
@@ -512,6 +649,7 @@ export function MarkdownEditor({ value, onChange, placeholder, relateFrom }: Mar
     insertBlock("\n| Column 1 | Column 2 |\n| --- | --- |\n| Value | Value |\n");
   }
 
+  const imagesInDoc = findImages(value);
 
   return (
     <div className="border border-outline-variant rounded-xl overflow-hidden bg-surface">
@@ -576,6 +714,67 @@ export function MarkdownEditor({ value, onChange, placeholder, relateFrom }: Mar
             onClick={() => wrapSelection("![", "](url)", t("imageAltPlaceholder"))}
             disabled={tab === "preview"}
           />
+          <Popover.Root open={cropMenuOpen} onOpenChange={setCropMenuOpen}>
+            <Popover.Trigger asChild>
+              <button
+                type="button"
+                disabled={imagesInDoc.length === 0 || isFetchingCrop}
+                aria-label={t("cropImageTooltip")}
+                title={imagesInDoc.length === 0 ? t("noImagesToCrop") : t("cropImageTooltip")}
+                onClick={(e) => {
+                  const atCursor =
+                    tab === "edit" && textareaRef.current
+                      ? findImageAtCursor(value, textareaRef.current.selectionStart)
+                      : null;
+                  if (atCursor) {
+                    e.preventDefault();
+                    void cropExistingImage(atCursor.url, atCursor.alt);
+                    return;
+                  }
+                  if (imagesInDoc.length === 1) {
+                    e.preventDefault();
+                    void cropExistingImage(imagesInDoc[0].url, imagesInDoc[0].alt);
+                    return;
+                  }
+                }}
+                className={TOOLBAR_BUTTON_CLASS}
+              >
+                <Icon name="crop" size={18} />
+              </button>
+            </Popover.Trigger>
+            {imagesInDoc.length > 1 && (
+              <Popover.Portal>
+                <Popover.Content
+                  align="start"
+                  sideOffset={6}
+                  className="z-50 min-w-[200px] max-w-sm max-h-64 overflow-y-auto rounded-lg border border-outline-variant bg-surface-container-lowest p-1 shadow-lg focus:outline-none"
+                >
+                  <p className="px-3 py-1.5 font-label-sm text-label-sm uppercase text-on-surface-variant font-semibold">
+                    {t("selectImageToCrop")}
+                  </p>
+                  <ul className="py-1">
+                    {imagesInDoc.map((img, i) => (
+                      <li key={`${img.url}-${i}`}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCropMenuOpen(false);
+                            void cropExistingImage(img.url, img.alt);
+                          }}
+                          className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-start font-body-md text-body-md text-on-surface hover:bg-surface-variant transition-colors truncate"
+                        >
+                          <Icon name="image" size={16} className="text-on-surface-variant shrink-0" />
+                          <span className="truncate">
+                            {img.alt || img.url.split("/").filter(Boolean).pop() || `Image ${i + 1}`}
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </Popover.Content>
+              </Popover.Portal>
+            )}
+          </Popover.Root>
           <ToolButton
             icon="format_quote"
             tooltip={t("quoteTooltip")}
@@ -715,6 +914,12 @@ export function MarkdownEditor({ value, onChange, placeholder, relateFrom }: Mar
           {uploadError}
         </p>
       )}
+      {isFetchingCrop && (
+        <p className="px-4 py-2 bg-surface-container-high text-on-surface-variant font-body-md text-body-md border-b border-outline-variant flex items-center gap-2">
+          <Icon name="pending" size={16} className="animate-spin" />
+          <span>{t("loadingImage")}</span>
+        </p>
+      )}
       {relationError && (
         <p className="px-4 py-2 font-body-md text-body-md text-error border-b border-outline-variant" role="alert">
           {relationError}
@@ -773,13 +978,13 @@ export function MarkdownEditor({ value, onChange, placeholder, relateFrom }: Mar
       ) : (
         <div className="min-h-[400px] p-4">
           {value ? (
-            <Markdown content={value} />
+            <Markdown content={value} onCropImage={cropExistingImage} />
           ) : (
             <p className="font-body-md text-body-md text-on-surface-variant">{placeholder}</p>
           )}
         </div>
       )}
-      <ImageCropModal file={cropFile} onDone={finishCrop} />
+      <ImageCropModal file={cropFile} isExisting={cropIsExisting} onDone={finishCrop} />
     </div>
   );
 }

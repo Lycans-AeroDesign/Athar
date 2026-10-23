@@ -498,6 +498,7 @@ export interface SopSummary {
 export interface SopDetail extends SopSummary {
   safety_notes: string;
   content: string;
+  co_authors: KnowledgeAuthor[];
   contributors: KnowledgeAuthor[];
   restricted_to: AccessGrant[];
   bookmark_id: string | null;

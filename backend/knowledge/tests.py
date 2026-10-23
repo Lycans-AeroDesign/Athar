@@ -2009,6 +2009,34 @@ class EngineeringDomainTests(KnowledgeTestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertTrue(response.data["mandatory"])
 
+    def test_sop_co_authors_can_be_assigned_and_can_edit(self):
+        mentor, senior_access = self._login_with_role("sopsenior2@example.com", "Mentor")
+        co_author, coauthor_access = self._login_with_role("sopcoauthor@example.com", "Member")
+        response = self.client.post(
+            reverse("knowledge-sop-list-create"),
+            {
+                "title": "Battery Charging SOP",
+                "mandatory": False,
+                "content": "Step 1",
+                "co_author_ids": [str(co_author.pk)],
+            },
+            format="json",
+            **self._auth(senior_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        sop_id = response.data["id"]
+        self.assertEqual(len(response.data["co_authors"]), 1)
+        self.assertEqual(response.data["co_authors"][0]["id"], str(co_author.pk))
+
+        response = self.client.patch(
+            reverse("knowledge-sop-detail", args=[sop_id]),
+            {"content": "Step 1 updated by co-author"},
+            format="json",
+            **self._auth(coauthor_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["content"], "Step 1 updated by co-author")
+
     def test_test_crud_and_permission_gating(self):
         _, member_access = self._login_with_role("testmember@example.com", "Member")
         response = self.client.post(

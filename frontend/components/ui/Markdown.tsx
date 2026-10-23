@@ -6,7 +6,7 @@ import matlab from "highlight.js/lib/languages/matlab";
 import "katex/dist/katex.min.css";
 import { common } from "lowlight";
 import { useTranslations } from "next-intl";
-import { isValidElement, useState, type MouseEvent, type ReactNode } from "react";
+import { createContext, isValidElement, useContext, useState, type MouseEvent, type ReactNode } from "react";
 import ReactMarkdown, { type Components, type Options } from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import rehypeKatex from "rehype-katex";
@@ -88,38 +88,80 @@ function CodeBlock({ children }: { children?: ReactNode }) {
   );
 }
 
+interface MarkdownContextValue {
+  onCropImage?: (src: string, alt?: string) => void;
+}
+
+const MarkdownContext = createContext<MarkdownContextValue>({});
+
 // Files uploaded through the editor embed as ![alt](/api/v1/files/<id>/download/). That endpoint
 // is auth-gated (Bearer header only, backend/files/views.py), which a plain <img src> can't send,
 // so it's routed through AuthenticatedImage; other URLs render as a normal <img>. Named (not inline
 // in COMPONENTS) so the `p` component below can recognize "a paragraph containing only an image"
 // and unwrap it. Clicking an image opens it full-screen (ImageLightbox), captioned with its alt
-// text when that is a real description.
+// text when that is a real description. When onCropImage is provided (editor preview), hovering
+// or lightbox displays a crop action.
 function ImageRenderer({ src, alt }: { src?: string | Blob; alt?: string }) {
   const t = useTranslations("markdown");
+  const { onCropImage } = useContext(MarkdownContext);
   const [zoomed, setZoomed] = useState(false);
   const caption = imageCaption(alt);
 
-  function renderImage(className: string) {
-    return typeof src === "string" && src.startsWith("/api/v1/files/") ? (
-      <AuthenticatedImage src={src} alt={alt ?? ""} className={className} />
-    ) : (
-      // eslint-disable-next-line @next/next/no-img-element -- markdown content, not a local/optimizable asset.
-      <img src={src} alt={alt ?? ""} className={className} />
+  const cleanSrc = typeof src === "string" ? src.trim() : src;
+  if (!cleanSrc) {
+    return null;
+  }
+
+  if (typeof cleanSrc === "string" && cleanSrc.startsWith("uploading:")) {
+    return (
+      <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-outline-variant bg-surface-container font-body-sm text-body-sm text-on-surface-variant">
+        <Icon name="pending" size={16} className="animate-spin text-primary" />
+        <span>{alt || ""}</span>
+      </span>
     );
   }
 
+  function renderImage(className: string) {
+    return typeof cleanSrc === "string" && cleanSrc.startsWith("/api/v1/files/") ? (
+      <AuthenticatedImage src={cleanSrc} alt={alt ?? ""} className={className} />
+    ) : (
+      // eslint-disable-next-line @next/next/no-img-element -- markdown content, not a local/optimizable asset.
+      <img src={cleanSrc} alt={alt ?? ""} className={className} />
+    );
+  }
+
+  const handleCrop = onCropImage && typeof cleanSrc === "string" ? () => onCropImage(cleanSrc, alt) : undefined;
+
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setZoomed(true)}
-        aria-label={t("zoomImage")}
-        title={t("zoomImage")}
-        className="inline-block max-w-full align-top cursor-zoom-in rounded-lg focus-visible:outline-2 focus-visible:outline-primary"
-      >
-        {renderImage("rounded-lg max-w-full")}
-      </button>
-      <ImageLightbox open={zoomed} onOpenChange={setZoomed} caption={caption}>
+      <span className="group relative inline-block max-w-full">
+        <button
+          type="button"
+          onClick={() => setZoomed(true)}
+          aria-label={t("zoomImage")}
+          title={t("zoomImage")}
+          className="inline-block max-w-full align-top cursor-zoom-in rounded-lg focus-visible:outline-2 focus-visible:outline-primary"
+        >
+          {renderImage("rounded-lg max-w-full")}
+        </button>
+        {handleCrop && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              handleCrop();
+            }}
+            aria-label={t("cropImage")}
+            title={t("cropImage")}
+            className="absolute top-2 end-2 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-inverse-surface/80 hover:bg-inverse-surface text-inverse-on-surface text-label-sm font-label-sm shadow-md transition-opacity opacity-90 sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100"
+          >
+            <Icon name="crop" size={14} />
+            <span>{t("crop")}</span>
+          </button>
+        )}
+      </span>
+      <ImageLightbox open={zoomed} onOpenChange={setZoomed} caption={caption} onCrop={handleCrop}>
         {renderImage("max-w-full max-h-[80vh] object-contain rounded-lg")}
       </ImageLightbox>
     </>
@@ -396,16 +438,21 @@ const REHYPE_PLUGINS: Options["rehypePlugins"] = [
 interface MarkdownProps {
   content: string;
   className?: string;
+  /** When supplied (e.g. editor preview), images display a crop trigger and pass
+   * their source and alt to this callback. */
+  onCropImage?: (src: string, alt?: string) => void;
 }
 
-export function Markdown({ content, className }: MarkdownProps) {
+export function Markdown({ content, className, onCropImage }: MarkdownProps) {
   return (
     // wrap-break-word (inherited by every block inside) so a long pasted URL or
     // unbroken word wraps instead of pushing past a phone-width screen.
-    <div className={`wrap-break-word ${className ?? ""}`}>
-      <ReactMarkdown remarkPlugins={REMARK_PLUGINS} rehypePlugins={REHYPE_PLUGINS} components={COMPONENTS}>
-        {content}
-      </ReactMarkdown>
-    </div>
+    <MarkdownContext.Provider value={{ onCropImage }}>
+      <div className={`wrap-break-word ${className ?? ""}`}>
+        <ReactMarkdown remarkPlugins={REMARK_PLUGINS} rehypePlugins={REHYPE_PLUGINS} components={COMPONENTS}>
+          {content}
+        </ReactMarkdown>
+      </div>
+    </MarkdownContext.Provider>
   );
 }

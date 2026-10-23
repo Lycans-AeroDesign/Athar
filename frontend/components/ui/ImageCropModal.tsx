@@ -14,6 +14,8 @@ import { Modal } from "./Modal";
 interface ImageCropModalProps {
   /** The image awaiting a crop decision - null while the modal is closed. */
   file: File | null;
+  /** Whether this crop is for an already uploaded image (swaps description and secondary button to Cancel). */
+  isExisting?: boolean;
   /** Apply → the cropped File; "Keep original" → "skip"; X/Escape/outside
    * click → null (discard the upload entirely). */
   onDone: (result: File | "skip" | null) => void;
@@ -42,7 +44,7 @@ interface Rect {
  * MIME type; JPEG at 0.92 quality) into a new File that flows back into the
  * editor's normal upload path. Runs identically on create and edit pages
  * since both render MarkdownEditor. */
-export function ImageCropModal({ file, onDone }: ImageCropModalProps) {
+export function ImageCropModal({ file, isExisting = false, onDone }: ImageCropModalProps) {
   const t = useTranslations("imageCrop");
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
@@ -193,12 +195,12 @@ export function ImageCropModal({ file, onDone }: ImageCropModalProps) {
         if (!open) onDone(null);
       }}
       title={t("title")}
-      description={t("description")}
+      description={isExisting ? t("editDescription") : t("description")}
       wide
       footer={
         <>
           <Button variant="secondary" onClick={() => onDone("skip")}>
-            {t("useOriginal")}
+            {isExisting ? t("cancel") : t("useOriginal")}
           </Button>
           <Button onClick={handleApply} disabled={!canApply}>
             {t("apply")}

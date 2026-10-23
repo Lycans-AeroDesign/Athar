@@ -19,6 +19,8 @@ import { Switch } from "@/components/ui/Switch";
 import { PendingRelations, toRelationInputs, type PendingRelation } from "@/components/knowledge/PendingRelations";
 import { effectiveVisibility, VisibilitySelect } from "@/components/knowledge/VisibilitySelect";
 import { ProjectSelect } from "@/components/knowledge/ProjectSelect";
+import { CoAuthorPicker } from "@/components/knowledge/CoAuthorPicker";
+import { useAuth } from "@/lib/auth/AuthProvider";
 import { useRouter } from "@/i18n/navigation";
 import { useHasPermission } from "@/lib/auth/permissions";
 import { errorMessage } from "@/lib/errors";
@@ -27,7 +29,7 @@ import { addAccessGrant, removeAccessGrant } from "@/lib/api/accessGrants";
 import { createSop, updateSop, type SopWritePayload } from "@/lib/api/engineering";
 import { syncCollectionMembership } from "@/lib/api/collections";
 import { createCategory, getCategories } from "@/lib/api/knowledge";
-import type { Category, SopDetail, Visibility } from "@/lib/api/types";
+import type { Category, KnowledgeAuthor, SopDetail, Visibility } from "@/lib/api/types";
 
 interface SopEditorProps {
   /** Preselects the project on a new item (e.g. from a ?project= link). */
@@ -54,6 +56,10 @@ export function SopEditor({ sop, onDirtyChange, initialProjectId = null }: SopEd
   // only to category.manage holders, same permission Settings' category
   // screen requires, but without leaving the editor.
   const canCreateCategory = useHasPermission("category.manage");
+  const canUpdateSop = useHasPermission("sop.update");
+  const { user } = useAuth();
+  const [coAuthors, setCoAuthors] = useState<KnowledgeAuthor[]>(sop?.co_authors ?? []);
+  const canEditCoAuthors = !sop || sop.created_by?.id === user?.id || canUpdateSop;
   const [mandatory, setMandatory] = useState(sop?.mandatory ?? false);
   const [safetyNotes, setSafetyNotes] = useState(sop?.safety_notes ?? "");
   const [content, setContent] = useState(sop?.content ?? "");
@@ -92,6 +98,7 @@ export function SopEditor({ sop, onDirtyChange, initialProjectId = null }: SopEd
     content: content !== (sop?.content ?? ""),
     tags: tags.join(",") !== (sop?.tags.map((tag) => tag.name).join(",") ?? ""),
     visibility: visibility !== (sop?.visibility ?? null),
+    coAuthors: coAuthors.map((u) => u.id).join(",") !== (sop?.co_authors ?? []).map((u) => u.id).join(","),
     relations: pendingRelations.length > 0,
     linkProject: !sop && linkProjectId !== initialProjectId,
     collections:
@@ -116,6 +123,7 @@ export function SopEditor({ sop, onDirtyChange, initialProjectId = null }: SopEd
       content,
       ...(visibility ? { visibility } : {}),
       tag_names: tags,
+      ...(fieldChanged.coAuthors ? { co_author_ids: coAuthors.map((u) => u.id) } : {}),
     };
   }
 
@@ -217,6 +225,14 @@ export function SopEditor({ sop, onDirtyChange, initialProjectId = null }: SopEd
             />
           </ChangedIndicator>
         )}
+        <ChangedIndicator changed={fieldChanged.coAuthors}>
+          <CoAuthorPicker
+            value={coAuthors}
+            onChange={setCoAuthors}
+            authorId={sop ? sop.created_by?.id : user?.id}
+            canEdit={canEditCoAuthors}
+          />
+        </ChangedIndicator>
         {resolvedVisibility === "RESTRICTED" && (
           <ChangedIndicator changed={fieldChanged.restrictedAccess}>
             <RestrictedAccessPicker

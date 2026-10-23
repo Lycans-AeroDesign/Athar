@@ -9,6 +9,9 @@ import { ContributorsRow } from "@/components/knowledge/Contributors";
 import { RelatedContent } from "@/components/knowledge/RelatedContent";
 import { SeriesStepper } from "@/components/knowledge/SeriesStepper";
 import { BookmarkButton } from "@/components/ui/BookmarkButton";
+import { ShareButton } from "@/components/ui/ShareButton";
+import { CoAuthorsByline } from "@/components/knowledge/CoAuthorsByline";
+import { useAuth } from "@/lib/auth/AuthProvider";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { DetailMessage } from "@/components/ui/DetailMessage";
 import { Icon } from "@/components/ui/Icon";
@@ -29,9 +32,11 @@ export default function SopDetailPage() {
   const router = useRouter();
   const canUpdate = useHasPermission("sop.update");
   const canDelete = useHasPermission("sop.delete");
+  const { user } = useAuth();
 
   const { data: sop, notFound } = useResource(id, getSop);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const canEdit = canUpdate || Boolean(user && sop && (user.id === sop.created_by?.id || (sop.co_authors ?? []).some((c) => c.id === user.id)));
   const [actionError, setActionError] = useState<string | null>(null);
 
   if (notFound) {
@@ -75,8 +80,9 @@ export default function SopDetailPage() {
             )}
           </div>
           <div className="flex items-center gap-2">
+            <ShareButton title={sop.title} />
             <BookmarkButton key={sop.id} type="sop" objectId={sop.id} bookmarkId={sop.bookmark_id} />
-            {canUpdate && (
+            {canEdit && (
               <Link href={`/sops/${sop.id}/edit`}>
                 <IconButton icon="edit" variant="secondary" aria-label={t("editButton")} />
               </Link>
@@ -103,6 +109,9 @@ export default function SopDetailPage() {
           </div>
         )}
         <UpdatedBadge updatedAt={sop.updated_at} createdAt={sop.created_at} />
+        {sop.co_authors && sop.co_authors.length > 0 && (
+          <CoAuthorsByline coAuthors={sop.co_authors} />
+        )}
         <ContributorsRow contributors={sop.contributors} />
       </div>
 

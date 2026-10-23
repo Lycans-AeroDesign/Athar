@@ -45,6 +45,7 @@ OWNER_FIELD = {
 CO_OWNER_FIELD = {
     "article": "co_authors",
     "question": "co_authors",
+    "sop": "co_authors",
 }
 
 

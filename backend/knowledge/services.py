@@ -119,8 +119,9 @@ def _set_co_authors(*, obj, actor, co_authors, override_codename: str) -> None:
     can edit the content but not add/remove the other co-authors."""
     if co_authors is None:
         return
-    validated = _validated_co_authors(actor=actor, owner=obj.author, co_authors=co_authors)
-    if actor != obj.author and not actor.has_permission(override_codename):
+    owner = getattr(obj, "author", None) or getattr(obj, "created_by", None)
+    validated = _validated_co_authors(actor=actor, owner=owner, co_authors=co_authors)
+    if actor != owner and not actor.has_permission(override_codename):
         current = set(obj.co_authors.values_list("pk", flat=True))
         if current != {user.pk for user in validated}:
             raise PermissionDenied("Only the author can change the co-author list.")
@@ -860,7 +861,7 @@ def delete_failure(*, failure: Failure, actor, request=None) -> None:
 
 def create_sop(
     *, actor, request=None, title, category=None, mandatory=False, safety_notes="", content="", tag_names=None,
-    visibility=Visibility.PUBLIC,
+    visibility=Visibility.PUBLIC, co_authors=None,
 ) -> Sop:
     sop = Sop.objects.create(
         organization=actor.organization,
@@ -873,18 +874,22 @@ def create_sop(
         visibility=visibility,
     )
     _sync_tags(sop, tag_names)
+    _set_co_authors(obj=sop, actor=actor, co_authors=co_authors, override_codename="sop.update")
     confirm_stored_files_in_text(content, organization=actor.organization)
     log_action(actor=actor, action="sop.create", target=sop, request=request)
     return sop
 
 
 def update_sop(*, sop: Sop, actor, request=None, **fields) -> Sop:
-    _require_permission(actor, "sop.update", "You need sop.update to edit this SOP.")
+    if not (actor.has_permission("sop.update") or visibility_rules.is_owner_of(actor, "sop", sop)):
+        _require_permission(actor, "sop.update", "You need sop.update to edit this SOP.")
     tag_names = fields.pop("tag_names", None)
+    co_authors = fields.pop("co_authors", None)
     for field, value in fields.items():
         setattr(sop, field, value)
     sop.save(update_fields=[*fields.keys(), "updated_at"])
     _sync_tags(sop, tag_names)
+    _set_co_authors(obj=sop, actor=actor, co_authors=co_authors, override_codename="sop.update")
     if "content" in fields:
         confirm_stored_files_in_text(fields["content"], organization=sop.organization)
     log_action(actor=actor, action="sop.update", target=sop, request=request)

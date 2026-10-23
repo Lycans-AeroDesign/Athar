@@ -2043,7 +2043,7 @@ class SopListCreateView(APIView):
     def get(self, request):
         queryset = services.visible_sops_for(request.user).select_related(
             "category", "created_by"
-        ).prefetch_related("tags")
+        ).prefetch_related("tags", "co_authors")
         category_id = request.query_params.get("category")
         if category_id:
             queryset = queryset.filter(category_id=category_id)
@@ -2072,7 +2072,7 @@ class SopListCreateView(APIView):
 class SopDetailView(APIView):
     def get_permissions(self):
         if self.request.method == "PATCH":
-            return [require_permission("sop.update")()]
+            return [IsAuthenticated()]
         if self.request.method == "DELETE":
             return [require_permission("sop.delete")()]
         return [require_permission("sop.read")()]

@@ -1000,6 +1000,7 @@ class SopListSerializer(serializers.ModelSerializer):
 class SopDetailSerializer(
     ContributorsMixin, RestrictedAccessMixin, BookmarkMixin, CollectionsContextMixin, SopListSerializer
 ):
+    co_authors = AuthorSerializer(many=True, read_only=True)
     contributors = serializers.SerializerMethodField()
     restricted_to = serializers.SerializerMethodField()
     bookmark_id = serializers.SerializerMethodField()
@@ -1008,6 +1009,7 @@ class SopDetailSerializer(
     class Meta(SopListSerializer.Meta):
         fields = [
             *SopListSerializer.Meta.fields,
+            "co_authors",
             "safety_notes",
             "content",
             "contributors",
@@ -1022,6 +1024,9 @@ class SopWriteSerializer(ProjectLinkMixin, serializers.ModelSerializer):
         source="category", queryset=Category.objects.all(), allow_null=True, required=False
     )
     tag_names = serializers.ListField(child=serializers.CharField(), required=False)
+    co_author_ids = OrgScopedPrimaryKeyRelatedField(
+        source="co_authors", queryset=User.objects.all(), many=True, required=False, write_only=True
+    )
 
     class Meta:
         model = Sop
@@ -1033,6 +1038,7 @@ class SopWriteSerializer(ProjectLinkMixin, serializers.ModelSerializer):
             "content",
             "visibility",
             "tag_names",
+            "co_author_ids",
             "project_id",
             "relations",
         ]
