@@ -17,6 +17,7 @@ import { IconButton } from "@/components/ui/IconButton";
 import { Markdown } from "@/components/ui/Markdown";
 import { DetailPageSkeleton } from "@/components/ui/Skeleton";
 import { TagChip } from "@/components/ui/TagChip";
+import { UpdatedBadge } from "@/components/ui/UpdatedBadge";
 import { Link, useRouter } from "@/i18n/navigation";
 import { deleteComponent, getComponent } from "@/lib/api/engineering";
 import { useHasPermission } from "@/lib/auth/permissions";
@@ -147,6 +148,7 @@ export default function ComponentDetailPage() {
                   {t("viewLinkButton")}
                 </a>
               )}
+              <UpdatedBadge updatedAt={component.updated_at} />
             </div>
           </div>
         </div>

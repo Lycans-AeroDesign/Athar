@@ -18,6 +18,7 @@ import { IconButton } from "@/components/ui/IconButton";
 import { Markdown } from "@/components/ui/Markdown";
 import { Modal } from "@/components/ui/Modal";
 import { DetailPageSkeleton } from "@/components/ui/Skeleton";
+import { UpdatedBadge } from "@/components/ui/UpdatedBadge";
 import { Link, useRouter } from "@/i18n/navigation";
 import { errorMessage } from "@/lib/errors";
 import { formatPersonName } from "@/lib/format";
@@ -256,6 +257,7 @@ export default function CourseDetailPage() {
             <Icon name="menu_book" size={16} className="text-on-surface-variant/70" />
             {cardT("lessonCount", { count: course.lesson_count })}
           </span>
+          <UpdatedBadge updatedAt={course.updated_at} />
         </div>
 
         {/* Tier 3: the byline - personal/attribution, set apart with a small divider. */}

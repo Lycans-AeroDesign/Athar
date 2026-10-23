@@ -17,6 +17,7 @@
     "copied": "تم النسخ!",
     "share": "مشاركة",
     "copiedLink": "تم نسخ الرابط!",
+    "updatedAgo": "آخر تحديث {time}",
     "previous": "السابق",
     "next": "التالي",
     "resultCount": "{count, plural, =0 {لا توجد نتائج} one {نتيجة واحدة} two {نتيجتان} few {# نتائج} many {# نتيجة} other {# نتيجة}}",

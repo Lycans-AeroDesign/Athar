@@ -15,6 +15,7 @@ import { Icon } from "@/components/ui/Icon";
 import { IconButton } from "@/components/ui/IconButton";
 import { Markdown } from "@/components/ui/Markdown";
 import { DetailPageSkeleton } from "@/components/ui/Skeleton";
+import { UpdatedBadge } from "@/components/ui/UpdatedBadge";
 import { Link, useRouter } from "@/i18n/navigation";
 import { deleteTest, getTest } from "@/lib/api/engineering";
 import { useHasPermission } from "@/lib/auth/permissions";
@@ -112,6 +113,7 @@ export default function TestDetailPage() {
             </span>
           )}
           {test.location && <span>{test.location}</span>}
+          <UpdatedBadge updatedAt={test.updated_at} />
         </div>
         <ContributorsRow contributors={test.contributors} />
       </div>

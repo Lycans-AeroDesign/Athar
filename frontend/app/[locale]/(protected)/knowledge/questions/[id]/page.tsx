@@ -21,6 +21,7 @@ import { MarkdownEditor } from "@/components/ui/MarkdownEditor";
 import { ShareButton } from "@/components/ui/ShareButton";
 import { DetailPageSkeleton } from "@/components/ui/Skeleton";
 import { TagChip } from "@/components/ui/TagChip";
+import { UpdatedBadge } from "@/components/ui/UpdatedBadge";
 import { CoAuthorsByline } from "@/components/knowledge/CoAuthorsByline";
 import { Link, useRouter } from "@/i18n/navigation";
 import { formatRelativeTime } from "@/lib/datetime";
@@ -156,7 +157,7 @@ export default function QuestionDetailPage() {
             )}
             <CoAuthorsByline coAuthors={question.co_authors} />
             <span>•</span>
-            <span>{formatRelativeTime(question.created_at)}</span>
+            <UpdatedBadge updatedAt={question.updated_at} />
           </div>
           <div className="flex items-center gap-2">
             <BookmarkButton key={question.id} type="question" objectId={question.id} bookmarkId={question.bookmark_id} />

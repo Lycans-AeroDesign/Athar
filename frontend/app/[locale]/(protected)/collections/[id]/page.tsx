@@ -11,6 +11,7 @@ import { IconButton } from "@/components/ui/IconButton";
 import { Markdown } from "@/components/ui/Markdown";
 import { DetailPageSkeleton } from "@/components/ui/Skeleton";
 import { TagChip } from "@/components/ui/TagChip";
+import { UpdatedBadge } from "@/components/ui/UpdatedBadge";
 import { Link, useRouter } from "@/i18n/navigation";
 import {
   deleteCollection,
@@ -185,6 +186,7 @@ export default function CollectionPage() {
             ))}
           </div>
         )}
+        <UpdatedBadge updatedAt={collection.updated_at} />
       </div>
 
       {collection.description && <Markdown content={collection.description} />}

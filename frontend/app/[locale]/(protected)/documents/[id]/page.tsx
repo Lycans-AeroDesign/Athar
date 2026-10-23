@@ -14,6 +14,7 @@ import { Icon } from "@/components/ui/Icon";
 import { IconButton } from "@/components/ui/IconButton";
 import { Markdown } from "@/components/ui/Markdown";
 import { DetailPageSkeleton } from "@/components/ui/Skeleton";
+import { UpdatedBadge } from "@/components/ui/UpdatedBadge";
 import { Link, useRouter } from "@/i18n/navigation";
 import { deleteDocument, getDocument } from "@/lib/api/documents";
 import { downloadFile } from "@/lib/api/files";
@@ -118,6 +119,7 @@ export default function DocumentDetailPage() {
               {t("colCategory")}: {document.category.name}
             </span>
           )}
+          <UpdatedBadge updatedAt={document.updated_at} />
         </div>
         <ContributorsRow contributors={document.contributors} />
       </div>

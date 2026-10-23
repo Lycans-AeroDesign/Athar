@@ -22,6 +22,7 @@ import { Modal } from "@/components/ui/Modal";
 import { ShareButton } from "@/components/ui/ShareButton";
 import { DetailPageSkeleton } from "@/components/ui/Skeleton";
 import { TagChip } from "@/components/ui/TagChip";
+import { UpdatedBadge } from "@/components/ui/UpdatedBadge";
 import { CoAuthorsByline } from "@/components/knowledge/CoAuthorsByline";
 import { Link, useRouter } from "@/i18n/navigation";
 import { formatDateTime } from "@/lib/datetime";
@@ -252,7 +253,7 @@ export default function ArticleDetailPage() {
               </Link>
             )}
             <CoAuthorsByline coAuthors={article.co_authors} />
-            <span>{formatDateTime(article.updated_at)}</span>
+            <UpdatedBadge updatedAt={article.updated_at} />
           </div>
           {article.tags.length > 0 && (
             <div className="flex flex-wrap gap-2">
