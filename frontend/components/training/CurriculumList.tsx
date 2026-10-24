@@ -40,15 +40,18 @@ export function CurriculumList({
     return Object.fromEntries(modules.map((m) => [m.id, true]));
   });
 
-  // Whenever the active lesson changes, collapse other chapters and open the active one
-  useEffect(() => {
-    if (variant === "sidebar" && activeLessonId) {
+  const [prevActiveLessonId, setPrevActiveLessonId] = useState(activeLessonId);
+
+  // In sidebar mode, whenever the active lesson changes, collapse other chapters and open the active one
+  if (variant === "sidebar" && activeLessonId !== prevActiveLessonId) {
+    setPrevActiveLessonId(activeLessonId);
+    if (activeLessonId) {
       const activeMod = modules.find((m) => m.lessons.some((l) => l.id === activeLessonId));
       if (activeMod) {
         setOpenModules({ [activeMod.id]: true });
       }
     }
-  }, [activeLessonId, variant, modules]);
+  }
 
   // Keep focus on the selected lesson in the left sidebar
   useEffect(() => {

@@ -33,7 +33,6 @@ export function AuthenticatedImage({ src, alt, className, fallback }: Authentica
 
   useEffect(() => {
     if (!src || !src.trim()) {
-      setResult({ src, url: null });
       return;
     }
 
@@ -62,6 +61,10 @@ export function AuthenticatedImage({ src, alt, className, fallback }: Authentica
   }, [src]);
 
   const current = result?.src === src ? result : null;
+
+  if (!src || !src.trim()) {
+    return fallback !== undefined ? fallback : null;
+  }
 
   if (current?.url === null && fallback !== undefined) {
     return fallback;

@@ -62,22 +62,25 @@ export function ImageCropModal({
   const imageRef = useRef<HTMLImageElement | null>(null);
   const dragActionRef = useRef<DragAction | null>(null);
 
+  const [prevFile, setPrevFile] = useState<File | null>(file);
   const [displaySize, setDisplaySize] = useState({ w: 0, h: 0 });
   const [naturalSize, setNaturalSize] = useState({ w: 0, h: 0 });
   const [selection, setSelection] = useState<Rect | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
 
+  if (file !== prevFile) {
+    setPrevFile(file);
+    setDisplaySize({ w: 0, h: 0 });
+    setNaturalSize({ w: 0, h: 0 });
+    setSelection(null);
+    setLoadFailed(false);
+  }
+
   useEffect(() => {
     if (!file) {
       imageRef.current = null;
-      setDisplaySize({ w: 0, h: 0 });
-      setNaturalSize({ w: 0, h: 0 });
-      setSelection(null);
-      setLoadFailed(false);
       return;
     }
-    setSelection(null);
-    setLoadFailed(false);
     const url = URL.createObjectURL(file);
     const img = new Image();
     imageRef.current = img;
@@ -466,26 +469,26 @@ export function ImageCropModal({
                   )}
 
                   {/* Corner Anchors */}
-                  <div
-                    role="slider"
+                  <button
+                    type="button"
                     aria-label="Resize Top Left"
                     className="absolute -top-2 -left-2 w-4 h-4 bg-white border-2 border-primary rounded-full shadow-md cursor-nwse-resize hover:scale-125 transition-transform z-20"
                     onPointerDown={(e) => handleAnchorPointerDown(e, "nw")}
                   />
-                  <div
-                    role="slider"
+                  <button
+                    type="button"
                     aria-label="Resize Top Right"
                     className="absolute -top-2 -right-2 w-4 h-4 bg-white border-2 border-primary rounded-full shadow-md cursor-nesw-resize hover:scale-125 transition-transform z-20"
                     onPointerDown={(e) => handleAnchorPointerDown(e, "ne")}
                   />
-                  <div
-                    role="slider"
+                  <button
+                    type="button"
                     aria-label="Resize Bottom Right"
                     className="absolute -bottom-2 -right-2 w-4 h-4 bg-white border-2 border-primary rounded-full shadow-md cursor-nwse-resize hover:scale-125 transition-transform z-20"
                     onPointerDown={(e) => handleAnchorPointerDown(e, "se")}
                   />
-                  <div
-                    role="slider"
+                  <button
+                    type="button"
                     aria-label="Resize Bottom Left"
                     className="absolute -bottom-2 -left-2 w-4 h-4 bg-white border-2 border-primary rounded-full shadow-md cursor-nesw-resize hover:scale-125 transition-transform z-20"
                     onPointerDown={(e) => handleAnchorPointerDown(e, "sw")}
@@ -494,26 +497,26 @@ export function ImageCropModal({
                   {/* Edge Anchors (Available for freeform crops) */}
                   {!aspectRatio && (
                     <>
-                      <div
-                        role="slider"
+                      <button
+                        type="button"
                         aria-label="Resize Top"
                         className="absolute -top-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white border-2 border-primary rounded-full shadow-md cursor-ns-resize hover:scale-125 transition-transform z-20"
                         onPointerDown={(e) => handleAnchorPointerDown(e, "n")}
                       />
-                      <div
-                        role="slider"
+                      <button
+                        type="button"
                         aria-label="Resize Right"
                         className="absolute top-1/2 -right-2 -translate-y-1/2 w-4 h-4 bg-white border-2 border-primary rounded-full shadow-md cursor-ew-resize hover:scale-125 transition-transform z-20"
                         onPointerDown={(e) => handleAnchorPointerDown(e, "e")}
                       />
-                      <div
-                        role="slider"
+                      <button
+                        type="button"
                         aria-label="Resize Bottom"
                         className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white border-2 border-primary rounded-full shadow-md cursor-ns-resize hover:scale-125 transition-transform z-20"
                         onPointerDown={(e) => handleAnchorPointerDown(e, "s")}
                       />
-                      <div
-                        role="slider"
+                      <button
+                        type="button"
                         aria-label="Resize Left"
                         className="absolute top-1/2 -left-2 -translate-y-1/2 w-4 h-4 bg-white border-2 border-primary rounded-full shadow-md cursor-ew-resize hover:scale-125 transition-transform z-20"
                         onPointerDown={(e) => handleAnchorPointerDown(e, "w")}

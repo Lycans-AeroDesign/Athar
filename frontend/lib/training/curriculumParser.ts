@@ -42,7 +42,7 @@ export function parseCurriculumText(rawText: string): {
   const modules: ImportCurriculumModule[] = [];
   let currentModule: ImportCurriculumModule | null = null;
   let currentLesson: ImportCurriculumModule["lessons"][0] | null = null;
-  let preModuleLines: string[] = [];
+  const preModuleLines: string[] = [];
 
   const isModuleHeading = (line: string): boolean => {
     // Matches "1. Title", "1) Title", "Chapter 1", "Module 1", "## Title"

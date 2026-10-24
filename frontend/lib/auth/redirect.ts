@@ -8,7 +8,6 @@ export function redirectToLogin() {
     const loginUrl = cleanPath && cleanPath !== "/" && !cleanPath.startsWith("/login")
       ? `/login?next=${encodeURIComponent(cleanPath)}`
       : "/login";
-    // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- runs outside the React tree (lib/api/client.ts), so useRouter() isn't available; a full navigation is also required here to force protected components to unmount.
     window.location.href = loginUrl;
   }
 }
