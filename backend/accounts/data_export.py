@@ -83,6 +83,7 @@ def build_user_export(user) -> dict:
             "articles": [str(pk) for pk in Article.objects.filter(co_authors=user).values_list("pk", flat=True)],
             "questions": [str(pk) for pk in Question.objects.filter(co_authors=user).values_list("pk", flat=True)],
             "sops": [str(pk) for pk in Sop.objects.filter(co_authors=user).values_list("pk", flat=True)],
+            "courses": [str(pk) for pk in Course.objects.filter(co_authors=user).values_list("pk", flat=True)],
         },
         "personal_records": {name: _rows(queryset) for name, queryset in personal.items()},
         "activity_log": list(

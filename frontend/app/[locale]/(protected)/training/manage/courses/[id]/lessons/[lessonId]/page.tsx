@@ -122,7 +122,7 @@ export default function LessonEditorPage() {
   }
 
   const primaryResource = lesson.resources.find((resource) => resource.is_primary) ?? null;
-  const isDocumentLessonType = lessonType === "DOCUMENT";
+  const isDocumentLessonType = lessonType === "DOCUMENT" || lessonType === "EXERCISE";
   // VIDEO/EXTERNAL only take over the link path - an existing primary
   // resource that predates this editor could still be a STORED_FILE for
   // those two types, so this falls back to the generic Resources list below

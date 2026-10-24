@@ -148,6 +148,17 @@ function DocumentResource({ resource, openLabel }: { resource: CourseResource; o
         </div>
       );
     }
+    if (resource.url.toLowerCase().endsWith(".pdf") || resource.url.toLowerCase().includes(".pdf?")) {
+      return (
+        <div className="w-full h-[75vh] rounded-xl overflow-hidden border border-outline-variant bg-surface-container-high">
+          <iframe
+            src={resource.url}
+            className="h-full w-full border-0"
+            title={resource.title}
+          />
+        </div>
+      );
+    }
     return (
       <Button variant="secondary" onClick={() => window.open(resource.url, "_blank", "noopener,noreferrer")}>
         <Icon name="open_in_new" size={18} />
@@ -215,7 +226,7 @@ export function LessonContent({ lesson }: { lesson: LessonDetail }) {
           icon="play_circle"
         />
       )}
-      {lesson.lesson_type === "DOCUMENT" && primaryResource && (
+      {(lesson.lesson_type === "DOCUMENT" || lesson.lesson_type === "EXERCISE") && primaryResource && (
         <DocumentResource resource={primaryResource} openLabel={t("openResource")} />
       )}
       {lesson.lesson_type === "EXTERNAL" && primaryResource && (

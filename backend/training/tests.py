@@ -145,6 +145,64 @@ class CoursePermissionTests(TrainingTestCase):
         response = self.client.delete(reverse("training-course-detail", args=[course["id"]]), **self._auth(mentor_access))
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
 
+    def test_course_deletion_with_enrollments_requires_force_override(self):
+        _, mentor_access = self._login_with_role("mentor-del@example.com", "Mentor")
+        _, learner_access = self._login_with_role("learner-del@example.com", "Member")
+        _, admin_access = self._login_with_role("admin-del@example.com", "Organization Admin")
+
+        course = self._create_course(mentor_access)
+        self._publish_course(admin_access, course["id"])
+
+        self.client.post(reverse("training-course-enroll", args=[course["id"]]), **self._auth(learner_access))
+
+        # Blocked without force
+        response = self.client.delete(reverse("training-course-detail", args=[course["id"]]), **self._auth(admin_access))
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertTrue(Course.objects.filter(pk=course["id"]).exists())
+
+        # Permitted with force=true
+        response = self.client.delete(
+            reverse("training-course-detail", args=[course["id"]]) + "?force=true",
+            **self._auth(admin_access)
+        )
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Course.objects.filter(pk=course["id"]).exists())
+
+    def test_course_co_authors_can_edit_and_earn_credits(self):
+        co_mentor, co_access = self._login_with_role("co-mentor@example.com", "Mentor")
+        lead_mentor, lead_access = self._login_with_role("lead-mentor@example.com", "Mentor")
+        _, admin_access = self._login_with_role("admin-cred@example.com", "Organization Admin")
+
+        # Create with co-author
+        response = self.client.post(
+            reverse("training-course-list-create"),
+            {"title": "Coauthored Course", "co_author_ids": [str(co_mentor.pk)]},
+            format="json",
+            **self._auth(lead_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        course_id = response.data["id"]
+        self.assertEqual([c["id"] for c in response.data["co_authors"]], [str(co_mentor.pk)])
+
+        # Co-author can edit module
+        module_resp = self.client.post(
+            reverse("training-module-list-create", args=[course_id]),
+            {"title": "Module 1"},
+            format="json",
+            **self._auth(co_access),
+        )
+        self.assertEqual(module_resp.status_code, status.HTTP_201_CREATED)
+
+        # Publish course
+        self.client.post(reverse("training-course-publish", args=[course_id]), **self._auth(admin_access))
+
+        # Check contribution scores for creator & co-author
+        from knowledge import services as k_services
+        scores = k_services.compute_contribution_scores_for(self.organization)
+        # 5 points for course.create + 10 points for course.publish = 15 points each!
+        self.assertGreaterEqual(scores.get(lead_mentor.pk, 0), 15)
+        self.assertGreaterEqual(scores.get(co_mentor.pk, 0), 15)
+
 
 class CourseCategoryTests(TrainingTestCase):
     def test_manage_permission_required_to_create_and_delete(self):

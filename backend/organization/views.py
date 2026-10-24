@@ -58,6 +58,7 @@ def _branding_image_response(stored_file) -> FileResponse:
         raise Http404
     response = FileResponse(stored_file.file.open("rb"), content_type=content_type)
     response["Content-Security-Policy"] = "default-src 'none'; sandbox"
+    response["Cache-Control"] = "public, max-age=3600, stale-while-revalidate=86400"
     return response
 
 

@@ -621,7 +621,7 @@ def _export_specs(organization):
             ],
         ),
         (
-            Course.objects.filter(organization=organization).select_related("category", "author", "cover_image"),
+            Course.objects.filter(organization=organization).select_related("category", "author", "cover_image").prefetch_related("co_authors"),
             "courses.csv",
             [
                 ("id", lambda o: _s(o.id)),
@@ -638,6 +638,7 @@ def _export_specs(organization):
                 ("visibility", lambda o: o.visibility),
                 ("author_id", lambda o: _s(o.author_id)),
                 ("author_email", lambda o: _s(o.author and o.author.email)),
+                ("co_author_ids", _co_author_ids),
                 ("published_at", lambda o: _s(o.published_at)),
                 ("created_at", lambda o: _s(o.created_at)),
                 ("updated_at", lambda o: _s(o.updated_at)),

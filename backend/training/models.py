@@ -79,6 +79,9 @@ class Course(UUIDPrimaryKeyModel, OrganizationScopedModel, TimeStampedModel):
     author = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="authored_courses"
     )
+    co_authors = models.ManyToManyField(
+        settings.AUTH_USER_MODEL, blank=True, related_name="coauthored_courses"
+    )
     published_at = models.DateTimeField(null=True, blank=True)
 
     search_vector, search_text = search_columns(*COURSE_SEARCH_FIELDS)

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import { apiFetch } from "@/lib/api/client";
+import { fetchBlobUrl, getCachedBlobUrlSync } from "@/lib/cache/blobCache";
 
 import { PdfViewer } from "./PdfViewer";
 
@@ -13,29 +13,22 @@ interface AuthenticatedPdfEmbedProps {
   className?: string;
 }
 
-// Same auth-gated blob: URL fetch as AuthenticatedImage.tsx (the file-serving
-// endpoint only accepts a Bearer token, which a plain <iframe src> can never
-// send), but rendered via PdfViewer (native viewer on desktop, pdf.js on
-// mobile where an <iframe> only shows an "Open" placeholder) instead of <img>.
-// Used by training/LessonContent.tsx's DocumentResource so
-// an uploaded PDF becomes the lesson's inline main content instead of just a
-// download link, the same way a video resource embeds instead of linking out.
 export function AuthenticatedPdfEmbed({ src, title, className }: AuthenticatedPdfEmbedProps) {
-  const [result, setResult] = useState<{ src: string; url: string | null } | null>(null);
+  const [result, setResult] = useState<{ src: string; url: string | null } | null>(() => {
+    const cached = getCachedBlobUrlSync(src);
+    return cached ? { src, url: cached } : null;
+  });
 
   useEffect(() => {
-    let cancelled = false;
-    let currentUrl: string | null = null;
+    if (!src || !src.trim()) return;
+    if (result?.src === src && result.url) return;
 
-    apiFetch(src)
-      .then((res) => (res.ok ? res.blob() : null))
-      .then((blob) => {
-        if (cancelled) return;
-        if (blob) {
-          currentUrl = URL.createObjectURL(blob);
-          setResult({ src, url: currentUrl });
-        } else {
-          setResult({ src, url: null });
+    let cancelled = false;
+
+    fetchBlobUrl(src)
+      .then((url) => {
+        if (!cancelled) {
+          setResult({ src, url });
         }
       })
       .catch(() => {
@@ -44,9 +37,8 @@ export function AuthenticatedPdfEmbed({ src, title, className }: AuthenticatedPd
 
     return () => {
       cancelled = true;
-      if (currentUrl) URL.revokeObjectURL(currentUrl);
     };
-  }, [src]);
+  }, [src, result?.src, result?.url]);
 
   const current = result?.src === src ? result : null;
 

@@ -2,7 +2,10 @@ from rest_framework import serializers
 
 from files.models import StoredFile
 from files.serializers import StoredFileSerializer
-from knowledge.serializers import AuthorSerializer, RestrictedAccessMixin
+from django.contrib.auth import get_user_model
+from knowledge.serializers import AuthorSerializer, OrgScopedPrimaryKeyRelatedField, RestrictedAccessMixin
+
+User = get_user_model()
 
 from . import services
 from .models import (
@@ -179,6 +182,7 @@ class LessonWriteSerializer(serializers.ModelSerializer):
 class CourseListSerializer(serializers.ModelSerializer):
     category = CourseCategorySerializer(read_only=True)
     author = AuthorSerializer(read_only=True)
+    co_authors = AuthorSerializer(many=True, read_only=True)
     cover_image = StoredFileSerializer(read_only=True)
     module_count = serializers.SerializerMethodField()
     lesson_count = serializers.SerializerMethodField()
@@ -188,7 +192,7 @@ class CourseListSerializer(serializers.ModelSerializer):
         model = Course
         fields = [
             "id", "title", "slug", "short_description", "cover_image", "category", "difficulty",
-            "estimated_minutes", "status", "visibility", "author", "module_count", "lesson_count",
+            "estimated_minutes", "status", "visibility", "author", "co_authors", "module_count", "lesson_count",
             "enrollment_count", "created_at", "updated_at", "published_at",
         ]
 
@@ -222,11 +226,14 @@ class CourseWriteSerializer(serializers.ModelSerializer):
     cover_image_id = serializers.PrimaryKeyRelatedField(
         source="cover_image", queryset=StoredFile.objects.all(), allow_null=True, required=False
     )
+    co_author_ids = OrgScopedPrimaryKeyRelatedField(
+        source="co_authors", queryset=User.objects.all(), many=True, required=False, write_only=True
+    )
 
     class Meta:
         model = Course
         fields = [
-            "title", "short_description", "description", "category_id", "cover_image_id", "difficulty", "visibility",
+            "title", "short_description", "description", "category_id", "cover_image_id", "difficulty", "visibility", "co_author_ids",
         ]
 
     def validate_category_id(self, value):

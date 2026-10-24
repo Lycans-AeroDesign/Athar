@@ -94,11 +94,13 @@ class FileDownloadView(APIView):
         # as_attachment=True: the frontend fetches bytes via apiFetch and uses blob: URLs, which
         # ignore this header. It stops an uploaded .svg/.html from executing inline if this URL
         # is ever navigated to directly (defense in depth against XSS-via-upload).
-        return FileResponse(
+        response = FileResponse(
             stored_file.file.open("rb"),
             filename=stored_file.original_filename,
             as_attachment=True,
         )
+        response["Cache-Control"] = "private, max-age=86400, stale-while-revalidate=604800"
+        return response
 
 
 class FileDeleteView(APIView):

@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
+import { CoAuthorsByline } from "@/components/knowledge/CoAuthorsByline";
 import { CourseStatusPill } from "@/components/training/CourseStatusPill";
 import { CurriculumList } from "@/components/training/CurriculumList";
 import { DifficultyPill } from "@/components/training/DifficultyPill";
@@ -43,6 +44,7 @@ export default function CourseDetailPage() {
   const t = useTranslations("training.course");
   const workflowT = useTranslations("training.workflow");
   const manageT = useTranslations("training.manage");
+  const commonT = useTranslations("common");
   const cardT = useTranslations("training.card");
   const { user } = useAuth();
   const router = useRouter();
@@ -59,6 +61,7 @@ export default function CourseDetailPage() {
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
+  const [deleteConfirmedOverride, setDeleteConfirmedOverride] = useState(false);
   const [isWorking, setIsWorking] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -80,9 +83,10 @@ export default function CourseDetailPage() {
   }
 
   const isAuthor = user?.id === course.author?.id;
-  const canEdit = isAuthor || canUpdateAny;
-  const canDelete = (isAuthor && course.status === "DRAFT") || canDeleteAny;
-  const canSubmit = isAuthor && (course.status === "DRAFT" || course.status === "REJECTED");
+  const isCoAuthor = (course.co_authors ?? []).some((c) => c.id === user?.id);
+  const canEdit = isAuthor || isCoAuthor || canUpdateAny;
+  const canDelete = ((isAuthor || isCoAuthor) && course.status === "DRAFT") || canDeleteAny;
+  const canSubmit = (isAuthor || isCoAuthor) && (course.status === "DRAFT" || course.status === "REJECTED");
   const canPublishNow = canPublish && (course.status === "DRAFT" || course.status === "IN_REVIEW");
   const canRejectNow = canReview && course.status === "IN_REVIEW";
   const canArchiveNow = canArchive && course.status === "PUBLISHED";
@@ -161,7 +165,8 @@ export default function CourseDetailPage() {
   async function handleDelete() {
     setActionError(null);
     try {
-      await deleteCourse(course!.id);
+      const force = Boolean(course!.enrollment_count > 0 && deleteConfirmedOverride);
+      await deleteCourse(course!.id, force);
       router.push("/training");
     } catch (err) {
       setActionError(errorMessage(err));
@@ -240,6 +245,9 @@ export default function CourseDetailPage() {
                   <span className="font-medium text-on-surface">{authorName}</span>
                 </div>
               ) : null}
+              {course.co_authors && course.co_authors.length > 0 && (
+                <CoAuthorsByline coAuthors={course.co_authors} />
+              )}
               <UpdatedBadge updatedAt={course.updated_at} createdAt={course.created_at} />
             </div>
           </div>
@@ -449,15 +457,53 @@ export default function CourseDetailPage() {
         </div>
       </div>
 
-      <ConfirmModal
+      <Modal
         open={deleteOpen}
-        onOpenChange={setDeleteOpen}
+        onOpenChange={(open) => {
+          setDeleteOpen(open);
+          if (!open) setDeleteConfirmedOverride(false);
+        }}
         title={workflowT("deleteConfirmTitle")}
-        description={workflowT("deleteConfirmBody")}
-        confirmLabel={workflowT("deleteButton")}
-        danger
-        onConfirm={handleDelete}
-      />
+        footer={
+          <div className="flex items-center justify-end gap-2">
+            <Button variant="secondary" onClick={() => setDeleteOpen(false)}>
+              {commonT("cancel")}
+            </Button>
+            <Button
+              variant="danger"
+              disabled={course.enrollment_count > 0 && !deleteConfirmedOverride}
+              onClick={handleDelete}
+            >
+              {workflowT("deleteButton")}
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <p className="font-body-md text-body-md text-on-surface-variant">
+            {workflowT("deleteConfirmBody")}
+          </p>
+          {course.enrollment_count > 0 && (
+            <div className="p-3 rounded-lg border border-error/30 bg-error/10 space-y-3">
+              <div className="flex items-start gap-2 text-error">
+                <Icon name="warning" size={20} className="shrink-0 mt-0.5" />
+                <p className="font-body-md text-body-md text-error font-medium">
+                  {workflowT("deleteWithEnrollmentsWarning", { count: course.enrollment_count })}
+                </p>
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer font-body-sm text-body-sm text-on-surface">
+                <input
+                  type="checkbox"
+                  checked={deleteConfirmedOverride}
+                  onChange={(e) => setDeleteConfirmedOverride(e.target.checked)}
+                  className="rounded border-outline-variant text-error focus:ring-error"
+                />
+                <span>{workflowT("overrideEnrollmentsCheckbox")}</span>
+              </label>
+            </div>
+          )}
+        </div>
+      </Modal>
 
       <ConfirmModal
         open={archiveOpen}

@@ -362,7 +362,7 @@ def _contribution_handlers(request, user):
     from training.visibility import exclude_inaccessible_courses
 
     courses_qs = exclude_inaccessible_courses(
-        Course.objects.filter(organization=request.user.organization, author=user).select_related("category", "author"),
+        Course.objects.filter(Q(author=user) | Q(co_authors=user), organization=request.user.organization).select_related("category", "author").prefetch_related("co_authors").distinct(),
         request.user,
     )
     can_review_training = (

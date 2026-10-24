@@ -732,6 +732,7 @@ export interface CourseSummary {
   status: CourseStatus;
   visibility: Visibility;
   author: KnowledgeAuthor | null;
+  co_authors: KnowledgeAuthor[];
   module_count: number;
   lesson_count: number;
   enrollment_count: number;

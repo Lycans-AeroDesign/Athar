@@ -3,6 +3,8 @@
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
+import { CoAuthorPicker } from "@/components/knowledge/CoAuthorPicker";
+import { useAuth } from "@/lib/auth/AuthProvider";
 import {
   EMPTY_RESTRICTED_ACCESS_DRAFT,
   RestrictedAccessPicker,
@@ -16,7 +18,7 @@ import { PhotoDropzone } from "@/components/ui/PhotoDropzone";
 import { Link, useRouter } from "@/i18n/navigation";
 import { uploadFile } from "@/lib/api/files";
 import { addCourseAccessGrant, createCourse, listCourseCategories } from "@/lib/api/training";
-import type { CourseCategory, CourseDifficulty, StoredFileRef, Visibility } from "@/lib/api/types";
+import type { CourseCategory, CourseDifficulty, KnowledgeAuthor, StoredFileRef, Visibility } from "@/lib/api/types";
 import { errorMessage } from "@/lib/errors";
 import { DIFFICULTY_ICONS, VISIBILITY_ICONS } from "@/lib/optionIcons";
 
@@ -28,6 +30,7 @@ export default function NewCoursePage() {
   const commonT = useTranslations("common");
   const difficultyT = useTranslations("training.difficulty");
   const router = useRouter();
+  const { user } = useAuth();
 
   const [categories, setCategories] = useState<CourseCategory[]>([]);
   const [title, setTitle] = useState("");
@@ -38,6 +41,7 @@ export default function NewCoursePage() {
   const [visibility, setVisibility] = useState<Visibility>("PUBLIC");
   const [restrictedAccessDraft, setRestrictedAccessDraft] =
     useState<RestrictedAccessDraft>(EMPTY_RESTRICTED_ACCESS_DRAFT);
+  const [coAuthors, setCoAuthors] = useState<KnowledgeAuthor[]>([]);
   const [coverImage, setCoverImage] = useState<StoredFileRef | null>(null);
   const [coverUploadProgress, setCoverUploadProgress] = useState<number | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -71,6 +75,7 @@ export default function NewCoursePage() {
         cover_image_id: coverImage?.id ?? null,
         difficulty,
         visibility,
+        co_author_ids: coAuthors.map((u) => u.id),
       });
       // A brand-new course has no saved grants yet, so only additions apply.
       if (visibility === "RESTRICTED") {
@@ -146,6 +151,13 @@ export default function NewCoursePage() {
             onChange={setRestrictedAccessDraft}
           />
         )}
+
+        <CoAuthorPicker
+          value={coAuthors}
+          onChange={setCoAuthors}
+          authorId={user?.id}
+          canEdit={true}
+        />
 
         {/* Its own block row (not a bare inline-flex Button sibling) so it
             never ends up sharing a line with the Create button below - same

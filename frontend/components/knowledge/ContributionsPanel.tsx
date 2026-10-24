@@ -171,7 +171,8 @@ const TAB_ICONS: Record<ContributionType, string> = {
   document: "folder",
 };
 
-function CourseRow({ course }: { course: CourseSummary }) {
+function CourseRow({ course, profileUserId }: { course: CourseSummary; profileUserId?: string }) {
+  const isCoAuthor = Boolean(profileUserId && course.co_authors?.some((c) => c.id === profileUserId));
   return (
     <Link
       href={`/training/courses/${course.id}`}
@@ -179,7 +180,14 @@ function CourseRow({ course }: { course: CourseSummary }) {
     >
       <Icon name="school" size={20} className="text-primary shrink-0" />
       <div className="min-w-0 flex-1">
-        <h4 className="font-headline-sm text-headline-sm text-on-surface line-clamp-1">{course.title}</h4>
+        <div className="flex items-center gap-2">
+          <h4 className="font-headline-sm text-headline-sm text-on-surface line-clamp-1">{course.title}</h4>
+          {isCoAuthor && (
+            <span className="shrink-0 px-2 py-0.5 rounded-full text-xs font-medium bg-secondary-container text-on-secondary-container">
+              Co-author
+            </span>
+          )}
+        </div>
         {course.short_description && (
           <p className="font-body-sm text-body-sm text-on-surface-variant line-clamp-1 mt-0.5">
             {course.short_description}

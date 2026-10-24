@@ -147,20 +147,21 @@ jobs:
   #     drafts don't move `latest`). Guard it with `if:` on the publish
   #     job's outputs if you want old-tag rebuilds to never touch the VM.
   #
-  # deploy:
-  #   needs: [publish]
-  #   runs-on: ubuntu-latest
-  #   # environment: production
-  #   steps:
-  #     - name: Deploy on the VM
-  #       uses: appleboy/ssh-action@v1
-  #       with:
-  #         host: ${{ secrets.DEPLOY_HOST }}
-  #         username: ${{ secrets.DEPLOY_USER }}
-  #         key: ${{ secrets.DEPLOY_SSH_KEY }}
-  #         script: |
-  #           set -e
-  #           cd ~/athar
-  #           git pull
-  #           docker compose -f docker-compose.prod.yml pull
-  #           docker compose -f docker-compose.prod.yml up -d
+  deploy:
+    needs: [publish]
+    runs-on: ubuntu-latest
+    # environment: production
+    steps:
+      - name: Deploy on the VM
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_PORT || 22 }}
+          script: |
+            set -e
+            cd ~/athar 2>/dev/null || cd ~/Athar
+            git pull
+            docker compose -f docker-compose.prod.yml pull
+            docker compose -f docker-compose.prod.yml up -d

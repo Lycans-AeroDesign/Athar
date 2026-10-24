@@ -46,6 +46,8 @@ CO_AUTHOR_CREDITED_ACTIONS: dict[str, str] = {
     "article.publish": "article",
     "question.create": "question",
     "sop.create": "sop",
+    "course.create": "course",
+    "course.publish": "course",
 }
 
 # The one action scored by attributing to someone other than the audit

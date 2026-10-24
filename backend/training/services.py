@@ -49,11 +49,26 @@ def _unique_slug(model, base: str, organization) -> str:
     return candidate
 
 
+def _set_co_authors(*, course: Course, actor, co_authors) -> None:
+    if co_authors is None:
+        return
+    is_owner = actor == course.author
+    if not is_owner and not actor.has_permission("training.update"):
+        raise PermissionDenied("Only the author or a user with elevated permissions can change co-authors.")
+    unique = {user.pk: user for user in co_authors}
+    unique.pop(course.author_id, None)
+    for user in unique.values():
+        if user.organization_id != actor.organization_id:
+            raise ValidationError("Co-authors must belong to your organization.")
+    course.co_authors.set(list(unique.values()))
+
+
 def _require_can_manage_course(actor, course: Course) -> None:
     """Shared "it's your own course, or you hold training.update" guard for
     every module/lesson/objective/resource/knowledge-reference mutation
     within a course - same shape as knowledge.services._require_owner_or_permission."""
-    if not (actor == course.author or actor.has_permission("training.update")):
+    is_coauthor = course.co_authors.filter(id=actor.id).exists()
+    if not (actor == course.author or is_coauthor or actor.has_permission("training.update")):
         raise PermissionDenied("You can only manage your own course, or need training.update.")
 
 
@@ -130,6 +145,7 @@ def delete_course_category(*, category: CourseCategory, actor, request=None) -> 
 def create_course(
     *, actor, request=None, title, short_description="", description="", category=None,
     difficulty=Course.Difficulty.BEGINNER, cover_image=None, visibility=Visibility.PUBLIC,
+    co_authors=None,
 ) -> Course:
     course = Course.objects.create(
         organization=actor.organization,
@@ -143,13 +159,15 @@ def create_course(
         visibility=visibility,
         author=actor,
     )
+    if co_authors:
+        _set_co_authors(course=course, actor=actor, co_authors=co_authors)
     confirm_stored_files(cover_image)
     log_action(actor=actor, action="course.create", target=course, request=request)
     return course
 
 
 def update_course(*, course: Course, actor, request=None, **fields) -> Course:
-    is_owner = actor == course.author
+    is_owner = actor == course.author or course.co_authors.filter(id=actor.id).exists()
     can_override = actor.has_permission("training.update")
     if not (is_owner or can_override):
         raise PermissionDenied("You can only edit your own course.")
@@ -158,17 +176,20 @@ def update_course(*, course: Course, actor, request=None, **fields) -> Course:
     editable_by_owner = (Course.Status.DRAFT, Course.Status.IN_REVIEW, Course.Status.REJECTED)
     if is_owner and not can_override and course.status not in editable_by_owner:
         raise PermissionDenied("A published course can only be edited by someone with training.update.")
+    co_authors = fields.pop("co_authors", None)
     for field, value in fields.items():
         setattr(course, field, value)
     course.save(update_fields=[*fields.keys(), "updated_at"])
+    _set_co_authors(course=course, actor=actor, co_authors=co_authors)
     confirm_stored_files(*fields.values())
     log_action(actor=actor, action="course.update", target=course, request=request)
     return course
 
 
 def submit_course(*, course: Course, actor, request=None) -> Course:
-    if actor != course.author:
-        raise PermissionDenied("Only the author can submit their own draft for review.")
+    is_author_or_coauthor = actor == course.author or course.co_authors.filter(id=actor.id).exists()
+    if not is_author_or_coauthor and not actor.has_permission("training.update"):
+        raise PermissionDenied("Only the author or co-authors can submit their draft for review.")
     if course.status not in (Course.Status.DRAFT, Course.Status.REJECTED):
         raise ValidationError("Only a draft or rejected course can be submitted for review.")
     course.status = Course.Status.IN_REVIEW
@@ -216,12 +237,14 @@ def unarchive_course(*, course: Course, actor, request=None) -> Course:
     return course
 
 
-def delete_course(*, course: Course, actor, request=None) -> None:
-    is_own_draft = actor == course.author and course.status == Course.Status.DRAFT
+def delete_course(*, course: Course, actor, request=None, force: bool = False) -> None:
+    is_own_draft = (actor == course.author or course.co_authors.filter(id=actor.id).exists()) and course.status == Course.Status.DRAFT
     if not (is_own_draft or actor.has_permission("training.delete")):
         raise PermissionDenied("You can only delete your own draft, or need training.delete.")
     if course.enrollments.exists():
-        raise ValidationError("A course with enrollments can't be deleted - archive it instead.")
+        if not force:
+            raise ValidationError("A course with enrollments can't be deleted - archive it instead.")
+        course.enrollments.all().delete()
     log_action(
         actor=actor, action="course.delete", metadata={"course_id": str(course.pk), "title": course.title}, request=request
     )

@@ -1559,7 +1559,9 @@
       "archiveConfirmBody": "Archived courses are hidden from discovery but stay reachable by existing learners.",
       "rejectModalTitle": "Reject this course",
       "rejectReasonLabel": "Reason (shown to the author)",
-      "rejectReasonPlaceholder": "What needs to change before this can be resubmitted?"
+      "rejectReasonPlaceholder": "What needs to change before this can be resubmitted?",
+      "deleteWithEnrollmentsWarning": "Warning: This course has {count} enrolled learner(s). Deleting it will permanently remove the course, all modules, and erase all student progress and enrollments.",
+      "overrideEnrollmentsCheckbox": "I understand and confirm permanently deleting this course and removing all its enrollments."
     },
     "discovery": {
       "title": "Training Center",

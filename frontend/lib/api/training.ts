@@ -79,6 +79,7 @@ export interface CourseWritePayload {
   cover_image_id?: string | null;
   difficulty?: CourseDifficulty;
   visibility?: Visibility;
+  co_author_ids?: string[];
 }
 
 export function createCourse(payload: CourseWritePayload): Promise<CourseDetail> {
@@ -116,8 +117,9 @@ export function removeCourseAccessGrant(courseId: string, grantId: string): Prom
   return apiVoid(`/api/v1/training/courses/${courseId}/access-grants/${grantId}/`, { method: "DELETE" });
 }
 
-export function deleteCourse(id: string): Promise<void> {
-  return apiVoid(`/api/v1/training/courses/${id}/`, { method: "DELETE" });
+export function deleteCourse(id: string, force = false): Promise<void> {
+  const query = force ? "?force=true" : "";
+  return apiVoid(`/api/v1/training/courses/${id}/${query}`, { method: "DELETE" });
 }
 
 export function submitCourse(id: string): Promise<CourseDetail> {

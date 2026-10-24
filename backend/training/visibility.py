@@ -29,7 +29,7 @@ def _has_override(viewer) -> bool:
 def can_view_course(viewer, course: Course) -> bool:
     if course.visibility != Visibility.RESTRICTED:
         return True
-    if course.author_id == viewer.id or _has_override(viewer):
+    if course.author_id == viewer.id or course.co_authors.filter(id=viewer.id).exists() or _has_override(viewer):
         return True
     return RestrictedAccessGrant.objects.filter(
         content_type=ContentType.objects.get_for_model(Course), object_id=course.pk, granted_user=viewer
@@ -49,5 +49,6 @@ def exclude_inaccessible_courses(queryset: QuerySet, viewer, course_field: str =
     return queryset.exclude(
         Q(**{f"{prefix}visibility": Visibility.RESTRICTED})
         & ~Q(**{f"{prefix}author": viewer})
+        & ~Q(**{f"{prefix}co_authors": viewer})
         & ~Q(**{f"{prefix}id__in": granted_ids})
     )

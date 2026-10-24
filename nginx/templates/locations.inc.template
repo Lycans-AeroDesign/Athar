@@ -68,6 +68,7 @@ location /static/ {
     proxy_set_header X-Real-IP $remote_addr;
     proxy_set_header X-Forwarded-For $remote_addr;
     proxy_set_header X-Forwarded-Proto $scheme;
+    add_header Cache-Control "public, max-age=86400";
     access_log off;
 }
 
@@ -157,6 +158,19 @@ location ~ ^/(admin|api/schema|api/docs)/ {
     proxy_set_header X-Real-IP $remote_addr;
     proxy_set_header X-Forwarded-For $remote_addr;
     proxy_set_header X-Forwarded-Proto $scheme;
+}
+
+# ------------------------------------------------
+# NEXT.JS IMMUTABLE STATIC ASSETS
+# ------------------------------------------------
+location /_next/static/ {
+    proxy_pass http://frontend;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $remote_addr;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    add_header Cache-Control "public, max-age=31536000, immutable";
+    access_log off;
 }
 
 # ------------------------------------------------

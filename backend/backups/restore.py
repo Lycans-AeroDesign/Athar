@@ -1091,6 +1091,7 @@ def _restore_courses(ctx, zf, course_categories_by_id, files_by_id) -> dict[uuid
             author_id=ctx.user_id(row["author_id"]),
             published_at=row["published_at"] or None,
         )
+        _set_co_authors(course, ctx, row)
         courses_by_id[course.id] = course
     ctx.summary.created["courses"] = len(courses_by_id)
     ctx.track("course", courses_by_id)

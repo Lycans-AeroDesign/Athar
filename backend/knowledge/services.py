@@ -2006,7 +2006,7 @@ def compute_contribution_scores_for(organization, *, since=None) -> dict:
     # Co-authors earn the same points for creating/publishing the item they share (see
     # scoring.CO_AUTHOR_CREDITED_ACTIONS), by the item's current co-author list. The actor is
     # never double-credited.
-    co_author_models = {"article": Article, "question": Question, "sop": Sop}
+    co_author_models = {"article": Article, "question": Question, "sop": Sop, "course": Course}
     for model_name, model in co_author_models.items():
         target_ids = {target_id for action, target_id, _ in co_credited if CO_AUTHOR_CREDITED_ACTIONS[action] == model_name}
         if not target_ids:
@@ -2038,15 +2038,25 @@ def compute_contribution_scores_for(organization, *, since=None) -> dict:
         if author_id is not None:
             scores[author_id] = scores.get(author_id, 0) + ACCEPTED_ANSWER_POINTS
 
-    # For course.publish: ensure the course's author earns the points (NOT the mentor/reviewer who approved it).
+    # For course.publish: ensure the course's author AND co-authors earn the points (NOT the mentor/reviewer who approved it).
     # If the course was deleted, active_course_ids won't contain it, so 0 publish points are awarded.
     course_publish_logs = AuditLog.objects.filter(organization=organization, action="course.publish")
     if since is not None:
         course_publish_logs = course_publish_logs.filter(created_at__gte=since)
+    course_coauthors_by_id: dict[str, list] = {}
+    for c_id, u_id in Course.co_authors.through.objects.filter(
+        course_id__in=active_courses.keys()
+    ).values_list("course_id", "user_id"):
+        course_coauthors_by_id.setdefault(str(c_id), []).append(u_id)
+
     for log in course_publish_logs:
-        author_id = active_course_ids.get(str(log.target_object_id))
+        target_str = str(log.target_object_id)
+        author_id = active_course_ids.get(target_str)
         if author_id is not None:
             scores[author_id] = scores.get(author_id, 0) + CONTRIBUTION_POINTS["course.publish"]
+            for coauthor_id in course_coauthors_by_id.get(target_str, []):
+                if coauthor_id != author_id:
+                    scores[coauthor_id] = scores.get(coauthor_id, 0) + CONTRIBUTION_POINTS["course.publish"]
 
     return scores
 

@@ -4,6 +4,8 @@ import { useTranslations } from "next-intl";
 import { useParams, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { CoAuthorPicker } from "@/components/knowledge/CoAuthorPicker";
+import type { KnowledgeAuthor } from "@/lib/api/types";
 import {
   EMPTY_RESTRICTED_ACCESS_DRAFT,
   RestrictedAccessPicker,
@@ -130,6 +132,8 @@ export default function CourseEditorPage() {
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
+  const [coAuthors, setCoAuthors] = useState<KnowledgeAuthor[]>([]);
+  const [deleteConfirmedOverride, setDeleteConfirmedOverride] = useState(false);
 
   const [editingLessonId, setEditingLessonId] = useState<string | null>(null);
   const [editingLesson, setEditingLesson] = useState<LessonDetail | null>(null);
@@ -159,6 +163,7 @@ export default function CourseEditorPage() {
     setCategoryId(data.category?.id ?? null);
     setDifficulty(data.difficulty);
     setVisibility(data.visibility);
+    setCoAuthors(data.co_authors ?? []);
     // The freshly-loaded restricted_to is the new source of truth - see
     // RestrictedAccessPicker's RestrictedAccessDraft docstring.
     setRestrictedAccessDraft(EMPTY_RESTRICTED_ACCESS_DRAFT);
@@ -185,9 +190,10 @@ export default function CourseEditorPage() {
   }
 
   const isAuthor = user?.id === course.author?.id;
-  const canEdit = isAuthor || canUpdateAny;
-  const canDelete = (isAuthor && course.status === "DRAFT") || canDeleteAny;
-  const canSubmit = isAuthor && (course.status === "DRAFT" || course.status === "REJECTED");
+  const isCoAuthor = (course.co_authors ?? []).some((c) => c.id === user?.id);
+  const canEdit = isAuthor || isCoAuthor || canUpdateAny;
+  const canDelete = ((isAuthor || isCoAuthor) && course.status === "DRAFT") || canDeleteAny;
+  const canSubmit = (isAuthor || isCoAuthor) && (course.status === "DRAFT" || course.status === "REJECTED");
   const canPublishNow = canPublish && (course.status === "DRAFT" || course.status === "IN_REVIEW");
   const canRejectNow = canReview && course.status === "IN_REVIEW";
   const canArchiveNow = canArchive && course.status === "PUBLISHED";
@@ -200,6 +206,7 @@ export default function CourseEditorPage() {
     categoryId !== (course.category?.id ?? null) ||
     difficulty !== course.difficulty ||
     visibility !== course.visibility ||
+    coAuthors.map((u) => u.id).join(",") !== (course?.co_authors ?? []).map((u) => u.id).join(",") ||
     restrictedAccessDraft.pendingAdd.length > 0 ||
     restrictedAccessDraft.pendingRemoveGrantIds.length > 0;
 
@@ -207,6 +214,7 @@ export default function CourseEditorPage() {
     setIsSaving(true);
     setError(null);
     try {
+      const coAuthorsChanged = coAuthors.map((u) => u.id).join(",") !== (course!.co_authors ?? []).map((u) => u.id).join(",");
       const updated = await updateCourse(course!.id, {
         title,
         short_description: shortDescription,
@@ -214,6 +222,7 @@ export default function CourseEditorPage() {
         category_id: categoryId,
         difficulty,
         visibility,
+        ...(coAuthorsChanged ? { co_author_ids: coAuthors.map((u) => u.id) } : {}),
       });
       for (const grantId of restrictedAccessDraft.pendingRemoveGrantIds) {
         await removeCourseAccessGrant(updated.id, grantId);
@@ -258,7 +267,8 @@ export default function CourseEditorPage() {
   async function handleDeleteCourse() {
     setError(null);
     try {
-      await deleteCourse(course!.id);
+      const force = Boolean(course!.enrollment_count > 0 && deleteConfirmedOverride);
+      await deleteCourse(course!.id, force);
       router.push("/training/manage");
     } catch (err) {
       setError(errorMessage(err));
@@ -542,6 +552,13 @@ export default function CourseEditorPage() {
           />
         )}
 
+        <CoAuthorPicker
+          value={coAuthors}
+          onChange={setCoAuthors}
+          authorId={course.author?.id}
+          canEdit={isAuthor || canUpdateAny}
+        />
+
         {/* Its own block row (not a bare inline-flex Button sibling) so it
             never ends up sharing a line with the Save button below. */}
         <PhotoDropzone
@@ -730,15 +747,53 @@ export default function CourseEditorPage() {
         </div>
       )}
 
-      <ConfirmModal
+      <Modal
         open={deleteOpen}
-        onOpenChange={setDeleteOpen}
+        onOpenChange={(open) => {
+          setDeleteOpen(open);
+          if (!open) setDeleteConfirmedOverride(false);
+        }}
         title={workflowT("deleteConfirmTitle")}
-        description={workflowT("deleteConfirmBody")}
-        confirmLabel={workflowT("deleteButton")}
-        danger
-        onConfirm={handleDeleteCourse}
-      />
+        footer={
+          <div className="flex items-center justify-end gap-2">
+            <Button variant="secondary" onClick={() => setDeleteOpen(false)}>
+              {commonT("cancel")}
+            </Button>
+            <Button
+              variant="danger"
+              disabled={course.enrollment_count > 0 && !deleteConfirmedOverride}
+              onClick={handleDeleteCourse}
+            >
+              {workflowT("deleteButton")}
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <p className="font-body-md text-body-md text-on-surface-variant">
+            {workflowT("deleteConfirmBody")}
+          </p>
+          {course.enrollment_count > 0 && (
+            <div className="p-3 rounded-lg border border-error/30 bg-error/10 space-y-3">
+              <div className="flex items-start gap-2 text-error">
+                <Icon name="warning" size={20} className="shrink-0 mt-0.5" />
+                <p className="font-body-md text-body-md text-error font-medium">
+                  {workflowT("deleteWithEnrollmentsWarning", { count: course.enrollment_count })}
+                </p>
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer font-body-sm text-body-sm text-on-surface">
+                <input
+                  type="checkbox"
+                  checked={deleteConfirmedOverride}
+                  onChange={(e) => setDeleteConfirmedOverride(e.target.checked)}
+                  className="rounded border-outline-variant text-error focus:ring-error"
+                />
+                <span>{workflowT("overrideEnrollmentsCheckbox")}</span>
+              </label>
+            </div>
+          )}
+        </div>
+      </Modal>
       <ConfirmModal
         open={archiveOpen}
         onOpenChange={setArchiveOpen}
@@ -862,7 +917,7 @@ export default function CourseEditorPage() {
               </div>
             </div>
 
-            {(editLessonType === "VIDEO" || editLessonType === "DOCUMENT" || editLessonType === "EXTERNAL") && (
+            {(editLessonType === "VIDEO" || editLessonType === "DOCUMENT" || editLessonType === "EXTERNAL" || editLessonType === "EXERCISE") && (
               <div>
                 <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase mb-1">
                   {editLessonType === "VIDEO" ? "Video URL (SharePoint, YouTube, etc.)" : "Resource URL"}
@@ -877,7 +932,9 @@ export default function CourseEditorPage() {
                 <p className="mt-1 text-xs text-on-surface-variant">
                   {editLessonType === "VIDEO"
                     ? "Direct SharePoint video link or YouTube embed link set as main lesson content."
-                    : "Direct link set as the main lesson content."}
+                    : editLessonType === "EXERCISE"
+                      ? "Direct PDF, SharePoint doc link, or exercise document set as main lesson content."
+                      : "Direct link set as the main lesson content."}
                 </p>
               </div>
             )}

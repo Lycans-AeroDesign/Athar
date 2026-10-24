@@ -69,6 +69,7 @@ def _ensure_course_visible(request, course: Course) -> None:
         return
     is_privileged = (
         request.user == course.author
+        or course.co_authors.filter(id=request.user.id).exists()
         or request.user.has_permission("training.update")
         or request.user.has_permission("training.review")
         or request.user.has_permission("training.publish")
@@ -251,7 +252,10 @@ class CourseDetailView(APIView):
     )
     def delete(self, request, pk):
         course = org_object_or_404(request, Course, pk)
-        services.delete_course(course=course, actor=request.user, request=request)
+        force = request.query_params.get("force", "").lower() in ("true", "1") or (
+            isinstance(request.data, dict) and request.data.get("force") is True
+        )
+        services.delete_course(course=course, actor=request.user, request=request, force=force)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
