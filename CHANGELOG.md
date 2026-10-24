@@ -1,3 +1,9 @@
+## [1.24.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.23.0...v1.24.0) (2026-10-24)
+
+### Features
+
+* **training:** add course co-authors, delete override, media caching, and exercise document support ([b424187](https://github.com/Lycans-AeroDesign/Athar/commit/b42418767a8f15213d41f095cfde13d1739ce0c3))
+
 ## [1.23.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.22.0...v1.23.0) (2026-10-24)
 
 ### Features
