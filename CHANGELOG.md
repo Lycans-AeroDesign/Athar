@@ -1,3 +1,14 @@
+## [1.21.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.20.0...v1.21.0) (2026-10-24)
+
+### Features
+
+* **training:** curriculum import, interactive cropper, and lesson viewer enhancements ([bf09ba1](https://github.com/Lycans-AeroDesign/Athar/commit/bf09ba1dedb517f93ab2cf8b785b6ddaa2508fa4))
+
+### Bug Fixes
+
+* **frontend:** add size prop to Button and resolve course editor type errors ([0e498a9](https://github.com/Lycans-AeroDesign/Athar/commit/0e498a918fc6a4cbed41338c1de9b08732455bb9))
+* **frontend:** resolve eslint rules for hooks, a11y, and unused imports ([f828885](https://github.com/Lycans-AeroDesign/Athar/commit/f8288854f641aed1b7e0c286bbfa4d6fea0edb6d))
+
 ## [1.20.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.19.0...v1.20.0) (2026-10-23)
 
 ### Features
