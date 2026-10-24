@@ -1,3 +1,9 @@
+## [1.23.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.22.0...v1.23.0) (2026-10-24)
+
+### Features
+
+* **knowledge:** fix course publish scoring attribution, add contributors modal, and render markdown in sop safety notes ([129fcc3](https://github.com/Lycans-AeroDesign/Athar/commit/129fcc35b5b799f042b29473ab50e4e44bb2a44b))
+
 ## [1.22.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.21.0...v1.22.0) (2026-10-24)
 
 ### Features
