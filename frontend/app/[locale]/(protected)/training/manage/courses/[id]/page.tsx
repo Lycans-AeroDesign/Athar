@@ -844,7 +844,7 @@ export default function CourseEditorPage() {
                   options={LESSON_TYPES.map((type) => ({
                     value: type,
                     label: lessonTypeT(type),
-                    icon: LESSON_TYPE_ICONS[type],
+                    ...LESSON_TYPE_ICONS[type],
                   }))}
                 />
               </div>

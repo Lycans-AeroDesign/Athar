@@ -188,7 +188,7 @@ export function LessonContent({ lesson }: { lesson: LessonDetail }) {
         is_primary: true,
         order: 0,
         created_at: "",
-        updated_at: "",
+        created_by: null,
       };
     }
   }
