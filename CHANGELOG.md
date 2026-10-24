@@ -1,3 +1,10 @@
+## [1.22.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.21.0...v1.22.0) (2026-10-24)
+
+### Features
+
+* **training:** add contribution scoring and profile links for course creators ([cbb95de](https://github.com/Lycans-AeroDesign/Athar/commit/cbb95deb27f62a2fd7cc2aacd73203e88ae7cacd))
+* **training:** support SharePoint and Office embed iframes in lesson viewer and parser ([28b064f](https://github.com/Lycans-AeroDesign/Athar/commit/28b064fa1a22353ef1b4f047b2da6fb28f3d4477))
+
 ## [1.21.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.20.0...v1.21.0) (2026-10-24)
 
 ### Features
