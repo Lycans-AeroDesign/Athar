@@ -2,7 +2,9 @@
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
-Open-source, self-hosted **Knowledge Management System** for student AeroDesign teams — built and self-hosted by [Lycans AeroDesign](https://github.com/Lycans-AeroDesign) as its reference deployment.
+Athar (أثر) is an **open-source, self-hosted knowledge management system for student engineering teams and technical organizations**. It connects projects, components, standard operating procedures (SOPs), engineering failures, tests, and lessons learned in one searchable knowledge base, helping teams preserve institutional knowledge as members graduate or leave.
+
+Developed by [Lycans AeroDesign](https://github.com/Lycans-AeroDesign), Athar began as a knowledge management solution for a university AeroDesign team and is designed to support other engineering teams as well.
 
 ![An Athar article: an incident post-mortem with an auto-generated table of contents and a Related Content panel linking the failure record, components, SOPs, tests, project and documents](docs/marketing/screenshots/readme-article.png)
 
@@ -26,6 +28,16 @@ The full product specification (vision, feature areas, roles/permissions, roadma
 1. **Self-hosted-first, multi-tenant-capable** — a team can still clone/deploy their own fully independent instance and own their data outright, same as always; the backend is also genuinely multi-tenant now (an `Organization` model, every row scoped to it, self-service org creation alongside invite-based joining), so one deployment can serve several isolated organizations instead of exactly one. See [`docs/VISION.md` §2](docs/VISION.md#2-open-source-philosophy) for the fuller status note on this.
 2. **Connected knowledge** — knowledge objects (articles, components, projects, failures, SOPs, tests, documents, decisions...) link to each other so context is discoverable, not siloed.
 3. **Backend-enforced authorization** — the frontend is never a security boundary; every API request is authorized server-side, regardless of client.
+
+## What makes Athar different?
+
+General-purpose documentation tools can store engineering knowledge, but Athar is designed to connect that knowledge to the work itself.
+
+- **Connected engineering records:** Link projects, components, failures, SOPs, tests, and lessons learned so information retains its context.
+- **Knowledge preservation:** Keep engineering decisions and lessons accessible beyond the students who originally documented them.
+- **Training and onboarding:** Turn existing team knowledge into structured courses and learning paths for new members.
+- **Self-hosted and open source:** Deploy your own instance, control your infrastructure, and retain ownership of your team's data.
+- **Built for engineering teams:** Combine documentation with structured engineering records rather than relying exclusively on pages and folders.
 
 ## What's inside
 
