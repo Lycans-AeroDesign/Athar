@@ -357,7 +357,25 @@ class SearchView(APIView):
 # visibility of its own and follows its parent question. Every queryset goes through the
 # matching services.visible_*_for helper so a profile view can't leak RESTRICTED content.
 def _contribution_handlers(request, user):
+    from training.models import Course
+    from training.serializers import CourseListSerializer
+    from training.visibility import exclude_inaccessible_courses
+
+    courses_qs = exclude_inaccessible_courses(
+        Course.objects.filter(organization=request.user.organization, author=user).select_related("category", "author"),
+        request.user,
+    )
+    can_review_training = (
+        request.user.has_permission("training.review")
+        or request.user.has_permission("training.publish")
+        or request.user.has_permission("training.manage")
+        or request.user == user
+    )
+    if not can_review_training:
+        courses_qs = courses_qs.filter(status=Course.Status.PUBLISHED)
+
     return {
+        "course": (courses_qs, CourseListSerializer),
         # Co-authored items count as the user's own contributions too.
         "article": (
             services.visible_articles_for(request.user).filter(Q(author=user) | Q(co_authors=user)).distinct(),
@@ -424,7 +442,7 @@ class UserContributionsView(APIView):
         tags=["Knowledge"],
         summary=(
             "List one of a user's contribution types, paginated "
-            "(?type=article|question|answer|project|component|failure|sop|test|document, required)"
+            "(?type=course|article|question|answer|project|component|failure|sop|test|document, required)"
         ),
         responses={200: OpenApiResponse(description="Paginated list, in that type's own list-serializer shape."), 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )

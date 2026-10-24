@@ -801,8 +801,11 @@
       "questionCreate": "asked",
       "questionAnswer": "answered",
       "questionAcceptAnswer": "accepted an answer for",
-      "questionPromote": "promoted"
-    }
+      "questionPromote": "promoted",
+      "coursePublish": "published course",
+      "courseCreate": "created course"
+    },
+    "statCourses": "Courses"
   },
   "knowledge": {
     "landing": {

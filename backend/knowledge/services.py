@@ -2023,6 +2023,17 @@ def compute_contribution_scores_for(organization, *, since=None) -> dict:
         if author_id is not None:
             scores[author_id] = scores.get(author_id, 0) + ACCEPTED_ANSWER_POINTS
 
+    # For course.publish: ensure the course's author earns the points even if an admin/reviewer published it.
+    course_publish_logs = generic_logs.filter(action="course.publish")
+    course_ids = [log.target_object_id for log in course_publish_logs if log.target_object_id]
+    if course_ids:
+        from training.models import Course
+        course_authors = dict(Course.objects.filter(pk__in=course_ids).values_list("pk", "author_id"))
+        for log in course_publish_logs:
+            author_id = course_authors.get(log.target_object_id)
+            if author_id and author_id != log.actor_id:
+                scores[author_id] = scores.get(author_id, 0) + CONTRIBUTION_POINTS["course.publish"]
+
     return scores
 
 

@@ -224,12 +224,22 @@ export default function CourseDetailPage() {
 
             {/* Byline & Metadata */}
             <div className="flex flex-wrap items-center gap-4 pt-3 border-t border-outline-variant/60 font-body-sm text-body-sm text-on-surface-variant">
-              {authorName && (
+              {authorName && course.author?.id ? (
+                <Link
+                  href={`/users/${course.author.id}`}
+                  className="flex items-center gap-2 group hover:text-primary transition-colors"
+                >
+                  <Avatar person={course.author} size="sm" />
+                  <span className="font-medium text-on-surface group-hover:text-primary group-hover:underline">
+                    {authorName}
+                  </span>
+                </Link>
+              ) : authorName ? (
                 <div className="flex items-center gap-2">
                   <Avatar person={course.author} size="sm" />
                   <span className="font-medium text-on-surface">{authorName}</span>
                 </div>
-              )}
+              ) : null}
               <UpdatedBadge updatedAt={course.updated_at} createdAt={course.created_at} />
             </div>
           </div>

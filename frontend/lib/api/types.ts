@@ -655,6 +655,7 @@ export interface BookmarkEntry {
 // --- User profile -----------------------------------------------------------
 
 export type ContributionType =
+  | "course"
   | "article"
   | "question"
   | "answer"

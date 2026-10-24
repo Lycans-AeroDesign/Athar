@@ -32,6 +32,10 @@ CONTRIBUTION_POINTS: dict[str, int] = {
     "test.create": 5,
     "sop.create": 6,
     "document.create": 2,
+    # Training courses represent comprehensive, high-effort curriculum design.
+    "course.create": 5,
+    "course.publish": 10,
+    "course.update": 2,
 }
 
 # Actions whose points are also credited to the target's co-authors, on top of the actor.

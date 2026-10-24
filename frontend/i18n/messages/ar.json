@@ -801,8 +801,11 @@
       "questionCreate": "طرح",
       "questionAnswer": "أجاب على",
       "questionAcceptAnswer": "قبل إجابة على",
-      "questionPromote": "رقّى"
-    }
+      "questionPromote": "رقّى",
+      "coursePublish": "نشر دورة تدريبية",
+      "courseCreate": "أنشأ دورة تدريبية"
+    },
+    "statCourses": "الدورات"
   },
   "knowledge": {
     "landing": {

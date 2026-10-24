@@ -19,6 +19,7 @@ import type {
   ComponentSummary,
   ContributionPeriod,
   ContributionType,
+  CourseSummary,
   DocumentSummary,
   FailureSummary,
   ProjectSummary,
@@ -37,6 +38,8 @@ import { RELATABLE_ICON, RELATABLE_ROUTE_PREFIX } from "@/lib/knowledgeTypes";
 // not logic, and the two widgets' translation namespaces differ ("dashboard"
 // vs "userProfile").
 const ACTIVITY_ACTION_KEYS: Record<string, string> = {
+  "course.publish": "coursePublish",
+  "course.create": "courseCreate",
   "article.publish": "articlePublish",
   "article.submit": "articleSubmit",
   "article.reject": "articleReject",
@@ -120,6 +123,7 @@ function RecentActivity({ userId }: { userId: string }) {
 // Tile order - Knowledge (Article/Question/Answer), then Engineering
 // (Project/Component/Failure/Sop/Test), then Resources (Document).
 const TYPES: ContributionType[] = [
+  "course",
   "article",
   "question",
   "answer",
@@ -132,6 +136,7 @@ const TYPES: ContributionType[] = [
 ];
 
 const TYPE_LABEL_KEYS: Record<ContributionType, string> = {
+  course: "statCourses",
   article: "statArticles",
   question: "statQuestions",
   answer: "statAnswers",
@@ -154,6 +159,7 @@ const PERIOD_LABEL_KEYS: Record<ContributionPeriod, string> = {
 };
 
 const TAB_ICONS: Record<ContributionType, string> = {
+  course: "school",
   article: "menu_book",
   question: "forum",
   answer: "send",
@@ -164,6 +170,25 @@ const TAB_ICONS: Record<ContributionType, string> = {
   test: "science",
   document: "folder",
 };
+
+function CourseRow({ course }: { course: CourseSummary }) {
+  return (
+    <Link
+      href={`/training/courses/${course.id}`}
+      className="flex items-center gap-3 bg-surface-container-low border border-outline-variant rounded-xl p-4 hover:shadow-[0_1px_3px_0_rgba(0,0,0,0.08)] transition-shadow"
+    >
+      <Icon name="school" size={20} className="text-primary shrink-0" />
+      <div className="min-w-0 flex-1">
+        <h4 className="font-headline-sm text-headline-sm text-on-surface line-clamp-1">{course.title}</h4>
+        {course.short_description && (
+          <p className="font-body-sm text-body-sm text-on-surface-variant line-clamp-1 mt-0.5">
+            {course.short_description}
+          </p>
+        )}
+      </div>
+    </Link>
+  );
+}
 
 function AnswerRow({ answer }: { answer: Answer }) {
   const t = useTranslations("userProfile");
@@ -298,6 +323,8 @@ export function ContributionsPanel({ profile }: ContributionsPanelProps) {
                 <p className="font-body-md text-body-md text-on-surface-variant">{t("emptyState")}</p>
               ) : (
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+                  {tab === "course" &&
+                    (items as CourseSummary[]).map((item) => <CourseRow key={item.id} course={item} />)}
                   {tab === "article" &&
                     (items as ArticleSummary[]).map((item) => <ArticleCard key={item.id} article={item} />)}
                   {tab === "question" &&
