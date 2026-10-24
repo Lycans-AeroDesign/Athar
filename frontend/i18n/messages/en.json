@@ -277,7 +277,11 @@
       "questionAnswer": "answered",
       "questionAcceptAnswer": "accepted an answer for",
       "questionPromote": "promoted"
-    }
+    },
+    "viewAllContributors": "See all contributors ({count})",
+    "allContributorsTitle": "All Contributors Leaderboard",
+    "allContributorsDescription": "Complete ranking of members recognized for their knowledge and curriculum contributions.",
+    "periodFilterLabel": "Timeframe"
   },
   "settings": {
     "title": "Organization Settings",

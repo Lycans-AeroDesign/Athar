@@ -4,6 +4,8 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
+import { Icon } from "@/components/ui/Icon";
+import { Markdown } from "@/components/ui/Markdown";
 import { ChangedIndicator } from "@/components/ui/ChangedIndicator";
 import { Combobox } from "@/components/ui/Combobox";
 import { MarkdownEditor } from "@/components/ui/MarkdownEditor";
@@ -62,6 +64,7 @@ export function SopEditor({ sop, onDirtyChange, initialProjectId = null }: SopEd
   const canEditCoAuthors = !sop || sop.created_by?.id === user?.id || canUpdateSop;
   const [mandatory, setMandatory] = useState(sop?.mandatory ?? false);
   const [safetyNotes, setSafetyNotes] = useState(sop?.safety_notes ?? "");
+  const [showSafetyPreview, setShowSafetyPreview] = useState(false);
   const [content, setContent] = useState(sop?.content ?? "");
   const [tags, setTags] = useState<string[]>(sop?.tags.map((tag) => tag.name) ?? []);
   // null = not explicitly chosen (new item only): inherits the project's visibility if one is picked.
@@ -257,16 +260,39 @@ export function SopEditor({ sop, onDirtyChange, initialProjectId = null }: SopEd
       </div>
 
       <div className="space-y-2">
-        <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase">
-          {t("safetyNotesLabel")}
-        </label>
+        <div className="flex items-center justify-between">
+          <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase">
+            {t("safetyNotesLabel")}
+          </label>
+          {safetyNotes.trim() && (
+            <button
+              type="button"
+              onClick={() => setShowSafetyPreview((prev) => !prev)}
+              className="font-label-caps text-label-caps uppercase text-primary hover:underline transition-colors flex items-center gap-1 text-xs"
+            >
+              <Icon name={showSafetyPreview ? "edit" : "visibility"} size={14} />
+              <span>{showSafetyPreview ? commonT("edit") : t("previewTab") || "Preview"}</span>
+            </button>
+          )}
+        </div>
         <ChangedIndicator changed={fieldChanged.safetyNotes}>
-          <textarea
-            className="block w-full min-h-[80px] px-4 py-2 font-body-md text-body-md text-on-surface bg-surface-container border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
-            placeholder={t("safetyNotesPlaceholder")}
-            value={safetyNotes}
-            onChange={(e) => setSafetyNotes(e.target.value)}
-          />
+          {showSafetyPreview ? (
+            <div className="bg-error-container border-s-4 border-error rounded-e-xl p-4 flex gap-3 items-start min-h-[80px]">
+              <Icon name="report_problem" size={20} className="text-on-error-container shrink-0 mt-0.5" />
+              <div className="min-w-0 flex-1">
+                <div className="font-body-md text-body-md text-on-error-container max-w-none [&_p]:text-on-error-container [&_p]:mb-2 [&_p:last-child]:mb-0 [&_li]:text-on-error-container [&_strong]:text-on-error-container [&_strong]:font-bold [&_code]:text-on-error-container [&_code]:bg-error/20 [&_code]:px-1 [&_code]:rounded [&_a]:underline [&_a]:text-on-error-container [&_ul]:list-disc [&_ul]:ps-5 [&_ol]:list-decimal [&_ol]:ps-5">
+                  <Markdown content={safetyNotes} />
+                </div>
+              </div>
+            </div>
+          ) : (
+            <textarea
+              className="block w-full min-h-[80px] px-4 py-2 font-mono text-body-sm text-on-surface bg-surface-container border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
+              placeholder={t("safetyNotesPlaceholder")}
+              value={safetyNotes}
+              onChange={(e) => setSafetyNotes(e.target.value)}
+            />
+          )}
         </ChangedIndicator>
       </div>
 

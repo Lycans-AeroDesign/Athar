@@ -277,7 +277,11 @@
       "questionAnswer": "أجاب على",
       "questionAcceptAnswer": "قبل إجابة على",
       "questionPromote": "رقّى"
-    }
+    },
+    "viewAllContributors": "عرض جميع المساهمين ({count})",
+    "allContributorsTitle": "قائمة جميع المساهمين",
+    "allContributorsDescription": "الترتيب الكامل للأعضاء تقديراً لمساهماتهم في المعرفة والمناهج التدريبية.",
+    "periodFilterLabel": "الفترة الزمنية"
   },
   "settings": {
     "title": "إعدادات المؤسسة",

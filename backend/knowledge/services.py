@@ -1978,12 +1978,27 @@ def compute_contribution_scores_for(organization, *, since=None) -> dict:
     from audit.models import AuditLog
 
     scores: dict = {}
-    generic_actions = [action for action in CONTRIBUTION_POINTS if action != ACCEPTED_ANSWER_ACTION]
+    # Actions whose points are attributed to someone other than the audit actor:
+    # 1. question.accept_answer -> attributed to the accepted answer's author
+    # 2. course.publish -> attributed to the course's author, NOT the mentor/admin who approved it
+    special_actions = {ACCEPTED_ANSWER_ACTION, "course.publish"}
+    generic_actions = [action for action in CONTRIBUTION_POINTS if action not in special_actions]
     generic_logs = AuditLog.objects.filter(organization=organization, action__in=generic_actions, actor__isnull=False)
     if since is not None:
         generic_logs = generic_logs.filter(created_at__gte=since)
+
+    from training.models import Course
+
+    # Active courses in the organization - if a course was deleted, its points are revoked
+    active_courses = dict(Course.objects.filter(organization=organization).values_list("pk", "author_id"))
+    active_course_ids = {str(c_id): author_id for c_id, author_id in active_courses.items()}
+
     co_credited: list[tuple[str, str, object]] = []
     for actor_id, action, target_id in generic_logs.values_list("actor_id", "action", "target_object_id"):
+        # If this is a course action but the course was deleted, revoke/skip points
+        if action.startswith("course.") and str(target_id) not in active_course_ids:
+            continue
+
         scores[actor_id] = scores.get(actor_id, 0) + CONTRIBUTION_POINTS[action]
         if action in CO_AUTHOR_CREDITED_ACTIONS and target_id:
             co_credited.append((action, target_id, actor_id))
@@ -2023,22 +2038,21 @@ def compute_contribution_scores_for(organization, *, since=None) -> dict:
         if author_id is not None:
             scores[author_id] = scores.get(author_id, 0) + ACCEPTED_ANSWER_POINTS
 
-    # For course.publish: ensure the course's author earns the points even if an admin/reviewer published it.
-    course_publish_logs = generic_logs.filter(action="course.publish")
-    course_ids = [log.target_object_id for log in course_publish_logs if log.target_object_id]
-    if course_ids:
-        from training.models import Course
-        course_authors = dict(Course.objects.filter(pk__in=course_ids).values_list("pk", "author_id"))
-        for log in course_publish_logs:
-            author_id = course_authors.get(log.target_object_id)
-            if author_id and author_id != log.actor_id:
-                scores[author_id] = scores.get(author_id, 0) + CONTRIBUTION_POINTS["course.publish"]
+    # For course.publish: ensure the course's author earns the points (NOT the mentor/reviewer who approved it).
+    # If the course was deleted, active_course_ids won't contain it, so 0 publish points are awarded.
+    course_publish_logs = AuditLog.objects.filter(organization=organization, action="course.publish")
+    if since is not None:
+        course_publish_logs = course_publish_logs.filter(created_at__gte=since)
+    for log in course_publish_logs:
+        author_id = active_course_ids.get(str(log.target_object_id))
+        if author_id is not None:
+            scores[author_id] = scores.get(author_id, 0) + CONTRIBUTION_POINTS["course.publish"]
 
     return scores
 
 
-def leaderboard_for(organization, *, limit: int = 20, since=None) -> list[dict]:
-    """Top contributors for the org's Dashboard card, sorted descending by
+def leaderboard_for(organization, *, limit: int | None = None, since=None) -> list[dict]:
+    """Top contributors for the org's Dashboard card and full list modal, sorted descending by
     score over the `since` window (None = lifetime, see
     compute_contribution_scores_for). `user` objects are attached (not just
     ids) so the caller's serializer can render avatar/name without a second
@@ -2046,7 +2060,9 @@ def leaderboard_for(organization, *, limit: int = 20, since=None) -> list[dict]:
     from accounts.models import User
 
     scores = compute_contribution_scores_for(organization, since=since)
-    top_user_ids = sorted(scores, key=lambda user_id: scores[user_id], reverse=True)[:limit]
+    top_user_ids = sorted(scores, key=lambda user_id: scores[user_id], reverse=True)
+    if limit is not None:
+        top_user_ids = top_user_ids[:limit]
     users_by_id = {user.id: user for user in User.objects.filter(pk__in=top_user_ids)}
     return [
         {"user": users_by_id[user_id], "score": scores[user_id]}

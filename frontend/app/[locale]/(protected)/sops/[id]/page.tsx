@@ -128,9 +128,11 @@ export default function SopDetailPage() {
       {sop.safety_notes && (
         <div className="bg-error-container border-s-4 border-error rounded-e-xl p-4 flex gap-3 items-start">
           <Icon name="report_problem" size={20} className="text-on-error-container shrink-0 mt-0.5" />
-          <div>
+          <div className="min-w-0 flex-1">
             <h3 className="font-headline-md text-headline-md text-on-error-container mb-1">{t("safetyNotesLabel")}</h3>
-            <p className="font-body-md text-body-md text-on-error-container">{sop.safety_notes}</p>
+            <div className="font-body-md text-body-md text-on-error-container max-w-none [&_p]:text-on-error-container [&_p]:mb-2 [&_p:last-child]:mb-0 [&_li]:text-on-error-container [&_strong]:text-on-error-container [&_strong]:font-bold [&_code]:text-on-error-container [&_code]:bg-error/20 [&_code]:px-1 [&_code]:rounded [&_a]:underline [&_a]:text-on-error-container [&_ul]:list-disc [&_ul]:ps-5 [&_ol]:list-decimal [&_ol]:ps-5">
+              <Markdown content={sop.safety_notes} />
+            </div>
           </div>
         </div>
       )}

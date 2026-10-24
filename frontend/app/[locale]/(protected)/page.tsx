@@ -7,6 +7,7 @@ import { ArticleCard } from "@/components/knowledge/ArticleCard";
 import { QuestionCard } from "@/components/knowledge/QuestionCard";
 import { Can } from "@/components/auth/Can";
 import { Avatar } from "@/components/ui/Avatar";
+import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { CardGridSkeleton, Skeleton } from "@/components/ui/Skeleton";
@@ -55,6 +56,7 @@ export default function DashboardPage() {
   const [questions, setQuestions] = useState<QuestionSummary[] | null>(null);
   const [activity, setActivity] = useState<ActivityEntry[] | null>(null);
   const [leaderboardPeriod, setLeaderboardPeriod] = useState<ContributionPeriod>("all");
+  const [isAllContributorsOpen, setIsAllContributorsOpen] = useState(false);
   // Keyed by period - same "avoid a plain setState(null) reset in the effect
   // body" pattern ContributionsPanel/RecentActivity use, so switching tabs
   // never shows a stale list from the previous period while the new one loads.
@@ -197,25 +199,40 @@ export default function DashboardPage() {
             ) : leaderboard.length === 0 ? (
               <p className="font-body-md text-body-md text-on-surface-variant">{t("leaderboardEmptyState")}</p>
             ) : (
-              <ol className="space-y-3">
-                {leaderboard.slice(0, 5).map((entry, index) => (
-                  <li key={entry.user.id} className="flex items-center gap-3">
-                    <span className="w-4 font-mono-sm text-mono-sm text-on-surface-variant shrink-0">{index + 1}</span>
-                    <Link href={`/users/${entry.user.id}`} className="shrink-0">
-                      <Avatar person={entry.user} size="sm" />
-                    </Link>
-                    <Link
-                      href={`/users/${entry.user.id}`}
-                      className="flex-1 min-w-0 font-body-md text-body-md text-on-surface truncate hover:text-primary hover:underline transition-colors"
-                    >
-                      {formatPersonName(entry.user)}
-                    </Link>
-                    <span className="font-mono-sm text-mono-sm text-on-surface-variant shrink-0">
-                      {t("leaderboardPoints", { count: entry.score })}
-                    </span>
-                  </li>
-                ))}
-              </ol>
+              <div className="space-y-3">
+                <ol className="space-y-3">
+                  {leaderboard.slice(0, 5).map((entry, index) => (
+                    <li key={entry.user.id} className="flex items-center gap-3">
+                      <span className="w-5 font-mono-sm text-mono-sm text-on-surface-variant shrink-0 font-bold">
+                        {index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : `${index + 1}`}
+                      </span>
+                      <Link href={`/users/${entry.user.id}`} className="shrink-0">
+                        <Avatar person={entry.user} size="sm" />
+                      </Link>
+                      <Link
+                        href={`/users/${entry.user.id}`}
+                        className="flex-1 min-w-0 font-body-md text-body-md text-on-surface truncate hover:text-primary hover:underline transition-colors"
+                      >
+                        {formatPersonName(entry.user)}
+                      </Link>
+                      <span className="font-mono-sm text-mono-sm text-primary font-medium shrink-0">
+                        {t("leaderboardPoints", { count: entry.score })}
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+
+                <div className="pt-2 border-t border-outline-variant/60">
+                  <button
+                    type="button"
+                    onClick={() => setIsAllContributorsOpen(true)}
+                    className="w-full py-1 text-center font-label-caps text-label-caps uppercase text-primary hover:underline transition-colors flex items-center justify-center gap-1.5"
+                  >
+                    <span>{t("viewAllContributors", { count: leaderboard.length })}</span>
+                    <Icon name="arrow_forward" size={14} />
+                  </button>
+                </div>
+              </div>
             )}
           </div>
         </div>
@@ -275,6 +292,79 @@ export default function DashboardPage() {
           </ul>
         )}
       </div>
+
+      <Modal
+        open={isAllContributorsOpen}
+        onOpenChange={setIsAllContributorsOpen}
+        title={t("allContributorsTitle")}
+        description={t("allContributorsDescription")}
+        wide
+      >
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-outline-variant/60 pb-3">
+            <span className="font-label-caps text-label-caps uppercase text-on-surface-variant">
+              {t("periodFilterLabel")}
+            </span>
+            <div className="flex items-center gap-1 rounded-lg bg-surface-container-high p-1">
+              {LEADERBOARD_PERIODS.map((period) => (
+                <button
+                  key={period}
+                  type="button"
+                  onClick={() => setLeaderboardPeriod(period)}
+                  className={`px-2.5 py-1 rounded-md font-label-caps text-label-caps uppercase transition-colors text-xs ${
+                    leaderboardPeriod === period
+                      ? "bg-surface-container-lowest text-primary shadow-xs font-bold"
+                      : "text-on-surface-variant hover:text-on-surface"
+                  }`}
+                >
+                  {t(LEADERBOARD_PERIOD_LABEL_KEYS[period])}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="max-h-[60vh] overflow-y-auto space-y-2 pe-1">
+            {leaderboard && leaderboard.length > 0 ? (
+              leaderboard.map((entry, index) => (
+                <div
+                  key={entry.user.id}
+                  className="flex items-center gap-3.5 p-2.5 rounded-xl hover:bg-surface-container transition-colors border border-outline-variant/40"
+                >
+                  <div className="w-7 text-center font-mono-sm text-mono-sm text-on-surface-variant shrink-0 font-bold">
+                    {index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : `#${index + 1}`}
+                  </div>
+                  <Link href={`/users/${entry.user.id}`} className="shrink-0" onClick={() => setIsAllContributorsOpen(false)}>
+                    <Avatar person={entry.user} size="md" />
+                  </Link>
+                  <div className="flex-1 min-w-0">
+                    <Link
+                      href={`/users/${entry.user.id}`}
+                      onClick={() => setIsAllContributorsOpen(false)}
+                      className="font-headline-sm text-headline-sm font-semibold text-on-surface block truncate hover:text-primary hover:underline transition-colors"
+                    >
+                      {formatPersonName(entry.user)}
+                    </Link>
+                    {entry.user.email && (
+                      <p className="font-mono-sm text-mono-sm text-on-surface-variant truncate">
+                        {entry.user.email}
+                      </p>
+                    )}
+                  </div>
+                  <div className="text-end shrink-0">
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-primary-container text-on-primary-container">
+                      {t("leaderboardPoints", { count: entry.score })}
+                    </span>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="font-body-md text-body-md text-on-surface-variant text-center py-6">
+                {t("leaderboardEmptyState")}
+              </p>
+            )}
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
