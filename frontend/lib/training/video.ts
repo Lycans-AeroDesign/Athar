@@ -37,9 +37,41 @@ export function getYoutubeEmbedUrl(url: string): string | null {
   return `https://www.youtube.com/embed/${videoId}`;
 }
 
-/** Tried in this order since a YouTube URL never matches the Drive pattern
- * and vice versa - order has no real effect, it's just one call site for
- * "is this an embeddable video link" instead of two. */
+export function getSharePointEmbedUrl(rawUrl: string): string | null {
+  if (!rawUrl) return null;
+  // Handle case where user pasted the full <iframe ... src="..."> tag
+  const iframeMatch = rawUrl.match(/src=["'](https?:\/\/[^"']+)["']/i);
+  const url = iframeMatch ? iframeMatch[1] : rawUrl.trim();
+
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.toLowerCase();
+    const isSharePointOrOffice =
+      host.endsWith("sharepoint.com") ||
+      host.endsWith("1drv.ms") ||
+      host.endsWith("onedrive.live.com") ||
+      host.endsWith("officeapps.live.com");
+
+    if (isSharePointOrOffice) {
+      const pathname = parsed.pathname.toLowerCase();
+      const search = parsed.search.toLowerCase();
+      if (
+        pathname.includes("/embed.aspx") ||
+        pathname.includes("/embed") ||
+        search.includes("action=embedview") ||
+        pathname.startsWith("/op/embed.aspx")
+      ) {
+        return url;
+      }
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+/** Tried in this order to resolve an embeddable URL across YouTube, Google Drive,
+ * and Microsoft SharePoint / OneDrive / Office 365 embed URLs. */
 export function getVideoEmbedUrl(url: string): string | null {
-  return getYoutubeEmbedUrl(url) ?? getGoogleDriveEmbedUrl(url);
+  return getYoutubeEmbedUrl(url) ?? getGoogleDriveEmbedUrl(url) ?? getSharePointEmbedUrl(url);
 }

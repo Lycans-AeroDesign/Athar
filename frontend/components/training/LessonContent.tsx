@@ -8,7 +8,7 @@ import { Icon } from "@/components/ui/Icon";
 import { Markdown } from "@/components/ui/Markdown";
 import { downloadFile } from "@/lib/api/files";
 import type { CourseResource, LessonDetail } from "@/lib/api/types";
-import { getGoogleDriveEmbedUrl, getVideoEmbedUrl } from "@/lib/training/video";
+import { getGoogleDriveEmbedUrl, getSharePointEmbedUrl, getVideoEmbedUrl } from "@/lib/training/video";
 
 function VideoStreamCard({
   resource,
@@ -134,11 +134,17 @@ function DocumentResource({ resource, openLabel }: { resource: CourseResource; o
     // Google Drive's own /preview iframe renders any file type it hosts, not
     // just video - a Drive-hosted PDF share link embeds exactly the same way
     // a Drive video link does (see EmbedOrLinkResource above).
-    const embedUrl = getGoogleDriveEmbedUrl(resource.url);
+    const embedUrl = getGoogleDriveEmbedUrl(resource.url) ?? getSharePointEmbedUrl(resource.url);
     if (embedUrl) {
       return (
         <div className="w-full h-[75vh] rounded-xl overflow-hidden border border-outline-variant bg-surface-container-high">
-          <iframe src={embedUrl} className="h-full w-full border-0" title={resource.title} />
+          <iframe
+            src={embedUrl}
+            className="h-full w-full border-0"
+            allow="autoplay; fullscreen"
+            allowFullScreen
+            title={resource.title}
+          />
         </div>
       );
     }

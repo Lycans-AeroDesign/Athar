@@ -306,9 +306,9 @@ def import_curriculum(*, course: Course, actor, request=None, modules_data: list
                     l_content = l_content.replace(primary_url, "").strip()
                     if l_type == Lesson.LessonType.TEXT:
                         lower_url = primary_url.lower()
-                        if any(ext in lower_url for ext in [".mp4", ".mov", ".webm", ".mkv", "youtu", "vimeo", "/:v:/"]):
+                        if any(ext in lower_url for ext in [".mp4", ".mov", ".webm", ".mkv", "youtu", "vimeo", "/:v:/", "embed.aspx"]):
                             l_type = Lesson.LessonType.VIDEO
-                        elif any(ext in lower_url for ext in [".pdf", ".docx", ".xlsx", "drive.google.com"]):
+                        elif any(ext in lower_url for ext in [".pdf", ".docx", ".xlsx", "drive.google.com", "action=embedview", "doc.aspx"]):
                             l_type = Lesson.LessonType.DOCUMENT
                         else:
                             l_type = Lesson.LessonType.EXTERNAL

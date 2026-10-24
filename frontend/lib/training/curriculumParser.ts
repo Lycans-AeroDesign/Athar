@@ -1,10 +1,10 @@
 import type { ImportCurriculumModule } from "@/lib/api/training";
 import type { LessonType } from "@/lib/api/types";
 
-const VIDEO_PATTERN = /(\.mp4|\.mov|\.webm|\.mkv|youtu\.be|youtube\.com|vimeo\.com|\bvideo\b|\/:v:\/)/i;
-const DOCUMENT_PATTERN = /(\.pdf|\.docx?|\.xlsx?|\.pptx?)/i;
+const VIDEO_PATTERN = /(\.mp4|\.mov|\.webm|\.mkv|youtu\.be|youtube\.com|vimeo\.com|\bvideo\b|\/:v:\/|embed\.aspx)/i;
+const DOCUMENT_PATTERN = /(\.pdf|\.docx?|\.xlsx?|\.pptx?|action=embedview|Doc\.aspx)/i;
 const EXERCISE_PATTERN = /(\bexercise\b|\bguided exercise\b|\bassignment\b|\bquiz\b|\btask\b|\bpractice\b)/i;
-const URL_PATTERN = /https?:\/\/[^\s)]+/g;
+const URL_PATTERN = /https?:\/\/[^\s)"'>]+/g;
 
 function detectLessonType(text: string): LessonType {
   if (VIDEO_PATTERN.test(text)) return "VIDEO";
