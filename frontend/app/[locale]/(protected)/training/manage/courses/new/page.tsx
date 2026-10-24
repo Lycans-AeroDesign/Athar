@@ -78,7 +78,7 @@ export default function NewCoursePage() {
           await addCourseAccessGrant(course.id, user.id);
         }
       }
-      router.push(`/training/manage/courses/${course.id}`);
+      router.push(`/training/manage/courses/${course.id}?tab=curriculum&created=true`);
     } catch (err) {
       setError(errorMessage(err));
       setIsSaving(false);

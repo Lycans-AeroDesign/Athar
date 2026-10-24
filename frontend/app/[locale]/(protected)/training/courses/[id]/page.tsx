@@ -169,7 +169,7 @@ export default function CourseDetailPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-[1000px] mx-auto">
+    <div className="space-y-6 max-w-[1200px] mx-auto pb-12">
       <Link
         href="/training"
         className="inline-flex items-center gap-1 font-label-caps text-label-caps uppercase text-on-surface-variant hover:text-on-surface transition-colors"
@@ -179,119 +179,9 @@ export default function CourseDetailPage() {
       </Link>
 
       {isPreview && (
-        <div className="flex items-center gap-2 bg-tertiary-container text-on-tertiary-container rounded-xl px-4 py-3 font-body-md text-body-md">
+        <div className="flex items-center gap-2 bg-tertiary-container text-on-tertiary-container rounded-xl px-4 py-3 font-body-md text-body-md shadow-xs">
           <Icon name="visibility" size={18} />
           {t("previewBanner")}
-        </div>
-      )}
-
-      {course.cover_image && (
-        <div className="h-56 rounded-xl overflow-hidden bg-surface-container-high">
-          <AuthenticatedImage src={course.cover_image.download_url} alt="" className="h-full w-full object-cover" />
-        </div>
-      )}
-
-      <div className="space-y-3">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <span className="flex items-center gap-1 font-label-caps text-label-caps uppercase text-primary">
-              <Icon name="school" size={14} />
-              {t("badgeLabel")}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            {canEdit && (
-              <Link href={`/training/manage/courses/${course.id}`}>
-                <IconButton icon="edit" variant="secondary" aria-label={t("editButton")} />
-              </Link>
-            )}
-            {canArchiveNow && (
-              <IconButton
-                icon="archive"
-                variant="secondary"
-                aria-label={workflowT("archiveButton")}
-                disabled={isWorking}
-                onClick={() => setArchiveOpen(true)}
-              />
-            )}
-            {canDelete && (
-              <IconButton
-                icon="delete"
-                variant="danger"
-                aria-label={workflowT("deleteButton")}
-                onClick={() => setDeleteOpen(true)}
-              />
-            )}
-          </div>
-        </div>
-        <h1 className="font-display text-display text-on-surface">{course.title}</h1>
-
-        {/* Tier 1: status/difficulty - the two things worth a glance from
-            across the room, so they get color and weight. */}
-        <div className="flex flex-wrap items-center gap-2">
-          <CourseStatusPill status={course.status} />
-          <DifficultyPill difficulty={course.difficulty} />
-          {course.category && <CategoryBadge name={course.category.name} />}
-          {/* Same restricted pill as the knowledge detail pages (see the article page). */}
-          {course.visibility === "RESTRICTED" && (
-            <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-error-container text-on-error-container font-label-caps text-label-caps uppercase">
-              <Icon name="lock" size={12} />
-              {manageT("visibilityRESTRICTED")}
-            </span>
-          )}
-        </div>
-
-        {/* Tier 2: quantitative facts - icon + text, quieter than the pills above. */}
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-1 font-body-md text-body-md text-on-surface-variant">
-          {course.estimated_minutes > 0 && (
-            <span className="flex items-center gap-1.5">
-              <Icon name="schedule" size={16} className="text-on-surface-variant/70" />
-              {cardT("minutes", { count: course.estimated_minutes })}
-            </span>
-          )}
-          <span className="flex items-center gap-1.5">
-            <Icon name="folder_open" size={16} className="text-on-surface-variant/70" />
-            {cardT("moduleCount", { count: course.module_count })}
-          </span>
-          <span className="flex items-center gap-1.5">
-            <Icon name="menu_book" size={16} className="text-on-surface-variant/70" />
-            {cardT("lessonCount", { count: course.lesson_count })}
-          </span>
-          <UpdatedBadge updatedAt={course.updated_at} createdAt={course.created_at} />
-        </div>
-
-        {/* Tier 3: the byline - personal/attribution, set apart with a small divider. */}
-        {authorName && (
-          <div className="flex items-center gap-2 pt-2 border-t border-outline-variant/60">
-            <Avatar person={course.author} size="sm" />
-            <span className="font-body-md text-body-md text-on-surface-variant">{t("byAuthor", { name: authorName })}</span>
-          </div>
-        )}
-      </div>
-
-      {(canSubmit || canPublishNow || canRejectNow || canUnarchiveNow) && (
-        <div className="flex flex-wrap items-center gap-3 pb-4 border-b border-outline-variant">
-          {canSubmit && (
-            <Button onClick={handleSubmit} disabled={isWorking}>
-              {workflowT("submitForReview")}
-            </Button>
-          )}
-          {canPublishNow && (
-            <Button onClick={handlePublish} disabled={isWorking}>
-              {workflowT("publish")}
-            </Button>
-          )}
-          {canRejectNow && (
-            <Button variant="secondary" onClick={() => setRejectOpen(true)} disabled={isWorking}>
-              {workflowT("rejectButton")}
-            </Button>
-          )}
-          {canUnarchiveNow && (
-            <Button onClick={handleUnarchive} disabled={isWorking}>
-              <Icon name="unarchive" size={18} />
-              {workflowT("unarchiveButton")}
-            </Button>
-          )}
         </div>
       )}
 
@@ -301,42 +191,252 @@ export default function CourseDetailPage() {
         </p>
       )}
 
-      {!isPreview && course.status === "PUBLISHED" && progress && (
-        <div className="bg-surface-container-low border border-outline-variant rounded-xl p-4 space-y-3">
-          {progress.enrolled ? (
-            <>
-              <div className="flex items-center justify-between gap-2">
-                <span className="font-body-md text-body-md text-on-surface-variant">
-                  {t("progressLabel", { completed: progress.completed_lessons, total: progress.total_lessons })}
+      {/* Modern 2-Column LMS Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+        {/* Left Column: Course Header, Description & Curriculum */}
+        <div className="lg:col-span-2 space-y-6">
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="flex items-center gap-1 font-label-caps text-label-caps uppercase text-primary">
+                <Icon name="school" size={14} />
+                {t("badgeLabel")}
+              </span>
+              <CourseStatusPill status={course.status} />
+              <DifficultyPill difficulty={course.difficulty} />
+              {course.category && <CategoryBadge name={course.category.name} />}
+              {course.visibility === "RESTRICTED" && (
+                <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-error-container text-on-error-container font-label-caps text-label-caps uppercase">
+                  <Icon name="lock" size={12} />
+                  {manageT("visibilityRESTRICTED")}
                 </span>
-                <span className="font-headline-md text-headline-md text-primary">{Math.round(progress.percent)}%</span>
-              </div>
-              <div className="h-2 w-full rounded-full bg-surface-variant overflow-hidden">
-                <div className="h-full bg-primary rounded-full" style={{ width: `${progress.percent}%` }} />
-              </div>
-              {progress.status === "IN_PROGRESS" && progress.next_lesson_id && (
-                <Link href={`/training/courses/${course.id}/learn/${progress.next_lesson_id}`}>
-                  <Button>{t("continueButton")}</Button>
+              )}
+            </div>
+
+            <h1 className="font-display text-display text-on-surface font-extrabold tracking-tight">
+              {course.title}
+            </h1>
+
+            {course.short_description && (
+              <p className="font-body-lg text-body-lg text-on-surface-variant leading-relaxed">
+                {course.short_description}
+              </p>
+            )}
+
+            {/* Byline & Metadata */}
+            <div className="flex flex-wrap items-center gap-4 pt-3 border-t border-outline-variant/60 font-body-sm text-body-sm text-on-surface-variant">
+              {authorName && (
+                <div className="flex items-center gap-2">
+                  <Avatar person={course.author} size="sm" />
+                  <span className="font-medium text-on-surface">{authorName}</span>
+                </div>
+              )}
+              <UpdatedBadge updatedAt={course.updated_at} createdAt={course.created_at} />
+            </div>
+          </div>
+
+          {/* Workflow Actions Banner for Admins/Authors */}
+          {(canSubmit || canPublishNow || canRejectNow || canUnarchiveNow || canEdit) && (
+            <div className="flex flex-wrap items-center gap-2.5 p-3 rounded-xl bg-surface-container-low border border-outline-variant">
+              {canEdit && (
+                <Link href={`/training/manage/courses/${course.id}`}>
+                  <Button variant="secondary" size="sm">
+                    <Icon name="edit" size={16} />
+                    {t("manageEditLink") || t("editButton")}
+                  </Button>
                 </Link>
               )}
-            </>
-          ) : (
-            <Button onClick={handleEnroll} disabled={isWorking}>
-              {isWorking ? t("enrolling") : t("startCourseButton")}
-            </Button>
+              {canSubmit && (
+                <Button size="sm" onClick={handleSubmit} disabled={isWorking}>
+                  {workflowT("submitForReview")}
+                </Button>
+              )}
+              {canPublishNow && (
+                <Button size="sm" onClick={handlePublish} disabled={isWorking}>
+                  {workflowT("publish")}
+                </Button>
+              )}
+              {canRejectNow && (
+                <Button variant="secondary" size="sm" onClick={() => setRejectOpen(true)} disabled={isWorking}>
+                  {workflowT("rejectButton")}
+                </Button>
+              )}
+              {canUnarchiveNow && (
+                <Button size="sm" onClick={handleUnarchive} disabled={isWorking}>
+                  <Icon name="unarchive" size={16} />
+                  {workflowT("unarchiveButton")}
+                </Button>
+              )}
+              {canArchiveNow && (
+                <IconButton
+                  icon="archive"
+                  variant="secondary"
+                  size={16}
+                  aria-label={workflowT("archiveButton")}
+                  disabled={isWorking}
+                  onClick={() => setArchiveOpen(true)}
+                />
+              )}
+              {canDelete && (
+                <IconButton
+                  icon="delete"
+                  variant="danger"
+                  size={16}
+                  aria-label={workflowT("deleteButton")}
+                  onClick={() => setDeleteOpen(true)}
+                />
+              )}
+            </div>
           )}
+
+          {/* Course Description Card */}
+          {course.description && (
+            <div className="rounded-xl border border-outline-variant bg-surface-container-low p-5 sm:p-6 space-y-3">
+              <h2 className="font-headline-sm text-headline-sm font-bold text-on-surface">
+                {t("overviewTitle") || "About this course"}
+              </h2>
+              <Markdown content={course.description} />
+            </div>
+          )}
+
+          {/* Course Curriculum List */}
+          <div className="space-y-4">
+            <div>
+              <h2 className="font-headline-md text-headline-md font-bold text-on-surface">
+                {t("curriculumTitle")}
+              </h2>
+              <p className="font-body-sm text-body-sm text-on-surface-variant mt-0.5">
+                {cardT("moduleCount", { count: course.module_count })} &middot;{" "}
+                {cardT("lessonCount", { count: course.lesson_count })}
+                {course.estimated_minutes > 0 && ` · ${cardT("minutes", { count: course.estimated_minutes })}`}
+              </p>
+            </div>
+
+            {course.modules.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-outline-variant p-8 text-center text-on-surface-variant">
+                <Icon name="folder_open" size={32} className="mx-auto mb-2 opacity-50" />
+                <p className="font-body-md text-body-md">{t("moduleEmptyState")}</p>
+                {canEdit && (
+                  <Link href={`/training/manage/courses/${course.id}`} className="inline-block mt-3">
+                    <Button variant="secondary" size="sm">
+                      <Icon name="add" size={16} />
+                      {manageT("addModuleButton")}
+                    </Button>
+                  </Link>
+                )}
+              </div>
+            ) : (
+              <CurriculumList
+                courseId={course.id}
+                modules={course.modules}
+                completedLessonIds={completedLessonIds}
+                variant="detail"
+              />
+            )}
+          </div>
         </div>
-      )}
 
-      {course.description && <Markdown content={course.description} />}
+        {/* Right Column: Sticky Action & Facts Card */}
+        <div className="lg:col-span-1 space-y-4 lg:sticky lg:top-6">
+          <div className="rounded-2xl border border-outline-variant bg-surface-container-low shadow-sm overflow-hidden">
+            {course.cover_image && (
+              <div className="aspect-video w-full overflow-hidden bg-surface-container-high border-b border-outline-variant">
+                <AuthenticatedImage
+                  src={course.cover_image.download_url}
+                  alt=""
+                  className="h-full w-full object-cover"
+                />
+              </div>
+            )}
 
-      <div className="space-y-3">
-        <h2 className="font-headline-md text-headline-md text-on-surface">{t("curriculumTitle")}</h2>
-        {course.modules.length === 0 ? (
-          <p className="font-body-md text-body-md text-on-surface-variant">{t("moduleEmptyState")}</p>
-        ) : (
-          <CurriculumList courseId={course.id} modules={course.modules} completedLessonIds={completedLessonIds} />
-        )}
+            <div className="p-5 space-y-5">
+              {/* Enrollment / Continue CTA */}
+              {!isPreview && course.status === "PUBLISHED" && (
+                <div className="space-y-3">
+                  {progress?.enrolled ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-body-sm text-body-sm text-on-surface-variant">
+                          {t("progressLabel", {
+                            completed: progress.completed_lessons,
+                            total: progress.total_lessons,
+                          })}
+                        </span>
+                        <span className="font-headline-sm text-headline-sm font-bold text-primary">
+                          {Math.round(progress.percent)}%
+                        </span>
+                      </div>
+                      <div className="h-2 w-full rounded-full bg-surface-variant overflow-hidden">
+                        <div
+                          className="h-full bg-primary rounded-full transition-all duration-300"
+                          style={{ width: `${progress.percent}%` }}
+                        />
+                      </div>
+                      {progress.next_lesson_id ? (
+                        <Link
+                          href={`/training/courses/${course.id}/learn/${progress.next_lesson_id}`}
+                          className="block"
+                        >
+                          <Button className="w-full">
+                            <Icon name="play_arrow" size={18} />
+                            {t("continueButton")}
+                          </Button>
+                        </Link>
+                      ) : (
+                        <div className="text-center p-2 rounded-lg bg-primary-container/20 text-primary font-label-caps text-label-caps">
+                          {t("progressCompleted") || "All lessons completed"}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <Button onClick={handleEnroll} disabled={isWorking} className="w-full">
+                      <Icon name="school" size={18} />
+                      {isWorking ? t("enrolling") : t("startCourseButton")}
+                    </Button>
+                  )}
+                </div>
+              )}
+
+              {/* Course Highlights */}
+              <div className="space-y-3 pt-3 border-t border-outline-variant/60 font-body-sm text-body-sm">
+                <h4 className="font-label-caps text-label-caps uppercase text-on-surface-variant">
+                  {t("highlightsTitle") || "Course Highlights"}
+                </h4>
+                <ul className="space-y-2.5 text-on-surface">
+                  <li className="flex items-center justify-between gap-2">
+                    <span className="flex items-center gap-2 text-on-surface-variant">
+                      <Icon name="folder" size={16} className="text-on-surface-variant/70" />
+                      Modules
+                    </span>
+                    <span className="font-medium font-mono">{course.module_count}</span>
+                  </li>
+                  <li className="flex items-center justify-between gap-2">
+                    <span className="flex items-center gap-2 text-on-surface-variant">
+                      <Icon name="menu_book" size={16} className="text-on-surface-variant/70" />
+                      Lessons
+                    </span>
+                    <span className="font-medium font-mono">{course.lesson_count}</span>
+                  </li>
+                  {course.estimated_minutes > 0 && (
+                    <li className="flex items-center justify-between gap-2">
+                      <span className="flex items-center gap-2 text-on-surface-variant">
+                        <Icon name="schedule" size={16} className="text-on-surface-variant/70" />
+                        Duration
+                      </span>
+                      <span className="font-medium font-mono">{course.estimated_minutes} min</span>
+                    </li>
+                  )}
+                  <li className="flex items-center justify-between gap-2">
+                    <span className="flex items-center gap-2 text-on-surface-variant">
+                      <Icon name="speed" size={16} className="text-on-surface-variant/70" />
+                      Level
+                    </span>
+                    <span className="font-medium capitalize">{course.difficulty.toLowerCase()}</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <ConfirmModal

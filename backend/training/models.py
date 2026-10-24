@@ -185,7 +185,7 @@ class CourseResource(UUIDPrimaryKeyModel, TimeStampedModel):
     description = models.CharField(max_length=300, blank=True)
     resource_type = models.CharField(max_length=20, choices=ResourceType.choices)
     provider = models.CharField(max_length=20, choices=Provider.choices, blank=True)
-    url = models.URLField(blank=True)
+    url = models.URLField(max_length=2000, blank=True)
     stored_file = models.ForeignKey(StoredFile, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
     is_primary = models.BooleanField(default=False)
     order = models.PositiveIntegerField(default=0)

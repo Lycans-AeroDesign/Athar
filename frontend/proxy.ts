@@ -42,7 +42,8 @@ export function proxy(request: NextRequest) {
   if (!isPublicPath && !hasRefreshCookie) {
     const locale = currentLocale(request.nextUrl.pathname);
     const loginUrl = new URL(`/${locale}/login`, request.url);
-    loginUrl.searchParams.set("next", pathWithoutLocale);
+    const search = request.nextUrl.search || "";
+    loginUrl.searchParams.set("next", pathWithoutLocale + search);
     return NextResponse.redirect(loginUrl);
   }
 

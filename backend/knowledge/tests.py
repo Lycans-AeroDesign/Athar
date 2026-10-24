@@ -3533,6 +3533,25 @@ class CreationFlowTests(KnowledgeTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data["results"]), 1)
 
+        # sop.create = +6, credited to both the creator and the co-author.
+        res = self.client.post(
+            reverse("knowledge-sop-list-create"),
+            {"title": "Shared SOP", "scope": "Safe operation", "co_author_ids": [str(co_author.id)]},
+            format="json",
+            **self._auth(self.head_access),
+        )
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        scores = services.compute_contribution_scores_for(self.organization)
+        self.assertEqual(scores.get(self.head.id), 6)
+        self.assertEqual(scores.get(co_author.id), 1 + 6)
+
+        response = self.client.get(
+            reverse("knowledge-user-contributions", args=[co_author.id]), {"type": "sop"},
+            **self._auth(self.member_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data["results"]), 1)
+
 
 class WriteSerializerScopingTests(RoleLoginMixin, APITestCase):
     """Foreign-key ids on every write serializer (project_id, component_id,

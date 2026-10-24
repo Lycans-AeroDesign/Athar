@@ -1,3 +1,5 @@
+import re
+
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
@@ -263,6 +265,102 @@ def reorder_modules(*, course: Course, actor, request=None, order: list) -> list
     modules = _reorder(queryset=course.modules.all(), id_order=order)
     log_action(actor=actor, action="module.reorder", target=course, request=request)
     return modules
+
+
+def import_curriculum(*, course: Course, actor, request=None, modules_data: list[dict]) -> Course:
+    _require_can_manage_course(actor, course)
+    with transaction.atomic():
+        start_order = course.modules.count()
+        for m_idx, m_dict in enumerate(modules_data):
+            module_title = str(m_dict.get("title", f"Module {start_order + m_idx + 1}")).strip()[:190]
+            module_desc = str(m_dict.get("description", "")).strip()
+            module_est = int(m_dict.get("estimated_minutes", 0) or 0)
+            module = CourseModule.objects.create(
+                course=course,
+                title=module_title,
+                description=module_desc,
+                order=start_order + m_idx,
+                estimated_minutes=module_est,
+            )
+            log_action(actor=actor, action="module.create", target=module, request=request)
+            lessons_data = m_dict.get("lessons", [])
+            for l_idx, l_dict in enumerate(lessons_data):
+                l_title = str(l_dict.get("title", f"Lesson {l_idx + 1}")).strip()
+                l_desc = str(l_dict.get("short_description", "")).strip()
+                l_content = str(l_dict.get("content", "")).strip()
+                l_type = str(l_dict.get("lesson_type", Lesson.LessonType.TEXT)).upper()
+                if l_type not in Lesson.LessonType.values:
+                    l_type = Lesson.LessonType.TEXT
+
+                # Extract any primary URL passed explicitly or present in content/desc
+                primary_url = str(l_dict.get("primary_url", "")).strip()
+                if not primary_url:
+                    all_text = f"{l_content} {l_desc}"
+                    found_urls = re.findall(r"https?://[^\s)]+", all_text)
+                    if found_urls:
+                        primary_url = found_urls[0]
+
+                # Strip primary_url from desc and content so length limits don't chop it
+                if primary_url:
+                    l_desc = l_desc.replace(primary_url, "").strip()
+                    l_content = l_content.replace(primary_url, "").strip()
+                    if l_type == Lesson.LessonType.TEXT:
+                        lower_url = primary_url.lower()
+                        if any(ext in lower_url for ext in [".mp4", ".mov", ".webm", ".mkv", "youtu", "vimeo", "/:v:/"]):
+                            l_type = Lesson.LessonType.VIDEO
+                        elif any(ext in lower_url for ext in [".pdf", ".docx", ".xlsx", "drive.google.com"]):
+                            l_type = Lesson.LessonType.DOCUMENT
+                        else:
+                            l_type = Lesson.LessonType.EXTERNAL
+
+                # Safeguard against DB CharField limits (title 200, short_description 300)
+                if len(l_title) > 190:
+                    overflow = l_title[190:].strip()
+                    l_title = l_title[:190].strip()
+                    l_desc = f"{overflow} {l_desc}".strip()
+                if len(l_desc) > 290:
+                    desc_overflow = l_desc[290:].strip()
+                    l_desc = l_desc[:290].strip()
+                    l_content = f"{desc_overflow}\n{l_content}".strip()
+
+                l_est = int(l_dict.get("estimated_minutes", 0) or 0)
+                l_req = bool(l_dict.get("is_required", True))
+                lesson = Lesson.objects.create(
+                    module=module,
+                    title=l_title,
+                    short_description=l_desc,
+                    lesson_type=l_type,
+                    content=l_content,
+                    order=l_idx,
+                    estimated_minutes=l_est,
+                    is_required=l_req,
+                )
+                if l_content:
+                    confirm_stored_files_in_text(l_content, organization=course.organization)
+                log_action(actor=actor, action="lesson.create", target=lesson, request=request)
+
+                if primary_url:
+                    provider = CourseResource.Provider.WEBSITE
+                    if "youtube.com" in primary_url or "youtu.be" in primary_url:
+                        provider = CourseResource.Provider.YOUTUBE
+                    elif "drive.google.com" in primary_url:
+                        provider = CourseResource.Provider.GOOGLE_DRIVE
+                    elif "vimeo.com" in primary_url:
+                        provider = CourseResource.Provider.VIMEO
+                    elif "github.com" in primary_url:
+                        provider = CourseResource.Provider.GITHUB
+
+                    CourseResource.objects.create(
+                        lesson=lesson,
+                        title=lesson.title,
+                        resource_type=CourseResource.ResourceType.EXTERNAL_LINK,
+                        provider=provider,
+                        url=primary_url,
+                        is_primary=True,
+                        order=0,
+                    )
+        _recompute_course_duration(course)
+    return course
 
 
 def create_lesson(

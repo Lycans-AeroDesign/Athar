@@ -17,6 +17,9 @@ interface PhotoDropzoneProps {
    * which only ever get replaced, never cleared). */
   onRemove?: () => void;
   removeLabel?: string;
+  /** When provided and an image is present, adds a crop affordance. */
+  onCrop?: () => void;
+  cropLabel?: string;
   disabled?: boolean;
   /** 0-1 while an upload is in flight; omit/null when idle. */
   progress?: number | null;
@@ -52,6 +55,8 @@ export function PhotoDropzone({
   onUnsupportedFile,
   onRemove,
   removeLabel,
+  onCrop,
+  cropLabel,
   disabled,
   progress,
   alt,
@@ -165,6 +170,21 @@ export function PhotoDropzone({
           e.target.value = "";
         }}
       />
+
+      {value && onCrop && !uploading && (
+        <IconButton
+          icon="crop"
+          variant="secondary"
+          size={18}
+          aria-label={cropLabel ?? t("cropPhoto")}
+          disabled={disabled}
+          onClick={(e) => {
+            e.stopPropagation();
+            onCrop();
+          }}
+          className="absolute -bottom-2 -end-2 h-9 w-9 p-0 bg-surface shadow-[0_1px_4px_0_rgba(0,0,0,0.2)]"
+        />
+      )}
 
       {value && onRemove && !uploading && (
         <IconButton

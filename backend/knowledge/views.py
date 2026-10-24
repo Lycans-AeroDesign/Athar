@@ -374,7 +374,7 @@ def _contribution_handlers(request, user):
         "project": (services.visible_projects_for(request.user).filter(created_by=user), ProjectListSerializer),
         "component": (services.visible_components_for(request.user).filter(created_by=user), ComponentListSerializer),
         "failure": (services.visible_failures_for(request.user).filter(created_by=user), FailureListSerializer),
-        "sop": (services.visible_sops_for(request.user).filter(created_by=user), SopListSerializer),
+        "sop": (services.visible_sops_for(request.user).filter(Q(created_by=user) | Q(co_authors=user)).distinct(), SopListSerializer),
         "test": (services.visible_tests_for(request.user).filter(created_by=user), TestListSerializer),
         "document": (services.visible_documents_for(request.user).filter(created_by=user), DocumentListSerializer),
     }

@@ -165,7 +165,10 @@ function LoginForm() {
 
           <p className="text-center font-body-md text-body-md text-on-surface-variant mt-6">
             {t("login.needAccount")}{" "}
-            <Link href="/register" className="text-primary hover:underline">
+            <Link
+              href={searchParams.get("next") ? `/register?next=${encodeURIComponent(searchParams.get("next")!)}` : "/register"}
+              className="text-primary hover:underline"
+            >
               {t("login.registerLink")}
             </Link>
           </p>

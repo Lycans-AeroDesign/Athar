@@ -171,6 +171,37 @@ class CourseCategoryTests(TrainingTestCase):
 
 
 class ModuleLessonOrderingTests(TrainingTestCase):
+    def test_import_curriculum_creates_modules_and_lessons_in_order(self):
+        _, head_access = self._login_with_role("head_bulk@example.com", "Subteam Head")
+        course = self._create_course(head_access)
+        payload = {
+            "modules": [
+                {
+                    "title": "1. SolidWorks Advanced",
+                    "description": "Lofting and planes",
+                    "lessons": [
+                        {"title": "Loft tool.mp4", "lesson_type": "VIDEO", "estimated_minutes": 15},
+                        {"title": "Mass notes", "lesson_type": "TEXT", "content": "Check mass"}
+                    ]
+                },
+                {
+                    "title": "2. Detailed Structure",
+                    "lessons": [
+                        {"title": "Mirror bodies.mp4", "lesson_type": "VIDEO"}
+                    ]
+                }
+            ]
+        }
+        res = self.client.post(
+            reverse("training-course-import-curriculum", args=[course["id"]]),
+            payload, format="json", **self._auth(head_access),
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(res.data["modules"]), 2)
+        self.assertEqual(len(res.data["modules"][0]["lessons"]), 2)
+        self.assertEqual(res.data["modules"][0]["lessons"][0]["lesson_type"], "VIDEO")
+        self.assertEqual(len(res.data["modules"][1]["lessons"]), 1)
+
     def test_module_and_lesson_order_unique_and_sequential(self):
         _, head_access = self._login_with_role("head@example.com", "Subteam Head")
         course = self._create_course(head_access)

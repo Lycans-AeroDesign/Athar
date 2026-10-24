@@ -3,8 +3,13 @@
 // component unmounts instead of continuing to render with stale auth state.
 export function redirectToLogin() {
   if (typeof window !== "undefined") {
+    const current = window.location.pathname + window.location.search;
+    const cleanPath = current.replace(/^\/(?:en|ar)(?=\/|$)/, "");
+    const loginUrl = cleanPath && cleanPath !== "/" && !cleanPath.startsWith("/login")
+      ? `/login?next=${encodeURIComponent(cleanPath)}`
+      : "/login";
     // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- runs outside the React tree (lib/api/client.ts), so useRouter() isn't available; a full navigation is also required here to force protected components to unmount.
-    window.location.href = "/login";
+    window.location.href = loginUrl;
   }
 }
 
@@ -18,5 +23,17 @@ export function safeRedirectPath(next: string | null): string {
   if (!next || !next.startsWith("/") || next.startsWith("//") || next.startsWith("/\\")) {
     return "/";
   }
-  return next;
+  // Strip leading locale prefix if present (e.g. /en/training -> /training),
+  // because next-intl's router.push will prepend the current locale automatically.
+  const pathWithoutLocale = next.replace(/^\/(?:en|ar)(?=\/|$)/, "");
+  const normalized = pathWithoutLocale || "/";
+  if (
+    normalized === "/login" ||
+    normalized.startsWith("/login?") ||
+    normalized === "/register" ||
+    normalized.startsWith("/register?")
+  ) {
+    return "/";
+  }
+  return normalized;
 }

@@ -1991,7 +1991,7 @@ def compute_contribution_scores_for(organization, *, since=None) -> dict:
     # Co-authors earn the same points for creating/publishing the item they share (see
     # scoring.CO_AUTHOR_CREDITED_ACTIONS), by the item's current co-author list. The actor is
     # never double-credited.
-    co_author_models = {"article": Article, "question": Question}
+    co_author_models = {"article": Article, "question": Question, "sop": Sop}
     for model_name, model in co_author_models.items():
         target_ids = {target_id for action, target_id, _ in co_credited if CO_AUTHOR_CREDITED_ACTIONS[action] == model_name}
         if not target_ids:

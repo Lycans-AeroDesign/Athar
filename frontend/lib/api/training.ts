@@ -353,3 +353,29 @@ export function createKnowledgeReference(
 export function deleteKnowledgeReference(id: string): Promise<void> {
   return apiVoid(`/api/v1/training/knowledge-references/${id}/`, { method: "DELETE" });
 }
+
+export interface ImportCurriculumModule {
+  title: string;
+  description?: string;
+  estimated_minutes?: number;
+  lessons: {
+    title: string;
+    short_description?: string;
+    lesson_type?: LessonType;
+    content?: string;
+    primary_url?: string;
+    estimated_minutes?: number;
+    is_required?: boolean;
+  }[];
+}
+
+export function importCurriculum(
+  courseId: string,
+  modules: ImportCurriculumModule[],
+): Promise<CourseDetail> {
+  return apiJson<CourseDetail>(`/api/v1/training/courses/${courseId}/import-curriculum/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ modules }),
+  });
+}

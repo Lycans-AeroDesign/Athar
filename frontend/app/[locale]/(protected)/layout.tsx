@@ -36,9 +36,15 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
     // this is a defensive fallback for the client-only case where the
     // session expires/fails to refresh after the shell has already mounted.
     if (!isLoading && !user) {
-      router.replace("/login");
+      const search = typeof window !== "undefined" ? window.location.search : "";
+      const target = pathname ? `${pathname}${search}` : "";
+      const loginHref =
+        target && target !== "/" && !target.startsWith("/login")
+          ? `/login?next=${encodeURIComponent(target)}`
+          : "/login";
+      router.replace(loginHref);
     }
-  }, [isLoading, user, router]);
+  }, [isLoading, user, router, pathname]);
 
   if (isLoading || !user) {
     return <LoadingScreen />;
@@ -57,7 +63,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
         <div className="flex-1 flex flex-col lg:ms-64 overflow-hidden bg-background">
           <TopBar onOpenMenu={openMobileNav} onCloseMenu={closeMobileNav} />
           <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-10 bg-background">
-            <div className="max-w-[1200px] mx-auto space-y-8">{children}</div>
+            <div className="max-w-[1600px] w-full mx-auto space-y-8">{children}</div>
           </main>
         </div>
       </div>

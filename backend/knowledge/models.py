@@ -404,7 +404,7 @@ class Component(models.Model):
     manufacturer = models.CharField(max_length=150, blank=True)
     part_number = models.CharField(max_length=100, blank=True)
     # External reference - a datasheet, vendor/purchase page, etc.
-    link = models.URLField(blank=True)
+    link = models.URLField(max_length=2000, blank=True)
     # Workshop inventory count on hand: a plain int, not a check-in/check-out ledger.
     quantity_available = models.PositiveIntegerField(default=0)
     # Engineering status. Blank = not applicable, e.g. a workshop tool
@@ -639,7 +639,7 @@ class Document(models.Model):
     publication_date = models.DateField(null=True, blank=True)
     # For references with no file of their own; a document with neither `file` nor
     # `url` is an allowed title-only stub.
-    url = models.URLField(blank=True)
+    url = models.URLField(max_length=2000, blank=True)
     file = models.ForeignKey(StoredFile, null=True, blank=True, on_delete=models.SET_NULL, related_name="documents")
     category = models.ForeignKey(Category, null=True, blank=True, on_delete=models.SET_NULL, related_name="documents")
     tags = models.ManyToManyField(Tag, blank=True, related_name="documents")

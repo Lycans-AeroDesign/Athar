@@ -101,36 +101,74 @@ export default function LessonViewerPage() {
   if (notFound) {
     return <p className="font-body-md text-body-md text-error">{t("notFound")}</p>;
   }
-  if (!course || !lesson) {
+  if (!course) {
     return <CourseLearnPageSkeleton />;
   }
 
-  const supplementaryResources = lesson.resources.filter(
-    (resource) => !(resource.is_primary && RESOURCE_TYPES_RENDERED_INLINE.has(lesson.lesson_type)),
-  );
+  const supplementaryResources = lesson
+    ? lesson.resources.filter(
+        (resource) => !(resource.is_primary && RESOURCE_TYPES_RENDERED_INLINE.has(lesson.lesson_type)),
+      )
+    : [];
 
   return (
-    <div className="flex flex-col lg:flex-row gap-8 items-start">
-      {/* Responsive: full sidebar at lg+, collapses out of flow below it - the
-          curriculum stays reachable via the "back to course" breadcrumb link
-          instead of a drawer, keeping this screen's mobile complexity down. */}
-      <aside className="hidden lg:block w-72 shrink-0 sticky top-6 bg-surface-container-low border border-outline-variant rounded-xl p-4 max-h-[80vh] overflow-y-auto">
-        <Link
-          href={`/training/courses/${course.id}`}
-          className="font-headline-md text-headline-md text-on-surface hover:text-primary transition-colors block mb-3"
-        >
-          {course.title}
-        </Link>
+    <div className="flex flex-col lg:flex-row gap-8 items-start w-full">
+      {/* Responsive: expanded sidebar at lg/xl+, collapses out of flow below it */}
+      <aside className="hidden lg:block w-80 xl:w-[380px] shrink-0 sticky top-6 bg-surface-container-low border border-outline-variant rounded-2xl p-4 sm:p-5 max-h-[calc(100vh-6rem)] overflow-y-auto space-y-4 shadow-xs">
+        <div className="space-y-2 pb-3 border-b border-outline-variant">
+          <Link
+            href={`/training/courses/${course.id}`}
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-on-surface-variant hover:text-primary transition-colors"
+          >
+            <Icon name="arrow_back" size={14} />
+            <span>{t("backToCourse") || "Course Overview"}</span>
+          </Link>
+          <h2 className="font-headline-md text-headline-md font-bold text-on-surface line-clamp-2">
+            {course.title}
+          </h2>
+
+          {progress && progress.total_lessons > 0 && (
+            <div className="space-y-1.5 pt-1">
+              <div className="flex items-center justify-between text-xs text-on-surface-variant font-medium">
+                <span>{courseT("progress")}</span>
+                <span className="font-semibold text-primary">{Math.round(progress.percent)}%</span>
+              </div>
+              <div className="w-full h-1.5 bg-surface-container-highest rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-primary rounded-full transition-all duration-300"
+                  style={{ width: `${Math.min(100, Math.max(0, progress.percent))}%` }}
+                />
+              </div>
+              <div className="text-[11px] text-on-surface-variant text-right">
+                {courseT("progressLabel", { completed: progress.completed_lessons, total: progress.total_lessons })}
+              </div>
+            </div>
+          )}
+        </div>
+
         <CurriculumList
           courseId={course.id}
           modules={course.modules}
           completedLessonIds={new Set(progress?.completed_lesson_ids ?? [])}
-          activeLessonId={lesson.id}
+          activeLessonId={lessonId}
+          variant="sidebar"
         />
       </aside>
 
-      <div className="flex-1 w-full min-w-0 max-w-[760px] space-y-6">
-        {isPreview && (
+      <div className="flex-1 w-full min-w-0 max-w-5xl space-y-6">
+        {!lesson ? (
+          <div className="space-y-6 animate-pulse" aria-busy="true">
+            <div className="h-4 w-48 bg-surface-container-high rounded-md" />
+            <div className="h-9 w-3/4 bg-surface-container-high rounded-lg" />
+            <div className="w-full aspect-video min-h-[320px] bg-surface-container-high rounded-2xl" />
+            <div className="space-y-3 pt-3">
+              <div className="h-4 w-full bg-surface-container-high rounded-md" />
+              <div className="h-4 w-5/6 bg-surface-container-high rounded-md" />
+            </div>
+          </div>
+        ) : (
+          <>
+            {isPreview && (
           <div className="flex items-center justify-between gap-2 bg-tertiary-container text-on-tertiary-container rounded-xl px-4 py-3 font-body-md text-body-md">
             <span className="flex items-center gap-2">
               <Icon name="visibility" size={18} />
@@ -201,7 +239,7 @@ export default function LessonViewerPage() {
             Previous/Next sharing the row beneath - all three side by side overflows a phone. */}
         <div className="flex flex-wrap items-center justify-between gap-3 pt-6 border-t border-outline-variant">
           {previousLesson ? (
-            <Link href={`/training/courses/${course.id}/learn/${previousLesson.id}`}>
+            <Link href={`/training/courses/${course.id}/learn/${previousLesson.id}`} scroll={false}>
               <Button variant="secondary">
                 <Icon name="arrow_back" size={18} />
                 {t("previous")}
@@ -236,7 +274,7 @@ export default function LessonViewerPage() {
           ) : null}
 
           {nextLesson ? (
-            <Link href={`/training/courses/${course.id}/learn/${nextLesson.id}`}>
+            <Link href={`/training/courses/${course.id}/learn/${nextLesson.id}`} scroll={false}>
               <Button variant="secondary">
                 {t("next")}
                 <Icon name="arrow_forward" size={18} />
@@ -246,6 +284,8 @@ export default function LessonViewerPage() {
             <span />
           )}
         </div>
+        </>
+        )}
       </div>
     </div>
   );

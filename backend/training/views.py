@@ -1,8 +1,8 @@
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
-from drf_spectacular.utils import OpenApiResponse, extend_schema
-from rest_framework import status
+from drf_spectacular.utils import OpenApiResponse, extend_schema, inline_serializer
+from rest_framework import serializers, status
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -512,6 +512,25 @@ class CourseModuleReorderView(APIView):
             course=course, actor=request.user, request=request, order=serializer.validated_data["order"]
         )
         return Response(CourseModuleSerializer(modules, many=True).data)
+
+
+class CourseImportCurriculumView(APIView):
+    permission_classes = [require_permission("training.create")]
+
+    @extend_schema(
+        tags=["Training"], summary="Bulk import modules and lessons into a course",
+        request=inline_serializer("ImportCurriculumRequest", fields={
+            "modules": serializers.ListField(child=serializers.DictField())
+        }),
+        responses={200: CourseDetailSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
+    )
+    def post(self, request, pk):
+        course = org_object_or_404(request, Course, pk)
+        modules_data = request.data.get("modules", [])
+        if not isinstance(modules_data, list):
+            raise ValidationError({"modules": "Must be a list of modules."})
+        course = services.import_curriculum(course=course, actor=request.user, request=request, modules_data=modules_data)
+        return Response(CourseDetailSerializer(course, context={"request": request}).data)
 
 
 class CourseModuleDetailView(APIView):

@@ -11,6 +11,7 @@ import { Link, useRouter } from "@/i18n/navigation";
 import { ApiError, apiUrl } from "@/lib/api/client";
 import { createOrganizationRequest, registerRequest } from "@/lib/api/auth";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { safeRedirectPath } from "@/lib/auth/redirect";
 import { useOrganization } from "@/lib/organization/OrganizationProvider";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -125,7 +126,7 @@ function RegisterForm() {
       // Neither endpoint logs the caller in (see lib/api/auth.ts) - log in
       // with the same credentials to actually start the session.
       await login(email, password);
-      router.push("/");
+      router.push(safeRedirectPath(searchParams.get("next")));
     } catch (err) {
       // Organization mode's fields are "admin_username"/"admin_email"/
       // "admin_password" server-side (see OrganizationCreateSerializer) but
@@ -334,7 +335,10 @@ function RegisterForm() {
 
           <p className="text-center font-body-md text-body-md text-on-surface-variant mt-6">
             {t("register.hasAccount")}{" "}
-            <Link href="/login" className="text-primary hover:underline">
+            <Link
+              href={searchParams.get("next") ? `/login?next=${encodeURIComponent(searchParams.get("next")!)}` : "/login"}
+              className="text-primary hover:underline"
+            >
               {t("register.loginLink")}
             </Link>
           </p>

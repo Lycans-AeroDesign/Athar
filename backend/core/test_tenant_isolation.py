@@ -114,7 +114,7 @@ ROUTES = [
     ("knowledge-storage-location-detail", [PATCH, DELETE], {"pk": "storage_location"}),
     ("training-category-detail", [PATCH, DELETE], {"pk": "course_category"}),
     ("training-course-detail", [GET, PATCH, DELETE], {"pk": "course"}),
-    *[(f"training-course-{step}", [POST], {"pk": "course"}) for step in ("submit", "publish", "reject", "archive", "unarchive", "enroll")],
+    *[(f"training-course-{step}", [POST], {"pk": "course"}) for step in ("submit", "publish", "reject", "archive", "unarchive", "enroll", "import-curriculum")],
     ("training-course-access-grant-list-create", [POST], {"pk": "course"}),
     ("training-course-access-grant-detail", [DELETE], {"pk": "course", "grant_pk": "course_grant"}),
     ("training-course-progress", [GET], {"pk": "course"}),
