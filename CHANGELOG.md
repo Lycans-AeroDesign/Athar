@@ -1,3 +1,9 @@
+## [1.25.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.24.0...v1.25.0) (2026-10-25)
+
+### Features
+
+* **accounts,backups:** enforce username validation, backup deletion, browser download, and lzma compression ([5d6c06f](https://github.com/Lycans-AeroDesign/Athar/commit/5d6c06f3dbb7bc8061e51262c72339fc53e10d3e))
+
 ## [1.24.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.23.0...v1.24.0) (2026-10-24)
 
 ### Features
