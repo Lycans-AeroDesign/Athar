@@ -29,6 +29,8 @@ import zipfile
 from contextlib import contextmanager
 from pathlib import Path
 
+import zstandard
+
 from django.core.files import File
 from django.utils import timezone
 
@@ -873,26 +875,40 @@ def _write_files(zf: zipfile.ZipFile, organization) -> None:
             shutil.copyfileobj(source, destination, length=1024 * 1024)
 
 
+# Zstandard frame header magic number (RFC 8878: 0xFD2FB528 in little-endian).
+ZSTD_MAGIC = b"\x28\xb5\x2f\xfd"
+
+
 def build_org_backup_archive(job: BackupJob) -> None:
     """Writes the full export to a temp file on disk (never in memory, so
     this scales to a large org's data/files) then assigns it to
     `job.archive` - the caller (tasks.generate_org_backup) is responsible
-    for job.save() afterward."""
+    for job.save() afterward.
+
+    CSV data and uploaded files are assembled into an uncompressed ZIP container,
+    then compressed with Zstandard (level 3 for ultra-fast, high-ratio compression),
+    and finally encrypted at rest with the server key."""
     organization = job.organization
     with tempfile.TemporaryDirectory() as tmp_dir:
         archive_path = Path(tmp_dir) / f"{job.id}.zip"
-        with zipfile.ZipFile(archive_path, "w", compression=zipfile.ZIP_LZMA) as zf:
+        with zipfile.ZipFile(archive_path, "w", compression=zipfile.ZIP_STORED) as zf:
             _write_manifest(zf, organization)
             _write_organization_settings(zf, organization)
             for queryset, filename, columns in _export_specs(organization):
                 _write_csv_entry(zf, filename, columns, queryset)
             _write_files(zf, organization)
 
+        archive_size = archive_path.stat().st_size
+        compressed_path = Path(tmp_dir) / f"{job.id}.zip.zst"
+        cctx = zstandard.ZstdCompressor(level=3)
+        with open(archive_path, "rb") as source, open(compressed_path, "wb") as destination:
+            cctx.copy_stream(source, destination, size=archive_size)
+
         # Encrypted at rest with the server key - the archive is as
         # sensitive as the database (see module docstring). Downloads
         # re-encrypt it with the admin's passphrase (views.BackupJobDownloadView).
         encrypted_path = Path(tmp_dir) / f"{job.id}.zip.enc"
-        with open(archive_path, "rb") as source, open(encrypted_path, "wb") as destination:
+        with open(compressed_path, "rb") as source, open(encrypted_path, "wb") as destination:
             crypto.encrypt_file(source, destination)
         with open(encrypted_path, "rb") as archive_file:
             job.archive.save(f"{job.id}.zip.enc", File(archive_file), save=False)
@@ -900,16 +916,33 @@ def build_org_backup_archive(job: BackupJob) -> None:
 
 @contextmanager
 def open_decrypted_archive(archive_field):
-    """Yields a seekable plaintext file for a stored archive (BackupJob.archive
-    or RestoreJob.uploaded_archive) - decrypted into a temp file when it's
-    server-key encrypted, or the stored file itself for a plaintext archive
-    made before encryption existed. zipfile needs to seek, so this can't be
-    a streaming decrypt."""
+    """Yields a seekable plaintext zip file for a stored archive (BackupJob.archive
+    or RestoreJob.uploaded_archive) - decrypted and decompressed into a temp file
+    when encrypted/compressed, or the stored file itself for a legacy plaintext archive.
+    zipfile needs to seek, so this yields a seekable file positioned at 0."""
     with archive_field.open("rb") as stored:
-        if not crypto.is_encrypted(stored):
-            yield stored
-            return
-        with tempfile.TemporaryFile() as plaintext:
-            crypto.decrypt_file(stored, plaintext)
-            plaintext.seek(0)
-            yield plaintext
+        if crypto.is_encrypted(stored):
+            with tempfile.TemporaryFile() as decrypted:
+                crypto.decrypt_file(stored, decrypted)
+                decrypted.seek(0)
+                magic = decrypted.read(4)
+                decrypted.seek(0)
+                if magic == ZSTD_MAGIC:
+                    with tempfile.TemporaryFile() as decompressed:
+                        dctx = zstandard.ZstdDecompressor()
+                        dctx.copy_stream(decrypted, decompressed)
+                        decompressed.seek(0)
+                        yield decompressed
+                else:
+                    yield decrypted
+        else:
+            magic = stored.read(4)
+            stored.seek(0)
+            if magic == ZSTD_MAGIC:
+                with tempfile.TemporaryFile() as decompressed:
+                    dctx = zstandard.ZstdDecompressor()
+                    dctx.copy_stream(stored, decompressed)
+                    decompressed.seek(0)
+                    yield decompressed
+            else:
+                yield stored

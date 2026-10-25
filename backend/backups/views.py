@@ -3,6 +3,8 @@ import tempfile
 import zipfile
 from pathlib import Path
 
+import zstandard
+
 from django.conf import settings
 from django.core.files import File
 from django.http import StreamingHttpResponse
@@ -25,7 +27,7 @@ from organization.models import Organization
 from config.pagination import paginated_response
 from rbac.permissions import require_permission
 
-from . import restore, tasks
+from . import restore, services, tasks
 from .models import BackupJob, RestoreJob
 from .serializers import (
     BackupJobSerializer,
@@ -190,13 +192,30 @@ class RestoreJobListCreateView(APIView):
 def _validate_archive_contents(archive_file, organization) -> None:
     """Cheap up-front checks on the (decrypted) archive so an obviously wrong
     upload fails here, with a clear message, instead of minutes later in the
-    background task. The archive is still treated as untrusted by restore.py
-    itself - this isn't what keeps a crafted archive in bounds, that is."""
+    background task. Supports both Zstandard-compressed and legacy zip archives.
+    The archive is still treated as untrusted by restore.py itself - this isn't
+    what keeps a crafted archive in bounds, that is."""
     max_bytes = settings.BACKUP_UPLOAD_MAX_SIZE_MB * 1024 * 1024
-    if not zipfile.is_zipfile(archive_file):
-        raise ValidationError({"archive": ["This isn't an Athar backup file."]})
     archive_file.seek(0)
-    with zipfile.ZipFile(archive_file) as zf:
+    magic = archive_file.read(4)
+    archive_file.seek(0)
+    if magic == services.ZSTD_MAGIC:
+        with tempfile.TemporaryFile() as decompressed:
+            dctx = zstandard.ZstdDecompressor()
+            dctx.copy_stream(archive_file, decompressed)
+            archive_file.seek(0)
+            decompressed.seek(0)
+            _validate_zip_archive(decompressed, organization, max_bytes)
+    else:
+        _validate_zip_archive(archive_file, organization, max_bytes)
+        archive_file.seek(0)
+
+
+def _validate_zip_archive(zip_file, organization, max_bytes: int) -> None:
+    if not zipfile.is_zipfile(zip_file):
+        raise ValidationError({"archive": ["This isn't an Athar backup file."]})
+    zip_file.seek(0)
+    with zipfile.ZipFile(zip_file) as zf:
         names = set(zf.namelist())
         # Zip-bomb guard: a real backup barely compresses (most of its bulk
         # is already-compressed uploads), so 10x the upload cap is generous.
@@ -214,7 +233,7 @@ def _validate_archive_contents(archive_file, organization) -> None:
             # the chained cause.
             logger.info("Backup archive sanity check failed: %s", exc)
             raise ValidationError({"archive": ["This backup's manifest.json is not valid JSON."]}) from exc
-    archive_file.seek(0)
+    zip_file.seek(0)
     # A backup of a *different* organization that still exists on this
     # server can't be restored here: its rows' ids are still in use by that
     # organization. (One whose organization is gone - the disaster-recovery

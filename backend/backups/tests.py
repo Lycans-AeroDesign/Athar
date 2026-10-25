@@ -1,6 +1,8 @@
 import io
 import zipfile
 
+import zstandard
+
 from django.contrib.contenttypes.models import ContentType
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
@@ -166,8 +168,10 @@ class BackupJobGenerationTests(BackupJobTestCase):
         self.assertFalse(zipfile.is_zipfile(io.BytesIO(archive_bytes)))
         self.assertTrue(crypto.needs_passphrase(io.BytesIO(archive_bytes)))
         plaintext = b"".join(crypto.iter_decrypt(io.BytesIO(archive_bytes), PASSPHRASE))
+        self.assertTrue(plaintext.startswith(services.ZSTD_MAGIC))
+        decompressed = zstandard.ZstdDecompressor().stream_reader(io.BytesIO(plaintext)).read()
         try:
-            with zipfile.ZipFile(io.BytesIO(plaintext)) as zf:
+            with zipfile.ZipFile(io.BytesIO(decompressed)) as zf:
                 names = zf.namelist()
                 self.assertIn("projects.csv", names)
                 self.assertIn("users.csv", names)
