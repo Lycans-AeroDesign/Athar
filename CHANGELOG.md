@@ -1,3 +1,9 @@
+## [1.26.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.25.0...v1.26.0) (2026-10-25)
+
+### Features
+
+* **backups:** accelerate backup compression using zstandard solid stream ([8fb2075](https://github.com/Lycans-AeroDesign/Athar/commit/8fb20751dd38d995f6afe956e7af7fed5e252f65))
+
 ## [1.25.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.24.0...v1.25.0) (2026-10-25)
 
 ### Features
