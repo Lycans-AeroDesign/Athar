@@ -50,9 +50,8 @@ class User(AbstractBaseUser):
     # `email` is globally unique, so login never needs an org selector.
     organization = models.ForeignKey("organization.Organization", on_delete=models.CASCADE, related_name="users")
     email = models.EmailField(unique=True)
-    # Optional; login still uses email (USERNAME_FIELD). null=True so unset usernames don't
-    # collide on the unique constraint (NULLs are distinct, "" is not), so callers must
-    # normalize blank to None (see MeUpdateSerializer.validate_username).
+    # Required at signup and edit profile; login still uses email (USERNAME_FIELD).
+    # null=True for legacy/seed data compatibility without colliding on unique constraint.
     username = models.CharField(
         max_length=30, unique=True, null=True, blank=True, validators=[username_validator]
     )

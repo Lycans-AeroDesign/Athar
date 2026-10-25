@@ -14,6 +14,7 @@ import {
   BACKUP_PASSPHRASE_MIN_LENGTH,
   createBackupJob,
   createRestoreJob,
+  deleteBackupJob,
   downloadBackupJob,
   getBackupJob,
   getBackupJobs,
@@ -60,6 +61,8 @@ export function BackupsSettingsForm() {
   // Downloads are encrypted with a passphrase the admin picks here - the only
   // thing needed to restore the file on another server later.
   const [downloadTarget, setDownloadTarget] = useState<BackupJob | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<BackupJob | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [passphrase, setPassphrase] = useState("");
   const [passphraseConfirm, setPassphraseConfirm] = useState("");
   const [downloadError, setDownloadError] = useState<string | null>(null);
@@ -144,6 +147,21 @@ export function BackupsSettingsForm() {
       setDownloadError(errorMessage(err));
     } finally {
       setIsDownloading(false);
+    }
+  }
+
+  async function handleConfirmDelete() {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
+    setError(null);
+    try {
+      await deleteBackupJob(deleteTarget.id);
+      setJobs((prev) => (prev ?? []).filter((j) => j.id !== deleteTarget.id));
+      setDeleteTarget(null);
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setIsDeleting(false);
     }
   }
 
@@ -234,18 +252,26 @@ export function BackupsSettingsForm() {
                     <p className="font-body-md text-body-md text-error break-words sm:truncate">{job.error}</p>
                   )}
                 </div>
-                {job.can_download && (
-                  <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 shrink-0">
-                    <Button variant="secondary" onClick={() => openDownload(job)}>
-                      <Icon name="download" size={16} />
-                      {t("downloadButton")}
+                <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 shrink-0">
+                  {job.can_download && (
+                    <>
+                      <Button variant="secondary" onClick={() => openDownload(job)}>
+                        <Icon name="download" size={16} />
+                        {t("downloadButton")}
+                      </Button>
+                      <Button variant="secondary" onClick={() => setRestoreTarget(job)}>
+                        <Icon name="unarchive" size={16} />
+                        {t("restoreButton")}
+                      </Button>
+                    </>
+                  )}
+                  {job.status !== "RUNNING" && (
+                    <Button variant="danger" onClick={() => setDeleteTarget(job)}>
+                      <Icon name="delete" size={16} />
+                      {t("deleteButton")}
                     </Button>
-                    <Button variant="danger" onClick={() => setRestoreTarget(job)}>
-                      <Icon name="unarchive" size={16} />
-                      {t("restoreButton")}
-                    </Button>
-                  </div>
-                )}
+                  )}
+                </div>
               </li>
             ))}
           </ul>
@@ -352,6 +378,18 @@ export function BackupsSettingsForm() {
           </p>
         )}
       </div>
+
+      <ConfirmModal
+        open={deleteTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
+        title={t("deleteConfirmTitle")}
+        description={t("deleteConfirmDescription")}
+        confirmLabel={isDeleting ? commonT("working") : t("deleteConfirmButton")}
+        danger
+        onConfirm={handleConfirmDelete}
+      />
 
       <ConfirmModal
         open={restoreTarget !== null}

@@ -21,6 +21,8 @@ const MIN_PASSWORD_LENGTH = 8;
 // Matches accounts/models.py's username_validator - required at signup (see
 // RegisterSerializer.username / OrganizationCreateSerializer.admin_username).
 const USERNAME_PATTERN = /^[a-zA-Z0-9_.-]{3,30}$/;
+const MIN_USERNAME_LENGTH = 3;
+const MAX_USERNAME_LENGTH = 30;
 
 type Mode = "invite" | "organization";
 
@@ -82,8 +84,11 @@ function RegisterForm() {
 
   function validate(): FieldErrors {
     const errors: FieldErrors = {};
-    if (!username.trim()) errors.username = t("fieldRequired");
-    else if (!USERNAME_PATTERN.test(username.trim())) errors.username = t("invalidUsername");
+    const trimmedUsername = username.trim();
+    if (!trimmedUsername) errors.username = t("fieldRequired");
+    else if (trimmedUsername.length < MIN_USERNAME_LENGTH) errors.username = t("usernameTooShort", { min: MIN_USERNAME_LENGTH });
+    else if (trimmedUsername.length > MAX_USERNAME_LENGTH) errors.username = t("usernameTooLong", { max: MAX_USERNAME_LENGTH });
+    else if (!USERNAME_PATTERN.test(trimmedUsername)) errors.username = t("invalidUsername");
     if (!email.trim()) errors.email = t("fieldRequired");
     else if (!EMAIL_PATTERN.test(email)) errors.email = t("invalidEmail");
     if (!password) errors.password = t("fieldRequired");
@@ -253,6 +258,9 @@ function RegisterForm() {
                 id="username"
                 label={t("register.usernameLabel")}
                 name="username"
+                minLength={MIN_USERNAME_LENGTH}
+                maxLength={MAX_USERNAME_LENGTH}
+                required
                 value={username}
                 onChange={(e) => {
                   setUsername(e.target.value);

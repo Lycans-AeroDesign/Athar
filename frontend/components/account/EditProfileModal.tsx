@@ -21,6 +21,11 @@ import { getInitials } from "@/lib/format";
 // lib/api/files.ts getUploadLimitMb) - never enforced here, uploadFile is.
 const MAX_UPLOAD_SIZE_MB = DEFAULT_UPLOAD_LIMIT_MB;
 
+// Matches accounts/models.py's username_validator
+const USERNAME_PATTERN = /^[a-zA-Z0-9_.-]{3,30}$/;
+const MIN_USERNAME_LENGTH = 3;
+const MAX_USERNAME_LENGTH = 30;
+
 
 interface EditProfileModalProps {
   user: User;
@@ -123,12 +128,31 @@ export function EditProfileModal({ user, onClose }: EditProfileModalProps) {
   }
 
   async function handleSave() {
-    setIsSaving(true);
     setError(null);
     setUsernameError(null);
+
+    const trimmedUsername = username.trim();
+    if (!trimmedUsername) {
+      setUsernameError(t("usernameRequired"));
+      return;
+    }
+    if (trimmedUsername.length < MIN_USERNAME_LENGTH) {
+      setUsernameError(t("usernameTooShort", { min: MIN_USERNAME_LENGTH }));
+      return;
+    }
+    if (trimmedUsername.length > MAX_USERNAME_LENGTH) {
+      setUsernameError(t("usernameTooLong", { max: MAX_USERNAME_LENGTH }));
+      return;
+    }
+    if (!USERNAME_PATTERN.test(trimmedUsername)) {
+      setUsernameError(t("invalidUsername"));
+      return;
+    }
+
+    setIsSaving(true);
     try {
       const updated = await updateMe({
-        username: username.trim() || null,
+        username: trimmedUsername,
         first_name: firstName,
         last_name: lastName,
         title,
@@ -227,6 +251,10 @@ export function EditProfileModal({ user, onClose }: EditProfileModalProps) {
             className={`${INPUT_CLASS} ${usernameError ? "!border-error focus:!border-error" : ""}`}
             placeholder={t("usernamePlaceholder")}
             value={username}
+            minLength={MIN_USERNAME_LENGTH}
+            maxLength={MAX_USERNAME_LENGTH}
+            autoComplete="username"
+            required
             onChange={(e) => {
               setUsername(e.target.value);
               setUsernameError(null);

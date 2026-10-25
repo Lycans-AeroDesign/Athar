@@ -111,6 +111,35 @@ class AuthFlowTests(APITestCase):
             self.assertIn("username", response.data)
         self.assertFalse(User.objects.filter(email="nousername@example.com").exists())
 
+    def test_register_enforces_username_length_and_format(self):
+        code = self._invitation_code()
+        # Too short (< 3)
+        response = self.client.post(
+            reverse("auth-register"),
+            {"email": "short@example.com", "password": "somepassword123", "invitation_code": code.code, "username": "ab"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("username", response.data)
+
+        # Too long (> 30)
+        response = self.client.post(
+            reverse("auth-register"),
+            {"email": "long@example.com", "password": "somepassword123", "invitation_code": code.code, "username": "a" * 31},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("username", response.data)
+
+        # Invalid characters
+        response = self.client.post(
+            reverse("auth-register"),
+            {"email": "inv@example.com", "password": "somepassword123", "invitation_code": code.code, "username": "bad user!"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("username", response.data)
+
     def test_register_requires_invitation_code(self):
         response = self.client.post(
             reverse("auth-register"),
@@ -262,6 +291,102 @@ class AuthFlowTests(APITestCase):
 
         response = self.client.get(reverse("auth-me"), HTTP_AUTHORIZATION=f"Bearer {access}")
         self.assertEqual(response.data["preferences"], {"engineering_list_filters": False})
+
+    def test_me_patch_updates_username_when_valid_and_unique(self):
+        login_response = self._register_and_login("meuser@example.com", "meuserpass123")
+        access = login_response.data["access"]
+        response = self.client.patch(
+            reverse("auth-me"),
+            {"username": "new_handle"},
+            format="json",
+            HTTP_AUTHORIZATION=f"Bearer {access}",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["username"], "new_handle")
+
+    def test_me_patch_same_username_does_not_collide(self):
+        login_response = self._register_and_login("sameuser@example.com", "sameuserpass123")
+        access = login_response.data["access"]
+        user = User.objects.get(email="sameuser@example.com")
+        response = self.client.patch(
+            reverse("auth-me"),
+            {"username": user.username},
+            format="json",
+            HTTP_AUTHORIZATION=f"Bearer {access}",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["username"], user.username)
+
+    def test_me_patch_rejects_removing_username_completely(self):
+        login_response = self._register_and_login("noremove@example.com", "noremovepass123")
+        access = login_response.data["access"]
+        for empty_val in ("", "   ", None):
+            response = self.client.patch(
+                reverse("auth-me"),
+                {"username": empty_val},
+                format="json",
+                HTTP_AUTHORIZATION=f"Bearer {access}",
+            )
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+            self.assertIn("username", response.data)
+
+    def test_me_patch_rejects_username_length_and_format_violations(self):
+        login_response = self._register_and_login("lenuser@example.com", "lenuserpass123")
+        access = login_response.data["access"]
+        # Too short (< 3)
+        response = self.client.patch(
+            reverse("auth-me"),
+            {"username": "ab"},
+            format="json",
+            HTTP_AUTHORIZATION=f"Bearer {access}",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("username", response.data)
+
+        # Too long (> 30)
+        response = self.client.patch(
+            reverse("auth-me"),
+            {"username": "a" * 31},
+            format="json",
+            HTTP_AUTHORIZATION=f"Bearer {access}",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("username", response.data)
+
+        # Invalid characters
+        response = self.client.patch(
+            reverse("auth-me"),
+            {"username": "bad user!"},
+            format="json",
+            HTTP_AUTHORIZATION=f"Bearer {access}",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("username", response.data)
+
+    def test_me_patch_rejects_already_existing_username(self):
+        User.objects.create_user(email="other@example.com", username="taken_name", organization=self.organization)
+        user = User.objects.create_user(email="clashuser@example.com", username="clashuser", organization=self.organization)
+        from rest_framework_simplejwt.tokens import RefreshToken
+        access = str(RefreshToken.for_user(user).access_token)
+        # Exact clash
+        response = self.client.patch(
+            reverse("auth-me"),
+            {"username": "taken_name"},
+            format="json",
+            HTTP_AUTHORIZATION=f"Bearer {access}",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("username", response.data)
+
+        # Case-insensitive clash
+        response = self.client.patch(
+            reverse("auth-me"),
+            {"username": "TAKEN_NAME"},
+            format="json",
+            HTTP_AUTHORIZATION=f"Bearer {access}",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("username", response.data)
 
     def test_me_patch_sets_and_clears_profile_picture(self):
         login_response = self._register_and_login("avatar@example.com", "avatarpass123")

@@ -79,6 +79,20 @@ class BackupJobDetailView(APIView):
         job = org_object_or_404(request, BackupJob, pk)
         return Response(BackupJobSerializer(job).data)
 
+    @extend_schema(
+        tags=["Backups"],
+        summary="Delete a backup from the server",
+        responses={204: None, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
+    )
+    def delete(self, request, pk):
+        job = org_object_or_404(request, BackupJob, pk)
+        if job.status == BackupJob.Status.RUNNING:
+            raise ValidationError("Cannot delete a backup that is currently running.")
+        if job.archive:
+            job.archive.delete(save=False)
+        job.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 @method_decorator(sensitive_post_parameters("passphrase"), name="dispatch")
 class BackupJobDownloadView(APIView):

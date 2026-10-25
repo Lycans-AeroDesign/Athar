@@ -105,7 +105,7 @@ class OrganizationCreateSerializer(serializers.Serializer):
     # Required; same format/uniqueness rules as accounts.User.username. A plain Serializer, so
     # DRF's UniqueValidator doesn't apply (no `admin_username` on User); see the uniqueness
     # check below.
-    admin_username = serializers.CharField(max_length=30, validators=[username_validator])
+    admin_username = serializers.CharField(min_length=3, max_length=30, validators=[username_validator])
 
     def validate_admin_email(self, value):
         # A plain Serializer (see the admin_username field's own comment
@@ -115,7 +115,9 @@ class OrganizationCreateSerializer(serializers.Serializer):
         return normalize_unique_email(value)
 
     def validate_admin_username(self, value):
-        return check_unique_username(value)
+        if not value or not value.strip():
+            raise serializers.ValidationError("Username cannot be empty.")
+        return check_unique_username(value.strip())
 
     def validate(self, attrs):
         check_password_strength(

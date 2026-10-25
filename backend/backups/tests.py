@@ -179,6 +179,42 @@ class BackupJobGenerationTests(BackupJobTestCase):
             if job.archive:
                 job.archive.delete(save=False)
 
+    def test_delete_backup_deletes_archive_file_and_row(self):
+        admin, admin_access = self._login_with_role("deladmin@example.com", "Organization Admin")
+        job = BackupJob.objects.create(
+            organization=self.organization,
+            requested_by=admin,
+            status=BackupJob.Status.DONE,
+            archive=SimpleUploadedFile("backup.zip.enc", b"fake-encrypted-bytes"),
+        )
+        archive_name = job.archive.name
+        self.assertTrue(job.archive.storage.exists(archive_name))
+
+        response = self.client.delete(reverse("backups-detail", kwargs={"pk": job.id}), **self._auth(admin_access))
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(BackupJob.objects.filter(pk=job.id).exists())
+        self.assertFalse(job.archive.storage.exists(archive_name))
+
+    def test_delete_backup_rejects_running_job(self):
+        admin, admin_access = self._login_with_role("runadmin@example.com", "Organization Admin")
+        job = BackupJob.objects.create(
+            organization=self.organization,
+            requested_by=admin,
+            status=BackupJob.Status.RUNNING,
+        )
+        response = self.client.delete(reverse("backups-detail", kwargs={"pk": job.id}), **self._auth(admin_access))
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertTrue(BackupJob.objects.filter(pk=job.id).exists())
+
+    def test_delete_backup_requires_organization_manage_permission(self):
+        _, member_access = self._login_with_role("memberdel@example.com", "Member")
+        job = BackupJob.objects.create(
+            organization=self.organization,
+            status=BackupJob.Status.DONE,
+        )
+        response = self.client.delete(reverse("backups-detail", kwargs={"pk": job.id}), **self._auth(member_access))
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
 
 class RestoreJobTests(BackupJobTestCase):
     """CELERY_TASK_ALWAYS_EAGER=True in tests means .delay() below runs both

@@ -2,7 +2,7 @@ import { apiFetch, apiJson, apiVoid, extractApiError } from "./client";
 import type { User, UserPreferences } from "./types";
 
 export function updateMe(payload: {
-  username?: string | null;
+  username?: string;
   first_name?: string;
   last_name?: string;
   title?: string;

@@ -30,7 +30,7 @@ def check_unique_username(value: str | None, *, exclude_pk=None) -> str | None:
     """"" -> None (see models.py's username field comment), then the same
     case-insensitive uniqueness rule as normalize_unique_email - usernames
     log in through the same iexact lookup."""
-    value = value or None
+    value = value.strip() if value else None
     if value:
         clashes = User.objects.filter(username__iexact=value)
         if exclude_pk is not None:
@@ -92,6 +92,14 @@ class MeUpdateSerializer(serializers.ModelSerializer):
     (those need their own verification/confirmation flows) and roles
     (permission-gated elsewhere, not something a user grants themselves)."""
 
+    username = serializers.CharField(
+        min_length=3,
+        max_length=30,
+        validators=[username_validator],
+        required=False,
+        allow_blank=False,
+        allow_null=False,
+    )
     # Same upload-then-attach flow as OrganizationBrandingUpdateSerializer's logo_id. The
     # queryset is deliberately global; validate_profile_picture_id below checks org ownership.
     profile_picture_id = serializers.PrimaryKeyRelatedField(
@@ -103,9 +111,11 @@ class MeUpdateSerializer(serializers.ModelSerializer):
         fields = ["username", "first_name", "last_name", "title", "preferences", "email_visible", "profile_picture_id"]
 
     def validate_username(self, value):
-        # "" means "clear it" from the client's perspective, but the model
-        # field must never store "" (see models.py's username field comment -
-        # two blank strings would collide on the unique constraint).
+        if not value or not value.strip():
+            raise serializers.ValidationError("Username cannot be empty.")
+
+
+
         return check_unique_username(value, exclude_pk=self.instance.pk if self.instance else None)
 
     def validate_profile_picture_id(self, value):
@@ -145,7 +155,7 @@ class RegisterSerializer(serializers.ModelSerializer):
     invitation_code = serializers.CharField(write_only=True)
     # Required at signup, unlike the model field (null=True so accounts
     # created before this rule, or by an admin, can still lack one).
-    username = serializers.CharField(max_length=30, validators=[username_validator])
+    username = serializers.CharField(min_length=3, max_length=30, validators=[username_validator])
 
     class Meta:
         model = User
@@ -155,6 +165,8 @@ class RegisterSerializer(serializers.ModelSerializer):
         return normalize_unique_email(value)
 
     def validate_username(self, value):
+        if not value or not value.strip():
+            raise serializers.ValidationError("Username cannot be empty.")
         # Blank is already rejected by the field itself (required, no
         # allow_blank) - this is just the case-insensitive uniqueness check.
         return check_unique_username(value)

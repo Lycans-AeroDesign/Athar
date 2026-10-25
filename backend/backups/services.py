@@ -881,7 +881,7 @@ def build_org_backup_archive(job: BackupJob) -> None:
     organization = job.organization
     with tempfile.TemporaryDirectory() as tmp_dir:
         archive_path = Path(tmp_dir) / f"{job.id}.zip"
-        with zipfile.ZipFile(archive_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        with zipfile.ZipFile(archive_path, "w", compression=zipfile.ZIP_LZMA) as zf:
             _write_manifest(zf, organization)
             _write_organization_settings(zf, organization)
             for queryset, filename, columns in _export_specs(organization):
