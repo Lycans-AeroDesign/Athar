@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl";
 
 import { Icon } from "@/components/ui/Icon";
-import { Skeleton } from "@/components/ui/Skeleton";
+import { Skeleton, SkeletonText } from "@/components/ui/Skeleton";
 import type { InventorySummary, StockStatus } from "@/lib/api/types";
 import { STOCK_STATUS_VALUES } from "@/lib/inventory";
 import { STOCK_STATUS_ICONS } from "@/lib/optionIcons";
@@ -30,18 +30,18 @@ export function InventorySummaryPanel({ summary, activeStatus, onStatusSelect }:
         aria-busy="true"
         className="space-y-4 rounded-xl border border-outline-variant bg-surface-container-lowest p-4"
       >
-        <div className="flex items-center justify-between gap-2">
-          <Skeleton className="h-6 w-40" />
-          <Skeleton className="h-4 w-28" />
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <SkeletonText variant="headline-md" width="w-40" />
+          <SkeletonText width="w-28" />
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           {Array.from({ length: 5 }).map((_, idx) => (
-            <div
-              key={idx}
-              className="rounded-xl border border-outline-variant bg-surface-container-low p-3 space-y-2"
-            >
-              <Skeleton className="h-4 w-20" />
-              <Skeleton className="h-7 w-12" />
+            <div key={idx} className="rounded-xl border border-outline-variant bg-surface-container-low p-3">
+              <div className="flex items-center justify-between gap-2">
+                <SkeletonText width="w-20" />
+                <Skeleton className="h-4 w-4 rounded" />
+              </div>
+              <SkeletonText variant="display" width="w-10" />
             </div>
           ))}
         </div>

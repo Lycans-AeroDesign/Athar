@@ -10,7 +10,9 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
-import { CardGridSkeleton, Skeleton } from "@/components/ui/Skeleton";
+import { KnowledgeCardGridSkeleton } from "@/components/knowledge/ArticleCard";
+import { ActivityLineSkeleton } from "@/components/knowledge/KnowledgeSkeletons";
+import { Skeleton, SkeletonText } from "@/components/ui/Skeleton";
 import { StatCard } from "@/components/ui/StatCard";
 import { Link } from "@/i18n/navigation";
 import { getKnowledgeActivity } from "@/lib/api/audit";
@@ -147,7 +149,7 @@ export default function DashboardPage() {
           </div>
 
           {recentItems === null ? (
-            <CardGridSkeleton count={4} columns={2} />
+            <KnowledgeCardGridSkeleton count={4} />
           ) : recentItems.length === 0 ? (
             <p className="font-body-md text-body-md text-on-surface-variant">{t("recentEmptyState")}</p>
           ) : (
@@ -189,10 +191,10 @@ export default function DashboardPage() {
               <div className="space-y-3" role="status" aria-busy="true">
                 {Array.from({ length: 5 }).map((_, index) => (
                   <div key={index} className="flex items-center gap-3">
-                    <Skeleton className="h-4 w-4 rounded" />
-                    <Skeleton className="h-7 w-7 rounded-full shrink-0" />
-                    <Skeleton className="h-4 flex-1" />
-                    <Skeleton className="h-4 w-12" />
+                    <SkeletonText variant="mono-sm" width="w-4" className="w-5 shrink-0" />
+                    <Skeleton className="h-8 w-8 rounded-full shrink-0" />
+                    <SkeletonText width="w-2/3" className="flex-1" />
+                    <SkeletonText variant="mono-sm" width="w-12" className="shrink-0" />
                   </div>
                 ))}
               </div>
@@ -244,13 +246,7 @@ export default function DashboardPage() {
         {activity === null ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-x-6 gap-y-4" role="status" aria-busy="true">
             {Array.from({ length: 6 }).map((_, index) => (
-              <div key={index} className="flex gap-2.5">
-                <Skeleton className="mt-1.5 size-2 rounded-full shrink-0" />
-                <div className="min-w-0 flex-1 space-y-1.5">
-                  <Skeleton className="h-4 w-4/5" />
-                  <Skeleton className="h-3 w-20" />
-                </div>
-              </div>
+              <ActivityLineSkeleton key={index} />
             ))}
           </div>
         ) : activity.length === 0 ? (

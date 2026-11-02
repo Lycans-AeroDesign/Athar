@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Icon } from "@/components/ui/Icon";
 import { Modal } from "@/components/ui/Modal";
-import { ListSkeleton } from "@/components/ui/Skeleton";
+import { SettingsListSkeleton } from "@/components/ui/Skeleton";
 import { INPUT_CLASS } from "@/components/ui/inputStyles";
 import {
   createCourseCategory,
@@ -101,7 +101,7 @@ export function CourseCategoryManager() {
         </div>
 
         {!categories ? (
-          <ListSkeleton rows={4} compact />
+          <SettingsListSkeleton />
         ) : categories.length === 0 ? (
           <p className="font-body-md text-body-md text-on-surface-variant">{t("noCourseCategories")}</p>
         ) : (

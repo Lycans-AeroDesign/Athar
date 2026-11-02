@@ -11,7 +11,7 @@ import { Combobox } from "@/components/ui/Combobox";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
 import { Pagination } from "@/components/ui/Pagination";
-import { ListSkeleton } from "@/components/ui/Skeleton";
+import { SopListSkeleton } from "@/components/engineering/EngineeringSkeletons";
 import { INPUT_CLASS } from "@/components/ui/inputStyles";
 import { Link } from "@/i18n/navigation";
 import { getSops } from "@/lib/api/engineering";
@@ -125,7 +125,7 @@ export default function SopsPage() {
           {error}
         </p>
       ) : sops === null ? (
-        <ListSkeleton rows={5} />
+        <SopListSkeleton />
       ) : sops.length === 0 ? (
         <EmptyState
           icon="description"

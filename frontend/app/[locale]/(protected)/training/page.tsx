@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { Combobox } from "@/components/ui/Combobox";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
-import { CardGridSkeleton } from "@/components/ui/Skeleton";
+import { CourseCardGridSkeleton } from "@/components/training/CourseCard";
 import { Link } from "@/i18n/navigation";
 import { getCourseProgress, listCourseCategories, listCourses, listMyCourses, searchCourses } from "@/lib/api/training";
 import type { CourseCategory, CourseDifficulty, CourseEnrollment, CourseSummary } from "@/lib/api/types";
@@ -134,7 +134,7 @@ export default function TrainingDiscoveryPage() {
         </div>
 
         {courses === null ? (
-          <CardGridSkeleton count={6} hasCover />
+          <CourseCardGridSkeleton count={6} />
         ) : courses.length === 0 ? (
           <EmptyState
             icon="school"

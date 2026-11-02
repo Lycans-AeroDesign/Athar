@@ -17,7 +17,8 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
 import { Menu, type MenuEntry } from "@/components/ui/Menu";
 import { Pagination } from "@/components/ui/Pagination";
-import { CardGridSkeleton, TableSkeleton } from "@/components/ui/Skeleton";
+import { TableSkeleton } from "@/components/ui/Skeleton";
+import { COMPONENTS_TABLE_COLUMNS, ComponentCardGridSkeleton } from "@/components/engineering/EngineeringSkeletons";
 import { Link } from "@/i18n/navigation";
 import {
   exportComponentsCsv,
@@ -435,9 +436,9 @@ function ComponentsPageContent() {
         </p>
       ) : components === null ? (
         viewMode === "grid" ? (
-          <CardGridSkeleton count={6} hasCover />
+          <ComponentCardGridSkeleton />
         ) : (
-          <TableSkeleton rows={6} columns={6} />
+          <TableSkeleton rows={6} columns={COMPONENTS_TABLE_COLUMNS} />
         )
       ) : components.length === 0 ? (
         <EmptyState

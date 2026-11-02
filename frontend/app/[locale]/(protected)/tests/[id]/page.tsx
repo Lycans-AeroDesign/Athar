@@ -41,7 +41,7 @@ export default function TestDetailPage() {
     return <DetailMessage error>{t("notFound")}</DetailMessage>;
   }
   if (!test) {
-    return <DetailPageSkeleton />;
+    return <DetailPageSkeleton body="sections" />;
   }
 
   async function handleDelete() {

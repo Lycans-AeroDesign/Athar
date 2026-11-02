@@ -22,7 +22,7 @@ import { Markdown } from "@/components/ui/Markdown";
 import { MarkdownEditor } from "@/components/ui/MarkdownEditor";
 import { Modal } from "@/components/ui/Modal";
 import { PhotoDropzone } from "@/components/ui/PhotoDropzone";
-import { EditorPageSkeleton } from "@/components/ui/Skeleton";
+import { CourseEditorSkeleton } from "@/components/training/TrainingSkeletons";
 import { Switch } from "@/components/ui/Switch";
 import { Link, useRouter } from "@/i18n/navigation";
 import { uploadFile } from "@/lib/api/files";
@@ -186,7 +186,7 @@ export default function CourseEditorPage() {
     return <p className="font-body-md text-body-md text-error">Not found.</p>;
   }
   if (!course) {
-    return <EditorPageSkeleton />;
+    return <CourseEditorSkeleton tab={searchParams.get("tab") === "settings" ? "settings" : "curriculum"} />;
   }
 
   const isAuthor = user?.id === course.author?.id;

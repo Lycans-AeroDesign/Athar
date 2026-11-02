@@ -30,7 +30,7 @@ export default function EditComponentPage() {
     return <DetailMessage error>{t("notFound")}</DetailMessage>;
   }
   if (!component) {
-    return <EditorPageSkeleton />;
+    return <EditorPageSkeleton fields="grid" gridRows={4} />;
   }
   if (!canUpdate) {
     return <p className="font-body-md text-body-md text-on-surface-variant">{t("editPermissionRequired")}</p>;

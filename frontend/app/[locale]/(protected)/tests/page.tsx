@@ -12,6 +12,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
 import { Pagination } from "@/components/ui/Pagination";
 import { TableSkeleton } from "@/components/ui/Skeleton";
+import { TESTS_TABLE_COLUMNS } from "@/components/engineering/EngineeringSkeletons";
 import { INPUT_CLASS } from "@/components/ui/inputStyles";
 import { Link } from "@/i18n/navigation";
 import { getTests, type TestOrdering } from "@/lib/api/engineering";
@@ -182,7 +183,7 @@ export default function TestsPage() {
           {error}
         </p>
       ) : tests === null ? (
-        <TableSkeleton rows={6} columns={5} />
+        <TableSkeleton rows={6} columns={TESTS_TABLE_COLUMNS} />
       ) : tests.length === 0 ? (
         <EmptyState
           icon="science"

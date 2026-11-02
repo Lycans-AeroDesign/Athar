@@ -8,7 +8,7 @@ import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Icon } from "@/components/ui/Icon";
 import { Modal } from "@/components/ui/Modal";
 import { Pagination } from "@/components/ui/Pagination";
-import { Skeleton, TableSkeleton } from "@/components/ui/Skeleton";
+import { Skeleton, SkeletonButton, SkeletonText, TableSkeleton } from "@/components/ui/Skeleton";
 import { StatCard } from "@/components/ui/StatCard";
 import { Link, getPathname } from "@/i18n/navigation";
 import {
@@ -105,20 +105,35 @@ export function PlatformOrganizationDetail({ id }: { id: string }) {
 
       {!org ? (
         <div className="space-y-6" role="status" aria-busy="true">
-          <div className="flex items-start justify-between gap-4">
-            <div className="space-y-2">
-              <Skeleton className="h-8 w-56" />
-              <Skeleton className="h-4 w-40" />
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <SkeletonText variant="headline-lg" width="w-56" />
+              <SkeletonText variant="mono-sm" width="w-48" />
             </div>
-            <Skeleton className="h-10 w-28 rounded-lg" />
+            <SkeletonButton className="w-28" />
           </div>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {Array.from({ length: 4 }).map((_, idx) => (
-              <div key={idx} className="bg-surface-container-low border border-outline-variant rounded-xl p-4 space-y-2">
-                <Skeleton className="h-4 w-24" />
-                <Skeleton className="h-8 w-16" />
+              <div key={idx} className="bg-surface-container-low border border-outline-variant rounded-xl p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <SkeletonText width="w-20" />
+                  <Skeleton className="h-[18px] w-[18px] rounded" />
+                </div>
+                <SkeletonText variant="display" width="w-16" />
               </div>
             ))}
+          </div>
+          <div className="bg-surface rounded-xl border border-outline-variant p-6">
+            <SkeletonText variant="headline-md" width="w-40" className="mb-1" />
+            <SkeletonText width="w-2/3" className="mb-4" />
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+              {Array.from({ length: 10 }).map((_, idx) => (
+                <div key={idx}>
+                  <SkeletonText width="w-20" />
+                  <SkeletonText variant="headline-md" width="w-8" />
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       ) : (
@@ -179,9 +194,11 @@ export function PlatformOrganizationDetail({ id }: { id: string }) {
       <div className="bg-surface rounded-xl border border-outline-variant overflow-hidden">
         <h2 className="p-6 pb-4 font-headline-md text-headline-md text-on-surface">{t("users")}</h2>
         {!users ? (
-          <div className="p-6 pt-0">
-            <TableSkeleton rows={5} columns={5} />
-          </div>
+          <TableSkeleton
+            variant="flush"
+            rows={5}
+            columns={["two-line", "text", "text", "text", "text", "actions"]}
+          />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full font-body-md text-body-md">

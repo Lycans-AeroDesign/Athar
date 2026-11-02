@@ -30,7 +30,7 @@ export default function EditFailurePage() {
     return <DetailMessage error>{t("notFound")}</DetailMessage>;
   }
   if (!failure) {
-    return <EditorPageSkeleton />;
+    return <EditorPageSkeleton fields="grid" gridRows={3} editors={4} />;
   }
   if (!canUpdate) {
     return <p className="font-body-md text-body-md text-on-surface-variant">{t("editPermissionRequired")}</p>;

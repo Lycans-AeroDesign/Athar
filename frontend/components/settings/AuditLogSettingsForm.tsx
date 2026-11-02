@@ -42,9 +42,7 @@ export function AuditLogSettingsForm() {
         )}
 
         {!data ? (
-          <div className="p-6 pt-0">
-            <TableSkeleton rows={6} columns={4} />
-          </div>
+          <TableSkeleton variant="flush" rows={6} columns={["text", "text", "text", "text"]} />
         ) : data.results.length === 0 ? (
           <p className="px-6 pb-6 font-body-md text-body-md text-on-surface-variant">{t("emptyState")}</p>
         ) : (

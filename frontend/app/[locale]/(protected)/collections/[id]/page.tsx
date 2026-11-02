@@ -9,7 +9,7 @@ import { DetailMessage } from "@/components/ui/DetailMessage";
 import { Icon } from "@/components/ui/Icon";
 import { IconButton } from "@/components/ui/IconButton";
 import { Markdown } from "@/components/ui/Markdown";
-import { DetailPageSkeleton } from "@/components/ui/Skeleton";
+import { CollectionDetailSkeleton } from "@/components/knowledge/KnowledgeSkeletons";
 import { TagChip } from "@/components/ui/TagChip";
 import { UpdatedBadge } from "@/components/ui/UpdatedBadge";
 import { Link, useRouter } from "@/i18n/navigation";
@@ -83,7 +83,7 @@ export default function CollectionPage() {
     return <DetailMessage error>{t("notFound")}</DetailMessage>;
   }
   if (!collection) {
-    return <DetailPageSkeleton />;
+    return <CollectionDetailSkeleton />;
   }
 
   async function handleMove(index: number, direction: -1 | 1) {

@@ -32,7 +32,7 @@ export default function EditDocumentPage() {
     return <DetailMessage error>{t("notFound")}</DetailMessage>;
   }
   if (!document) {
-    return <EditorPageSkeleton />;
+    return <EditorPageSkeleton fields="grid" gridRows={3} />;
   }
   const canEdit = user?.id === document.created_by?.id || canUpdateAny;
   if (!canEdit) {

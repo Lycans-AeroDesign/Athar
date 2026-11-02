@@ -8,7 +8,7 @@ import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
 import { Modal } from "@/components/ui/Modal";
-import { ListSkeleton } from "@/components/ui/Skeleton";
+import { SettingsListSkeleton } from "@/components/ui/Skeleton";
 import { INPUT_CLASS } from "@/components/ui/inputStyles";
 import {
   createComponentCategory,
@@ -132,7 +132,7 @@ export function InventoryListManager({ kind }: { kind: "categories" | "locations
         </div>
 
         {!entries ? (
-          <ListSkeleton rows={4} compact />
+          <SettingsListSkeleton trailing="count-and-icons" />
         ) : entries.length === 0 ? (
           <EmptyState
             icon={kind === "categories" ? "label" : "place"}

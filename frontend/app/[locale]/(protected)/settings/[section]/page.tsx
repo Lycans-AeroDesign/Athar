@@ -15,7 +15,7 @@ import { useSettingsPermissions, useVisibleSettingsGroups } from "@/components/s
 import { useReportSettingsDirty } from "@/components/settings/SettingsShell";
 import { UsersSettingsForm } from "@/components/settings/UsersSettingsForm";
 import { CourseCategoryManager } from "@/components/training/CourseCategoryManager";
-import { FormSectionSkeleton } from "@/components/ui/Skeleton";
+import { FeaturesSettingsSkeleton, IdentitySettingsSkeleton } from "@/components/settings/SettingsSkeletons";
 import { useRouter } from "@/i18n/navigation";
 import { useOrganization } from "@/lib/organization/OrganizationProvider";
 
@@ -40,7 +40,7 @@ export default function SettingsSectionPage({ params }: { params: Promise<{ sect
     case "identity":
     case "features":
       if (!settings) {
-        return <FormSectionSkeleton fields={3} />;
+        return section === "identity" ? <IdentitySettingsSkeleton /> : <FeaturesSettingsSkeleton />;
       }
       return section === "identity" ? (
         <IdentitySettingsForm

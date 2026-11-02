@@ -9,7 +9,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { FloatingLabelInput } from "@/components/ui/FloatingLabelInput";
 import { Icon } from "@/components/ui/Icon";
 import { Modal } from "@/components/ui/Modal";
-import { ListSkeleton } from "@/components/ui/Skeleton";
+import { SettingsListSkeleton } from "@/components/ui/Skeleton";
 import {
   BACKUP_PASSPHRASE_MIN_LENGTH,
   createBackupJob,
@@ -215,7 +215,7 @@ export function BackupsSettingsForm() {
         </div>
 
         {!jobs ? (
-          <ListSkeleton rows={3} compact />
+          <SettingsListSkeleton rows={3} titlePill trailing="button" />
         ) : jobs.length === 0 ? (
           <EmptyState
             icon="archive"
@@ -315,7 +315,7 @@ export function BackupsSettingsForm() {
         </div>
 
         {!restoreJobs ? (
-          <ListSkeleton rows={2} compact />
+          <SettingsListSkeleton rows={2} titlePill trailing="none" />
         ) : restoreJobs.length === 0 ? (
           <p className="font-body-md text-body-md text-on-surface-variant">{t("restoresEmptyState")}</p>
         ) : (

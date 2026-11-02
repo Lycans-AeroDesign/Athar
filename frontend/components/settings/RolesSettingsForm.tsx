@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Combobox } from "@/components/ui/Combobox";
 import { Icon } from "@/components/ui/Icon";
 import { Modal } from "@/components/ui/Modal";
-import { ListSkeleton } from "@/components/ui/Skeleton";
+import { MenuListSkeleton } from "@/components/ui/Skeleton";
 import { INPUT_CLASS } from "@/components/ui/inputStyles";
 import { useHasPermission } from "@/lib/auth/permissions";
 import {
@@ -294,7 +294,7 @@ export function RolesSettingsForm() {
           </div>
 
           {!roles ? (
-            <ListSkeleton rows={4} compact />
+            <MenuListSkeleton />
           ) : (
             <div className="space-y-1">
               {draftRoles.map((role) => (

@@ -80,7 +80,7 @@ export default function ArticleDetailPage() {
     return <DetailMessage error>{t("notFound")}</DetailMessage>;
   }
   if (!article) {
-    return <DetailPageSkeleton />;
+    return <DetailPageSkeleton withToc headerActions={4} />;
   }
 
   // Co-authors share the author's edit/submit rights (backend visibility.is_owner_of).

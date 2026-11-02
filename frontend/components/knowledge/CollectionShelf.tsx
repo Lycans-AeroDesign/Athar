@@ -7,7 +7,7 @@ import { Can } from "@/components/auth/Can";
 import { CreateCollectionModal } from "@/components/knowledge/CreateCollectionModal";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
-import { ListSkeleton } from "@/components/ui/Skeleton";
+import { CollectionShelfSkeleton } from "./KnowledgeSkeletons";
 import { Link } from "@/i18n/navigation";
 import { getCollections } from "@/lib/api/collections";
 import type { CollectionSummary } from "@/lib/api/types";
@@ -33,7 +33,7 @@ export function CollectionShelf({ scope }: { scope: "SOP" | "ARTICLE" }) {
   }, [scope]);
 
   if (error) return null; // The shelf is optional decoration - never block the page it lives on.
-  if (collections === null) return <ListSkeleton rows={1} />;
+  if (collections === null) return <CollectionShelfSkeleton />;
 
   return (
     <section className="space-y-3" aria-label={t("shelf.title")}>

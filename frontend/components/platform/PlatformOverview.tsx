@@ -148,9 +148,7 @@ export function PlatformOverview() {
         </div>
 
         {!data ? (
-          <div className="p-6 pt-0">
-            <TableSkeleton rows={5} columns={5} />
-          </div>
+          <TableSkeleton variant="flush" rows={5} columns={["two-line", "pill", "text", "text", "text"]} />
         ) : data.results.length === 0 ? (
           <p className="px-6 pb-6 font-body-md text-body-md text-on-surface-variant">{t("emptyState")}</p>
         ) : (

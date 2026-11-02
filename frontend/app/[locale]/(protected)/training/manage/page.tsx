@@ -10,7 +10,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
-import { ListSkeleton } from "@/components/ui/Skeleton";
+import { Skeleton, SkeletonPill, SkeletonRegion, SkeletonText } from "@/components/ui/Skeleton";
 import { StatCard } from "@/components/ui/StatCard";
 import { Link } from "@/i18n/navigation";
 import { getTrainingStats, listCourses } from "@/lib/api/training";
@@ -118,7 +118,7 @@ export default function TrainingManageDashboardPage() {
         </div>
 
         {pending === null ? (
-          <ListSkeleton rows={2} compact />
+          <PendingCourseCardsSkeleton />
         ) : pending.length === 0 ? (
           <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-dashed border-outline-variant bg-surface-container-low">
             <Icon name="check_circle" size={18} className="text-on-surface-variant" />
@@ -175,7 +175,7 @@ export default function TrainingManageDashboardPage() {
         </div>
 
         {tabCourses === null ? (
-          <ListSkeleton rows={4} compact />
+          <CourseRowsSkeleton />
         ) : tabCourses.length === 0 ? (
           <EmptyState
             icon={PUBLISH_STATUS_ICONS[tab].icon}
@@ -315,3 +315,69 @@ function CourseRow({ course }: { course: CourseSummary }) {
   );
 }
 
+// Skeletons for the two lists above - same frames as PendingCourseCard / CourseRow.
+
+function PendingCourseCardsSkeleton() {
+  return (
+    <SkeletonRegion className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+      {[0, 1].map((index) => (
+        <div
+          key={index}
+          className="flex flex-col gap-3 p-4 rounded-xl border border-outline-variant border-s-4 bg-surface-container-low"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1 space-y-1">
+              <SkeletonText variant="body-lg" width="w-2/3" />
+              <SkeletonText lines={2} width="w-full" lastWidth="w-1/2" />
+            </div>
+            <SkeletonPill className="w-24" />
+          </div>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+            <SkeletonText variant="mono-sm" width="w-20" />
+            <SkeletonText variant="mono-sm" width="w-16" />
+            <SkeletonText variant="mono-sm" width="w-20" />
+          </div>
+          <div className="flex items-center justify-between gap-3 pt-2 border-t border-outline-variant">
+            <div className="flex items-center gap-2 min-w-0">
+              <Skeleton className="h-8 w-8 rounded-full shrink-0" />
+              <div>
+                <SkeletonText width="w-28" />
+                <SkeletonText variant="mono-sm" width="w-24" />
+              </div>
+            </div>
+            <SkeletonText width="w-16" />
+          </div>
+        </div>
+      ))}
+    </SkeletonRegion>
+  );
+}
+
+function CourseRowsSkeleton() {
+  return (
+    <SkeletonRegion className="divide-y divide-outline-variant border border-outline-variant rounded-xl overflow-hidden">
+      {Array.from({ length: 4 }).map((_, index) => (
+        <div
+          key={index}
+          className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 bg-surface-container-low"
+        >
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            <Skeleton className="h-8 w-8 rounded-full shrink-0" />
+            <div className="min-w-0 flex-1 space-y-1">
+              <SkeletonText width={index % 2 ? "w-1/3" : "w-1/2"} />
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                <SkeletonText variant="mono-sm" width="w-16" />
+                <SkeletonText variant="mono-sm" width="w-20" />
+                <SkeletonText variant="mono-sm" width="w-24" />
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 shrink-0">
+            <SkeletonText variant="mono-sm" width="w-24" />
+            <SkeletonPill className="w-24" />
+          </div>
+        </div>
+      ))}
+    </SkeletonRegion>
+  );
+}

@@ -18,7 +18,7 @@ import { Icon } from "@/components/ui/Icon";
 import { IconButton } from "@/components/ui/IconButton";
 import { Markdown } from "@/components/ui/Markdown";
 import { Modal } from "@/components/ui/Modal";
-import { DetailPageSkeleton } from "@/components/ui/Skeleton";
+import { CourseDetailSkeleton } from "@/components/training/TrainingSkeletons";
 import { UpdatedBadge } from "@/components/ui/UpdatedBadge";
 import { Link, useRouter } from "@/i18n/navigation";
 import { errorMessage } from "@/lib/errors";
@@ -79,7 +79,7 @@ export default function CourseDetailPage() {
     return <DetailMessage error>{t("notFound")}</DetailMessage>;
   }
   if (!course) {
-    return <DetailPageSkeleton withSidebar={false} />;
+    return <CourseDetailSkeleton />;
   }
 
   const isAuthor = user?.id === course.author?.id;

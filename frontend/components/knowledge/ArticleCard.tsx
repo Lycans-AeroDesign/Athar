@@ -1,6 +1,7 @@
 import { useTranslations } from "next-intl";
 
 import { Icon } from "@/components/ui/Icon";
+import { SkeletonRegion, SkeletonText } from "@/components/ui/Skeleton";
 import { Link } from "@/i18n/navigation";
 import { formatRelativeTime } from "@/lib/datetime";
 import { formatPersonName } from "@/lib/format";
@@ -47,5 +48,36 @@ export function ArticleCard({ article }: { article: ArticleSummary }) {
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * Mirrors ArticleCard (and QuestionCard, which shares its frame: badge + time
+ * row, title, one/two body lines, bordered byline). Used wherever the mixed
+ * article/question feed loads - Knowledge, the dashboard, contributions.
+ */
+export function KnowledgeCardSkeleton() {
+  return (
+    <div className="bg-surface-container-low border border-outline-variant rounded-xl p-4">
+      <div className="flex items-center justify-between mb-2">
+        <SkeletonText variant="label-caps" width="w-20" />
+        <SkeletonText variant="mono-sm" width="w-16" />
+      </div>
+      <SkeletonText variant="headline-md" width="w-3/4" className="mb-1" />
+      <SkeletonText lines={2} width="w-full" lastWidth="w-3/5" className="mb-3" />
+      <div className="pt-3 border-t border-outline-variant">
+        <SkeletonText width="w-1/3" />
+      </div>
+    </div>
+  );
+}
+
+export function KnowledgeCardGridSkeleton({ count = 4, gap = "gap-4" }: { count?: number; gap?: "gap-3" | "gap-4" }) {
+  return (
+    <SkeletonRegion className={`grid grid-cols-1 xl:grid-cols-2 ${gap}`}>
+      {Array.from({ length: count }).map((_, index) => (
+        <KnowledgeCardSkeleton key={index} />
+      ))}
+    </SkeletonRegion>
   );
 }

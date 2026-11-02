@@ -10,7 +10,7 @@ import { LessonResourceList } from "@/components/training/LessonResourceList";
 import { RelatedKnowledgePanel } from "@/components/training/RelatedKnowledgePanel";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
-import { CourseLearnPageSkeleton } from "@/components/ui/Skeleton";
+import { CourseLearnSkeleton, LessonBodySkeleton } from "@/components/training/TrainingSkeletons";
 import { Link } from "@/i18n/navigation";
 import { completeLesson, enrollInCourse, getCourse, getCourseProgress, getLesson } from "@/lib/api/training";
 import type { CourseDetail, CourseProgress, LessonDetail, LessonSummary } from "@/lib/api/types";
@@ -102,7 +102,7 @@ export default function LessonViewerPage() {
     return <p className="font-body-md text-body-md text-error">{t("notFound")}</p>;
   }
   if (!course) {
-    return <CourseLearnPageSkeleton />;
+    return <CourseLearnSkeleton />;
   }
 
   const supplementaryResources = lesson
@@ -157,15 +157,7 @@ export default function LessonViewerPage() {
 
       <div className="flex-1 w-full min-w-0 max-w-5xl space-y-6">
         {!lesson ? (
-          <div className="space-y-6 animate-pulse" aria-busy="true">
-            <div className="h-4 w-48 bg-surface-container-high rounded-md" />
-            <div className="h-9 w-3/4 bg-surface-container-high rounded-lg" />
-            <div className="w-full aspect-video min-h-[320px] bg-surface-container-high rounded-2xl" />
-            <div className="space-y-3 pt-3">
-              <div className="h-4 w-full bg-surface-container-high rounded-md" />
-              <div className="h-4 w-5/6 bg-surface-container-high rounded-md" />
-            </div>
-          </div>
+          <LessonBodySkeleton />
         ) : (
           <>
             {isPreview && (

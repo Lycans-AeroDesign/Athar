@@ -60,7 +60,7 @@ export default function QuestionDetailPage() {
     return <DetailMessage error>{t("notFound")}</DetailMessage>;
   }
   if (!question) {
-    return <DetailPageSkeleton />;
+    return <DetailPageSkeleton accent="underline" titleVariant="headline-lg" headerPills={0} headerActions={4} />;
   }
 
   const canManage = user?.id === question.author?.id || canModerate;

@@ -44,7 +44,7 @@ export default function ComponentDetailPage() {
     return <DetailMessage error>{t("notFound")}</DetailMessage>;
   }
   if (!component) {
-    return <DetailPageSkeleton />;
+    return <DetailPageSkeleton headerPills={2} />;
   }
 
   async function handleDelete() {

@@ -12,6 +12,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
 import { Pagination } from "@/components/ui/Pagination";
 import { TableSkeleton } from "@/components/ui/Skeleton";
+import { DOCUMENTS_TABLE_COLUMNS } from "@/components/engineering/EngineeringSkeletons";
 import { INPUT_CLASS } from "@/components/ui/inputStyles";
 import { getDocuments, type DocumentOrdering } from "@/lib/api/documents";
 import { Link } from "@/i18n/navigation";
@@ -167,7 +168,7 @@ export default function DocumentsPage() {
           {error}
         </p>
       ) : documents === null ? (
-        <TableSkeleton rows={6} columns={5} />
+        <TableSkeleton rows={6} columns={DOCUMENTS_TABLE_COLUMNS} />
       ) : documents.length === 0 ? (
         <EmptyState
           icon="folder"

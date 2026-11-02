@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 
 import { CourseCard } from "@/components/training/CourseCard";
 import { Button } from "@/components/ui/Button";
-import { CardGridSkeleton } from "@/components/ui/Skeleton";
+import { CourseCardGridSkeleton } from "@/components/training/CourseCard";
 import { Link } from "@/i18n/navigation";
 import { getCourseProgress, listMyCourses } from "@/lib/api/training";
 import type { CourseEnrollment } from "@/lib/api/types";
@@ -46,7 +46,7 @@ export default function MyLearningPage() {
       <div className="space-y-3">
         <h2 className="font-headline-md text-headline-md text-on-surface">{t("inProgressTitle")}</h2>
         {inProgress === null ? (
-          <CardGridSkeleton count={3} hasCover />
+          <CourseCardGridSkeleton count={3} withProgress />
         ) : inProgress.length === 0 ? (
           <div className="space-y-3">
             <p className="font-body-md text-body-md text-on-surface-variant">{t("emptyInProgress")}</p>
@@ -66,7 +66,7 @@ export default function MyLearningPage() {
       <div className="space-y-3">
         <h2 className="font-headline-md text-headline-md text-on-surface">{t("completedTitle")}</h2>
         {completed === null ? (
-          <CardGridSkeleton count={3} hasCover />
+          <CourseCardGridSkeleton count={3} withProgress />
         ) : completed.length === 0 ? (
           <p className="font-body-md text-body-md text-on-surface-variant">{t("emptyCompleted")}</p>
         ) : (

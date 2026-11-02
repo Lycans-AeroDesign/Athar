@@ -10,7 +10,7 @@ import { ContributionsPanel } from "@/components/knowledge/ContributionsPanel";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
-import { ListSkeleton } from "@/components/ui/Skeleton";
+import { ContributionsPanelSkeleton } from "@/components/knowledge/KnowledgeSkeletons";
 import { getUserProfile } from "@/lib/api/knowledge";
 import type { UserProfile } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth/AuthProvider";
@@ -111,7 +111,7 @@ export default function AccountPage() {
         profile ? (
           <ContributionsPanel profile={profile} />
         ) : (
-          <ListSkeleton rows={4} />
+          <ContributionsPanelSkeleton />
         )
       ) : tab === "preferences" ? (
         <div className="max-w-2xl">

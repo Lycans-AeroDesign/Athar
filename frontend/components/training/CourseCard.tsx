@@ -2,6 +2,7 @@ import { useTranslations } from "next-intl";
 
 import { AuthenticatedImage } from "@/components/ui/AuthenticatedImage";
 import { Icon } from "@/components/ui/Icon";
+import { Skeleton, SkeletonRegion, SkeletonText } from "@/components/ui/Skeleton";
 import { Link } from "@/i18n/navigation";
 import { formatPersonName } from "@/lib/format";
 import type { CourseSummary } from "@/lib/api/types";
@@ -90,5 +91,46 @@ export function CourseCard({ course, progressPercent }: CourseCardProps) {
         )}
       </div>
     </Link>
+  );
+}
+
+/** Same grid every course-card list uses (training home, My Learning). */
+export const COURSE_CARD_GRID = "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4";
+
+/** Mirrors CourseCard above, block for block. */
+export function CourseCardSkeleton({ withProgress = false }: { withProgress?: boolean }) {
+  return (
+    <div className="bg-surface-container-low border border-outline-variant rounded-xl overflow-hidden">
+      <Skeleton className="h-32 w-full rounded-none" />
+      <div className="p-4 space-y-2">
+        <SkeletonText variant="label-caps" width="w-20" />
+        <SkeletonText variant="headline-md" width="w-3/4" />
+        <SkeletonText lines={2} width="w-full" lastWidth="w-4/5" />
+        <div className="flex flex-wrap items-center gap-3 pt-1">
+          <SkeletonText variant="mono-sm" width="w-16" />
+          <SkeletonText variant="mono-sm" width="w-16" />
+          <SkeletonText variant="mono-sm" width="w-12" />
+        </div>
+        <div className="pt-2 border-t border-outline-variant">
+          <SkeletonText width="w-1/3" />
+        </div>
+        {withProgress && (
+          <div className="pt-2 space-y-1">
+            <Skeleton className="h-1.5 w-full rounded-full" />
+            <SkeletonText variant="label-caps" width="w-20" />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export function CourseCardGridSkeleton({ count = 6, withProgress = false }: { count?: number; withProgress?: boolean }) {
+  return (
+    <SkeletonRegion className={COURSE_CARD_GRID}>
+      {Array.from({ length: count }).map((_, index) => (
+        <CourseCardSkeleton key={index} withProgress={withProgress} />
+      ))}
+    </SkeletonRegion>
   );
 }

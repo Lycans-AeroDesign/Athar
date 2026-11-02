@@ -40,7 +40,7 @@ export default function FailureDetailPage() {
     return <DetailMessage error>{t("notFound")}</DetailMessage>;
   }
   if (!failure) {
-    return <DetailPageSkeleton />;
+    return <DetailPageSkeleton accent="error" body="sections" />;
   }
 
   async function handleDelete() {

@@ -8,7 +8,7 @@ import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
 import { Modal } from "@/components/ui/Modal";
-import { ListSkeleton } from "@/components/ui/Skeleton";
+import { SettingsListSkeleton } from "@/components/ui/Skeleton";
 import { INPUT_CLASS } from "@/components/ui/inputStyles";
 import { createCategory, deleteCategory, getCategories, updateCategory } from "@/lib/api/knowledge";
 import type { Category } from "@/lib/api/types";
@@ -92,7 +92,7 @@ export function CategorySettingsForm() {
         </div>
 
         {!categories ? (
-          <ListSkeleton rows={4} compact />
+          <SettingsListSkeleton />
         ) : categories.length === 0 ? (
           <EmptyState
             icon="label"

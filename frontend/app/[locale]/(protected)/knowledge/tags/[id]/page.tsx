@@ -5,7 +5,7 @@ import { useParams, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 
 import { EMPTY_SEARCH_COUNTS, SearchResultsPanel, type SearchCounts, type SearchScope } from "@/components/knowledge/SearchResultsPanel";
-import { Skeleton } from "@/components/ui/Skeleton";
+import { SkeletonText } from "@/components/ui/Skeleton";
 import { useRouter } from "@/i18n/navigation";
 import { getItemsByTag } from "@/lib/api/knowledge";
 import type { SearchResult, Tag } from "@/lib/api/types";
@@ -73,9 +73,9 @@ function TagItems() {
             <h1 className="font-display text-display text-on-surface">#{tag.name}</h1>
           </>
         ) : (
-          <div className="space-y-2">
-            <Skeleton className="h-3 w-20" />
-            <Skeleton className="h-9 w-48" />
+          <div role="status" aria-busy="true">
+            <SkeletonText variant="label-caps" width="w-20" />
+            <SkeletonText variant="display" width="w-48" />
           </div>
         )}
       </div>

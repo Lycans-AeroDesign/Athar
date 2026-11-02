@@ -12,6 +12,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
 import { Pagination } from "@/components/ui/Pagination";
 import { TableSkeleton } from "@/components/ui/Skeleton";
+import { FAILURES_TABLE_COLUMNS } from "@/components/engineering/EngineeringSkeletons";
 import { INPUT_CLASS } from "@/components/ui/inputStyles";
 import { Link } from "@/i18n/navigation";
 import { getFailures, type FailureOrdering } from "@/lib/api/engineering";
@@ -156,7 +157,7 @@ export default function FailuresPage() {
           {error}
         </p>
       ) : failures === null ? (
-        <TableSkeleton rows={6} columns={5} />
+        <TableSkeleton rows={6} columns={FAILURES_TABLE_COLUMNS} />
       ) : failures.length === 0 ? (
         <EmptyState
           icon="report_problem"

@@ -9,7 +9,7 @@ import { Icon } from "@/components/ui/Icon";
 import { IconButton } from "@/components/ui/IconButton";
 import { Menu, type MenuEntry } from "@/components/ui/Menu";
 import { Modal } from "@/components/ui/Modal";
-import { ListSkeleton } from "@/components/ui/Skeleton";
+import { SettingsListSkeleton } from "@/components/ui/Skeleton";
 import { Switch } from "@/components/ui/Switch";
 import { getPathname } from "@/i18n/navigation";
 import { createPasswordResetLink, passwordResetUrl } from "@/lib/api/passwordReset";
@@ -170,7 +170,7 @@ export function UsersSettingsForm() {
         </div>
 
         {!visibleUsers ? (
-          <ListSkeleton rows={4} compact />
+          <SettingsListSkeleton titlePill trailing="button" />
         ) : visibleUsers.length === 0 ? (
           <p className="font-body-md text-body-md text-on-surface-variant">{t("noMatches")}</p>
         ) : (

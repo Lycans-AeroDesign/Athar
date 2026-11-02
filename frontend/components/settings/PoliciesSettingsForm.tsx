@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { MarkdownEditor } from "@/components/ui/MarkdownEditor";
-import { FormSectionSkeleton } from "@/components/ui/Skeleton";
+import { PoliciesSettingsSkeleton } from "./SettingsSkeletons";
 import { INPUT_CLASS } from "@/components/ui/inputStyles";
 import {
   getPolicyOverview,
@@ -36,7 +36,7 @@ export function PoliciesSettingsForm() {
   }, []);
 
   if (!overview) {
-    return <FormSectionSkeleton fields={2} />;
+    return <PoliciesSettingsSkeleton />;
   }
 
   return (
