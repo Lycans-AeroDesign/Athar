@@ -1,0 +1,132 @@
+@import "tailwindcss";
+
+/* Athar landing page tokens.
+   Derived from the app's design system (frontend/app/[locale]/globals.css,
+   ref/athar_technical_system/DESIGN.md): navy #00247d / blue #1d4ed8 in
+   light, periwinkle #b7c4ff in dark, Inter + JetBrains Mono.
+   Dark is the default; [data-theme="light"] is the alternative. */
+:root {
+  color-scheme: dark;
+  --bg: #0a0e17;
+  --bg-raised: #0e1420;
+  --panel: #111827;
+  --line: rgb(183 196 255 / 0.09);
+  --line-strong: rgb(183 196 255 / 0.18);
+  --fg: #e6e8f0;
+  --fg-muted: #a2aabe;
+  --fg-subtle: #6f7890;
+  --accent: #b7c4ff;
+  --accent-fg: #0a1440;
+  --accent-hover: #cdd6ff;
+  --accent-soft: rgb(183 196 255 / 0.1);
+  --signal: #ff967b; /* app tertiary - used for failure/loss markers only */
+  --grid: rgb(183 196 255 / 0.045);
+  --shot-shadow: 0 40px 80px -20px rgb(0 0 0 / 0.6);
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f5f5fa;
+  --bg-raised: #ffffff;
+  --panel: #ffffff;
+  --line: rgb(0 36 125 / 0.1);
+  --line-strong: rgb(0 36 125 / 0.2);
+  --fg: #12141c;
+  --fg-muted: #474c60;
+  --fg-subtle: #6b7085;
+  --accent: #1d4ed8;
+  --accent-fg: #ffffff;
+  --accent-hover: #00247d;
+  --accent-soft: rgb(29 78 216 / 0.07);
+  --signal: #b3391a;
+  --grid: rgb(0 36 125 / 0.05);
+  --shot-shadow: 0 30px 60px -24px rgb(0 20 80 / 0.28);
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-bg-raised: var(--bg-raised);
+  --color-panel: var(--panel);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-fg: var(--fg);
+  --color-fg-muted: var(--fg-muted);
+  --color-fg-subtle: var(--fg-subtle);
+  --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
+  --color-signal: var(--signal);
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, "SFMono-Regular", monospace;
+  --font-accent: var(--font-newsreader), Georgia, serif;
+  --font-arabic: var(--font-plex-arabic), "Segoe UI", Tahoma, sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 5rem;
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection { background: var(--accent); color: var(--accent-fg); }
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* Blueprint grid: a 24px minor grid under a 120px major grid. */
+.blueprint {
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px),
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 120px 120px, 120px 120px, 24px 24px, 24px 24px;
+  background-position: -1px -1px;
+}
+.fade-mask {
+  mask-image: radial-gradient(ellipse 80% 70% at 50% 30%, #000 30%, transparent 75%);
+}
+
+/* Small mono "drawing label", e.g. FIG. 01 */
+.label {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg-subtle);
+}
+
+/* Scroll reveal (see components/Reveal.tsx). Content is visible by default;
+   the hidden state only applies once JS has marked the document ready. */
+.js [data-reveal] {
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 0.7s cubic-bezier(0.2, 0.7, 0.2, 1), transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.js [data-reveal].is-visible { opacity: 1; transform: none; }
+
+/* Knowledge graph edge draw-in */
+.js .graph-edge { stroke-dasharray: 400; stroke-dashoffset: 400; transition: stroke-dashoffset 1.4s ease-out; }
+.js .is-visible .graph-edge { stroke-dashoffset: 0; }
+.js .graph-node { opacity: 0; transition: opacity 0.6s ease-out; }
+.js .is-visible .graph-node { opacity: 1; }
+
+@media (prefers-reduced-motion: reduce) {
+  .js [data-reveal], .js .graph-node { opacity: 1; transform: none; transition: none; }
+  .js .graph-edge { stroke-dashoffset: 0; transition: none; }
+}
