@@ -90,7 +90,7 @@ export function RestrictedAccessPicker({ initialGrants, value, onChange }: Restr
               key={user.id}
               className={`flex items-center justify-between px-3 py-2 rounded-lg font-body-md text-body-md ${
                 pending === "add"
-                  ? "bg-tertiary-container text-on-tertiary-container"
+                  ? "bg-callout-warning/15 text-callout-warning ring-1 ring-inset ring-callout-warning/40"
                   : pending === "remove"
                     ? "bg-surface-container text-on-surface-variant line-through opacity-70"
                     : "bg-secondary-container text-on-secondary-container"

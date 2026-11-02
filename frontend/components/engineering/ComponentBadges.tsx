@@ -11,12 +11,11 @@ import { STOCK_STATUS_ICONS } from "@/lib/optionIcons";
 
 const ENGINEERING_STATUS_CLASSES: Record<ComponentStatus, string> = {
   CERTIFIED: "bg-primary-container text-on-primary-container",
-  TESTING: "bg-tertiary-container text-on-tertiary-container",
+  TESTING: "bg-callout-warning/15 text-callout-warning ring-1 ring-inset ring-callout-warning/40",
   DEPRECATED: "bg-error-container text-on-error-container",
 };
 
-// Not tertiary-container for anything benign - in this palette that's a
-// red/rust hue (see globals.css), which reads as an error.
+// Not callout-warning (amber) for anything benign - it reads as a caution.
 const STOCK_STATUS_CLASSES: Record<StockStatus, string> = {
   IN_STOCK: "bg-primary-container text-on-primary-container",
   LOW_STOCK: "bg-secondary-container text-on-secondary-container",

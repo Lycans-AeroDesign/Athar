@@ -184,7 +184,7 @@ export default function CourseDetailPage() {
       </Link>
 
       {isPreview && (
-        <div className="flex items-center gap-2 bg-tertiary-container text-on-tertiary-container rounded-xl px-4 py-3 font-body-md text-body-md shadow-xs">
+        <div className="flex items-center gap-2 bg-callout-warning/15 text-callout-warning ring-1 ring-inset ring-callout-warning/40 rounded-xl px-4 py-3 font-body-md text-body-md shadow-xs">
           <Icon name="visibility" size={18} />
           {t("previewBanner")}
         </div>

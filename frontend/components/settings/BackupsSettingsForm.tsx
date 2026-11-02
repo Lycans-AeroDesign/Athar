@@ -30,7 +30,7 @@ const POLL_INTERVAL_MS = 2000;
 
 const STATUS_CLASSES: Record<BackupJob["status"], string> = {
   PENDING: "bg-surface-container-high text-on-surface-variant",
-  RUNNING: "bg-tertiary-container text-on-tertiary-container",
+  RUNNING: "bg-callout-warning/15 text-callout-warning ring-1 ring-inset ring-callout-warning/40",
   DONE: "bg-secondary-container text-on-secondary-container",
   FAILED: "bg-error-container text-on-error-container",
 };

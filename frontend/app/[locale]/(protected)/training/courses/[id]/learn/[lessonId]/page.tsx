@@ -169,7 +169,7 @@ export default function LessonViewerPage() {
         ) : (
           <>
             {isPreview && (
-          <div className="flex items-center justify-between gap-2 bg-tertiary-container text-on-tertiary-container rounded-xl px-4 py-3 font-body-md text-body-md">
+          <div className="flex items-center justify-between gap-2 bg-callout-warning/15 text-callout-warning ring-1 ring-inset ring-callout-warning/40 rounded-xl px-4 py-3 font-body-md text-body-md">
             <span className="flex items-center gap-2">
               <Icon name="visibility" size={18} />
               {t("previewBanner")}

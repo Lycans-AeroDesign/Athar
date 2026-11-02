@@ -4,7 +4,7 @@ import type { ArticleStatus } from "@/lib/api/types";
 
 const STATUS_CLASSES: Record<ArticleStatus, string> = {
   DRAFT: "bg-surface-variant text-on-surface-variant",
-  IN_REVIEW: "bg-tertiary-container text-on-tertiary-container",
+  IN_REVIEW: "bg-callout-warning/15 text-callout-warning ring-1 ring-inset ring-callout-warning/40",
   PUBLISHED: "bg-primary-container text-on-primary-container",
   REJECTED: "bg-error-container text-on-error-container",
   ARCHIVED: "bg-surface-variant text-on-surface-variant",

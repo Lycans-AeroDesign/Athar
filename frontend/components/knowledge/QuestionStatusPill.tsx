@@ -4,7 +4,7 @@ import type { QuestionStatus } from "@/lib/api/types";
 
 const STATUS_CLASSES: Record<QuestionStatus, string> = {
   OPEN: "bg-surface-variant text-on-surface-variant",
-  ANSWERED: "bg-tertiary-container text-on-tertiary-container",
+  ANSWERED: "bg-callout-warning/15 text-callout-warning ring-1 ring-inset ring-callout-warning/40",
   SOLVED: "bg-primary-container text-on-primary-container",
   CLOSED: "bg-error-container text-on-error-container",
 };

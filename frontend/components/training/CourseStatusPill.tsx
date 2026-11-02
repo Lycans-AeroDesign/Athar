@@ -4,7 +4,9 @@ import type { CourseStatus } from "@/lib/api/types";
 
 const STATUS_CLASSES: Record<CourseStatus, string> = {
   DRAFT: "bg-surface-variant text-on-surface-variant",
-  IN_REVIEW: "bg-tertiary-container text-on-tertiary-container",
+  // callout-warning is the theme's amber (#9a6700 light / #d29922 dark) - the
+  // old tertiary-container pairing was rust-on-salmon with poor contrast.
+  IN_REVIEW: "bg-callout-warning/15 text-callout-warning ring-1 ring-inset ring-callout-warning/40",
   PUBLISHED: "bg-primary-container text-on-primary-container",
   REJECTED: "bg-error-container text-on-error-container",
   ARCHIVED: "bg-surface-variant text-on-surface-variant",

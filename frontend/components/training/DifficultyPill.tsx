@@ -2,13 +2,11 @@ import { useTranslations } from "next-intl";
 
 import type { CourseDifficulty } from "@/lib/api/types";
 
-// Reuses the app's existing Material-3-style container tokens (no new color
-// added) as a rough severity ramp: secondary (calm blue) -> tertiary (amber/
-// orange) -> error (red), same escalation CourseStatusPill already uses
-// tertiary-container for the "in review, needs attention" status.
+// Rough severity ramp: secondary (calm blue) -> callout-warning (amber) ->
+// error (red). Amber is the same one CourseStatusPill uses for "in review".
 const DIFFICULTY_CLASSES: Record<CourseDifficulty, string> = {
   BEGINNER: "bg-secondary-container text-on-secondary-container",
-  INTERMEDIATE: "bg-tertiary-container text-on-tertiary-container",
+  INTERMEDIATE: "bg-callout-warning/15 text-callout-warning ring-1 ring-inset ring-callout-warning/40",
   ADVANCED: "bg-error-container text-on-error-container",
 };
 

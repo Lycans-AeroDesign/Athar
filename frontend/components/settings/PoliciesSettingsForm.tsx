@@ -109,7 +109,7 @@ function PolicyCard({ row, onChanged }: { row: PolicyOverview; onChanged: () => 
           </p>
         </div>
         {hasUnpublished && (
-          <span className="font-label-caps text-label-caps uppercase rounded-full px-2 py-0.5 bg-tertiary-container text-on-tertiary-container">
+          <span className="font-label-caps text-label-caps uppercase rounded-full px-2 py-0.5 bg-callout-warning/15 text-callout-warning ring-1 ring-inset ring-callout-warning/40">
             {t("unpublishedChanges")}
           </span>
         )}

@@ -37,9 +37,8 @@ interface ComponentImportModalProps {
 
 const ACTION_BADGE_CLASSES: Record<ComponentImportRowAction, string> = {
   create: "bg-primary-container text-on-primary-container",
-  // Not tertiary-container - in this palette that's a red/rust hue (see
-  // globals.css), which reads as an error/warning rather than a neutral
-  // "this will change" preview state.
+  // Not callout-warning (amber) - that reads as a caution rather than a
+  // neutral "this will change" preview state.
   update: "bg-secondary-container text-on-secondary-container",
   unchanged: "bg-surface-container-high text-on-surface-variant",
   merged: "bg-surface-container-high text-on-surface-variant",
