@@ -58,9 +58,12 @@ export function listCourses(params?: {
   status?: CourseStatusFilter;
   category?: string;
   difficulty?: CourseDifficulty;
+  /** Backend default is 20, max 100 (config/pagination.py). */
+  pageSize?: number;
 }): Promise<CourseSummary[]> {
   const query = new URLSearchParams();
   if (params?.status) query.set("status", params.status);
+  if (params?.pageSize) query.set("page_size", String(params.pageSize));
   if (params?.category) query.set("category", params.category);
   if (params?.difficulty) query.set("difficulty", params.difficulty);
   const suffix = query.toString() ? `?${query.toString()}` : "";

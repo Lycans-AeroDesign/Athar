@@ -1725,7 +1725,20 @@
       "categoriesDescription": "إدارة الفئات التي يمكن تصنيف دورات التدريب ضمنها.",
       "courseCount": "{count, plural, =0 {لا دورات} one {دورة واحدة} two {دورتان} few {# دورات} many {# دورة} other {# دورة}}",
       "deleteCategoryConfirmTitle": "حذف \"{name}\"؟",
-      "deleteCategoryConfirmBody": "ستصبح الدورات فيها بلا فئة. لا يمكن التراجع عن هذا."
+      "deleteCategoryConfirmBody": "ستصبح الدورات فيها بلا فئة. لا يمكن التراجع عن هذا.",
+      "pendingReviewTitle": "بانتظار الموافقة",
+      "pendingReviewDescriptionReviewer": "دورات أرسلها المؤلفون وتنتظر مراجعتك.",
+      "pendingReviewDescriptionAuthor": "دوراتك المُرسلة التي تنتظر موافقة المراجع.",
+      "noPendingReview": "لا يوجد شيء بانتظار المراجعة حاليًا.",
+      "submittedAgo": "أُرسلت {time}",
+      "publishedOn": "نُشرت {date}",
+      "updatedAgo": "حُدّثت {time}",
+      "reviewButton": "مراجعة",
+      "viewButton": "عرض",
+      "byAuthor": "بواسطة {name}",
+      "lessonCount": "{count, plural, =0 {لا دروس} one {درس واحد} two {درسان} few {# دروس} many {# درسًا} other {# درس}}",
+      "enrolledCount": "{count, plural, =0 {لا متعلمين} one {متعلم واحد} two {متعلمان} few {# متعلمين} many {# متعلمًا} other {# متعلم}}",
+      "noCoursesInTab": "لا توجد دورات في \"{status}\"."
     },
     "lessonEditor": {
       "loading": "جارٍ التحميل...",

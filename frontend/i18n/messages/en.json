@@ -1725,7 +1725,20 @@
       "categoriesDescription": "Manage the categories Training courses can be organized under.",
       "courseCount": "{count, plural, =0 {No courses} one {# course} other {# courses}}",
       "deleteCategoryConfirmTitle": "Delete \"{name}\"?",
-      "deleteCategoryConfirmBody": "Courses in it become uncategorized. This can't be undone."
+      "deleteCategoryConfirmBody": "Courses in it become uncategorized. This can't be undone.",
+      "pendingReviewTitle": "Awaiting Approval",
+      "pendingReviewDescriptionReviewer": "Courses submitted by authors and waiting for your review.",
+      "pendingReviewDescriptionAuthor": "Your submitted courses waiting for a reviewer to approve them.",
+      "noPendingReview": "Nothing is waiting for review right now.",
+      "submittedAgo": "Submitted {time}",
+      "publishedOn": "Published {date}",
+      "updatedAgo": "Updated {time}",
+      "reviewButton": "Review",
+      "viewButton": "View",
+      "byAuthor": "by {name}",
+      "lessonCount": "{count, plural, =0 {No lessons} one {# lesson} other {# lessons}}",
+      "enrolledCount": "{count, plural, =0 {No learners} one {# learner} other {# learners}}",
+      "noCoursesInTab": "No courses in \"{status}\"."
     },
     "lessonEditor": {
       "loading": "Loading...",
