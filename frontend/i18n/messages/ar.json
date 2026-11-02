@@ -1113,7 +1113,12 @@
       "editPermissionRequired": "لا تملك صلاحية تعديل هذا المشروع.",
       "visibilityLabel": "مستوى الظهور",
       "visibilityPUBLIC": "عام",
-      "visibilityRESTRICTED": "مقيّد"
+      "visibilityRESTRICTED": "مقيّد",
+      "moreTags": "+{count}",
+      "testCount": "{count, plural, =0 {لا توجد اختبارات مرتبطة} one {اختبار مرتبط واحد} two {اختباران مرتبطان} few {# اختبارات مرتبطة} many {# اختبارًا مرتبطًا} other {# اختبار مرتبط}}",
+      "failureCount": "{count, plural, =0 {لا توجد أعطال مرتبطة} one {عطل مرتبط واحد} two {عطلان مرتبطان} few {# أعطال مرتبطة} many {# عطلًا مرتبطًا} other {# عطل مرتبط}}",
+      "noCollaborators": "لا يوجد متعاونون بعد",
+      "collaboratorsLabel": "{count, plural, one {متعاون واحد} two {متعاونان} few {# متعاونين} many {# متعاونًا} other {# متعاون}}"
     },
     "projectStatus": {
       "all": "الكل",

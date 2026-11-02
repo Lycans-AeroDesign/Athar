@@ -5,26 +5,6 @@ import { Skeleton, SkeletonPill, SkeletonRegion, SkeletonText, type TableSkeleto
 
 const ENGINEERING_CARD_GRID = "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4";
 
-/** projects/page.tsx card: status pill, title, tag chips. */
-export function ProjectCardGridSkeleton({ count = 6 }: { count?: number }) {
-  return (
-    <SkeletonRegion className={ENGINEERING_CARD_GRID}>
-      {Array.from({ length: count }).map((_, index) => (
-        <div key={index} className="bg-surface-container-low border border-outline-variant rounded-xl p-4">
-          <div className="flex items-center justify-between mb-2">
-            <SkeletonPill className="w-20" />
-          </div>
-          <SkeletonText variant="headline-md" width="w-2/3" className="mb-2" />
-          <div className="flex flex-wrap gap-1.5">
-            <SkeletonPill className="w-14" />
-            <SkeletonPill className="w-20" />
-          </div>
-        </div>
-      ))}
-    </SkeletonRegion>
-  );
-}
-
 /** components/page.tsx grid card: category + pills, thumb + name, location, part/qty, 2-spec footer. */
 export function ComponentCardGridSkeleton({ count = 6 }: { count?: number }) {
   return (

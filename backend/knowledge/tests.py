@@ -1609,6 +1609,65 @@ class EngineeringDomainTests(KnowledgeTestCase):
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(Project.objects.exists())
 
+    def test_project_list_includes_excerpt_and_visible_linked_counts(self):
+        project = Project.objects.create(
+            organization=self.organization,
+            name="DBF 2027",
+            description="**Season** aircraft - see [the plan](/knowledge/articles/x).",
+        )
+        Test.objects.create(organization=self.organization, title="Static thrust", project=project)
+        Test.objects.create(organization=self.organization, title="Range", project=project)
+        Failure.objects.create(organization=self.organization, title="Public failure", project=project)
+        # Restricted with no grants - a Member can't see it, so it must not be counted either.
+        Failure.objects.create(
+            organization=self.organization, title="Hidden failure", project=project, visibility="RESTRICTED"
+        )
+
+        _, member_access = self._login_with_role("projcounts@example.com", "Member")
+        response = self.client.get(reverse("knowledge-project-list-create"), **self._auth(member_access))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        row = next(item for item in response.data["results"] if item["id"] == str(project.id))
+        self.assertEqual(row["excerpt"], "Season aircraft - see the plan.")
+        self.assertEqual(row["test_count"], 2)
+        self.assertEqual(row["failure_count"], 1)
+
+    def test_project_list_collaborators_are_creators_of_visible_related_items(self):
+        owner, _ = self._login_with_role("projowner@example.com", "Subteam Head")
+        busy, _ = self._login_with_role("projbusy@example.com", "Member")
+        hidden_author, _ = self._login_with_role("projhidden@example.com", "Member")
+        project = Project.objects.create(organization=self.organization, name="Fuselage", created_by=owner)
+        project_ct = ContentType.objects.get_for_model(Project)
+
+        def relate(item, *, project_is_source):
+            item_ct = ContentType.objects.get_for_model(type(item))
+            ends = [(project_ct, project.id), (item_ct, item.id)]
+            if not project_is_source:
+                ends.reverse()
+            (source_ct, source_id), (target_ct, target_id) = ends
+            KnowledgeRelation.objects.create(
+                organization=self.organization,
+                source_content_type=source_ct, source_object_id=source_id,
+                target_content_type=target_ct, target_object_id=target_id,
+            )
+
+        # `busy` made two related items (one linked each direction) - ranked ahead of the owner's one.
+        relate(Component.objects.create(organization=self.organization, name="Spar", created_by=busy), project_is_source=True)
+        relate(Sop.objects.create(organization=self.organization, title="Layup", created_by=busy), project_is_source=False)
+        # Only related item by this person is restricted - they must not appear for a Member.
+        relate(
+            Document.objects.create(
+                organization=self.organization, title="Secret", created_by=hidden_author, visibility="RESTRICTED"
+            ),
+            project_is_source=True,
+        )
+
+        _, viewer_access = self._login_with_role("projviewer@example.com", "Member")
+        response = self.client.get(reverse("knowledge-project-list-create"), **self._auth(viewer_access))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        row = next(item for item in response.data["results"] if item["id"] == str(project.id))
+        self.assertEqual([person["id"] for person in row["collaborators"]], [str(busy.id), str(owner.id)])
+        self.assertEqual(row["collaborator_count"], 2)
+
     def test_component_crud_and_permission_gating(self):
         _, member_access = self._login_with_role("compmember@example.com", "Member")
         response = self.client.post(

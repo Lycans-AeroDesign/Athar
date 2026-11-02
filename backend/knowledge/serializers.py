@@ -1,4 +1,5 @@
 from django.contrib.contenttypes.models import ContentType
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from accounts.models import User
@@ -6,6 +7,7 @@ from files.models import StoredFile
 from files.serializers import StoredFileSerializer
 
 from . import relationships, services
+from .search import plain_text_excerpt
 from . import visibility as visibility_rules
 from .models import (
     Answer,
@@ -717,10 +719,69 @@ class CreateBookmarkSerializer(serializers.Serializer):
 class ProjectListSerializer(serializers.ModelSerializer):
     tags = TagSerializer(many=True, read_only=True)
     created_by = AuthorSerializer(read_only=True)
+    # Plain-text snippet of the markdown description for list cards - derived
+    # in Python from the already-loaded row, so no extra query (this
+    # serializer is also nested inside failure/test payloads).
+    excerpt = serializers.SerializerMethodField()
 
     class Meta:
         model = Project
-        fields = ["id", "name", "status", "visibility", "tags", "created_by", "created_at", "updated_at"]
+        fields = ["id", "name", "status", "visibility", "tags", "created_by", "created_at", "updated_at", "excerpt"]
+
+    def get_excerpt(self, obj: Project) -> str:
+        return plain_text_excerpt(obj.description, limit=180)
+
+
+# How many collaborator avatars a project card gets; the rest become "+N" via collaborator_count.
+PROJECT_CARD_COLLABORATOR_LIMIT = 5
+
+
+class ProjectCardListSerializer(serializers.ListSerializer):
+    """Works out every card's extras for the whole page at once
+    (services.project_card_details_for) and hands them to the child serializer
+    through the shared context, instead of a few queries per card."""
+
+    def to_representation(self, data):
+        projects = list(data.all() if hasattr(data, "all") else data)
+        request = self.context.get("request")
+        viewer = getattr(request, "user", None)
+        self.context["card_details"] = (
+            services.project_card_details_for(projects, viewer) if viewer and viewer.is_authenticated else {}
+        )
+        return super().to_representation(projects)
+
+
+class ProjectCardSerializer(ProjectListSerializer):
+    """The projects list page's rows: ProjectListSerializer plus linked
+    test/failure counts and the people who worked on it - see
+    services.project_card_details_for for exactly who counts and why
+    everything is visibility-filtered for the viewer."""
+
+    test_count = serializers.SerializerMethodField()
+    failure_count = serializers.SerializerMethodField()
+    collaborators = serializers.SerializerMethodField()
+    collaborator_count = serializers.SerializerMethodField()
+
+    class Meta(ProjectListSerializer.Meta):
+        fields = [*ProjectListSerializer.Meta.fields, "test_count", "failure_count", "collaborators", "collaborator_count"]
+        list_serializer_class = ProjectCardListSerializer
+
+    def _details(self, obj: Project) -> dict:
+        return self.context.get("card_details", {}).get(obj.id, {})
+
+    def get_test_count(self, obj: Project) -> int:
+        return self._details(obj).get("test_count", 0)
+
+    def get_failure_count(self, obj: Project) -> int:
+        return self._details(obj).get("failure_count", 0)
+
+    @extend_schema_field(AuthorSerializer(many=True))
+    def get_collaborators(self, obj: Project) -> list:
+        users = self._details(obj).get("collaborators", [])[:PROJECT_CARD_COLLABORATOR_LIMIT]
+        return AuthorSerializer(users, many=True, context=self.context).data
+
+    def get_collaborator_count(self, obj: Project) -> int:
+        return len(self._details(obj).get("collaborators", []))
 
 
 class ProjectDetailSerializer(ContributorsMixin, RestrictedAccessMixin, BookmarkMixin, ProjectListSerializer):

@@ -357,6 +357,18 @@ export interface ProjectSummary {
   created_by: KnowledgeAuthor | null;
   created_at: string;
   updated_at: string;
+  /** Plain-text snippet of the markdown description ("" when there is none). */
+  excerpt: string;
+}
+
+/** A row of GET /knowledge/projects/ - the summary plus what the viewer can see linked to it. */
+export interface ProjectCard extends ProjectSummary {
+  test_count: number;
+  failure_count: number;
+  /** The creator plus the creators of its related items, most involved first - capped (see collaborator_count). */
+  collaborators: KnowledgeAuthor[];
+  /** Total collaborators, including any beyond the capped `collaborators` list. */
+  collaborator_count: number;
 }
 
 export interface ProjectDetail extends ProjectSummary {

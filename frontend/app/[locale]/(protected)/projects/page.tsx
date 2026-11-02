@@ -4,18 +4,17 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 import { Can } from "@/components/auth/Can";
-import { PROJECT_STATUS_CLASSES } from "@/components/engineering/statusClasses";
 import { ActiveFilterChip } from "@/components/ui/ActiveFilterChip";
 import { Button } from "@/components/ui/Button";
 import { Combobox } from "@/components/ui/Combobox";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
 import { Pagination } from "@/components/ui/Pagination";
-import { ProjectCardGridSkeleton } from "@/components/engineering/EngineeringSkeletons";
+import { PROJECT_CARD_GRID, ProjectCard, ProjectCardGridSkeleton } from "@/components/engineering/ProjectCard";
 import { INPUT_CLASS } from "@/components/ui/inputStyles";
 import { Link } from "@/i18n/navigation";
 import { getProjects } from "@/lib/api/engineering";
-import type { ProjectStatus, ProjectSummary } from "@/lib/api/types";
+import type { ProjectCard as ProjectCardData, ProjectStatus } from "@/lib/api/types";
 import { useEngineeringListFiltersEnabled } from "@/lib/auth/permissions";
 import { errorMessage } from "@/lib/errors";
 import { PROJECT_STATUS_ICONS } from "@/lib/optionIcons";
@@ -47,7 +46,7 @@ export default function ProjectsPage() {
   // knowledge/page.tsx's status-filter effect for why (that pattern runs
   // setState synchronously in the effect body, which React's lint rule flags).
   const filterKey = `${statusFilter ?? ""}:${query}:${page}`;
-  const [result, setResult] = useState<{ key: string; projects: ProjectSummary[]; hasNext: boolean; count: number } | null>(
+  const [result, setResult] = useState<{ key: string; projects: ProjectCardData[]; hasNext: boolean; count: number } | null>(
     null,
   );
   const projects = result?.key === filterKey ? result.projects : null;
@@ -144,34 +143,9 @@ export default function ProjectsPage() {
           }
         />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div className={PROJECT_CARD_GRID}>
           {projects.map((project) => (
-            <Link
-              key={project.id}
-              href={`/projects/${project.id}`}
-              className="block bg-surface-container-low border border-outline-variant rounded-xl p-4 hover:shadow-[0_1px_3px_0_rgba(0,0,0,0.08)] transition-shadow"
-            >
-              <div className="flex items-center justify-between mb-2">
-                <span
-                  className={`font-label-caps text-label-caps uppercase rounded-full px-2.5 py-1 ${PROJECT_STATUS_CLASSES[project.status]}`}
-                >
-                  {statusT(project.status)}
-                </span>
-              </div>
-              <h3 className="font-headline-md text-headline-md text-primary mb-2">{project.name}</h3>
-              {project.tags.length > 0 && (
-                <div className="flex flex-wrap gap-1.5">
-                  {project.tags.map((tag) => (
-                    <span
-                      key={tag.id}
-                      className="font-mono-sm text-mono-sm text-on-surface-variant bg-surface-container px-2 py-0.5 rounded-full border border-outline-variant"
-                    >
-                      {tag.name}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </Link>
+            <ProjectCard key={project.id} project={project} />
           ))}
         </div>
       )}

@@ -1113,7 +1113,12 @@
       "editPermissionRequired": "You don't have permission to edit this project.",
       "visibilityLabel": "Visibility",
       "visibilityPUBLIC": "Public",
-      "visibilityRESTRICTED": "Restricted"
+      "visibilityRESTRICTED": "Restricted",
+      "moreTags": "+{count}",
+      "testCount": "{count, plural, =0 {No linked tests} one {# linked test} other {# linked tests}}",
+      "failureCount": "{count, plural, =0 {No linked failures} one {# linked failure} other {# linked failures}}",
+      "noCollaborators": "No collaborators yet",
+      "collaboratorsLabel": "{count, plural, one {# collaborator} other {# collaborators}}"
     },
     "projectStatus": {
       "all": "All",

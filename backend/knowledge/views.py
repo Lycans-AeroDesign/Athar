@@ -93,6 +93,7 @@ from .serializers import (
     LeaderboardEntrySerializer,
     ProjectAttachmentSerializer,
     ProjectDetailSerializer,
+    ProjectCardSerializer,
     ProjectListSerializer,
     ProjectWriteSerializer,
     QuestionAttachmentSerializer,
@@ -1292,7 +1293,7 @@ class ProjectListCreateView(APIView):
     @extend_schema(
         tags=["Engineering"],
         summary="List projects (optional ?status=, ?q=<search name/description>)",
-        responses={200: ProjectListSerializer(many=True), **COMMON_ERRORS},
+        responses={200: ProjectCardSerializer(many=True), **COMMON_ERRORS},
     )
     def get(self, request):
         queryset = services.visible_projects_for(request.user).prefetch_related(
@@ -1304,7 +1305,9 @@ class ProjectListCreateView(APIView):
         query = request.query_params.get("q", "").strip()
         if query:
             queryset = search.search_filter(queryset, query, "project")
-        return paginated_response(request, queryset, ProjectListSerializer)
+        # Per-card counts and collaborators are worked out for the whole page at
+        # once by ProjectCardSerializer's list serializer (needs the request's user).
+        return paginated_response(request, queryset, ProjectCardSerializer, context={"request": request})
 
     @extend_schema(
         tags=["Engineering"],

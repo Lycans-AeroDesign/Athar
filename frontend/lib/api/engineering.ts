@@ -24,7 +24,7 @@ import type {
   Paginated,
   ProjectDetail,
   ProjectStatus,
-  ProjectSummary,
+  ProjectCard,
   SopDetail,
   SopSummary,
   StockStatus,
@@ -44,14 +44,14 @@ export function getProjects(filters?: {
   q?: string;
   page?: number;
   page_size?: number;
-}): Promise<Paginated<ProjectSummary>> {
+}): Promise<Paginated<ProjectCard>> {
   const params = new URLSearchParams();
   if (filters?.status) params.set("status", filters.status);
   if (filters?.q) params.set("q", filters.q);
   if (filters?.page) params.set("page", String(filters.page));
   if (filters?.page_size) params.set("page_size", String(filters.page_size));
   const query = params.toString() ? `?${params.toString()}` : "";
-  return apiJson<Paginated<ProjectSummary>>(`/api/v1/knowledge/projects/${query}`);
+  return apiJson<Paginated<ProjectCard>>(`/api/v1/knowledge/projects/${query}`);
 }
 
 export function getProject(id: string): Promise<ProjectDetail> {

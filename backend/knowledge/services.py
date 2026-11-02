@@ -7,7 +7,7 @@ import uuid
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
-from django.db.models import Count, Max, QuerySet
+from django.db.models import Count, Max, Q, QuerySet
 from django.utils import timezone
 from django.utils.text import slugify
 from rest_framework.exceptions import ValidationError
@@ -1937,6 +1937,77 @@ def get_relations_for(model_name: str, object_id, *, actor) -> list[KnowledgeRel
         if _relatable_visible_to(actor, other_ct, other):
             visible.append(relation)
     return visible
+
+
+def project_card_details_for(projects, viewer) -> dict:
+    """project id -> {"test_count", "failure_count", "collaborators"} for a page of
+    project cards, in a fixed number of queries (not one get_relations_for per card).
+
+    Counts: tests/failures whose `project` FK points at the project.
+    Collaborators: the project's creator plus whoever created each item in the
+    project's Related section (the KnowledgeRelation graph, either direction),
+    ordered by how many of those items they made. Everything is filtered through
+    the same RESTRICTED rule the Related section and list pages use
+    (visibility.exclude_inaccessible), so neither a count nor an avatar reveals an
+    item the viewer can't open."""
+    from accounts.models import User
+
+    projects = list(projects)
+    project_ids = {project.id for project in projects}
+    details = {pid: {"test_count": 0, "failure_count": 0, "collaborators": []} for pid in project_ids}
+    if not project_ids:
+        return details
+
+    for key, visible in (("test_count", visible_tests_for(viewer)), ("failure_count", visible_failures_for(viewer))):
+        rows = visible.filter(project__in=project_ids).order_by().values("project").annotate(n=Count("id"))
+        for row in rows:
+            details[row["project"]][key] = row["n"]
+
+    project_ct = ContentType.objects.get_for_model(Project)
+    relations = KnowledgeRelation.objects.filter(organization=viewer.organization).filter(
+        Q(source_content_type=project_ct, source_object_id__in=project_ids)
+        | Q(target_content_type=project_ct, target_object_id__in=project_ids)
+    ).values_list("source_content_type_id", "source_object_id", "target_content_type_id", "target_object_id")
+    # (project id, other side's content type id, other side's id) for each link.
+    links = []
+    for source_ct, source_id, target_ct, target_id in relations:
+        if source_ct == project_ct.id and source_id in project_ids:
+            links.append((source_id, target_ct, target_id))
+        if target_ct == project_ct.id and target_id in project_ids:
+            links.append((target_id, source_ct, source_id))
+
+    ids_by_type: dict = {}
+    for _, other_ct, other_id in links:
+        ids_by_type.setdefault(other_ct, set()).add(other_id)
+    owner_of: dict = {}  # (content type id, object id) -> owner user id, visible items only
+    for ct_id, object_ids in ids_by_type.items():
+        model_name = ContentType.objects.get_for_id(ct_id).model
+        model = _RELATABLE_MODELS.get(model_name)
+        owner_field = visibility_rules.OWNER_FIELD.get(model_name)
+        if model is None or owner_field is None:
+            continue
+        queryset = visibility_rules.exclude_inaccessible(
+            model.objects.filter(organization=viewer.organization, pk__in=object_ids), viewer, model, model_name
+        )
+        for pk, owner_id in queryset.values_list("pk", owner_field):
+            if owner_id is not None:
+                owner_of[(ct_id, pk)] = owner_id
+
+    tallies = {pid: {} for pid in project_ids}
+    for project in projects:
+        if project.created_by_id:
+            tallies[project.id][project.created_by_id] = 1
+    for project_id, other_ct, other_id in links:
+        owner_id = owner_of.get((other_ct, other_id))
+        if owner_id is not None:
+            tally = tallies[project_id]
+            tally[owner_id] = tally.get(owner_id, 0) + 1
+
+    users = User.objects.in_bulk({uid for tally in tallies.values() for uid in tally})
+    for project_id, tally in tallies.items():
+        ranked = sorted(tally, key=lambda uid: -tally[uid])  # stable: creator first on ties
+        details[project_id]["collaborators"] = [users[uid] for uid in ranked if uid in users]
+    return details
 
 
 def period_since(period: str):
