@@ -1,3 +1,17 @@
+## [1.27.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.26.0...v1.27.0) (2026-11-02)
+
+### Features
+
+* **documents:** add a grid view alongside the table ([71e13d9](https://github.com/Lycans-AeroDesign/Athar/commit/71e13d99820eaae1b438f64b7ea986411b5f380d))
+* **policies:** walk through policy acceptance one step at a time ([5e4aaf9](https://github.com/Lycans-AeroDesign/Athar/commit/5e4aaf971ff3448efa3b6123c5dedbaba9e66e67))
+* **projects:** show description, linked work and collaborators on cards ([5b5b3f3](https://github.com/Lycans-AeroDesign/Athar/commit/5b5b3f368204bbec0c218c7454a7049350608484))
+* **training:** separate courses awaiting approval on the manage page ([d7d0403](https://github.com/Lycans-AeroDesign/Athar/commit/d7d0403cd564a429a9b4179d191ecb73b4e1352c))
+
+### Bug Fixes
+
+* **backups:** bound zstd decompression of uploaded archives ([5b77fad](https://github.com/Lycans-AeroDesign/Athar/commit/5b77fad0f6e9394a31af7a75b867742489a21917))
+* **ui:** use the theme's amber for in-review and caution badges ([e0a7539](https://github.com/Lycans-AeroDesign/Athar/commit/e0a753927747a763882beba0755ff42a81e667c5))
+
 ## [1.26.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.25.0...v1.26.0) (2026-10-25)
 
 ### Features
