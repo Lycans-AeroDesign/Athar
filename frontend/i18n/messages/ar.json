@@ -1828,8 +1828,10 @@
     "declineAndLogout": "رفض وتسجيل الخروج",
     "pageTitle": "السياسات",
     "noneYet": "لم تُنشر أي سياسات بعد.",
-    "progress": "تمت الموافقة على {accepted} من {total}",
-    "remainingHint": "للمتابعة، يجب أيضًا الموافقة على:"
+    "stepLabel": "الخطوة {current} من {total}",
+    "next": "التالي",
+    "back": "السابق",
+    "scrollToAccept": "مرّر إلى نهاية {title} لتتمكن من الموافقة عليها."
   },
   "markdown": {
     "callout": {

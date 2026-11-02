@@ -1828,8 +1828,10 @@
     "declineAndLogout": "Decline and log out",
     "pageTitle": "Policies",
     "noneYet": "No policies have been published yet.",
-    "progress": "{accepted} of {total} accepted",
-    "remainingHint": "To continue, you also need to accept:"
+    "stepLabel": "Step {current} of {total}",
+    "next": "Next",
+    "back": "Back",
+    "scrollToAccept": "Scroll to the end of the {title} to accept it."
   },
   "markdown": {
     "callout": {
