@@ -201,8 +201,13 @@ def _validate_archive_contents(archive_file, organization) -> None:
     archive_file.seek(0)
     if magic == services.ZSTD_MAGIC:
         with tempfile.TemporaryFile() as decompressed:
-            dctx = zstandard.ZstdDecompressor()
-            dctx.copy_stream(archive_file, decompressed)
+            try:
+                services.decompress_zstd_bounded(archive_file, decompressed, max_bytes=max_bytes * 10)
+            except services.ArchiveTooLarge as exc:
+                raise ValidationError({"archive": [str(exc)]}) from exc
+            except zstandard.ZstdError as exc:
+                logger.info("Backup archive failed to decompress: %s", exc)
+                raise ValidationError({"archive": ["This isn't an Athar backup file."]}) from exc
             archive_file.seek(0)
             decompressed.seek(0)
             _validate_zip_archive(decompressed, organization, max_bytes)

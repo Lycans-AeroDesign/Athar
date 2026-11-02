@@ -5,6 +5,7 @@ import zstandard
 
 from django.contrib.contenttypes.models import ContentType
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import override_settings
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework import status
@@ -650,6 +651,31 @@ class RestoreJobTests(BackupJobTestCase):
         _, admin_access = self._login_with_role("junk-admin@example.com", "Organization Admin")
         response = self._upload(admin_access, b"not a zip", name="notes.zip")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    @override_settings(BACKUP_UPLOAD_MAX_SIZE_MB=1)
+    def test_upload_rejects_a_compressed_archive_that_expands_too_far(self):
+        # A few KB of zstd that expands past 10x the (1 MB) upload cap - must be
+        # refused while decompressing, not after writing it all to disk.
+        _, admin_access = self._login_with_role("bomb-admin@example.com", "Organization Admin")
+        bomb = zstandard.ZstdCompressor(level=19).compress(b"\0" * (11 * 1024 * 1024))
+        self.assertLess(len(bomb), 64 * 1024)
+
+        response = self._upload(admin_access, bomb, name="bomb.athar", passphrase=None)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("unreasonable size", str(response.data))
+        self.assertFalse(RestoreJob.objects.exists())
+
+    def test_bounded_decompression_stops_at_the_limit(self):
+        compressed = zstandard.ZstdCompressor().compress(b"x" * 5000)
+
+        too_small = io.BytesIO()
+        with self.assertRaises(services.ArchiveTooLarge):
+            services.decompress_zstd_bounded(io.BytesIO(compressed), too_small, max_bytes=1000)
+        self.assertLessEqual(len(too_small.getvalue()), 1000)
+
+        exact = io.BytesIO()
+        services.decompress_zstd_bounded(io.BytesIO(compressed), exact, max_bytes=5000)
+        self.assertEqual(exact.getvalue(), b"x" * 5000)
 
     def test_upload_requires_organization_manage(self):
         _, member_access = self._login_with_role("upload-member@example.com", "Member")

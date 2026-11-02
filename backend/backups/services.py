@@ -31,6 +31,7 @@ from pathlib import Path
 
 import zstandard
 
+from django.conf import settings
 from django.core.files import File
 from django.utils import timezone
 
@@ -878,6 +879,39 @@ def _write_files(zf: zipfile.ZipFile, organization) -> None:
 # Zstandard frame header magic number (RFC 8878: 0xFD2FB528 in little-endian).
 ZSTD_MAGIC = b"\x28\xb5\x2f\xfd"
 
+_DECOMPRESS_CHUNK = 1024 * 1024
+
+
+class ArchiveTooLarge(Exception):
+    """A compressed archive that expands past max_expanded_archive_bytes() -
+    worded for the admin, since it ends up as RestoreJob.error / a 400."""
+
+    def __init__(self):
+        super().__init__("This archive expands to an unreasonable size.")
+
+
+def max_expanded_archive_bytes() -> int:
+    """Ceiling for a decompressed archive - 10x the upload cap, the same
+    allowance views._validate_zip_archive's zip-bomb guard gives entry sizes
+    (a real backup is mostly already-compressed uploads, so it barely grows)."""
+    return settings.BACKUP_UPLOAD_MAX_SIZE_MB * 1024 * 1024 * 10
+
+
+def decompress_zstd_bounded(source, destination, *, max_bytes: int | None = None) -> None:
+    """Streams a Zstandard archive into `destination`, raising ArchiveTooLarge
+    as soon as the output passes `max_bytes` - not after. Uploaded archives are
+    untrusted and zstd can expand repetitive input by several thousand times,
+    so an unbounded copy_stream lets a small upload fill the server's disk
+    before any later size check gets to run."""
+    limit = max_expanded_archive_bytes() if max_bytes is None else max_bytes
+    written = 0
+    reader = zstandard.ZstdDecompressor().stream_reader(source, read_across_frames=True)
+    while chunk := reader.read(_DECOMPRESS_CHUNK):
+        written += len(chunk)
+        if written > limit:
+            raise ArchiveTooLarge()
+        destination.write(chunk)
+
 
 def build_org_backup_archive(job: BackupJob) -> None:
     """Writes the full export to a temp file on disk (never in memory, so
@@ -929,8 +963,7 @@ def open_decrypted_archive(archive_field):
                 decrypted.seek(0)
                 if magic == ZSTD_MAGIC:
                     with tempfile.TemporaryFile() as decompressed:
-                        dctx = zstandard.ZstdDecompressor()
-                        dctx.copy_stream(decrypted, decompressed)
+                        decompress_zstd_bounded(decrypted, decompressed)
                         decompressed.seek(0)
                         yield decompressed
                 else:
@@ -940,8 +973,7 @@ def open_decrypted_archive(archive_field):
             stored.seek(0)
             if magic == ZSTD_MAGIC:
                 with tempfile.TemporaryFile() as decompressed:
-                    dctx = zstandard.ZstdDecompressor()
-                    dctx.copy_stream(stored, decompressed)
+                    decompress_zstd_bounded(stored, decompressed)
                     decompressed.seek(0)
                     yield decompressed
             else:
