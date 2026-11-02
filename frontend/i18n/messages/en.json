@@ -1437,7 +1437,11 @@
       "openLinkButton": "Open Link",
       "downloadButton": "Download",
       "backToDocument": "Back to Document",
-      "editPermissionRequired": "You don't have permission to edit this document."
+      "editPermissionRequired": "You don't have permission to edit this document.",
+      "moreTags": "+{count}",
+      "noAttachment": "No file or link",
+      "gridViewLabel": "Grid view",
+      "tableViewLabel": "Table view"
     },
     "documentType": {
       "all": "All Types",

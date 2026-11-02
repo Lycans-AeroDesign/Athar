@@ -18,6 +18,7 @@ import { Icon } from "@/components/ui/Icon";
 import { Menu, type MenuEntry } from "@/components/ui/Menu";
 import { Pagination } from "@/components/ui/Pagination";
 import { TableSkeleton } from "@/components/ui/Skeleton";
+import { useViewMode, ViewModeToggle } from "@/components/ui/ViewModeToggle";
 import { COMPONENTS_TABLE_COLUMNS, ComponentCardGridSkeleton } from "@/components/engineering/EngineeringSkeletons";
 import { Link } from "@/i18n/navigation";
 import {
@@ -52,12 +53,11 @@ function stockStatusesFor(filter: StockFilter | null): StockStatus[] | undefined
   return filter === "NEEDS_ORDERING" ? NEEDS_ORDERING_STATUSES : [filter];
 }
 
-type ViewMode = "grid" | "table";
 const VIEW_MODE_STORAGE_KEY = "components-view-mode";
 const SUMMARY_STORAGE_KEY = "components-summary-open";
 
 // useLayoutEffect (not useEffect) so the read-and-setState runs before paint, avoiding a
-// grid->table flash, and so react-hooks/set-state-in-effect doesn't apply (same pattern as
+// flash of the closed summary panel, and so react-hooks/set-state-in-effect doesn't apply (same pattern as
 // OrganizationProvider.tsx's useIsomorphicLayoutEffect, which falls back to useEffect during SSR).
 const useIsomorphicLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
@@ -105,34 +105,19 @@ function ComponentsPageContent() {
   // Bumped after a CSV import creates at least one component, so the list
   // refetches even when the current filters/page haven't otherwise changed.
   const [refreshKey, setRefreshKey] = useState(0);
-  const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [viewMode, updateViewMode] = useViewMode(VIEW_MODE_STORAGE_KEY);
   const [showSummary, setShowSummary] = useState(false);
   const [ordering, setOrdering] = useState<ComponentOrdering | undefined>(undefined);
 
-  // Read after mount, not as the initial useState value: the server render can't see localStorage,
-  // so starting from "grid" keeps hydration consistent. A saved "table" preference is ignored on a
-  // narrow viewport (Tailwind `md`), where a dense table fits poorly, so mobile always starts as grid.
+  // Read after mount, not as the initial useState value: the server render can't see localStorage.
+  // (The grid/table preference is handled the same way inside useViewMode.)
   useIsomorphicLayoutEffect(() => {
-    const isMobileViewport = window.matchMedia("(max-width: 767px)").matches;
     try {
-      const saved = window.localStorage.getItem(VIEW_MODE_STORAGE_KEY);
-      if ((saved === "grid" || saved === "table") && !(isMobileViewport && saved === "table")) {
-        setViewMode(saved);
-      }
       if (window.localStorage.getItem(SUMMARY_STORAGE_KEY) === "true") setShowSummary(true);
     } catch {
-      // Private browsing / storage disabled - just keep the defaults.
+      // Private browsing / storage disabled - just keep the default.
     }
   }, []);
-
-  function updateViewMode(mode: ViewMode) {
-    setViewMode(mode);
-    try {
-      window.localStorage.setItem(VIEW_MODE_STORAGE_KEY, mode);
-    } catch {
-      // Private browsing / quota exceeded - the choice just won't persist.
-    }
-  }
 
   function toggleSummary() {
     setShowSummary((open) => {
@@ -275,39 +260,12 @@ function ComponentsPageContent() {
             <Icon name="inventory" size={18} />
             {t("summaryButton")}
           </Button>
-          <div className="relative flex h-10 items-center gap-1 rounded-lg border border-outline-variant p-1">
-            {/* Sliding highlight, not a per-button background swap - a
-                physical translate-x, so it needs an rtl: mirror since Arabic
-                visually reverses which side "grid" vs "table" sits on. */}
-            <div
-              aria-hidden
-              className={`absolute inset-y-1 start-1 h-8 w-8 rounded-md bg-primary-container transition-transform duration-200 ease-out ${
-                viewMode === "table" ? "translate-x-9 rtl:-translate-x-9" : "translate-x-0"
-              }`}
-            />
-            <button
-              type="button"
-              aria-label={t("gridViewLabel")}
-              aria-pressed={viewMode === "grid"}
-              onClick={() => updateViewMode("grid")}
-              className={`relative z-10 flex h-8 w-8 items-center justify-center rounded-md outline-none transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
-                viewMode === "grid" ? "text-on-primary-container" : "text-on-surface-variant hover:text-on-surface"
-              }`}
-            >
-              <Icon name="grid_view" size={18} />
-            </button>
-            <button
-              type="button"
-              aria-label={t("tableViewLabel")}
-              aria-pressed={viewMode === "table"}
-              onClick={() => updateViewMode("table")}
-              className={`relative z-10 flex h-8 w-8 items-center justify-center rounded-md outline-none transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
-                viewMode === "table" ? "text-on-primary-container" : "text-on-surface-variant hover:text-on-surface"
-              }`}
-            >
-              <Icon name="table_chart" size={18} />
-            </button>
-          </div>
+          <ViewModeToggle
+            value={viewMode}
+            onChange={updateViewMode}
+            gridLabel={t("gridViewLabel")}
+            tableLabel={t("tableViewLabel")}
+          />
           {actionsMenuItems.length > 0 && (
             <Menu
               trigger={

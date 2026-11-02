@@ -1437,7 +1437,11 @@
       "openLinkButton": "فتح الرابط",
       "downloadButton": "تنزيل",
       "backToDocument": "العودة إلى المستند",
-      "editPermissionRequired": "لا تملك صلاحية تعديل هذا المستند."
+      "editPermissionRequired": "لا تملك صلاحية تعديل هذا المستند.",
+      "moreTags": "+{count}",
+      "noAttachment": "لا يوجد ملف أو رابط",
+      "gridViewLabel": "عرض الشبكة",
+      "tableViewLabel": "عرض الجدول"
     },
     "documentType": {
       "all": "كل الأنواع",

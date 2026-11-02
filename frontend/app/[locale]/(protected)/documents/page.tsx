@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 import { Can } from "@/components/auth/Can";
+import { DOCUMENT_CARD_GRID, DocumentCard, DocumentCardGridSkeleton } from "@/components/engineering/DocumentCard";
 import { DocumentsTable } from "@/components/engineering/DocumentsTable";
 import { ActiveFilterChip } from "@/components/ui/ActiveFilterChip";
 import { Button } from "@/components/ui/Button";
@@ -12,6 +13,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
 import { Pagination } from "@/components/ui/Pagination";
 import { TableSkeleton } from "@/components/ui/Skeleton";
+import { useViewMode, ViewModeToggle } from "@/components/ui/ViewModeToggle";
 import { DOCUMENTS_TABLE_COLUMNS } from "@/components/engineering/EngineeringSkeletons";
 import { INPUT_CLASS } from "@/components/ui/inputStyles";
 import { getDocuments, type DocumentOrdering } from "@/lib/api/documents";
@@ -34,6 +36,7 @@ const DOC_TYPE_VALUES: DocType[] = [
   "OTHER",
 ];
 const SOURCE_VALUES: DocumentSource[] = ["INTERNAL", "EXTERNAL"];
+const VIEW_MODE_STORAGE_KEY = "documents-view-mode";
 
 export default function DocumentsPage() {
   const t = useTranslations("engineering.document");
@@ -48,6 +51,7 @@ export default function DocumentsPage() {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const [ordering, setOrdering] = useState<DocumentOrdering | undefined>(undefined);
+  const [viewMode, updateViewMode] = useViewMode(VIEW_MODE_STORAGE_KEY);
   useEffect(() => {
     const handle = setTimeout(() => {
       setQuery(searchInput.trim());
@@ -139,6 +143,12 @@ export default function DocumentsPage() {
               onChange={(value) => updateSourceFilter((value || null) as DocumentSource | null)}
             />
           </div>
+          <ViewModeToggle
+            value={viewMode}
+            onChange={updateViewMode}
+            gridLabel={t("gridViewLabel")}
+            tableLabel={t("tableViewLabel")}
+          />
           <Can permission="document.create">
             <Link href="/documents/new">
               <Button>
@@ -168,7 +178,11 @@ export default function DocumentsPage() {
           {error}
         </p>
       ) : documents === null ? (
-        <TableSkeleton rows={6} columns={DOCUMENTS_TABLE_COLUMNS} />
+        viewMode === "grid" ? (
+          <DocumentCardGridSkeleton />
+        ) : (
+          <TableSkeleton rows={6} columns={DOCUMENTS_TABLE_COLUMNS} />
+        )
       ) : documents.length === 0 ? (
         <EmptyState
           icon="folder"
@@ -185,7 +199,18 @@ export default function DocumentsPage() {
           }
         />
       ) : (
-        <DocumentsTable documents={documents} ordering={ordering} onOrderingChange={updateOrdering} />
+        // Keyed by viewMode so toggling replays the fade-in, same as the Components page.
+        <div key={viewMode} className="animate-fade-in-up">
+          {viewMode === "table" ? (
+            <DocumentsTable documents={documents} ordering={ordering} onOrderingChange={updateOrdering} />
+          ) : (
+            <div className={DOCUMENT_CARD_GRID}>
+              {documents.map((document) => (
+                <DocumentCard key={document.id} document={document} />
+              ))}
+            </div>
+          )}
+        </div>
       )}
 
       {documents && documents.length > 0 && (
