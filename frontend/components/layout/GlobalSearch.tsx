@@ -104,6 +104,11 @@ export function GlobalSearch() {
   const [results, setResults] = useState<SearchResult[] | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+  // Keyboard highlight in the dropdown: 0..results.length-1 are results,
+  // results.length is the trailing "See all results" row, -1 is nothing.
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
 
   useEffect(() => {
     const trimmed = query.trim();
@@ -113,6 +118,7 @@ export function GlobalSearch() {
       searchKnowledge(trimmed, scope === "all" ? undefined : scope)
         .then((data) => {
           setResults(data.results);
+          setActiveIndex(-1);
           setIsOpen(true);
         })
         .finally(() => setIsSearching(false));
@@ -120,10 +126,20 @@ export function GlobalSearch() {
     return () => clearTimeout(handle);
   }, [query, scope]);
 
+  // Leaving the bar empty once a destination is picked - the search page has
+  // its own query box, and a stale query here would just reopen old results.
+  function resetBar() {
+    setIsOpen(false);
+    setQuery("");
+    setResults(null);
+    setActiveIndex(-1);
+    inputRef.current?.blur();
+  }
+
   function goToSearchPage() {
     const trimmed = query.trim();
     if (!trimmed) return;
-    setIsOpen(false);
+    resetBar();
     const params = new URLSearchParams({ q: trimmed });
     if (scope !== "all") params.set("type", scope);
     router.push(`/knowledge/search?${params.toString()}`);
@@ -140,10 +156,49 @@ export function GlobalSearch() {
   }, []);
 
   function handleSelect(result: SearchResult) {
-    setIsOpen(false);
-    setQuery("");
-    setResults(null);
+    resetBar();
     router.push(`${RELATABLE_ROUTE_PREFIX[result.type]}/${result.id}`);
+  }
+
+  const dropdownVisible = isOpen && Boolean(query.trim());
+  // Results plus the "See all results" row, when there are results to show.
+  const optionCount = !isSearching && results && results.length > 0 ? results.length + 1 : 0;
+
+  function moveActive(next: number) {
+    setActiveIndex(next);
+    // Keep the highlighted row visible inside the scrollable dropdown.
+    requestAnimationFrame(() => {
+      listRef.current?.querySelector(`#global-search-option-${next}`)?.scrollIntoView({ block: "nearest" });
+    });
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Escape") {
+      setIsOpen(false);
+      setActiveIndex(-1);
+      return;
+    }
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      if (!results || results.length === 0) return;
+      e.preventDefault();
+      if (!dropdownVisible) {
+        setIsOpen(true);
+        moveActive(e.key === "ArrowDown" ? 0 : optionCount - 1);
+        return;
+      }
+      if (optionCount === 0) return;
+      const step = e.key === "ArrowDown" ? 1 : -1;
+      moveActive((activeIndex + step + optionCount) % optionCount);
+      return;
+    }
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (dropdownVisible && results && activeIndex >= 0 && activeIndex < results.length) {
+        handleSelect(results[activeIndex]);
+      } else {
+        goToSearchPage();
+      }
+    }
   }
 
   const scopeLabels: Record<Scope, string> = {
@@ -162,6 +217,7 @@ export function GlobalSearch() {
     <div ref={containerRef} className="relative w-full">
       <Icon name="search" className="absolute start-4 top-1/2 -translate-y-1/2 text-outline" />
       <input
+        ref={inputRef}
         className="w-full bg-surface-container-low border border-outline-variant rounded-xl py-2 ps-12 pe-16 text-ellipsis text-body-md font-body-md text-on-surface placeholder:text-outline focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
         placeholder={t("searchPlaceholder")}
         type="text"
@@ -170,10 +226,12 @@ export function GlobalSearch() {
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         onFocus={() => results && setIsOpen(true)}
-        onKeyDown={(e) => {
-          if (e.key === "Escape") setIsOpen(false);
-          if (e.key === "Enter") goToSearchPage();
-        }}
+        onKeyDown={handleKeyDown}
+        role="combobox"
+        aria-expanded={dropdownVisible}
+        aria-controls="global-search-results"
+        aria-autocomplete="list"
+        aria-activedescendant={dropdownVisible && activeIndex >= 0 ? `global-search-option-${activeIndex}` : undefined}
       />
       <div ref={controlsRef} className="absolute end-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
         <Menu
@@ -216,20 +274,28 @@ export function GlobalSearch() {
         )}
       </div>
 
-      {isOpen && query.trim() && (
+      {dropdownVisible && (
         <div className="absolute top-full mt-2 start-0 end-0 bg-surface-container-lowest border border-outline-variant rounded-xl shadow-[0_4px_16px_0_rgba(0,0,0,0.12)] max-h-[400px] overflow-y-auto z-50">
           {isSearching ? (
             <p className="px-4 py-3 font-body-md text-body-md text-on-surface-variant">{t("searching")}</p>
           ) : !results || results.length === 0 ? (
             <p className="px-4 py-3 font-body-md text-body-md text-on-surface-variant">{t("noSearchResults")}</p>
           ) : (
-            <ul className="py-1">
-              {results.map((result) => (
+            <ul ref={listRef} id="global-search-results" role="listbox" className="py-1">
+              {results.map((result, i) => (
                 <li key={`${result.type}-${result.id}`}>
                   <button
                     type="button"
+                    id={`global-search-option-${i}`}
+                    role="option"
+                    aria-selected={i === activeIndex}
+                    tabIndex={-1}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onMouseEnter={() => setActiveIndex(i)}
                     onClick={() => handleSelect(result)}
-                    className="flex w-full items-start gap-3 px-4 py-2.5 text-start hover:bg-surface-variant transition-colors"
+                    className={`flex w-full items-start gap-3 px-4 py-2.5 text-start transition-colors ${
+                      i === activeIndex ? "bg-surface-variant" : "hover:bg-surface-variant"
+                    }`}
                   >
                     <Icon
                       name={RELATABLE_ICON[result.type]}
@@ -249,11 +315,19 @@ export function GlobalSearch() {
                   </button>
                 </li>
               ))}
-              <li className="border-t border-outline-variant mt-1 pt-1">
+              <li role="presentation" className="border-t border-outline-variant mt-1 pt-1">
                 <button
                   type="button"
+                  id={`global-search-option-${results.length}`}
+                  role="option"
+                  aria-selected={activeIndex === results.length}
+                  tabIndex={-1}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onMouseEnter={() => setActiveIndex(results.length)}
                   onClick={goToSearchPage}
-                  className="w-full px-4 py-2.5 text-start font-label-caps text-label-caps uppercase text-primary hover:bg-surface-variant transition-colors"
+                  className={`w-full px-4 py-2.5 text-start font-label-caps text-label-caps uppercase text-primary transition-colors ${
+                    activeIndex === results.length ? "bg-surface-variant" : "hover:bg-surface-variant"
+                  }`}
                 >
                   {t("seeAllResults", { query })}
                 </button>
