@@ -250,7 +250,7 @@ function ComponentsPageContent() {
           <h1 className="font-display text-display text-on-surface">{t("listTitle")}</h1>
           <p className="font-body-lg text-body-lg text-on-surface-variant mt-2">{t("listDescription")}</p>
         </div>
-        <div className="flex flex-wrap items-end gap-3">
+        <div className="flex flex-wrap items-end gap-3 w-full sm:w-auto">
           <Button
             variant={showSummary ? "primary" : "secondary"}
             className="h-10"
@@ -277,8 +277,8 @@ function ComponentsPageContent() {
             />
           )}
           <Can permission="component.create">
-            <Link href="/components/new">
-              <Button className="h-10">
+            <Link href="/components/new" className="w-full sm:w-auto">
+              <Button className="w-full sm:w-auto h-10">
                 <Icon name="add" size={18} />
                 {t("newButton")}
               </Button>
@@ -287,9 +287,9 @@ function ComponentsPageContent() {
         </div>
       </div>
 
-      <div className="flex flex-wrap items-end gap-3">
+      <div className="flex flex-wrap items-end gap-3 w-full sm:w-auto">
         {filtersEnabled && (
-          <div className="w-56">
+          <div className="w-full sm:w-56">
             <input
               className="block w-full h-10 px-4 py-2 font-body-md text-body-md text-on-surface bg-surface-container border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
               placeholder={commonT("searchThisList")}
@@ -298,7 +298,7 @@ function ComponentsPageContent() {
             />
           </div>
         )}
-        <div className="w-44">
+        <div className="flex-1 min-w-36 sm:flex-none sm:w-44">
           <Combobox
             placeholder={commonT("select")}
             options={[
@@ -310,7 +310,7 @@ function ComponentsPageContent() {
             triggerClassName="h-10"
           />
         </div>
-        <div className="w-48">
+        <div className="flex-1 min-w-36 sm:flex-none sm:w-48">
           <Combobox
             placeholder={commonT("select")}
             options={[{ value: "", label: t("allCategories") }, ...categories.map((c) => ({ value: c.id, label: c.name }))]}
@@ -319,7 +319,7 @@ function ComponentsPageContent() {
             triggerClassName="h-10"
           />
         </div>
-        <div className="w-56">
+        <div className="flex-1 min-w-36 sm:flex-none sm:w-56">
           <Combobox
             placeholder={commonT("select")}
             options={[
@@ -331,7 +331,7 @@ function ComponentsPageContent() {
             triggerClassName="h-10"
           />
         </div>
-        <div className="w-52">
+        <div className="flex-1 min-w-36 sm:flex-none sm:w-52">
           <Combobox
             placeholder={commonT("select")}
             options={[
@@ -344,7 +344,7 @@ function ComponentsPageContent() {
             triggerClassName="h-10"
           />
         </div>
-        <div className="w-44">
+        <div className="flex-1 min-w-36 sm:flex-none sm:w-44">
           <Combobox
             placeholder={commonT("select")}
             options={[

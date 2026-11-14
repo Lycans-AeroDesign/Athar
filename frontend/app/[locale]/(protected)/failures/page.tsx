@@ -95,9 +95,9 @@ export default function FailuresPage() {
           <h1 className="font-display text-display text-on-surface">{t("listTitle")}</h1>
           <p className="font-body-lg text-body-lg text-on-surface-variant mt-2">{t("listDescription")}</p>
         </div>
-        <div className="flex flex-wrap items-end gap-3">
+        <div className="flex flex-wrap items-end gap-3 w-full sm:w-auto">
           {filtersEnabled && (
-            <div className="w-56">
+            <div className="w-full sm:w-56">
               <input
                 className={INPUT_CLASS}
                 placeholder={commonT("searchThisList")}
@@ -106,7 +106,7 @@ export default function FailuresPage() {
               />
             </div>
           )}
-          <div className="w-48">
+          <div className="flex-1 min-w-36 sm:flex-none sm:w-48">
             <Combobox
               placeholder={severityT("all")}
               options={[
@@ -117,7 +117,7 @@ export default function FailuresPage() {
               onChange={(value) => updateSeverityFilter((value || null) as FailureSeverity | null)}
             />
           </div>
-          <div className="w-48">
+          <div className="flex-1 min-w-36 sm:flex-none sm:w-48">
             <Combobox
               placeholder={statusT("all")}
               options={[
@@ -129,8 +129,8 @@ export default function FailuresPage() {
             />
           </div>
           <Can permission="failure.create">
-            <Link href="/failures/new">
-              <Button>
+            <Link href="/failures/new" className="w-full sm:w-auto">
+              <Button className="w-full sm:w-auto">
                 <Icon name="add" size={18} />
                 {t("newButton")}
               </Button>

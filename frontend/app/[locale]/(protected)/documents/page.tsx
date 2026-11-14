@@ -110,9 +110,9 @@ export default function DocumentsPage() {
           <h1 className="font-display text-display text-on-surface">{t("listTitle")}</h1>
           <p className="font-body-lg text-body-lg text-on-surface-variant mt-2">{t("listDescription")}</p>
         </div>
-        <div className="flex flex-wrap items-end gap-3">
+        <div className="flex flex-wrap items-end gap-3 w-full sm:w-auto">
           {filtersEnabled && (
-            <div className="w-56">
+            <div className="w-full sm:w-56">
               <input
                 className={INPUT_CLASS}
                 placeholder={commonT("searchThisList")}
@@ -121,7 +121,7 @@ export default function DocumentsPage() {
               />
             </div>
           )}
-          <div className="w-48">
+          <div className="flex-1 min-w-36 sm:flex-none sm:w-48">
             <Combobox
               placeholder={docTypeT("all")}
               options={[
@@ -132,7 +132,7 @@ export default function DocumentsPage() {
               onChange={(value) => updateDocTypeFilter((value || null) as DocType | null)}
             />
           </div>
-          <div className="w-40">
+          <div className="flex-1 min-w-36 sm:flex-none sm:w-40">
             <Combobox
               placeholder={sourceT("all")}
               options={[
@@ -150,8 +150,8 @@ export default function DocumentsPage() {
             tableLabel={t("tableViewLabel")}
           />
           <Can permission="document.create">
-            <Link href="/documents/new">
-              <Button>
+            <Link href="/documents/new" className="w-full sm:w-auto">
+              <Button className="w-full sm:w-auto">
                 <Icon name="add" size={18} />
                 {t("newButton")}
               </Button>
