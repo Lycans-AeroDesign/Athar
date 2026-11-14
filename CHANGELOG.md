@@ -1,3 +1,15 @@
+## [1.28.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.27.0...v1.28.0) (2026-11-14)
+
+### Features
+
+* **markdown:** show @-mentions as @Title instead of raw links ([846365a](https://github.com/Lycans-AeroDesign/Athar/commit/846365a2c6dd36d2921c0c9fb6fcbe3bfeef702a))
+* **search:** navigate global search results with arrow keys ([d7b5bc3](https://github.com/Lycans-AeroDesign/Athar/commit/d7b5bc389abfad55ba2ff77e7e90324b244c71fc))
+* **ui:** roll clipped truncated text into view ([54f8bb6](https://github.com/Lycans-AeroDesign/Athar/commit/54f8bb633e09ea6c8bdead34be9ae8689698c9fd))
+
+### Bug Fixes
+
+* **ui:** stack list page search, filters and actions on mobile ([5662724](https://github.com/Lycans-AeroDesign/Athar/commit/566272477facaa4ca55b1182126a57df0616b920))
+
 ## [1.27.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.26.0...v1.27.0) (2026-11-02)
 
 ### Features
