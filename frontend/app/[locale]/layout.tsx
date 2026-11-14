@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages, setRequestLocale } from "next-intl/server";
 import { BrandColorSync } from "@/components/theme/BrandColorSync";
+import { TruncateRoller } from "@/components/ui/TruncateRoller";
 import { AuthProvider } from "@/lib/auth/AuthProvider";
 import { OrganizationProvider } from "@/lib/organization/OrganizationProvider";
 import { ThemeProvider } from "@/lib/theme/ThemeProvider";
@@ -92,6 +93,7 @@ export default async function LocaleLayout({
               <AuthProvider>
                 <OrganizationProvider>
                   <BrandColorSync />
+                  <TruncateRoller />
                   {children}
                 </OrganizationProvider>
               </AuthProvider>

@@ -8,9 +8,9 @@ import { Icon } from "./Icon";
 // `CourseCategory` object) so it works for either type without a union.
 export function CategoryBadge({ name }: { name: string }) {
   return (
-    <span className="inline-flex items-center gap-1.5 font-label-caps text-label-caps uppercase rounded-full px-3 py-1 bg-secondary-container text-on-secondary-container">
-      <Icon name="folder" size={12} />
-      {name}
+    <span title={name} className="inline-flex max-w-full items-center gap-1.5 font-label-caps text-label-caps uppercase rounded-full px-3 py-1 bg-secondary-container text-on-secondary-container">
+      <Icon name="folder" size={12} className="shrink-0" />
+      <span className="truncate">{name}</span>
     </span>
   );
 }

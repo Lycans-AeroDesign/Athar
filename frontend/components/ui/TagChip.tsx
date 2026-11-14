@@ -9,7 +9,8 @@ export function TagChip({ tag }: { tag: Tag }) {
   return (
     <Link
       href={`/knowledge/tags/${tag.id}`}
-      className="px-2.5 py-1 rounded-full bg-surface-container-low text-on-surface-variant font-label-caps text-label-caps uppercase border border-outline-variant hover:border-primary hover:text-primary transition-colors"
+      title={`#${tag.name}`}
+      className="inline-block max-w-full truncate align-middle px-2.5 py-1 rounded-full bg-surface-container-low text-on-surface-variant font-label-caps text-label-caps uppercase border border-outline-variant hover:border-primary hover:text-primary transition-colors"
     >
       #{tag.name}
     </Link>

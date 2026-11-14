@@ -85,12 +85,12 @@ export function TopBar({ onOpenMenu, onCloseMenu }: TopBarProps) {
               data-tour="account-menu"
             >
               <Icon name="expand_more" size={18} className="hidden sm:block text-on-surface-variant shrink-0" />
-              <span className="hidden sm:flex flex-col items-end leading-tight text-end">
-                <span className="font-body-md text-body-md font-semibold text-on-surface normal-case">
+              <span className="hidden sm:flex flex-col items-end min-w-0 max-w-48 leading-tight text-end">
+                <span className="max-w-full truncate font-body-md text-body-md font-semibold text-on-surface normal-case">
                   {displayName}
                 </span>
                 {subtitle && (
-                  <span className="text-[11px] font-normal tracking-normal normal-case text-on-surface-variant">
+                  <span className="max-w-full truncate text-[11px] font-normal tracking-normal normal-case text-on-surface-variant">
                     {subtitle}
                   </span>
                 )}
