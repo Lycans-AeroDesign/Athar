@@ -353,6 +353,29 @@ body {
   animation: fade-in-up 200ms ease-out;
 }
 
+/* Clipped `truncate` text scrolling into view on hover/focus/touch - set by
+   components/ui/TruncateRoller.tsx, which only toggles [data-rolling] and the
+   two variables. Rolls out, pauses, rolls back (alternate), pausing at each
+   end via the flat 0-15% / 85-100% stretches. Ellipsis is swapped for a clip
+   while moving so the "…" doesn't slide along with the text. */
+@keyframes truncate-roll {
+  0%,
+  15% {
+    text-indent: 0;
+  }
+  85%,
+  100% {
+    text-indent: var(--roll-distance);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .truncate[data-rolling] {
+    text-overflow: clip;
+    animation: truncate-roll var(--roll-duration) ease-in-out infinite alternate;
+  }
+}
+
 /* Syntax highlighting for fenced code blocks - rehype-highlight emits
    highlight.js's hljs-* token classes (see components/ui/Markdown.tsx);
    colors come from the --color-code-* tokens above so they follow the theme. */
