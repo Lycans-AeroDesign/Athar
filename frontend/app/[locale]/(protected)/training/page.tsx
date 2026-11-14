@@ -59,24 +59,27 @@ export default function TrainingDiscoveryPage() {
           <h1 className="font-display text-display text-on-surface">{t("title")}</h1>
           <p className="font-body-md text-body-md text-on-surface-variant">{t("subtitle")}</p>
         </div>
-        <div className="flex items-center gap-3">
-          <Link href="/training/my-learning">
-            <Button variant="secondary">
+        {/* Phones: the three actions wrap, each growing to share the row (the
+            primary "new course" one gets a full row of its own) instead of
+            running off-screen in a single unwrapped line. */}
+        <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+          <Link href="/training/my-learning" className="flex-1 sm:flex-none">
+            <Button variant="secondary" className="w-full">
               <Icon name="school" size={18} />
               {t("myLearningLink")}
             </Button>
           </Link>
           <Can permission="training.manage">
-            <Link href="/training/manage">
-              <Button variant="secondary">
+            <Link href="/training/manage" className="flex-1 sm:flex-none">
+              <Button variant="secondary" className="w-full">
                 <Icon name="admin_panel_settings" size={18} />
                 {t("manageLink")}
               </Button>
             </Link>
           </Can>
           <Can permission="training.create">
-            <Link href="/training/manage/courses/new">
-              <Button>
+            <Link href="/training/manage/courses/new" className="w-full sm:w-auto">
+              <Button className="w-full">
                 <Icon name="add" size={18} />
                 {t("newCourseButton")}
               </Button>
@@ -105,8 +108,8 @@ export default function TrainingDiscoveryPage() {
       <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="font-headline-md text-headline-md text-on-surface">{t("allCoursesTitle")}</h2>
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="w-56">
+          <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+            <div className="w-full sm:w-56">
               <input
                 className="block w-full px-4 py-2 font-body-md text-body-md text-on-surface bg-surface border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
                 placeholder={t("searchPlaceholder")}
@@ -114,7 +117,7 @@ export default function TrainingDiscoveryPage() {
                 onChange={(e) => setQuery(e.target.value)}
               />
             </div>
-            <div className="w-48">
+            <div className="flex-1 min-w-36 sm:flex-none sm:w-48">
               <Combobox
                 placeholder={t("categoryAll")}
                 options={categories.map((category) => ({ value: category.id, label: category.name }))}
@@ -122,7 +125,7 @@ export default function TrainingDiscoveryPage() {
                 onChange={setCategoryId}
               />
             </div>
-            <div className="w-44">
+            <div className="flex-1 min-w-36 sm:flex-none sm:w-44">
               <Combobox
                 placeholder={t("difficultyAll")}
                 options={DIFFICULTIES.map((value) => ({ value, label: difficultyT(value), ...DIFFICULTY_ICONS[value] }))}
