@@ -17,7 +17,10 @@ import { AuthenticatedImage } from "./AuthenticatedImage";
 import { Icon } from "./Icon";
 import { ImageLightbox } from "./ImageLightbox";
 import { MermaidDiagram } from "./MermaidDiagram";
+import { Link } from "@/i18n/navigation";
 import { downloadFile } from "@/lib/api/files";
+import { RELATABLE_ICON } from "@/lib/knowledgeTypes";
+import { parseMentionHref } from "@/lib/mentions";
 import { CALLOUT_TYPES, remarkCallouts, type CalloutType } from "@/lib/markdownCallouts";
 import { slugify } from "@/lib/slug";
 
@@ -90,6 +93,7 @@ function CodeBlock({ children }: { children?: ReactNode }) {
 
 interface MarkdownContextValue {
   onCropImage?: (src: string, alt?: string) => void;
+  linksInNewTab?: boolean;
 }
 
 const MarkdownContext = createContext<MarkdownContextValue>({});
@@ -196,6 +200,7 @@ function standaloneImageAlt(children: ReactNode): string | null {
 // hand) renders as a normal <a target="_blank">.
 function FileAwareLink({ href, id, children }: { href?: string; id?: string; children?: ReactNode }) {
   const [isDownloading, setIsDownloading] = useState(false);
+  const { linksInNewTab } = useContext(MarkdownContext);
   const fileId = typeof href === "string" ? FILE_DOWNLOAD_HREF_PATTERN.exec(href)?.[1] : undefined;
 
   // In-page anchors (footnote references and their back-links) - same tab,
@@ -205,6 +210,25 @@ function FileAwareLink({ href, id, children }: { href?: string; id?: string; chi
       <a href={href} id={id} className="text-primary hover:underline">
         {children}
       </a>
+    );
+  }
+
+  // An "@"-mention (lib/mentions.ts) - shown as the same "@Title" chip the
+  // editor displays, navigating in-app (locale-aware) rather than as an
+  // external new-tab link. The editor preview still opens a new tab so
+  // clicking one doesn't navigate away from unsaved work.
+  const mention = parseMentionHref(href);
+  if (mention && href) {
+    return (
+      <Link
+        href={href}
+        target={linksInNewTab ? "_blank" : undefined}
+        rel={linksInNewTab ? "noopener" : undefined}
+        className="inline-flex max-w-full items-baseline gap-0.5 rounded-md bg-primary/10 px-1.5 text-primary no-underline hover:bg-primary/20 transition-colors align-baseline"
+      >
+        <Icon name={RELATABLE_ICON[mention.type]} size={14} className="self-center shrink-0" />
+        <span className="truncate">@{children}</span>
+      </Link>
     );
   }
 
@@ -441,13 +465,16 @@ interface MarkdownProps {
   /** When supplied (e.g. editor preview), images display a crop trigger and pass
    * their source and alt to this callback. */
   onCropImage?: (src: string, alt?: string) => void;
+  /** Open in-app item links (@-mentions) in a new tab - the editor preview,
+   * where navigating away would lose unsaved work. */
+  linksInNewTab?: boolean;
 }
 
-export function Markdown({ content, className, onCropImage }: MarkdownProps) {
+export function Markdown({ content, className, onCropImage, linksInNewTab }: MarkdownProps) {
   return (
     // wrap-break-word (inherited by every block inside) so a long pasted URL or
     // unbroken word wraps instead of pushing past a phone-width screen.
-    <MarkdownContext.Provider value={{ onCropImage }}>
+    <MarkdownContext.Provider value={{ onCropImage, linksInNewTab }}>
       <div className={`wrap-break-word ${className ?? ""}`}>
         <ReactMarkdown remarkPlugins={REMARK_PLUGINS} rehypePlugins={REHYPE_PLUGINS} components={COMPONENTS}>
           {content}
