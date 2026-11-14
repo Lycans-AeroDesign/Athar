@@ -11,6 +11,16 @@ vi.mock("./MermaidDiagram", () => ({
   MermaidDiagram: ({ code }: { code: string }) => <div data-testid="mermaid">{code}</div>,
 }));
 
+// next-intl's locale-aware Link pulls in next/navigation, which only resolves
+// inside Next itself - a plain <a> is all these tests need to inspect.
+vi.mock("@/i18n/navigation", () => ({
+  Link: ({ href, children, ...props }: { href: string; children?: React.ReactNode }) => (
+    <a href={href} {...props}>
+      {children}
+    </a>
+  ),
+}));
+
 function renderMarkdown(content: string) {
   return render(
     <NextIntlClientProvider locale="en" messages={messages}>
@@ -129,5 +139,17 @@ describe("Markdown", () => {
   it("renders a loading chip for in-flight uploading placeholders", () => {
     renderMarkdown("![Uploading motor.png...](uploading:upload-123)");
     expect(screen.getByText("Uploading motor.png...")).toBeInTheDocument();
+  });
+  it("renders an @-mention link as an in-app @Title chip", () => {
+    renderMarkdown("See [Motor](/components/3f2b1c4e-0000-4000-8000-000000000001) first.");
+    const link = screen.getByRole("link", { name: /@Motor/ });
+    expect(link).toHaveAttribute("href", "/components/3f2b1c4e-0000-4000-8000-000000000001");
+    expect(link).not.toHaveAttribute("target");
+  });
+
+  it("leaves external links as new-tab links", () => {
+    renderMarkdown("[site](https://example.com)");
+    const link = screen.getByRole("link", { name: "site" });
+    expect(link).toHaveAttribute("target", "_blank");
   });
 });

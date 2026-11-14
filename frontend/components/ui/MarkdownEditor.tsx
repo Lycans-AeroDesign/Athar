@@ -17,6 +17,7 @@ import { uploadFile } from "@/lib/api/files";
 import type { RelatableType, SearchResult } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { RELATABLE_ICON, RELATABLE_ROUTE_PREFIX } from "@/lib/knowledgeTypes";
+import { canDisplayAsMention, mentionLink, toDisplay, toStorage, type MentionMap } from "@/lib/mentions";
 
 interface MarkdownEditorProps {
   value: string;
@@ -169,7 +170,23 @@ function ToolbarSeparator() {
 // button: CommonMark/GFM has no underline syntax, and rendering raw <u> HTML
 // would need rehype-raw (and then sanitizing untrusted user content against
 // XSS) - not worth it for one button.
-export function MarkdownEditor({ value, onChange, placeholder, relateFrom }: MarkdownEditorProps) {
+export function MarkdownEditor({ value: storedValue, onChange: onStoredChange, placeholder, relateFrom }: MarkdownEditorProps) {
+  // Everything below edits the *display* text, where each @-mention link
+  // `[Motor](/components/<uuid>)` reads as `@Motor` (lib/mentions.ts) - the
+  // textarea, its selection offsets and every toolbar/upload helper all work
+  // in that one coordinate space, and onChange maps edits back to the stored
+  // markdown. mentionsRef (not the render's `mentions`) so an upload resolving
+  // after a later edit converts with the mentions current at that point.
+  const { display: value, mentions } = toDisplay(storedValue);
+  const mentionsRef = useRef(mentions);
+  useEffect(() => {
+    mentionsRef.current = mentions;
+  }, [mentions]);
+  function onChange(nextDisplay: string, extraMentions?: MentionMap) {
+    const map = extraMentions ? new Map([...mentionsRef.current, ...extraMentions]) : mentionsRef.current;
+    onStoredChange(toStorage(nextDisplay, map));
+  }
+
   const t = useTranslations("knowledge.editor");
   const commonT = useTranslations("common");
   const markdownT = useTranslations("markdown");
@@ -243,7 +260,9 @@ export function MarkdownEditor({ value, onChange, placeholder, relateFrom }: Mar
   // it instead of a fixed spot in the editor - recomputed only when a new
   // mention starts (not on every keystroke of the query, so the popup holds
   // still while typing).
-  const [mentionCoords, setMentionCoords] = useState<{ top: number; left: number; height: number } | null>(null);
+  const [mentionCoords, setMentionCoords] = useState<{ top: number; left: number; height: number; width: number } | null>(
+    null,
+  );
 
   // Mirrors `value` synchronously (the prop only catches up once the parent
   // re-renders) so a chain of uploads - each awaiting the network before
@@ -263,8 +282,10 @@ export function MarkdownEditor({ value, onChange, placeholder, relateFrom }: Mar
       const caret = getCaretCoordinates(textarea, mention.start);
       // Clamped so the fixed-width popup never runs past the textarea's right
       // edge for a mention typed near the end of a long line.
-      const left = Math.min(caret.left, Math.max(0, textarea.clientWidth - MENTION_POPUP_WIDTH));
-      setMentionCoords({ ...caret, left });
+      // On a phone-width editor the popup shrinks to fit rather than overflowing it.
+      const width = Math.min(MENTION_POPUP_WIDTH, textarea.clientWidth);
+      const left = Math.min(caret.left, Math.max(0, textarea.clientWidth - width));
+      setMentionCoords({ ...caret, left, width });
     });
     return () => cancelAnimationFrame(frame);
     // Only the mention's start offset matters here - re-running this on every
@@ -290,16 +311,29 @@ export function MarkdownEditor({ value, onChange, placeholder, relateFrom }: Mar
 
   function updateMentionFromCursor(text: string, cursor: number) {
     const detected = detectMention(text, cursor);
-    setMention(detected && detected.start === dismissedStart ? null : detected);
+    // The caret sitting right after an already-picked "@Motor" isn't a new mention.
+    const isExisting = detected !== null && mentions.has(detected.query);
+    setMention(detected && (detected.start === dismissedStart || isExisting) ? null : detected);
   }
 
   function selectMention(result: SearchResult) {
     if (!mention) return;
     const end = mention.start + 1 + mention.query.length;
-    const link = `[${result.title}](${RELATABLE_ROUTE_PREFIX[result.type]}/${result.id})`;
-    const next = value.slice(0, mention.start) + link + value.slice(end);
-    onChange(next);
-    const cursor = mention.start + link.length;
+    const href = `${RELATABLE_ROUTE_PREFIX[result.type]}/${result.id}`;
+    const before = value.slice(0, mention.start);
+    const after = value.slice(end);
+    // Shown as "@Title" when that maps back losslessly (lib/mentions.ts's
+    // toDisplay agrees); otherwise - a same-titled but different item already
+    // in the text, say - the raw link is inserted so nothing is ambiguous.
+    let inserted = `@${result.title}`;
+    const extra: MentionMap = new Map([[result.title, href]]);
+    const candidate = before + inserted + after;
+    const fitsAsMention =
+      canDisplayAsMention(result.title) &&
+      toDisplay(toStorage(candidate, new Map([...mentionsRef.current, ...extra]))).display === candidate;
+    if (!fitsAsMention) inserted = mentionLink(result.title, href);
+    onChange(before + inserted + after, fitsAsMention ? extra : undefined);
+    const cursor = mention.start + inserted.length;
     focusSelection(cursor, cursor);
     setMention(null);
 
@@ -945,7 +979,7 @@ export function MarkdownEditor({ value, onChange, placeholder, relateFrom }: Mar
           {mention && mentionCoords && (
             <div
               className="absolute z-10 max-h-64 overflow-y-auto bg-surface-container-lowest border border-outline-variant rounded-lg shadow-[0_2px_8px_0_rgba(0,0,0,0.15)]"
-              style={{ top: mentionCoords.top + mentionCoords.height, left: mentionCoords.left, width: MENTION_POPUP_WIDTH }}
+              style={{ top: mentionCoords.top + mentionCoords.height, left: mentionCoords.left, width: mentionCoords.width }}
             >
               {mentionSearching ? (
                 <p className="px-3 py-2 font-body-md text-body-md text-on-surface-variant">{t("mentionSearching")}</p>
@@ -978,7 +1012,7 @@ export function MarkdownEditor({ value, onChange, placeholder, relateFrom }: Mar
       ) : (
         <div className="min-h-[400px] p-4">
           {value ? (
-            <Markdown content={value} onCropImage={cropExistingImage} />
+            <Markdown content={storedValue} onCropImage={cropExistingImage} linksInNewTab />
           ) : (
             <p className="font-body-md text-body-md text-on-surface-variant">{placeholder}</p>
           )}
