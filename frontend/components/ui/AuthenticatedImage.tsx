@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 
+import { thumbnailUrl, type ThumbnailSize } from "@/lib/api/files";
 import { fetchBlobUrl, getCachedBlobUrlSync } from "@/lib/cache/blobCache";
 
 interface AuthenticatedImageProps {
@@ -16,13 +17,18 @@ interface AuthenticatedImageProps {
    * state too (fine for e.g. branding previews an org admin uploaded themselves,
    * where a failure is unexpected rather than a routine permission gap). */
   fallback?: ReactNode;
+  /** Fetch a server-downscaled copy instead of the original - use wherever the
+   * image renders small (sm ≈ avatars/icons, md ≈ cards/previews). Leave unset
+   * where the full image is shown (lightbox, Markdown content). */
+  size?: ThumbnailSize;
 }
 
 // The file-serving endpoint is auth-gated (see backend/files/views.py), so it
 // only accepts the Bearer token, which a plain <img src> can never send.
 // This fetches the bytes through fetchBlobUrl (token attached, cached in memory
 // and CacheStorage) and hands the browser a local blob: URL instead.
-export function AuthenticatedImage({ src, alt, className, fallback }: AuthenticatedImageProps) {
+export function AuthenticatedImage({ src: originalSrc, alt, className, fallback, size }: AuthenticatedImageProps) {
+  const src = size && originalSrc ? thumbnailUrl(originalSrc, size) : originalSrc;
   const [result, setResult] = useState<{ src: string; url: string | null } | null>(() => {
     const cached = getCachedBlobUrlSync(src);
     return cached ? { src, url: cached } : null;

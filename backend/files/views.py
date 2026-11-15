@@ -1,7 +1,8 @@
 from django.http import FileResponse
-from drf_spectacular.utils import OpenApiResponse, extend_schema
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
 from rest_framework import status
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -11,7 +12,7 @@ from config.openapi import BAD_REQUEST, COMMON_ERRORS, NOT_FOUND, UNAUTHORIZED
 from core.shortcuts import org_object_or_404
 from rbac.permissions import require_permission
 
-from . import services
+from . import services, thumbnails
 from .models import StoredFile
 from .serializers import StoredFileSerializer, StoredFileUploadInputSerializer
 
@@ -70,6 +71,17 @@ class FileDownloadView(APIView):
     @extend_schema(
         tags=["Files"],
         summary="Download a file (gated by the file's required_permission, not static serving)",
+        parameters=[
+            OpenApiParameter(
+                "size",
+                OpenApiTypes.STR,
+                enum=list(thumbnails.THUMBNAIL_SIZES),
+                description=(
+                    "Serve a downscaled WebP copy instead of the original (images only; anything that "
+                    "can't be thumbnailed returns the original). sm = 160px, md = 640px longest edge."
+                ),
+            ),
+        ],
         responses={
             200: OpenApiResponse(description="The file contents."),
             401: UNAUTHORIZED,
@@ -78,6 +90,9 @@ class FileDownloadView(APIView):
         },
     )
     def get(self, request, pk):
+        size = request.query_params.get("size", "").strip()
+        if size and size not in thumbnails.THUMBNAIL_SIZES:
+            raise ValidationError({"size": [f"Must be one of: {', '.join(thumbnails.THUMBNAIL_SIZES)}."]})
         # organization filter is defense in depth beyond required_permission
         # (Section 11 of the multi-tenancy plan) - required_permission alone
         # says nothing about *which org's* file.read grants access to.
@@ -94,11 +109,23 @@ class FileDownloadView(APIView):
         # as_attachment=True: the frontend fetches bytes via apiFetch and uses blob: URLs, which
         # ignore this header. It stops an uploaded .svg/.html from executing inline if this URL
         # is ever navigated to directly (defense in depth against XSS-via-upload).
-        response = FileResponse(
-            stored_file.file.open("rb"),
-            filename=stored_file.original_filename,
-            as_attachment=True,
-        )
+        # Permission checks above run first, so a thumbnail is never easier to
+        # get than its original.
+        thumbnail = thumbnails.get_or_create_thumbnail(stored_file, size) if size else None
+        if thumbnail:
+            base_name = stored_file.original_filename.rsplit(".", 1)[0] or "image"
+            response = FileResponse(
+                stored_file.file.storage.open(thumbnail, "rb"),
+                filename=f"{base_name}-{size}.webp",
+                as_attachment=True,
+                content_type="image/webp",
+            )
+        else:
+            response = FileResponse(
+                stored_file.file.open("rb"),
+                filename=stored_file.original_filename,
+                as_attachment=True,
+            )
         response["Cache-Control"] = "private, max-age=86400, stale-while-revalidate=604800"
         return response
 

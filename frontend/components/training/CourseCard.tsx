@@ -28,6 +28,7 @@ export function CourseCard({ course, progressPercent }: CourseCardProps) {
         {course.cover_image ? (
           <AuthenticatedImage
             src={course.cover_image.download_url}
+            size="md"
             alt=""
             className="h-full w-full object-cover"
             fallback={<Icon name="school" size={40} className="text-on-surface-variant/40" />}

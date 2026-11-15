@@ -128,6 +128,7 @@ export function PhotoDropzone({
         {value && (
           <AuthenticatedImage
             src={value.download_url}
+            size="md"
             alt={alt}
             className={`h-full w-full ${fit === "contain" ? "object-contain p-2" : "object-cover"}`}
             fallback={fallback}

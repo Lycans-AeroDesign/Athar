@@ -99,6 +99,7 @@ export default function ComponentDetailPage() {
             <div className="h-20 w-20 rounded-lg border border-outline-variant overflow-hidden shrink-0">
               <AuthenticatedImage
                 src={component.photo.download_url}
+                size="sm"
                 alt={component.name}
                 className="h-full w-full object-cover"
               />

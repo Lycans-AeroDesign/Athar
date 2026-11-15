@@ -2,6 +2,8 @@ import uuid
 
 from django.conf import settings
 from django.db import models
+from django.db.models.signals import post_delete
+from django.dispatch import receiver
 
 
 def stored_file_upload_path(instance, filename):
@@ -43,3 +45,14 @@ class StoredFile(models.Model):
 
     def __str__(self):
         return self.original_filename
+
+
+@receiver(post_delete, sender=StoredFile)
+def _delete_thumbnails(sender, instance, **kwargs):
+    # Every path that deletes a StoredFile (files.services.delete_file, the
+    # unconfirmed-file sweep, account deletion, ...) goes through here, so
+    # none of them can leave its generated thumbnails behind. If the delete is
+    # later rolled back, the thumbnails are just regenerated on next request.
+    from .thumbnails import delete_thumbnails
+
+    delete_thumbnails(instance)

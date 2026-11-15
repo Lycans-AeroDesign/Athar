@@ -4,6 +4,7 @@ import * as Popover from "@radix-ui/react-popover";
 import { useEffect, useRef, useState } from "react";
 
 import { apiFetch } from "@/lib/api/client";
+import { thumbnailUrl } from "@/lib/api/files";
 import type { StoredFileRef } from "@/lib/api/types";
 
 interface ComponentPhotoCellProps {
@@ -44,7 +45,9 @@ export function ComponentPhotoCell({ photo, alt }: ComponentPhotoCellProps) {
     if (!isVisible) return;
     let cancelled = false;
     let objectUrl: string | null = null;
-    apiFetch(photo.download_url)
+    // md, not the original: big enough for the hover preview, and one fetch
+    // serves both it and the small cell image.
+    apiFetch(thumbnailUrl(photo.download_url, "md"))
       .then((res) => (res.ok ? res.blob() : null))
       .then((blob) => {
         if (cancelled || !blob) return;

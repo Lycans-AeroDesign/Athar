@@ -1,3 +1,6 @@
+import io
+from unittest import mock
+
 from django.core.files.uploadedfile import SimpleUploadedFile
 
 from django.test import SimpleTestCase, override_settings
@@ -10,6 +13,9 @@ from core.testing import create_test_organization
 from accounts.models import User
 from rbac.models import Role
 
+from PIL import Image
+
+from . import services, thumbnails
 from .models import StoredFile
 from .validation import validate_upload
 
@@ -208,3 +214,94 @@ class UploadEndpointValidationTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(StoredFile.objects.count(), 0)
+
+class ThumbnailTests(APITestCase):
+    """?size= on the download endpoint serves a downscaled WebP of an image,
+    generated once and reused, and removed together with the original."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.organization = create_test_organization()
+
+    def setUp(self):
+        self.user = User.objects.create_user(email="thumbs@example.com", password="password123", organization=self.organization)
+        Role.objects.get(organization=self.organization, name="Member").user_roles.create(user=self.user)
+        self.access = self.client.post(
+            reverse("auth-login"), {"email": "thumbs@example.com", "password": "password123"}, format="json"
+        ).data["access"]
+
+    def _auth(self):
+        return {"HTTP_AUTHORIZATION": f"Bearer {self.access}"}
+
+    def _upload_png(self, width=1200, height=800):
+        buffer = io.BytesIO()
+        Image.new("RGB", (width, height), (200, 30, 30)).save(buffer, format="PNG")
+        upload = SimpleUploadedFile("photo.png", buffer.getvalue(), content_type="image/png")
+        response = self.client.post(
+            reverse("files-upload"), {"file": upload, "required_permission": "file.read"}, format="multipart", **self._auth()
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
+        return StoredFile.objects.get(pk=response.data["id"])
+
+    def _get(self, stored_file, size):
+        return self.client.get(reverse("files-download", args=[stored_file.pk]), {"size": size}, **self._auth())
+
+    def test_sm_and_md_are_downscaled_webp(self):
+        stored_file = self._upload_png()
+        for size, edge in thumbnails.THUMBNAIL_SIZES.items():
+            with self.subTest(size=size):
+                response = self._get(stored_file, size)
+                self.assertEqual(response.status_code, status.HTTP_200_OK)
+                self.assertEqual(response["Content-Type"], "image/webp")
+                with Image.open(io.BytesIO(b"".join(response.streaming_content))) as image:
+                    self.assertEqual(image.format, "WEBP")
+                    self.assertEqual(max(image.size), edge)
+                    self.assertAlmostEqual(image.size[0] / image.size[1], 1200 / 800, places=2)
+        services.delete_file(stored_file=stored_file, actor=self.user)
+
+    def test_thumbnail_is_generated_once_then_reused(self):
+        stored_file = self._upload_png()
+        self._get(stored_file, "sm")
+        with mock.patch.object(thumbnails, "_render", side_effect=AssertionError("re-rendered")):
+            self.assertEqual(self._get(stored_file, "sm").status_code, status.HTTP_200_OK)
+        services.delete_file(stored_file=stored_file, actor=self.user)
+
+    def test_deleting_the_file_deletes_its_thumbnails(self):
+        stored_file = self._upload_png()
+        self._get(stored_file, "sm")
+        self._get(stored_file, "md")
+        storage = stored_file.file.storage
+        names = [thumbnails.thumbnail_name(stored_file, size) for size in thumbnails.THUMBNAIL_SIZES]
+        self.assertTrue(all(storage.exists(name) for name in names))
+        services.delete_file(stored_file=stored_file, actor=self.user)
+        self.assertFalse(any(storage.exists(name) for name in names))
+
+    def test_non_images_and_undecodable_images_fall_back_to_the_original(self):
+        upload = SimpleUploadedFile("note.txt", b"hello world", content_type="text/plain")
+        text_id = self.client.post(
+            reverse("files-upload"), {"file": upload, "required_permission": "file.read"}, format="multipart", **self._auth()
+        ).data["id"]
+        text_file = StoredFile.objects.get(pk=text_id)
+        self.assertEqual(b"".join(self._get(text_file, "sm").streaming_content), b"hello world")
+
+        broken = self._upload_png()
+        with mock.patch.object(thumbnails, "_render", side_effect=OSError("truncated")):
+            response = self._get(broken, "sm")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response["Content-Type"], "image/png")
+        for stored_file in (text_file, broken):
+            services.delete_file(stored_file=stored_file, actor=self.user)
+
+    def test_unknown_size_is_a_400_and_permissions_still_apply(self):
+        stored_file = self._upload_png(40, 40)
+        self.assertEqual(self._get(stored_file, "xl").status_code, status.HTTP_400_BAD_REQUEST)
+        anonymous = self.client.get(reverse("files-download", args=[stored_file.pk]), {"size": "sm"})
+        self.assertEqual(anonymous.status_code, status.HTTP_401_UNAUTHORIZED)
+        services.delete_file(stored_file=stored_file, actor=self.user)
+
+    def test_oversized_source_is_not_decoded(self):
+        stored_file = self._upload_png(40, 40)
+        with mock.patch.object(thumbnails, "_MAX_SOURCE_PIXELS", 100):
+            response = self._get(stored_file, "sm")
+        self.assertEqual(response["Content-Type"], "image/png")
+        services.delete_file(stored_file=stored_file, actor=self.user)

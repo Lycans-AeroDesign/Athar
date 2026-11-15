@@ -34,6 +34,7 @@ export function Avatar({ person, size = "md" }: AvatarProps) {
     return (
       <AuthenticatedImage
         src={person.profile_picture.download_url}
+        size="sm"
         alt={getInitials(person)}
         className={`${SIZE_CLASSES[size]} shrink-0 rounded-full object-cover bg-secondary-container`}
         fallback={<InitialsCircle person={person} size={size} />}

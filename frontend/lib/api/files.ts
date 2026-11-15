@@ -1,6 +1,18 @@
 import { ApiError, apiFetch, apiJson, apiUpload } from "./client";
 import type { StoredFileRef } from "./types";
 
+/** Server-generated downscaled copies (backend/files/thumbnails.py): sm = 160px,
+ * md = 640px on the longest edge, as WebP. */
+export type ThumbnailSize = "sm" | "md";
+
+/** The download URL for a smaller copy of an image, for places that render it
+ * small (avatars, cards, table cells). Non-images, SVGs and images the server
+ * can't decode come back as the original, so this is safe on any file. */
+export function thumbnailUrl(downloadUrl: string, size: ThumbnailSize): string {
+  if (!downloadUrl) return downloadUrl;
+  return `${downloadUrl}${downloadUrl.includes("?") ? "&" : "?"}size=${size}`;
+}
+
 interface UploadFileOptions {
   requiredPermission?: string;
   /** Reports upload progress as a 0-1 fraction, from the browser's actual

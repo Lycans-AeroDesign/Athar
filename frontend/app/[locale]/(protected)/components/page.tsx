@@ -451,6 +451,7 @@ function ComponentsPageContent() {
                       <div className="h-10 w-10 rounded-lg border border-outline-variant overflow-hidden shrink-0">
                         <AuthenticatedImage
                           src={component.photo.download_url}
+                          size="md"
                           alt={component.name}
                           className="h-full w-full object-cover"
                         />

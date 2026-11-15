@@ -124,6 +124,7 @@ function PreviewPane({ mode, label, orgName, logo, primary, secondary }: Preview
             {logo ? (
               <AuthenticatedImage
                 src={logo.download_url}
+                size="sm"
                 alt=""
                 className="h-7 w-7 shrink-0 rounded object-contain"
                 fallback={<BrandMark className="h-7 w-7 shrink-0" />}

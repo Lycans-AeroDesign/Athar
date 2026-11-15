@@ -361,6 +361,7 @@ export default function CourseDetailPage() {
               <div className="aspect-video w-full overflow-hidden bg-surface-container-high border-b border-outline-variant">
                 <AuthenticatedImage
                   src={course.cover_image.download_url}
+                  size="md"
                   alt=""
                   className="h-full w-full object-cover"
                 />
