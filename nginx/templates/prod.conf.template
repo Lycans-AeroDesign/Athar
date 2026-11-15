@@ -58,9 +58,9 @@ server {
 
     # Populated by scripts/init_letsencrypt.sh (first run) and kept current
     # by the certbot service's renewal loop after that - see
-    # docker-compose.prod.yml and DEPLOYMENT.md. nginx does not reload
-    # automatically when certbot renews; the certbot service's renewal loop
-    # handles that too (see its command in docker-compose.prod.yml).
+    # docker-compose.prod.yml and DEPLOYMENT.md. nginx doesn't notice a
+    # renewed certificate on its own - the nginx service's entrypoint in
+    # docker-compose.prod.yml reloads it every 6 hours to pick it up.
     ssl_certificate     /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
     ssl_protocols TLSv1.2 TLSv1.3;

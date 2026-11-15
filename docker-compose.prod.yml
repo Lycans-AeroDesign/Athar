@@ -155,6 +155,16 @@ services:
   nginx:
     image: nginx:1.27-alpine
     restart: unless-stopped
+    # nginx only reads its certificate at start/reload, and the certbot
+    # container below can't signal this one - so without this, a renewed
+    # certificate was never picked up and HTTPS broke when the old one expired
+    # (~90 days). A background loop gracefully reloads every 6h (no dropped
+    # connections), then hands off to the image's own entrypoint unchanged -
+    # it still sees "nginx" as its first argument, so templates still render.
+    entrypoint:
+      - /bin/sh
+      - -c
+      - (while :; do sleep 6h; nginx -s reload; done) & exec /docker-entrypoint.sh nginx -g 'daemon off;'
     environment:
       DOMAIN: ${DOMAIN:?DOMAIN must be set (your real public domain)}
     volumes:
