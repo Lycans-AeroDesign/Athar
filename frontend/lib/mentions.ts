@@ -49,12 +49,27 @@ export function canDisplayAsMention(title: string): boolean {
   return title.length > 0 && !/[[\]\n]/.test(title);
 }
 
+// Longest titles first, so "@Motor Mount" wins over "@Motor".
+function displayMentionRegex(mentions: MentionMap): RegExp {
+  const titles = [...mentions.keys()].sort((a, b) => b.length - a.length);
+  return new RegExp(`@(${titles.map(escapeRegExp).join("|")})`, "g");
+}
+
 export function toStorage(display: string, mentions: MentionMap): string {
   if (mentions.size === 0) return display;
-  // Longest titles first, so "@Motor Mount" wins over "@Motor".
-  const titles = [...mentions.keys()].sort((a, b) => b.length - a.length);
-  const re = new RegExp(`@(${titles.map(escapeRegExp).join("|")})`, "g");
-  return display.replace(re, (_, title: string) => mentionLink(title, mentions.get(title)!));
+  return display.replace(displayMentionRegex(mentions), (_, title: string) =>
+    mentionLink(title, mentions.get(title)!),
+  );
+}
+
+/** Where each `@title` sits in the display text - the exact spans toStorage
+ * turns into links, so the editor can treat them as single atomic tokens. */
+export function mentionRanges(display: string, mentions: MentionMap): { start: number; end: number }[] {
+  if (mentions.size === 0) return [];
+  return Array.from(display.matchAll(displayMentionRegex(mentions)), (m) => ({
+    start: m.index,
+    end: m.index + m[0].length,
+  }));
 }
 
 function collapse(storage: string, mentions: MentionMap): string {

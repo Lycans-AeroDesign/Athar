@@ -2,7 +2,7 @@
 
 import * as Popover from "@radix-ui/react-popover";
 import { useTranslations } from "next-intl";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { Icon } from "./Icon";
 import { ImageCropModal } from "./ImageCropModal";
@@ -17,7 +17,14 @@ import { uploadFile } from "@/lib/api/files";
 import type { RelatableType, SearchResult } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { RELATABLE_ICON, RELATABLE_ROUTE_PREFIX } from "@/lib/knowledgeTypes";
-import { canDisplayAsMention, mentionLink, toDisplay, toStorage, type MentionMap } from "@/lib/mentions";
+import {
+  canDisplayAsMention,
+  mentionLink,
+  mentionRanges,
+  toDisplay,
+  toStorage,
+  type MentionMap,
+} from "@/lib/mentions";
 
 interface MarkdownEditorProps {
   value: string;
@@ -132,6 +139,28 @@ function findImageAtCursor(text: string, cursor: number): MarkdownImageMatch | n
   return images.find((img) => cursor >= img.start && cursor <= img.end) ?? null;
 }
 
+// The mention highlight layer's content - plain text with a tinted <mark>
+// per @-mention (see MarkdownEditor's backdrop). A trailing zero-width space
+// keeps a final empty line from collapsing, matching how the textarea renders it.
+function buildHighlightSegments(value: string, mentions: MentionMap): ReactNode[] {
+  const segments: ReactNode[] = [];
+  let cursor = 0;
+  for (const range of mentionRanges(value, mentions)) {
+    if (range.start > cursor) segments.push(value.slice(cursor, range.start));
+    segments.push(
+      <mark
+        key={range.start}
+        className="rounded-[3px] bg-primary/15 text-transparent shadow-[0_0_0_1.5px_color-mix(in_srgb,var(--color-primary)_35%,transparent)]"
+      >
+        {value.slice(range.start, range.end)}
+      </mark>,
+    );
+    cursor = range.end;
+  }
+  segments.push(value.slice(cursor), "​");
+  return segments;
+}
+
 const TOOLBAR_BUTTON_CLASS =
   "p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-variant transition-colors disabled:opacity-40 disabled:cursor-not-allowed";
 
@@ -187,11 +216,81 @@ export function MarkdownEditor({ value: storedValue, onChange: onStoredChange, p
     onStoredChange(toStorage(nextDisplay, map));
   }
 
+  // The mention highlight layer behind the textarea (see the edit tab's JSX),
+  // kept at the textarea's inner size and scroll offset.
+  const backdropRef = useRef<HTMLDivElement>(null);
+  const highlightSegments = buildHighlightSegments(value, mentions);
+
+  function syncBackdrop() {
+    const textarea = textareaRef.current;
+    const backdrop = backdropRef.current;
+    if (!textarea || !backdrop) return;
+    // clientWidth/Height exclude the scrollbar, so the copy wraps at exactly
+    // the textarea's text width even once it starts scrolling.
+    backdrop.style.width = `${textarea.clientWidth}px`;
+    backdrop.style.height = `${textarea.clientHeight}px`;
+    backdrop.scrollTop = textarea.scrollTop;
+    backdrop.scrollLeft = textarea.scrollLeft;
+  }
+
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    syncBackdrop();
+    const observer = new ResizeObserver(syncBackdrop);
+    observer.observe(textarea);
+    return () => observer.disconnect();
+  });
+
   const t = useTranslations("knowledge.editor");
   const commonT = useTranslations("common");
   const markdownT = useTranslations("markdown");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  // Where the caret was last, so a caret that lands inside a token can be
+  // pushed out the way it was travelling (ArrowLeft from after "@Motor" jumps
+  // to before it, rather than snapping straight back to where it came from).
+  const lastCaretRef = useRef<number | null>(null);
   const [tab, setTab] = useState<"edit" | "preview">("edit");
+  // Selection to restore when coming back from Preview, so the caret lands
+  // where you left off (the textarea unmounts while Preview is shown).
+  // null until you've been in the textarea - then Edit puts the caret at the end.
+  const savedSelectionRef = useRef<{ start: number; end: number } | null>(null);
+  // Set only by clicking the Edit tab, so the textarea isn't focused on the
+  // page's first render - just when switching back from Preview.
+  const focusOnEditRef = useRef(false);
+  // Whether the textarea has had focus yet - a never-touched textarea reports
+  // selectionStart 0, which shouldn't count as "where you left off".
+  const hasFocusedRef = useRef(false);
+
+  function switchToPreview() {
+    const textarea = textareaRef.current;
+    // Not document.activeElement: pressing the Preview button has already
+    // blurred the textarea by now, but it keeps its selection.
+    if (tab === "edit" && textarea && hasFocusedRef.current) {
+      savedSelectionRef.current = { start: textarea.selectionStart, end: textarea.selectionEnd };
+    }
+    setTab("preview");
+  }
+
+  function switchToEdit() {
+    if (tab === "edit") return;
+    focusOnEditRef.current = true;
+    setTab("edit");
+  }
+
+  useEffect(() => {
+    if (tab !== "edit" || !focusOnEditRef.current) return;
+    focusOnEditRef.current = false;
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    const end = textarea.value.length;
+    const saved = savedSelectionRef.current;
+    const start = Math.min(saved?.start ?? end, end);
+    const finish = Math.min(saved?.end ?? end, end);
+    textarea.focus();
+    textarea.setSelectionRange(start, finish);
+    lastCaretRef.current = start;
+  }, [tab]);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [relationError, setRelationError] = useState<string | null>(null);
   const [calloutMenuOpen, setCalloutMenuOpen] = useState(false);
@@ -325,13 +424,16 @@ export function MarkdownEditor({ value: storedValue, onChange: onStoredChange, p
     // Shown as "@Title" when that maps back losslessly (lib/mentions.ts's
     // toDisplay agrees); otherwise - a same-titled but different item already
     // in the text, say - the raw link is inserted so nothing is ambiguous.
-    let inserted = `@${result.title}`;
+    // A trailing space (unless one already follows) so typing carries on as
+    // normal text after the mention instead of running into it.
+    const spacer = /^\s/.test(after) ? "" : " ";
+    let inserted = `@${result.title}${spacer}`;
     const extra: MentionMap = new Map([[result.title, href]]);
     const candidate = before + inserted + after;
     const fitsAsMention =
       canDisplayAsMention(result.title) &&
       toDisplay(toStorage(candidate, new Map([...mentionsRef.current, ...extra]))).display === candidate;
-    if (!fitsAsMention) inserted = mentionLink(result.title, href);
+    if (!fitsAsMention) inserted = mentionLink(result.title, href) + spacer;
     onChange(before + inserted + after, fitsAsMention ? extra : undefined);
     const cursor = mention.start + inserted.length;
     focusSelection(cursor, cursor);
@@ -350,6 +452,73 @@ export function MarkdownEditor({ value: storedValue, onChange: onStoredChange, p
         );
       });
     }
+  }
+
+  // Picked @-mentions behave as single tokens in the textarea: Backspace/
+  // Delete next to one removes all of it, a deletion that cuts into one
+  // widens to cover it, and the caret never rests inside one (see
+  // snapSelection). Ranges are read off the textarea's live value rather than
+  // `value`, which only catches up once the parent re-renders.
+  function tokenRanges(text: string) {
+    return mentionRanges(text, mentionsRef.current);
+  }
+
+  function handleTokenKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key !== "Backspace" && e.key !== "Delete") return;
+    const textarea = e.currentTarget;
+    const { selectionStart: start, selectionEnd: end } = textarea;
+    const ranges = tokenRanges(textarea.value);
+    let from = start;
+    let to = end;
+    if (start === end) {
+      const hit = ranges.find((r) =>
+        e.key === "Backspace" ? start > r.start && start <= r.end : start >= r.start && start < r.end,
+      );
+      if (!hit) return;
+      from = hit.start;
+      to = hit.end;
+    } else {
+      for (const r of ranges) {
+        if (r.start < to && r.end > from) {
+          from = Math.min(from, r.start);
+          to = Math.max(to, r.end);
+        }
+      }
+      if (from === start && to === end) return; // nothing partially covered - native delete is right
+    }
+    e.preventDefault();
+    const next = textarea.value.slice(0, from) + textarea.value.slice(to);
+    onChange(next);
+    lastCaretRef.current = from;
+    focusSelection(from, from);
+  }
+
+
+  function snapSelection(textarea: HTMLTextAreaElement, expandRange: boolean) {
+    const { selectionStart: start, selectionEnd: end, selectionDirection } = textarea;
+    const ranges = tokenRanges(textarea.value);
+    if (start === end) {
+      const inside = ranges.find((r) => start > r.start && start < r.end);
+      const previous = lastCaretRef.current;
+      let caret = start;
+      if (inside) {
+        if (previous !== null && previous <= inside.start) caret = inside.end;
+        else if (previous !== null && previous >= inside.end) caret = inside.start;
+        else caret = start - inside.start < inside.end - start ? inside.start : inside.end;
+        textarea.setSelectionRange(caret, caret);
+      }
+      lastCaretRef.current = caret;
+      return;
+    }
+    // Only once a drag/shift-selection settles - adjusting mid-drag fights the mouse.
+    if (!expandRange) return;
+    let from = start;
+    let to = end;
+    for (const r of ranges) {
+      if (from > r.start && from < r.end) from = r.start;
+      if (to > r.start && to < r.end) to = r.end;
+    }
+    if (from !== start || to !== end) textarea.setSelectionRange(from, to, selectionDirection);
   }
 
   function handleMentionKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -925,7 +1094,7 @@ export function MarkdownEditor({ value: storedValue, onChange: onStoredChange, p
         <div className="flex items-center gap-1 px-2 py-1.5 sm:py-0 border-b border-outline-variant sm:border-b-0 shrink-0">
           <button
             type="button"
-            onClick={() => setTab("edit")}
+            onClick={switchToEdit}
             className={`flex-1 sm:flex-none px-3 py-1 rounded-lg font-label-caps text-label-caps uppercase transition-colors ${
               tab === "edit" ? "bg-surface-container-lowest text-primary" : "text-on-surface-variant"
             }`}
@@ -934,7 +1103,7 @@ export function MarkdownEditor({ value: storedValue, onChange: onStoredChange, p
           </button>
           <button
             type="button"
-            onClick={() => setTab("preview")}
+            onClick={switchToPreview}
             className={`flex-1 sm:flex-none px-3 py-1 rounded-lg font-label-caps text-label-caps uppercase transition-colors ${
               tab === "preview" ? "bg-surface-container-lowest text-primary" : "text-on-surface-variant"
             }`}
@@ -961,6 +1130,21 @@ export function MarkdownEditor({ value: storedValue, onChange: onStoredChange, p
       )}
       {tab === "edit" ? (
         <div className="relative">
+          {/* Highlight layer for @-mentions: a textarea can't style part of its
+              text, so an identically laid-out copy sits behind it (same font,
+              padding, wrapping, width and scroll) with transparent text and a
+              tint behind each mention. Only background is painted - the real
+              text stays the textarea's, so a slight layout mismatch could only
+              ever misplace a tint, never the text or caret. */}
+          <div
+            ref={backdropRef}
+            aria-hidden="true"
+            className="absolute top-0 start-0 overflow-hidden pointer-events-none"
+          >
+            <div className="p-4 font-mono-sm text-mono-sm text-transparent whitespace-pre-wrap wrap-break-word">
+              {highlightSegments}
+            </div>
+          </div>
           <textarea
             ref={textareaRef}
             value={value}
@@ -968,13 +1152,27 @@ export function MarkdownEditor({ value: storedValue, onChange: onStoredChange, p
               onChange(e.target.value);
               updateMentionFromCursor(e.target.value, e.target.selectionStart);
             }}
-            onSelect={(e) => updateMentionFromCursor(e.currentTarget.value, e.currentTarget.selectionStart)}
-            onKeyDown={handleMentionKeyDown}
+            onSelect={(e) => {
+              snapSelection(e.currentTarget, false);
+              updateMentionFromCursor(e.currentTarget.value, e.currentTarget.selectionStart);
+            }}
+            onPointerUp={(e) => snapSelection(e.currentTarget, true)}
+            onKeyUp={(e) => {
+              if (e.shiftKey) snapSelection(e.currentTarget, true);
+            }}
+            onKeyDown={(e) => {
+              handleMentionKeyDown(e);
+              if (!e.defaultPrevented) handleTokenKeyDown(e);
+            }}
+            onScroll={syncBackdrop}
+            onFocus={() => {
+              hasFocusedRef.current = true;
+            }}
             onPaste={handlePaste}
             onDragOver={handleDragOver}
             onDrop={handleDrop}
             placeholder={placeholder}
-            className="w-full min-h-[400px] p-4 bg-transparent font-mono-sm text-mono-sm text-on-surface resize-y outline-none"
+            className="relative block w-full min-h-[400px] p-4 bg-transparent font-mono-sm text-mono-sm text-on-surface resize-y outline-none"
           />
           {mention && mentionCoords && (
             <div
