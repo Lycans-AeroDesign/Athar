@@ -50,7 +50,7 @@ from training.models import (
 )
 
 from . import restore
-from . import services
+from . import services, tasks
 from .models import BackupJob, RestoreJob
 
 PASSPHRASE = "correct horse battery"
@@ -219,6 +219,78 @@ class BackupJobGenerationTests(BackupJobTestCase):
         )
         response = self.client.delete(reverse("backups-detail", kwargs={"pk": job.id}), **self._auth(member_access))
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+
+class JobLifecycleGuardTests(BackupJobTestCase):
+    """A worker killed mid-task left its job RUNNING forever (undeletable), and
+    nothing stopped overlapping restores - see services' job lifecycle guards."""
+
+    def _admin(self):
+        user, access = self._login_with_role("guardadmin@example.com", "Organization Admin")
+        return user, access
+
+    def _age(self, job, hours):
+        type(job).objects.filter(pk=job.pk).update(updated_at=timezone.now() - timezone.timedelta(hours=hours))
+        job.refresh_from_db()
+
+    def test_interrupted_running_backup_can_be_deleted(self):
+        user, access = self._admin()
+        job = BackupJob.objects.create(organization=self.organization, requested_by=user, status=BackupJob.Status.RUNNING)
+        url = reverse("backups-detail", args=[job.pk])
+        self.assertEqual(self.client.delete(url, **self._auth(access)).status_code, status.HTTP_400_BAD_REQUEST)
+
+        self._age(job, hours=7)
+        self.assertEqual(self.client.delete(url, **self._auth(access)).status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_fail_stale_jobs_marks_only_interrupted_jobs_failed(self):
+        user, _ = self._admin()
+        stale = BackupJob.objects.create(organization=self.organization, requested_by=user, status=BackupJob.Status.RUNNING)
+        fresh = BackupJob.objects.create(organization=self.organization, requested_by=user, status=BackupJob.Status.RUNNING)
+        stale_restore = RestoreJob.objects.create(organization=self.organization, requested_by=user)
+        self._age(stale, hours=7)
+        self._age(stale_restore, hours=7)
+
+        self.assertEqual(services.fail_stale_jobs(), 2)
+        for job in (stale, fresh, stale_restore):
+            job.refresh_from_db()
+        self.assertEqual(stale.status, BackupJob.Status.FAILED)
+        self.assertEqual(stale.error, services.STALE_JOB_ERROR)
+        self.assertEqual(stale_restore.status, RestoreJob.Status.FAILED)
+        self.assertEqual(fresh.status, BackupJob.Status.RUNNING)
+
+    def test_no_new_job_while_a_restore_is_in_progress(self):
+        user, access = self._admin()
+        done = BackupJob.objects.create(organization=self.organization, requested_by=user, status=BackupJob.Status.DONE)
+        running = RestoreJob.objects.create(
+            organization=self.organization, requested_by=user, status=RestoreJob.Status.RUNNING
+        )
+        restore_url = reverse("backups-restore-list-create")
+        response = self.client.post(restore_url, {"backup_job_id": str(done.pk)}, format="json", **self._auth(access))
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        response = self.client.post(reverse("backups-list-create"), **self._auth(access))
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        # Once that restore is interrupted (stale), it no longer blocks.
+        self._age(running, hours=7)
+        response = self.client.post(reverse("backups-list-create"), **self._auth(access))
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_no_restore_while_a_backup_is_being_built(self):
+        user, access = self._admin()
+        done = BackupJob.objects.create(organization=self.organization, requested_by=user, status=BackupJob.Status.DONE)
+        BackupJob.objects.create(organization=self.organization, requested_by=user, status=BackupJob.Status.RUNNING)
+        response = self.client.post(
+            reverse("backups-restore-list-create"), {"backup_job_id": str(done.pk)}, format="json", **self._auth(access)
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_task_skips_a_job_that_is_no_longer_pending(self):
+        user, _ = self._admin()
+        job = BackupJob.objects.create(organization=self.organization, requested_by=user, status=BackupJob.Status.FAILED)
+        tasks.generate_org_backup(str(job.pk))
+        job.refresh_from_db()
+        self.assertEqual(job.status, BackupJob.Status.FAILED)
+        self.assertFalse(job.archive)
 
 
 class RestoreJobTests(BackupJobTestCase):

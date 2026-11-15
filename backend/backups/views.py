@@ -7,6 +7,7 @@ import zstandard
 
 from django.conf import settings
 from django.core.files import File
+from django.db import transaction
 from django.http import StreamingHttpResponse
 from django.utils.decorators import method_decorator
 from django.views.decorators.debug import sensitive_post_parameters
@@ -64,7 +65,10 @@ class BackupJobListCreateView(APIView):
         responses={201: BackupJobSerializer, **COMMON_ERRORS},
     )
     def post(self, request):
-        job = BackupJob.objects.create(organization=request.user.organization, requested_by=request.user)
+        with transaction.atomic():
+            services.lock_and_ensure_idle(request.user.organization, starting="backup")
+            job = BackupJob.objects.create(organization=request.user.organization, requested_by=request.user)
+        # Queued only once the job row is committed, so the worker can see it.
         tasks.generate_org_backup.delay(str(job.id))
         return Response(BackupJobSerializer(job).data, status=status.HTTP_201_CREATED)
 
@@ -88,7 +92,9 @@ class BackupJobDetailView(APIView):
     )
     def delete(self, request, pk):
         job = org_object_or_404(request, BackupJob, pk)
-        if job.status == BackupJob.Status.RUNNING:
+        # An interrupted (stale) job is still marked RUNNING - it must stay
+        # deletable, or there's no way to clear it.
+        if job.status == BackupJob.Status.RUNNING and not services.is_stale(job):
             raise ValidationError("Cannot delete a backup that is currently running.")
         if job.archive:
             job.archive.delete(save=False)
@@ -181,10 +187,12 @@ class RestoreJobListCreateView(APIView):
             organization=request.user.organization,
             status=BackupJob.Status.DONE,
         )
-        job = RestoreJob.objects.create(
-            organization=request.user.organization, source_backup=backup_job, requested_by=request.user
-        )
-        log_action(request.user, "backup.restore", target=job, metadata={"source_backup": str(backup_job.id)}, request=request)
+        with transaction.atomic():
+            services.lock_and_ensure_idle(request.user.organization, starting="restore")
+            job = RestoreJob.objects.create(
+                organization=request.user.organization, source_backup=backup_job, requested_by=request.user
+            )
+            log_action(request.user, "backup.restore", target=job, metadata={"source_backup": str(backup_job.id)}, request=request)
         tasks.restore_org_backup.delay(str(job.id))
         return Response(RestoreJobSerializer(job).data, status=status.HTTP_201_CREATED)
 
@@ -271,6 +279,10 @@ class RestoreJobUploadView(APIView):
         passphrase = serializer.validated_data.get("passphrase") or None
         if uploaded_file.size > settings.BACKUP_UPLOAD_MAX_SIZE_MB * 1024 * 1024:
             raise ValidationError({"archive": [f"This file is too large - the limit is {settings.BACKUP_UPLOAD_MAX_SIZE_MB}MB."]})
+        # Fail fast before the (slow) decrypt/validate below; checked again
+        # under the lock when the job is actually saved.
+        with transaction.atomic():
+            services.lock_and_ensure_idle(request.user.organization, starting="restore")
         job = RestoreJob(
             organization=request.user.organization,
             requested_by=request.user,
@@ -316,8 +328,18 @@ class RestoreJobUploadView(APIView):
                     archive_file.close()
             with open(encrypted_path, "rb") as encrypted:
                 job.uploaded_archive.save(f"{job.id}.zip.enc", File(encrypted), save=False)
-        job.save()
-        log_action(request.user, "backup.restore", target=job, metadata={"uploaded_filename": job.uploaded_filename}, request=request)
+        try:
+            with transaction.atomic():
+                services.lock_and_ensure_idle(request.user.organization, starting="restore")
+                job.save()
+                log_action(
+                    request.user, "backup.restore", target=job, metadata={"uploaded_filename": job.uploaded_filename},
+                    request=request,
+                )
+        except ValidationError:
+            if job.uploaded_archive:
+                job.uploaded_archive.delete(save=False)
+            raise
         tasks.restore_org_backup.delay(str(job.id))
         return Response(RestoreJobSerializer(job).data, status=status.HTTP_201_CREATED)
 

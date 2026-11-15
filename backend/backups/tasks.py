@@ -20,6 +20,10 @@ def generate_org_backup(job_id) -> None:
         logger.warning("generate_org_backup: job %s no longer exists", job_id)
         return
 
+    if job.status != BackupJob.Status.PENDING:
+        # A duplicate delivery, or a job already marked FAILED as stale.
+        logger.warning("generate_org_backup: job %s is %s, not PENDING - skipping", job_id, job.status)
+        return
     job.status = BackupJob.Status.RUNNING
     job.save(update_fields=["status", "updated_at"])
 
@@ -54,6 +58,9 @@ def restore_org_backup(restore_job_id) -> None:
         logger.warning("restore_org_backup: job %s no longer exists", restore_job_id)
         return
 
+    if job.status != RestoreJob.Status.PENDING:
+        logger.warning("restore_org_backup: job %s is %s, not PENDING - skipping", restore_job_id, job.status)
+        return
     job.status = RestoreJob.Status.RUNNING
     job.save(update_fields=["status", "updated_at"])
 
@@ -76,3 +83,9 @@ def restore_org_backup(restore_job_id) -> None:
     job.summary = summary.as_dict()
     job.completed_at = timezone.now()
     job.save(update_fields=["status", "summary", "completed_at", "updated_at"])
+
+
+@shared_task
+def fail_stale_jobs() -> int:
+    """Hourly (CELERY_BEAT_SCHEDULE) - see services.fail_stale_jobs."""
+    return services.fail_stale_jobs()

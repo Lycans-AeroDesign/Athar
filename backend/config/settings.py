@@ -214,6 +214,9 @@ MAX_ORG_UPLOAD_SIZE_CEILING_MB = env.int("MAX_ORG_UPLOAD_SIZE_CEILING_MB", defau
 # Much larger cap for restore uploads (backups/views.py RestoreJobUploadView); nginx's
 # body-size limit for that route must be at least this.
 BACKUP_UPLOAD_MAX_SIZE_MB = env.int("BACKUP_UPLOAD_MAX_SIZE_MB", default=5120)
+# A backup/restore job PENDING or RUNNING longer than this is treated as
+# interrupted (its worker died) - see backups.services' job lifecycle guards.
+BACKUP_JOB_STALE_AFTER_HOURS = env.int("BACKUP_JOB_STALE_AFTER_HOURS", default=6)
 # Archives stored on this server are encrypted with this key (core/crypto.py server_key()):
 # base64 of 32 random bytes, e.g.
 # `python -c "import os,base64;print(base64.b64encode(os.urandom(32)).decode())"`.
@@ -343,6 +346,10 @@ CELERY_BEAT_SCHEDULE = {
     "scrub-old-audit-request-metadata": {
         "task": "audit.tasks.scrub_old_request_metadata",
         "schedule": 86400.0,
+    },
+    "fail-stale-backup-jobs": {
+        "task": "backups.tasks.fail_stale_jobs",
+        "schedule": 3600.0,
     },
 }
 # How long audit entries keep the requester's IP and user agent before

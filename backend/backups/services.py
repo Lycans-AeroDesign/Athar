@@ -27,6 +27,7 @@ import shutil
 import tempfile
 import zipfile
 from contextlib import contextmanager
+from datetime import timedelta
 from pathlib import Path
 
 import zstandard
@@ -34,6 +35,7 @@ import zstandard
 from django.conf import settings
 from django.core.files import File
 from django.utils import timezone
+from rest_framework.exceptions import ValidationError
 
 from accounts.models import InvitationCode, User
 from audit.models import AuditLog
@@ -82,7 +84,7 @@ from training.models import (
     LessonProgress,
 )
 
-from .models import BackupJob
+from .models import BackupJob, RestoreJob
 
 
 def _s(value) -> str:
@@ -978,3 +980,57 @@ def open_decrypted_archive(archive_field):
                     yield decompressed
             else:
                 yield stored
+
+
+# --- Job lifecycle guards --------------------------------------------------------
+#
+# A worker killed mid-task (OOM on a big org, a deploy) never reaches the
+# task's except/finally, so its job stayed RUNNING forever - and the delete
+# endpoint refuses RUNNING jobs, so nothing could clear it. A job PENDING or
+# RUNNING for longer than BACKUP_JOB_STALE_AFTER_HOURS counts as interrupted:
+# it no longer blocks new jobs, can be deleted, and the hourly
+# backups.tasks.fail_stale_jobs marks it FAILED.
+
+STALE_JOB_ERROR = "Interrupted - the background worker stopped before this finished. Start it again."
+
+
+def _stale_cutoff():
+    return timezone.now() - timedelta(hours=settings.BACKUP_JOB_STALE_AFTER_HOURS)
+
+
+def is_stale(job) -> bool:
+    return job.status in (job.Status.PENDING, job.Status.RUNNING) and job.updated_at < _stale_cutoff()
+
+
+def _in_progress(model, organization):
+    return model.objects.filter(
+        organization=organization,
+        status__in=[model.Status.PENDING, model.Status.RUNNING],
+        updated_at__gte=_stale_cutoff(),
+    )
+
+
+def lock_and_ensure_idle(organization, *, starting: str) -> None:
+    """Call inside transaction.atomic() right before creating a job. Locks the
+    organization row so two simultaneous requests can't both pass the check,
+    then refuses to start while a restore is in progress (a backup taken
+    mid-restore is inconsistent, and two restores would interleave) - or, when
+    starting a restore, while a backup is still being built."""
+    from organization.models import Organization
+
+    Organization.objects.select_for_update().filter(pk=organization.pk).first()
+    if _in_progress(RestoreJob, organization).exists():
+        raise ValidationError("A restore is already in progress. Wait for it to finish first.")
+    if starting == "restore" and _in_progress(BackupJob, organization).exists():
+        raise ValidationError("A backup is being created right now. Wait for it to finish before restoring.")
+
+
+def fail_stale_jobs() -> int:
+    """Marks interrupted jobs FAILED (see above). Returns how many it changed."""
+    cutoff = _stale_cutoff()
+    changed = 0
+    for model in (BackupJob, RestoreJob):
+        changed += model.objects.filter(
+            status__in=[model.Status.PENDING, model.Status.RUNNING], updated_at__lt=cutoff
+        ).update(status=model.Status.FAILED, error=STALE_JOB_ERROR, updated_at=timezone.now())
+    return changed
