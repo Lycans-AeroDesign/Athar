@@ -1,3 +1,23 @@
+## [1.30.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.29.0...v1.30.0) (2026-11-15)
+
+### Features
+
+* **files:** serve downscaled image thumbnails ([c60e35d](https://github.com/Lycans-AeroDesign/Athar/commit/c60e35dd5e758c2928f70de34c46a98427d242f1))
+* **nginx:** add a report-only Content Security Policy ([0aa6185](https://github.com/Lycans-AeroDesign/Athar/commit/0aa6185739caaaa61a226b25e25c2eb582f99b83))
+
+### Bug Fixes
+
+* **backend:** malformed id filters, double-submit races, restore cleanup ([caaa47f](https://github.com/Lycans-AeroDesign/Athar/commit/caaa47fc2a216868880108a0369481568e253b40))
+* **frontend:** RTL mirroring and translated training strings ([f108d0c](https://github.com/Lycans-AeroDesign/Athar/commit/f108d0c83b3e8c4fa5d76f4f51df568424377667))
+* **frontend:** stale responses, load errors, and unsaved-changes guard ([aa240b7](https://github.com/Lycans-AeroDesign/Athar/commit/aa240b78bd93aca2fbe789e1e92af07c3e8cd949))
+* **training:** validate curriculum import input ([592a2af](https://github.com/Lycans-AeroDesign/Athar/commit/592a2afaaf33a5b006dad2e67c85a47133d248fb))
+
+### Performance Improvements
+
+* **api:** cut per-request and per-row queries ([9351877](https://github.com/Lycans-AeroDesign/Athar/commit/9351877fb68b2d5c0b7ef23905f758badc2f1c32))
+* **knowledge:** cache contribution scores and batch bookmark visibility ([3939784](https://github.com/Lycans-AeroDesign/Athar/commit/3939784216715f0168bd84e539680266b3d292cc))
+* **server:** gthread gunicorn, connection reuse, gzip, Celery limits ([80d3f85](https://github.com/Lycans-AeroDesign/Athar/commit/80d3f85610abf2005eb36ae3ba0450f3201d5914))
+
 ## [1.29.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.28.0...v1.29.0) (2026-11-15)
 
 ### Features
