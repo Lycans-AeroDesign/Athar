@@ -1,6 +1,10 @@
 from django.urls import path
 
 from .views import (
+    ErrorDetailView,
+    ErrorListView,
+    ErrorReportView,
+    ErrorResolvedView,
     OrganizationActiveView,
     OrganizationDetailView,
     OrganizationListView,
@@ -12,6 +16,10 @@ from .views import (
 )
 
 urlpatterns = [
+    path("errors/", ErrorListView.as_view(), name="platform-error-list"),
+    path("errors/report/", ErrorReportView.as_view(), name="platform-error-report"),
+    path("errors/<uuid:pk>/", ErrorDetailView.as_view(), name="platform-error-detail"),
+    path("errors/<uuid:pk>/resolved/", ErrorResolvedView.as_view(), name="platform-error-resolved"),
     path("settings/", SettingsView.as_view(), name="platform-settings"),
     path("summary/", SummaryView.as_view(), name="platform-summary"),
     path("organizations/", OrganizationListView.as_view(), name="platform-organization-list"),

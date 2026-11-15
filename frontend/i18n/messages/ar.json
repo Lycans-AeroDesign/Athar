@@ -169,7 +169,47 @@
     "resetLinkConfirmBody": "إرسال رابط إعادة تعيين لمرة واحدة إلى {email} بالبريد؟ سيحل محل أي رابط سابق غير مستخدم وتنتهي صلاحيته خلال 24 ساعة. لن ترى الرابط.",
     "resetLinkEmailSent": "تم إرسال رابط إعادة التعيين إلى {email}.",
     "resetLinkEmailFailed": "تعذر إرسال البريد إلى {email}. حاول مجددًا.",
-    "done": "تم"
+    "done": "تم",
+    "errors": {
+      "title": "سجل الأخطاء",
+      "description": "أخطاء الخادم (الاستثناءات غير المعالجة والمهام الخلفية الفاشلة) وأخطاء متصفحات المستخدمين، مع تتبع الأخطاء. تُجمَّع تكرارات الخطأ نفسه في إدخال واحد.",
+      "backToPlatform": "المنصة",
+      "backToList": "سجل الأخطاء",
+      "searchPlaceholder": "ابحث في الرسالة أو النوع أو المسار...",
+      "statusFilter": "الحالة",
+      "statusOpen": "مفتوح",
+      "statusResolved": "محلول",
+      "statusAll": "الكل",
+      "sourceFilter": "المصدر",
+      "sourceAll": "كل المصادر",
+      "sourceBackend": "الخادم",
+      "sourceFrontend": "الواجهة",
+      "emptyOpen": "لا توجد أخطاء مفتوحة.",
+      "empty": "لا توجد أخطاء.",
+      "occurrences": "{count, plural, zero {لا تكرارات} one {مرة واحدة} two {مرتان} few {# مرات} many {# مرة} other {# مرة}}",
+      "lastSeen": "آخر ظهور {time}",
+      "resolvedBadge": "محلول",
+      "openBadge": "مفتوح",
+      "markResolved": "تحديد كمحلول",
+      "reopen": "إعادة فتح",
+      "delete": "حذف",
+      "deleteTitle": "حذف هذا الخطأ؟",
+      "deleteBody": "سيُزال من السجل. إذا تكرر سيظهر مجددًا كإدخال جديد.",
+      "firstSeen": "أول ظهور",
+      "lastSeenLabel": "آخر ظهور",
+      "resolvedAt": "تاريخ الحل",
+      "request": "الطلب",
+      "logger": "المُسجِّل",
+      "level": "المستوى",
+      "organization": "المؤسسة",
+      "user": "المستخدم",
+      "userAgent": "المتصفح",
+      "latestNote": "الطلب والمستخدم والتتبع من آخر ظهور. يُعاد فتح الخطأ المحلول إذا تكرر.",
+      "traceback": "تتبع الخطأ",
+      "noTraceback": "لم يُسجَّل تتبع لهذا الخطأ.",
+      "copy": "نسخ",
+      "copied": "تم النسخ"
+    }
   },
   "nav": {
     "platform": "المنصة",
@@ -1971,5 +2011,10 @@
     "crop": "قص",
     "copySectionLink": "نسخ رابط هذا القسم",
     "linkCopied": "تم نسخ الرابط"
+  },
+  "errorBoundary": {
+    "title": "حدث خطأ ما",
+    "body": "واجهت هذه الصفحة خطأ غير متوقع، وتم إبلاغ مسؤولي المنصة به.",
+    "retry": "حاول مجددًا"
   }
 }

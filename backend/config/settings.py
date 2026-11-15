@@ -298,6 +298,8 @@ REST_FRAMEWORK = {
         "backup_download": env("THROTTLE_BACKUP_DOWNLOAD_RATE", default="10/hour"),
         # Public share-link pages and their files, per client IP.
         "share_link": env("THROTTLE_SHARE_LINK_RATE", default="120/min"),
+        # Browser error reports (platform_admin.views.ErrorReportView), per user or client IP.
+        "error_report": env("THROTTLE_ERROR_REPORT_RATE", default="20/min"),
     },
     # Exactly one trusted proxy (nginx) overwrites X-Forwarded-For with the real peer
     # address. Without this, throttles key on the whole client-supplied header, which a
@@ -315,6 +317,7 @@ if "test" in sys.argv:
     REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"]["auth_refresh"] = None
     REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"]["backup_download"] = None
     REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"]["share_link"] = None
+    REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"]["error_report"] = None
 
 SPECTACULAR_SETTINGS = {
     "TITLE": "Athar API",
@@ -394,7 +397,13 @@ CELERY_BEAT_SCHEDULE = {
         "task": "knowledge.tasks.purge_expired_trash",
         "schedule": 86400.0,
     },
+    "purge-old-error-events": {
+        "task": "platform_admin.tasks.purge_old_error_events",
+        "schedule": 86400.0,
+    },
 }
+# Days an error stays in the platform error log after it was last seen.
+ERROR_LOG_RETENTION_DAYS = env.int("ERROR_LOG_RETENTION_DAYS", default=30)
 # Days a deleted article/question stays in the trash (restorable) before
 # knowledge.tasks.purge_expired_trash deletes it for good.
 TRASH_RETENTION_DAYS = env.int("TRASH_RETENTION_DAYS", default=30)
@@ -440,8 +449,13 @@ LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
     "formatters": {"standard": {"format": "%(asctime)s %(levelname)s %(name)s: %(message)s"}},
-    "handlers": {"console": {"class": "logging.StreamHandler", "formatter": "standard"}},
-    "root": {"handlers": ["console"], "level": LOG_LEVEL},
+    "handlers": {
+        "console": {"class": "logging.StreamHandler", "formatter": "standard"},
+        # Stores ERROR+ records (unhandled request exceptions, failed Celery tasks, ...) with
+        # their traceback for the platform admin's error log - platform_admin/error_log.py.
+        "error_log": {"class": "platform_admin.error_log.DatabaseErrorHandler", "level": "ERROR"},
+    },
+    "root": {"handlers": ["console", "error_log"], "level": LOG_LEVEL},
     # Security events (e.g. refresh-token reuse) are logged here at ERROR so error tracking
     # alerts on them.
     "loggers": {"athar.security": {"level": "ERROR"}},

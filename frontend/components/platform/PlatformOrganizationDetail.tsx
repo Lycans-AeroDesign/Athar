@@ -139,13 +139,13 @@ export function PlatformOrganizationDetail({ id }: { id: string }) {
       ) : (
         <>
           <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <h1 className="font-headline-lg text-headline-lg text-on-surface">{org.name}</h1>
-              <p className="font-mono-sm text-mono-sm text-on-surface-variant">
+            <div className="min-w-0 flex-1">
+              <h1 className="font-headline-lg text-headline-lg text-on-surface break-words">{org.name}</h1>
+              <p className="font-mono-sm text-mono-sm text-on-surface-variant [overflow-wrap:anywhere]">
                 {org.slug} · {t("createdOn", { date: formatDate(org.created_at) })}
               </p>
               {org.admin_emails.length > 0 && (
-                <p className="font-body-md text-body-md text-on-surface-variant mt-1">
+                <p className="font-body-md text-body-md text-on-surface-variant mt-1 [overflow-wrap:anywhere]">
                   {t("admins")}: {org.admin_emails.join(", ")}
                 </p>
               )}
@@ -176,7 +176,7 @@ export function PlatformOrganizationDetail({ id }: { id: string }) {
             />
           </div>
 
-          <div className="bg-surface rounded-xl border border-outline-variant p-6">
+          <div className="bg-surface rounded-xl border border-outline-variant p-4 sm:p-6">
             <h2 className="font-headline-md text-headline-md text-on-surface mb-1">{t("contentCounts")}</h2>
             <p className="font-body-md text-body-md text-on-surface-variant mb-4">{t("contentCountsNote")}</p>
             <dl className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
@@ -192,7 +192,7 @@ export function PlatformOrganizationDetail({ id }: { id: string }) {
       )}
 
       <div className="bg-surface rounded-xl border border-outline-variant overflow-hidden">
-        <h2 className="p-6 pb-4 font-headline-md text-headline-md text-on-surface">{t("users")}</h2>
+        <h2 className="p-4 sm:p-6 pb-4 sm:pb-4 font-headline-md text-headline-md text-on-surface">{t("users")}</h2>
         {!users ? (
           <TableSkeleton
             variant="flush"
@@ -200,7 +200,54 @@ export function PlatformOrganizationDetail({ id }: { id: string }) {
             columns={["two-line", "text", "text", "text", "text", "actions"]}
           />
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          {/* Phones: one card per user instead of a six-column table with action
+              buttons pushed off-screen. */}
+          <ul className="md:hidden">
+            {users.results.map((user) => (
+              <li key={user.id} className="border-t border-outline-variant px-4 py-3 space-y-2">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="text-on-surface [overflow-wrap:anywhere]">{user.email}</div>
+                    <div className="text-on-surface-variant break-words">
+                      {[user.first_name, user.last_name].filter(Boolean).join(" ")}
+                    </div>
+                  </div>
+                  <span className="shrink-0 whitespace-nowrap text-on-surface-variant">
+                    {user.is_active ? t("statusActive") : t("statusBlocked")}
+                  </span>
+                </div>
+                <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 font-body-md text-body-md">
+                  <dt className="text-on-surface-variant">{t("rolesColumn")}</dt>
+                  <dd className="text-on-surface text-end break-words">
+                    {[...user.roles, ...(user.is_superuser ? [t("platformAdmin")] : [])].join(", ") || "—"}
+                  </dd>
+                  <dt className="text-on-surface-variant">{t("joinedColumn")}</dt>
+                  <dd className="text-on-surface text-end">{formatDate(user.date_joined)}</dd>
+                  <dt className="text-on-surface-variant">{t("activityColumn")}</dt>
+                  <dd className="text-on-surface text-end">
+                    {user.last_activity ? formatRelativeTime(user.last_activity) : t("never")}
+                  </dd>
+                </dl>
+                {!user.is_superuser && (
+                  <div className="flex flex-wrap justify-end gap-2 pt-1">
+                    {user.is_active && (
+                      <Button variant="secondary" onClick={() => setResetTarget(user)}>
+                        {t("resetLink")}
+                      </Button>
+                    )}
+                    <Button
+                      variant={user.is_active ? "secondary" : "primary"}
+                      onClick={() => setUserConfirm(user)}
+                    >
+                      {user.is_active ? t("block") : t("unblock")}
+                    </Button>
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full font-body-md text-body-md">
               <thead>
                 <tr className="border-t border-outline-variant">
@@ -257,6 +304,7 @@ export function PlatformOrganizationDetail({ id }: { id: string }) {
               </tbody>
             </table>
           </div>
+          </>
         )}
       </div>
 

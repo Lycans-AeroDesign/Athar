@@ -14,6 +14,7 @@ import {
   Bold,
   Bookmark,
   BookOpen,
+  Bug,
   Building2,
   CalendarClock,
   CalendarDays,
@@ -130,6 +131,7 @@ import {
   Paperclip,
   Unlink,
   type LucideIcon,
+  Server,
 } from "lucide-react";
 
 // Maps the icon names used across the app (kept as the same short identifiers
@@ -153,6 +155,7 @@ const ICONS: Record<string, LucideIcon> = {
   block: Ban,
   bolt: Zap,
   bookmark: Bookmark,
+  bug_report: Bug,
   build: Hammer,
   calendar_month: CalendarDays,
   cancel: CircleX,
@@ -241,6 +244,7 @@ const ICONS: Record<string, LucideIcon> = {
   rate_review: Eye,
   report: OctagonAlert,
   report_problem: AlertTriangle,
+  dns: Server,
   warning: AlertTriangle,
   rocket_launch: Rocket,
   schedule: Clock,

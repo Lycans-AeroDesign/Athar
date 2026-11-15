@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
+import { Icon } from "@/components/ui/Icon";
 import { Pagination } from "@/components/ui/Pagination";
 import { TableSkeleton } from "@/components/ui/Skeleton";
 import { StatCard } from "@/components/ui/StatCard";
@@ -75,9 +76,21 @@ export function PlatformOverview() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-headline-lg text-headline-lg text-on-surface">{t("title")}</h1>
-        <p className="font-body-md text-body-md text-on-surface-variant mt-1">{t("description")}</p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <h1 className="font-headline-lg text-headline-lg text-on-surface">{t("title")}</h1>
+          <p className="font-body-md text-body-md text-on-surface-variant mt-1">{t("description")}</p>
+        </div>
+        <Link
+          href="/platform/errors"
+          className="inline-flex items-center gap-2 rounded-lg border border-outline-variant bg-surface px-4 py-2 font-label-caps text-label-caps text-on-surface hover:bg-surface-variant"
+        >
+          <Icon name="bug_report" size={18} />
+          {t("errors.title")}
+          {summary != null && summary.open_error_count > 0 && (
+            <span className="rounded-full bg-error px-2 py-0.5 text-on-error">{summary.open_error_count}</span>
+          )}
+        </Link>
       </div>
 
       {error && (
@@ -107,6 +120,7 @@ export function PlatformOverview() {
               label={t("diskUsage")}
               value={t("diskUsedOfTotal", { used: formatBytes(summary.disk_used_bytes), total: formatBytes(summary.disk_total_bytes) })}
               icon="hard_drive"
+              className="col-span-2 lg:col-span-1"
               trend={
                 summary.disk_total_bytes > 0
                   ? t("diskPercentUsed", { percent: Math.round((summary.disk_used_bytes / summary.disk_total_bytes) * 100) })
@@ -114,13 +128,18 @@ export function PlatformOverview() {
               }
             />
           ) : (
-            <StatCard label={t("diskUsage")} value={t("diskUnavailable")} icon="hard_drive" />
+            <StatCard
+              label={t("diskUsage")}
+              value={t("diskUnavailable")}
+              icon="hard_drive"
+              className="col-span-2 lg:col-span-1"
+            />
           )}
         </div>
       )}
 
       {platformSettings && (
-        <div className="bg-surface rounded-xl border border-outline-variant p-6">
+        <div className="bg-surface rounded-xl border border-outline-variant p-4 sm:p-6">
           <Switch
             checked={platformSettings.organization_registration_enabled}
             disabled={isSavingSettings}
@@ -132,7 +151,7 @@ export function PlatformOverview() {
       )}
 
       <div className="bg-surface rounded-xl border border-outline-variant overflow-hidden">
-        <div className="p-6 pb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="p-4 sm:p-6 pb-4 sm:pb-4 flex flex-wrap items-center justify-between gap-3">
           <h2 className="font-headline-md text-headline-md text-on-surface">{t("organizations")}</h2>
           <input
             type="search"
@@ -143,16 +162,46 @@ export function PlatformOverview() {
             }}
             placeholder={t("searchPlaceholder")}
             aria-label={t("searchPlaceholder")}
-            className="px-3 py-2 w-64 max-w-full font-body-md text-body-md text-on-surface bg-surface-container border border-outline-variant rounded-lg outline-none focus:border-primary"
+            className="px-3 py-2 w-full sm:w-64 font-body-md text-body-md text-on-surface bg-surface-container border border-outline-variant rounded-lg outline-none focus:border-primary"
           />
         </div>
 
         {!data ? (
           <TableSkeleton variant="flush" rows={5} columns={["two-line", "pill", "text", "text", "text"]} />
         ) : data.results.length === 0 ? (
-          <p className="px-6 pb-6 font-body-md text-body-md text-on-surface-variant">{t("emptyState")}</p>
+          <p className="px-4 sm:px-6 pb-6 font-body-md text-body-md text-on-surface-variant">{t("emptyState")}</p>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          {/* Phones: one card per organization instead of a five-column table that
+              would need sideways scrolling. */}
+          <ul className="md:hidden">
+            {data.results.map((org) => (
+              <li key={org.id} className="border-t border-outline-variant px-4 py-3 space-y-2">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <Link href={`/platform/${org.id}`} className="text-primary font-bold hover:underline break-words">
+                      {org.name}
+                    </Link>
+                    <div className="font-mono-sm text-mono-sm text-on-surface-variant break-all">{org.slug}</div>
+                  </div>
+                  <StatusPill active={org.is_active} label={org.is_active ? t("statusActive") : t("statusSuspended")} />
+                </div>
+                <dl className="grid grid-cols-2 gap-x-4 gap-y-1 font-body-md text-body-md">
+                  <dt className="text-on-surface-variant">{t("usersColumn")}</dt>
+                  <dd className="text-on-surface text-end">
+                    {org.active_user_count} / {org.user_count}
+                  </dd>
+                  <dt className="text-on-surface-variant">{t("storageColumn")}</dt>
+                  <dd className="text-on-surface text-end">{formatBytes(org.total_bytes)}</dd>
+                  <dt className="text-on-surface-variant">{t("activityColumn")}</dt>
+                  <dd className="text-on-surface text-end">
+                    {org.last_activity ? formatRelativeTime(org.last_activity) : t("never")}
+                  </dd>
+                </dl>
+              </li>
+            ))}
+          </ul>
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full font-body-md text-body-md">
               <thead>
                 <tr className="border-t border-outline-variant">
@@ -176,15 +225,7 @@ export function PlatformOverview() {
                       <div className="font-mono-sm text-mono-sm text-on-surface-variant">{org.slug}</div>
                     </td>
                     <td className="px-6 py-2.5">
-                      <span
-                        className={
-                          org.is_active
-                            ? "rounded-full px-2 py-0.5 bg-secondary-container text-on-secondary-container"
-                            : "rounded-full px-2 py-0.5 bg-error-container text-on-error-container"
-                        }
-                      >
-                        {org.is_active ? t("statusActive") : t("statusSuspended")}
-                      </span>
+                      <StatusPill active={org.is_active} label={org.is_active ? t("statusActive") : t("statusSuspended")} />
                     </td>
                     <td className="px-6 py-2.5 text-on-surface-variant">
                       {org.active_user_count} / {org.user_count}
@@ -200,6 +241,7 @@ export function PlatformOverview() {
               </tbody>
             </table>
           </div>
+          </>
         )}
       </div>
 
@@ -213,5 +255,19 @@ export function PlatformOverview() {
         />
       )}
     </div>
+  );
+}
+
+function StatusPill({ active, label }: { active: boolean; label: string }) {
+  return (
+    <span
+      className={
+        active
+          ? "shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 bg-secondary-container text-on-secondary-container"
+          : "shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 bg-error-container text-on-error-container"
+      }
+    >
+      {label}
+    </span>
   );
 }

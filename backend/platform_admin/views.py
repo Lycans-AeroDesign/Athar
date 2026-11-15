@@ -1,9 +1,13 @@
+from urllib.parse import urlsplit
+
 from django.conf import settings
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import OpenApiParameter, extend_schema
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
@@ -15,8 +19,13 @@ from config.pagination import DefaultPagination, paginated_response
 from organization.models import Organization
 
 from . import services
+from .error_log import record_error
+from .models import ErrorEvent
 from .permissions import IsPlatformAdmin
 from .serializers import (
+    ErrorEventListSerializer,
+    ErrorEventSerializer,
+    ErrorReportSerializer,
     PlatformOrganizationSerializer,
     PlatformPasswordResetRequestSerializer,
     PlatformPasswordResetResultSerializer,
@@ -172,3 +181,105 @@ class SettingsView(PlatformView):
             enabled=body.validated_data["organization_registration_enabled"], actor=request.user, request=request
         )
         return Response(PlatformSettingsSerializer(result).data)
+
+
+class ErrorListView(PlatformView):
+    @extend_schema(
+        tags=[TAG],
+        summary="Recorded backend and frontend errors, most recently seen first",
+        parameters=[
+            OpenApiParameter("source", str, enum=["backend", "frontend"]),
+            OpenApiParameter("status", str, enum=["open", "resolved", "all"], description="Default: open"),
+            OpenApiParameter("search", str, description="Matches the message, exception type or path"),
+        ],
+        responses={200: ErrorEventListSerializer(many=True), **COMMON_ERRORS},
+    )
+    def get(self, request):
+        queryset = ErrorEvent.objects.select_related("organization")
+        source = request.query_params.get("source", "")
+        if source in ErrorEvent.Source.values:
+            queryset = queryset.filter(source=source)
+        error_status = request.query_params.get("status", "open")
+        if error_status == "open":
+            queryset = queryset.filter(resolved_at__isnull=True)
+        elif error_status == "resolved":
+            queryset = queryset.filter(resolved_at__isnull=False)
+        search = request.query_params.get("search", "").strip()
+        if search:
+            queryset = queryset.filter(
+                Q(message__icontains=search) | Q(exception_type__icontains=search) | Q(path__icontains=search)
+            )
+        return paginated_response(request, queryset, ErrorEventListSerializer)
+
+
+class ErrorDetailView(PlatformView):
+    @extend_schema(
+        tags=[TAG],
+        summary="One recorded error with its traceback",
+        responses={200: ErrorEventSerializer, 404: NOT_FOUND, **COMMON_ERRORS},
+    )
+    def get(self, request, pk):
+        event = get_object_or_404(ErrorEvent.objects.select_related("organization", "user"), pk=pk)
+        return Response(ErrorEventSerializer(event).data)
+
+    @extend_schema(tags=[TAG], summary="Delete a recorded error", responses={204: None, 404: NOT_FOUND, **COMMON_ERRORS})
+    def delete(self, request, pk):
+        get_object_or_404(ErrorEvent, pk=pk).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ErrorResolvedView(PlatformView):
+    @extend_schema(
+        tags=[TAG],
+        summary='Mark an error resolved or reopen it (body: {"is_resolved": bool})',
+        request={"application/json": {"type": "object", "properties": {"is_resolved": {"type": "boolean"}}}},
+        responses={200: ErrorEventSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
+    )
+    def post(self, request, pk):
+        is_resolved = request.data.get("is_resolved")
+        if not isinstance(is_resolved, bool):
+            raise ValidationError("is_resolved must be a boolean.")
+        event = get_object_or_404(ErrorEvent.objects.select_related("organization", "user"), pk=pk)
+        event.resolved_at = timezone.now() if is_resolved else None
+        event.save(update_fields=["resolved_at"])
+        return Response(ErrorEventSerializer(event).data)
+
+
+class ErrorReportView(APIView):
+    """Where the browser sends errors it caught. Open to signed-out visitors too (a crash on
+    the login page is still a bug), so it's throttled and every field is length-capped."""
+
+    permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "error_report"
+
+    @extend_schema(
+        tags=[TAG],
+        summary="Report an error caught in the browser",
+        request=ErrorReportSerializer,
+        responses={204: None, 400: BAD_REQUEST},
+    )
+    def post(self, request):
+        body = ErrorReportSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+        data = body.validated_data
+        traceback = data["stack"]
+        if data["component_stack"]:
+            traceback = f"{traceback}\n\nReact component stack:{data['component_stack']}".strip()
+        record_error(
+            source=ErrorEvent.Source.FRONTEND,
+            message=data["message"],
+            exception_type=data["name"],
+            traceback=traceback,
+            logger="browser",
+            path=_url_path(data["url"]),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            user=request.user,
+        )
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+def _url_path(url: str) -> str:
+    """Just the path of the page the error happened on - the query string and fragment can
+    carry search terms or share tokens."""
+    return urlsplit(url).path if url else ""

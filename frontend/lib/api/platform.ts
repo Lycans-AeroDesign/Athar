@@ -1,4 +1,4 @@
-import { apiJson } from "./client";
+import { apiJson, apiVoid } from "./client";
 import type { Paginated } from "./types";
 
 /** Instance-operator (is_superuser) endpoints - administrative metadata only, never org content. */
@@ -15,6 +15,8 @@ export interface PlatformSummary {
   disk_total_bytes: number | null;
   disk_used_bytes: number | null;
   disk_free_bytes: number | null;
+  /** Unresolved entries in the error log. */
+  open_error_count: number;
 }
 
 export interface PlatformContentCounts {
@@ -123,4 +125,56 @@ export function updatePlatformSettings(settings: PlatformSettings): Promise<Plat
     headers: JSON_HEADERS,
     body: JSON.stringify(settings),
   });
+}
+
+export type PlatformErrorSource = "backend" | "frontend";
+export type PlatformErrorStatus = "open" | "resolved" | "all";
+
+/** One distinct error (repeats are grouped: `count` occurrences, details from the latest). */
+export interface PlatformError {
+  id: string;
+  source: PlatformErrorSource;
+  level: string;
+  exception_type: string;
+  message: string;
+  method: string;
+  path: string;
+  count: number;
+  first_seen: string;
+  last_seen: string;
+  resolved_at: string | null;
+  organization_name: string | null;
+}
+
+export interface PlatformErrorDetail extends PlatformError {
+  logger: string;
+  traceback: string;
+  user_agent: string;
+  user_email: string | null;
+}
+
+export function getPlatformErrors(
+  page = 1,
+  filters: { source?: PlatformErrorSource | ""; status?: PlatformErrorStatus; search?: string } = {},
+): Promise<Paginated<PlatformError>> {
+  const query = new URLSearchParams({ page: String(page), status: filters.status ?? "open" });
+  if (filters.source) query.set("source", filters.source);
+  if (filters.search) query.set("search", filters.search);
+  return apiJson<Paginated<PlatformError>>(`/api/v1/platform/errors/?${query}`);
+}
+
+export function getPlatformError(id: string): Promise<PlatformErrorDetail> {
+  return apiJson<PlatformErrorDetail>(`/api/v1/platform/errors/${id}/`);
+}
+
+export function setPlatformErrorResolved(id: string, isResolved: boolean): Promise<PlatformErrorDetail> {
+  return apiJson<PlatformErrorDetail>(`/api/v1/platform/errors/${id}/resolved/`, {
+    method: "POST",
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ is_resolved: isResolved }),
+  });
+}
+
+export function deletePlatformError(id: string): Promise<void> {
+  return apiVoid(`/api/v1/platform/errors/${id}/`, { method: "DELETE" });
 }

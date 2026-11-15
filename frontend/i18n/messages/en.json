@@ -169,7 +169,47 @@
     "resetLinkConfirmBody": "Email a one-time reset link to {email}? It replaces any earlier unused link and expires in 24 hours. You will not see the link.",
     "resetLinkEmailSent": "A reset link was emailed to {email}.",
     "resetLinkEmailFailed": "The email to {email} could not be sent. Try again.",
-    "done": "Done"
+    "done": "Done",
+    "errors": {
+      "title": "Error log",
+      "description": "Errors from the backend (unhandled exceptions, failed background tasks) and from users' browsers, with tracebacks. Repeats of the same error are grouped into one entry.",
+      "backToPlatform": "Platform",
+      "backToList": "Error log",
+      "searchPlaceholder": "Search message, type or path...",
+      "statusFilter": "Status",
+      "statusOpen": "Open",
+      "statusResolved": "Resolved",
+      "statusAll": "All",
+      "sourceFilter": "Source",
+      "sourceAll": "All sources",
+      "sourceBackend": "Backend",
+      "sourceFrontend": "Frontend",
+      "emptyOpen": "No open errors.",
+      "empty": "No errors found.",
+      "occurrences": "{count, plural, one {# occurrence} other {# occurrences}}",
+      "lastSeen": "last seen {time}",
+      "resolvedBadge": "Resolved",
+      "openBadge": "Open",
+      "markResolved": "Mark resolved",
+      "reopen": "Reopen",
+      "delete": "Delete",
+      "deleteTitle": "Delete this error?",
+      "deleteBody": "It's removed from the log. If it happens again it comes back as a new entry.",
+      "firstSeen": "First seen",
+      "lastSeenLabel": "Last seen",
+      "resolvedAt": "Resolved",
+      "request": "Request",
+      "logger": "Logger",
+      "level": "Level",
+      "organization": "Organization",
+      "user": "User",
+      "userAgent": "Browser",
+      "latestNote": "Request, user and traceback are from the latest occurrence. A resolved error reopens if it happens again.",
+      "traceback": "Traceback",
+      "noTraceback": "No traceback was recorded for this error.",
+      "copy": "Copy",
+      "copied": "Copied"
+    }
   },
   "nav": {
     "platform": "Platform",
@@ -1971,5 +2011,10 @@
     "crop": "Crop",
     "copySectionLink": "Copy link to this section",
     "linkCopied": "Link copied"
+  },
+  "errorBoundary": {
+    "title": "Something went wrong",
+    "body": "This page hit an unexpected error. It has been reported to the platform administrators.",
+    "retry": "Try again"
   }
 }

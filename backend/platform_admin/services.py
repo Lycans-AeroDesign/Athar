@@ -18,7 +18,7 @@ from backups.models import BackupJob
 from files.models import StoredFile
 from knowledge.models import Article, Component, Document, Failure, Project, Question, Sop, Test
 from organization.models import Organization
-from .models import PlatformSettings, organization_registration_enabled
+from .models import ErrorEvent, PlatformSettings, organization_registration_enabled
 from training.models import Course
 
 CONTENT_MODELS = {
@@ -132,6 +132,7 @@ def instance_summary() -> dict:
         "backup_bytes": sum(row["backup_bytes"] for row in stats),
         "total_bytes": sum(row["total_bytes"] for row in stats),
         **disk_usage(),
+        "open_error_count": ErrorEvent.objects.filter(resolved_at__isnull=True).count(),
     }
 
 

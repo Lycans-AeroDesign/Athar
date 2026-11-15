@@ -3,6 +3,8 @@ from rest_framework import serializers
 from accounts.models import User
 from accounts.serializers import validate_reset_link_base
 
+from .models import ErrorEvent
+
 
 class ContentCountsSerializer(serializers.Serializer):
     articles = serializers.IntegerField()
@@ -46,6 +48,7 @@ class PlatformSummarySerializer(serializers.Serializer):
     disk_total_bytes = serializers.IntegerField(allow_null=True)
     disk_used_bytes = serializers.IntegerField(allow_null=True)
     disk_free_bytes = serializers.IntegerField(allow_null=True)
+    open_error_count = serializers.IntegerField()
 
 
 class PlatformUserSerializer(serializers.ModelSerializer):
@@ -87,3 +90,44 @@ class PlatformPasswordResetResultSerializer(serializers.Serializer):
 
 class PlatformSettingsSerializer(serializers.Serializer):
     organization_registration_enabled = serializers.BooleanField()
+
+
+class ErrorEventListSerializer(serializers.ModelSerializer):
+    organization_name = serializers.CharField(source="organization.name", default=None, read_only=True)
+
+    class Meta:
+        model = ErrorEvent
+        fields = [
+            "id",
+            "source",
+            "level",
+            "exception_type",
+            "message",
+            "method",
+            "path",
+            "count",
+            "first_seen",
+            "last_seen",
+            "resolved_at",
+            "organization_name",
+        ]
+        read_only_fields = fields
+
+
+class ErrorEventSerializer(ErrorEventListSerializer):
+    user_email = serializers.EmailField(source="user.email", default=None, read_only=True)
+
+    class Meta(ErrorEventListSerializer.Meta):
+        fields = ErrorEventListSerializer.Meta.fields + ["logger", "traceback", "user_agent", "user_email"]
+        read_only_fields = fields
+
+
+class ErrorReportSerializer(serializers.Serializer):
+    """An error the browser caught (frontend lib/errorReporting.ts). Lengths are capped so a
+    report can't be used to store arbitrary bulk data."""
+
+    name = serializers.CharField(max_length=200, required=False, allow_blank=True, default="")
+    message = serializers.CharField(max_length=4000)
+    stack = serializers.CharField(max_length=20_000, required=False, allow_blank=True, default="")
+    component_stack = serializers.CharField(max_length=20_000, required=False, allow_blank=True, default="")
+    url = serializers.CharField(max_length=2000, required=False, allow_blank=True, default="")
