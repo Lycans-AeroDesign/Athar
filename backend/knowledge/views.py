@@ -2565,7 +2565,13 @@ class BookmarkListCreateView(APIView):
     )
     def get(self, request):
         content_type_name = request.query_params.get("type")
-        bookmarks = services.bookmarks_for(request.user, content_type_name).select_related("content_type")
+        # prefetch "target": BookmarkSerializer.get_title reads it - one query per
+        # content type instead of one per row.
+        bookmarks = (
+            services.bookmarks_for(request.user, content_type_name)
+            .select_related("content_type")
+            .prefetch_related("target")
+        )
         return paginated_response(request, bookmarks, BookmarkSerializer)
 
     @extend_schema(

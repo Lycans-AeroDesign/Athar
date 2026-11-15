@@ -2,6 +2,7 @@ import ipaddress
 from datetime import timedelta
 
 from django.conf import settings
+from django.core.cache import cache
 from django.db import models
 from django.utils import timezone
 
@@ -51,7 +52,29 @@ def log_action(
         entry.ip_address = _client_ip(request)
         entry.user_agent = request.META.get("HTTP_USER_AGENT", "")
     entry.save()
+    if entry.organization_id is not None:
+        _bump_audit_version(entry.organization_id)
     return entry
+
+
+def _audit_version_key(organization_id) -> str:
+    return f"audit-version:{organization_id}"
+
+
+def audit_version(organization_id) -> int:
+    """A counter bumped on every audit-logged write in the organization - lets
+    caches derived from the audit log (e.g. knowledge's contribution scores)
+    key on it and drop stale entries as soon as something changes. Per-process
+    with the default local-memory cache, so callers also use a short TTL."""
+    return cache.get(_audit_version_key(organization_id), 0)
+
+
+def _bump_audit_version(organization_id) -> None:
+    key = _audit_version_key(organization_id)
+    try:
+        cache.incr(key)
+    except ValueError:  # not set yet (or evicted)
+        cache.set(key, 1, timeout=None)
 
 
 def scrub_old_request_metadata() -> int:

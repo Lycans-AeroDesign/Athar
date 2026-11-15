@@ -6,6 +6,7 @@ import re
 import uuid
 
 from django.contrib.contenttypes.models import ContentType
+from django.core.cache import cache
 from django.core.exceptions import PermissionDenied
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.validators import URLValidator
@@ -1892,14 +1893,30 @@ def bookmarks_for(viewer, content_type_name: str | None = None) -> QuerySet[Book
     granted, or it was deleted) - silently dropped rather than shown as a
     placeholder, the same precedent get_relations_for already follows for a
     hidden "other side" of a relation."""
-    queryset = Bookmark.objects.filter(user=viewer, organization=viewer.organization).select_related("content_type")
+    queryset = Bookmark.objects.filter(user=viewer, organization=viewer.organization)
     if content_type_name:
         queryset = queryset.filter(content_type__model=content_type_name)
-    visible_ids = [
-        bookmark.id
-        for bookmark in queryset
-        if visibility_rules.can_view_instance(viewer, bookmark.content_type.model, bookmark.target)
-    ]
+
+    # Checked per content type with the queryset-level rule (exclude_inaccessible,
+    # the counterpart of can_view_instance - deliberately not visible_*_for, which
+    # would also drop e.g. the viewer's own bookmarked draft articles). This used
+    # to load every bookmark's target and check it one by one (1-4 queries each)
+    # before paginating; now it's one query per content type present.
+    bookmarks_by_type: dict[int, list[tuple]] = {}
+    for bookmark_id, content_type_id, object_id in queryset.values_list("id", "content_type_id", "object_id"):
+        bookmarks_by_type.setdefault(content_type_id, []).append((bookmark_id, str(object_id)))
+
+    visible_ids = []
+    for content_type_id, entries in bookmarks_by_type.items():
+        content_type = ContentType.objects.get_for_id(content_type_id)
+        model = content_type.model_class()
+        if model is None:
+            continue
+        targets = model.objects.filter(pk__in={object_id for _, object_id in entries})
+        if any(field.name == "visibility" for field in model._meta.get_fields()):
+            targets = visibility_rules.exclude_inaccessible(targets, viewer, model, content_type.model)
+        existing = {str(pk) for pk in targets.values_list("pk", flat=True)}
+        visible_ids.extend(bookmark_id for bookmark_id, object_id in entries if object_id in existing)
     return Bookmark.objects.filter(id__in=visible_ids).order_by("-created_at")
 
 
@@ -2114,7 +2131,27 @@ def rank_for(scores: dict, user_id) -> "int | None":
     return ranked_ids.index(user_id) + 1
 
 
+# Scores are recomputed from the audit log on every leaderboard/profile view
+# (the profile computes three windows), which grows with the log. Cached per
+# org + window, keyed on audit.services.audit_version so any audit-logged write
+# invalidates it at once in this process; the TTL bounds staleness in others.
+_CONTRIBUTION_SCORES_TTL = 60
+
+
 def compute_contribution_scores_for(organization, *, since=None) -> dict:
+    """Cached _compute_contribution_scores - see the note above."""
+    from audit.services import audit_version
+
+    window = since.isoformat() if since is not None else "all"
+    key = f"contribution-scores:{organization.pk}:{audit_version(organization.pk)}:{window}"
+    scores = cache.get(key)
+    if scores is None:
+        scores = _compute_contribution_scores(organization, since=since)
+        cache.set(key, scores, timeout=_CONTRIBUTION_SCORES_TTL)
+    return scores
+
+
+def _compute_contribution_scores(organization, *, since=None) -> dict:
     """user_id -> total score for the org's leaderboard (see scoring.py for the weighting and
     why it's computed from AuditLog). `since` limits to entries on/after that instant;
     omitted means lifetime.

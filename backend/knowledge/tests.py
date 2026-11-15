@@ -2796,6 +2796,87 @@ class MultiTenancyIsolationTests(RoleLoginMixin, APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
 
+class BookmarkListTests(KnowledgeTestCase):
+    """The bookmark list used to load and check every bookmark's target one by
+    one before paginating. Visibility is now checked per content type - with
+    the same rules as before."""
+
+    def _bookmark(self, access, content_type, object_id):
+        response = self.client.post(
+            reverse("knowledge-bookmark-list-create"), {"content_type": content_type, "object_id": object_id},
+            format="json", **self._auth(access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
+
+    def _list(self, access):
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
+        with CaptureQueriesContext(connection) as ctx:
+            response = self.client.get(reverse("knowledge-bookmark-list-create"))
+        self.client.credentials()
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        return len(ctx.captured_queries), response.data["results"]
+
+    def _project(self, access, name, **extra):
+        return self.client.post(
+            reverse("knowledge-project-list-create"), {"name": name, **extra}, format="json", **self._auth(access)
+        ).data
+
+    def test_query_count_flat_and_visibility_rules_kept(self):
+        # A Member: no project.update override, so RESTRICTED projects they don't
+        # own are hidden from them (a Subteam Head's override would see them).
+        _, member_access = self._login_with_role("bmmember@example.com", "Member")
+        _, admin_access = self._login_with_role("bmadmin@example.com", "Organization Admin")
+
+        for i in range(2):
+            self._bookmark(member_access, "project", self._project(admin_access, f"P{i}")["id"])
+        small, _ = self._list(member_access)
+        for i in range(2, 6):
+            self._bookmark(member_access, "project", self._project(admin_access, f"P{i}")["id"])
+        large, results = self._list(member_access)
+        self.assertEqual(large, small, f"{small} queries for 2 bookmarks, {large} for 6")
+        self.assertEqual(len(results), 6)
+        self.assertTrue(all(result["title"] for result in results))
+
+        # Own unpublished draft: still listed (a published-only filter would drop it).
+        draft = self.client.post(
+            reverse("knowledge-article-list-create"), {"title": "My draft", "content": "x"},
+            format="json", **self._auth(member_access),
+        ).data
+        self._bookmark(member_access, "article", draft["id"])
+        # Someone else's item that later turns RESTRICTED: dropped.
+        secret = self._project(admin_access, "Secret")
+        self._bookmark(member_access, "project", secret["id"])
+        self.client.patch(
+            reverse("knowledge-project-detail", args=[secret["id"]]), {"visibility": "RESTRICTED"},
+            format="json", **self._auth(admin_access),
+        )
+        _, results = self._list(member_access)
+        listed = {result["object_id"] for result in results}
+        self.assertIn(draft["id"], listed)
+        self.assertNotIn(secret["id"], listed)
+
+
+class ContributionScoreCacheTests(KnowledgeTestCase):
+    """Scores are cached per org/window (they were recomputed from the whole
+    audit log on every leaderboard and profile view) - but a new scored action
+    must show up immediately, not after the TTL."""
+
+    def test_cached_until_the_audit_log_changes(self):
+        user, head_access = self._login_with_role("scorecache@example.com", "Subteam Head")
+        organization = user.organization
+        before = services.compute_contribution_scores_for(organization).get(user.id, 0)
+        with self.assertNumQueries(0):  # served from cache (the version lookup is cache too)
+            services.compute_contribution_scores_for(organization)
+
+        article = self.client.post(
+            reverse("knowledge-article-list-create"), {"title": "Scored", "content": "x"},
+            format="json", **self._auth(head_access),
+        ).data
+        self.client.post(reverse("knowledge-article-publish", args=[article["id"]]), **self._auth(head_access))
+        after = services.compute_contribution_scores_for(organization).get(user.id, 0)
+        self.assertGreater(after, before)
+
+
 class ContributionScoringTests(KnowledgeTestCase):
     """Part 2 of the plan - weighted scoring (services.compute_contribution_scores_for),
     the org-scoped leaderboard endpoint, and the `contributors` field on
