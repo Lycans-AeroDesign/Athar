@@ -1,3 +1,20 @@
+## [1.29.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.28.0...v1.29.0) (2026-11-15)
+
+### Features
+
+* **markdown:** treat @-mentions as atomic, highlighted tokens ([9f47005](https://github.com/Lycans-AeroDesign/Athar/commit/9f470056eaa5d0124e9474a82d8a3ddcefaf7ea5))
+
+### Bug Fixes
+
+* **backups:** recover interrupted jobs and prevent overlapping restores ([0bcb33f](https://github.com/Lycans-AeroDesign/Athar/commit/0bcb33f48a4aafff2526960cc7760e90e4e3e3c3))
+* **config:** refuse placeholder SECRET_KEY outside DEBUG, keep dev API local ([f54680b](https://github.com/Lycans-AeroDesign/Athar/commit/f54680bedc8da4f4f6de055a6f99db0e33599bb8))
+* **deploy:** reload nginx for renewed certs and harden the deploy job ([5f128da](https://github.com/Lycans-AeroDesign/Athar/commit/5f128daf761c3b608da7b6032be96299a600a3c3))
+* **knowledge:** validate CSV imports, reject duplicate categories, drop stale links ([44b543f](https://github.com/Lycans-AeroDesign/Athar/commit/44b543f9f8d28227281521a4377f0c823269a46e))
+* **training:** keep inline uploads and fix ordering after deletes ([b6b9f4c](https://github.com/Lycans-AeroDesign/Athar/commit/b6b9f4c2272f9ec9fa81dc898ca74e787a997ea5))
+* **training:** match link providers by parsed host, not substring ([9d5acf6](https://github.com/Lycans-AeroDesign/Athar/commit/9d5acf62fb06b27d1fedfe24922f91e80887ab43))
+* **training:** stop the lesson quick editor deleting uploaded files ([1e4f619](https://github.com/Lycans-AeroDesign/Athar/commit/1e4f6196de640576eda1013dda48d26d3a98a7a1))
+* **ui:** make clipped-text rolling smooth and stop it restarting ([1907c14](https://github.com/Lycans-AeroDesign/Athar/commit/1907c147e1c44f44e3008acd7e577a5935a4fd6a))
+
 ## [1.28.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.27.0...v1.28.0) (2026-11-14)
 
 ### Features
