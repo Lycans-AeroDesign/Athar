@@ -60,13 +60,21 @@ services:
       CELERY_BROKER_URL: redis://redis:6379/0
     volumes:
       - ./backend:/app
-      - backend_venv:/app/.venv
     # Django's dev server with DEBUG on - loopback by default. Set
     # DEV_BIND_ADDRESS=0.0.0.0 (root .env) only to reach it from another
     # device, e.g. a phone on your Wi-Fi (also point NEXT_PUBLIC_API_URL and
     # CORS_ALLOWED_ORIGINS at this machine's LAN IP then).
     ports:
       - "${DEV_BIND_ADDRESS:-127.0.0.1}:${BACKEND_PORT:-8000}:8000"
+    # Passes once migrations are done and the server answers /api/v1/health/
+    # (which also checks the database) - see backend/docker/healthcheck.py.
+    # The Celery containers wait on this instead of migrating themselves.
+    healthcheck:
+      test: ["CMD", "python", "/healthcheck.py"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 180s
     depends_on:
       db:
         condition: service_healthy
@@ -75,20 +83,21 @@ services:
 
   # Background job runner for backups.tasks.generate_org_backup (see Settings
   # > Backups) - same image/env as backend, just a different container
-  # command. Runs the same entrypoint.sh (migrate/seed_rbac on start too,
-  # which is idempotent) before execing the worker instead of runserver.
+  # command. RUN_MIGRATIONS=false: only the backend migrates/seeds; this
+  # waits for it to be healthy instead.
   celery-worker:
     build:
       context: ./backend
       target: dev
     restart: unless-stopped
     command: ["celery", "-A", "config", "worker", "-l", "info"]
-    environment: *backend_env
+    environment:
+      <<: *backend_env
+      RUN_MIGRATIONS: "false"
     volumes:
       - ./backend:/app
-      - backend_venv:/app/.venv
     depends_on:
-      db:
+      backend:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -107,12 +116,13 @@ services:
     # drops to appuser before running this, and /app (celery beat's default
     # relative schedule-file location) isn't writable by appuser here either.
     command: ["celery", "-A", "config", "beat", "-l", "info", "--schedule=/tmp/celerybeat-schedule"]
-    environment: *backend_env
+    environment:
+      <<: *backend_env
+      RUN_MIGRATIONS: "false"
     volumes:
       - ./backend:/app
-      - backend_venv:/app/.venv
     depends_on:
-      db:
+      backend:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -171,6 +181,5 @@ services:
 volumes:
   postgres_data:
   redis_data:
-  backend_venv:
   frontend_node_modules:
   frontend_next:

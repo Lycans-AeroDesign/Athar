@@ -6,7 +6,12 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
-    PATH="/app/.venv/bin:$PATH"
+    UV_PROJECT_ENVIRONMENT=/opt/venv \
+    PATH="/opt/venv/bin:$PATH"
+# The virtualenv lives outside /app so dev's `./backend:/app` bind mount can't
+# hide it. It used to sit at /app/.venv behind a named volume, and that volume
+# kept the old packages after an image rebuild with new dependencies (once it
+# even lost Django) - now a rebuild always brings the matching venv.
 # Pinned, not :latest - this layer sits in the shared `base` stage, so every
 # new uv release on a floating tag would change it and invalidate the build
 # cache for everything after it (apt packages, deps, app) on the next CI run.
@@ -35,6 +40,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* \
     && useradd --create-home --uid 1000 appuser
 COPY docker/entrypoint.sh /entrypoint.sh
+COPY docker/healthcheck.py /healthcheck.py
 RUN chmod +x /entrypoint.sh
 ENTRYPOINT ["/entrypoint.sh"]
 
@@ -71,6 +77,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # runuser before running migrate/collectstatic/the app itself.
 FROM base AS prod
 COPY --from=builder /app /app
+COPY --from=builder /opt/venv /opt/venv
 EXPOSE 8000
 # Workers/threads/timeouts live in gunicorn.conf.py (env-tunable).
 CMD ["gunicorn", "config.wsgi:application", "--config", "gunicorn.conf.py"]

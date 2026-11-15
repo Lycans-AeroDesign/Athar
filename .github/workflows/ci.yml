@@ -56,7 +56,9 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
-          version: latest
+          # Same uv as backend/Dockerfile - `latest` let a new uv release change
+          # CI behavior (and the lockfile format it accepts) without any commit.
+          version: "0.12.18"
           # `enable-cache` defaults to "auto" (on for ordinary push/pull_request triggers); set
           # explicitly so it doesn't silently turn off if a riskier trigger is added. `cache-python`
           # also caches the interpreter, which `enable-cache` doesn't, so `uv python install` below
@@ -69,6 +71,12 @@ jobs:
 
       - name: Install dependencies
         run: uv sync --frozen
+
+      # Ruff's default rules (pyflakes + basic pycodestyle) - catches undefined
+      # names and dead imports, e.g. a missing ValidationError import that only
+      # failed at request time. Version pinned for the same reason as uv's.
+      - name: Lint (ruff)
+        run: uvx ruff@0.14.0 check .
 
       - name: Django system check
         run: uv run manage.py check
@@ -114,6 +122,9 @@ jobs:
 
       - name: Lint
         run: npm run lint
+
+      - name: Test
+        run: npm test
 
       - name: Build
         run: npm run build

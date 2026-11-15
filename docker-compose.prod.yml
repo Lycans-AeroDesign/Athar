@@ -7,10 +7,20 @@
 #   docker compose -f docker-compose.prod.yml pull
 #   docker compose -f docker-compose.prod.yml up -d
 
+# Docker's default json-file log driver never rotates, so a busy container's
+# log grows until the disk is full. Every service below uses this instead:
+# at most 5 x 10 MB per container.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
 services:
   db:
     image: postgres:18-alpine
     restart: unless-stopped
+    logging: *default-logging
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-lycans_kms}
       POSTGRES_USER: ${POSTGRES_USER:-lycans}
@@ -26,6 +36,7 @@ services:
   backend:
     image: ghcr.io/lycans-aerodesign/athar-backend:${IMAGE_TAG:-latest}
     restart: unless-stopped
+    logging: *default-logging
     environment: &backend_env
       SECRET_KEY: ${SECRET_KEY:?SECRET_KEY must be set}
       DEBUG: "False"
@@ -73,6 +84,15 @@ services:
     # name (see nginx/nginx.conf's `upstream backend`).
     expose:
       - "8000"
+    # Passes once migrations are done and the server answers /api/v1/health/
+    # (which also checks the database) - see backend/docker/healthcheck.py.
+    # The Celery containers wait on this instead of migrating themselves.
+    healthcheck:
+      test: ["CMD", "python", "/healthcheck.py"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 180s
     depends_on:
       db:
         condition: service_healthy
@@ -81,16 +101,28 @@ services:
 
   # Background job runner for backups.tasks.generate_org_backup (see Settings
   # > Backups) - same image/env as backend, just a different container
-  # command.
+  # command. RUN_MIGRATIONS=false: only the backend migrates/seeds; this
+  # waits for it to be healthy instead.
   celery-worker:
     image: ghcr.io/lycans-aerodesign/athar-backend:${IMAGE_TAG:-latest}
     restart: unless-stopped
+    logging: *default-logging
     command: ["celery", "-A", "config", "worker", "-l", "info"]
-    environment: *backend_env
+    environment:
+      <<: *backend_env
+      RUN_MIGRATIONS: "false"
+    # Asks this worker to answer a ping over the broker - fails when the
+    # worker is hung or has lost its Redis connection.
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A config inspect ping -d celery@$$HOSTNAME --timeout 10"]
+      interval: 60s
+      timeout: 30s
+      retries: 3
+      start_period: 60s
     volumes:
       - backend_media:/app/media
     depends_on:
-      db:
+      backend:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -103,6 +135,7 @@ services:
   celery-beat:
     image: ghcr.io/lycans-aerodesign/athar-backend:${IMAGE_TAG:-latest}
     restart: unless-stopped
+    logging: *default-logging
     # --schedule: celery beat's default schedule file ("celerybeat-schedule")
     # is a relative path resolving to the CWD (/app), which is root-owned in
     # this image (see backend/Dockerfile/docker/entrypoint.sh - only
@@ -111,9 +144,11 @@ services:
     # user and this file only tracks last-run times, so losing it on
     # container recreation is harmless.
     command: ["celery", "-A", "config", "beat", "-l", "info", "--schedule=/tmp/celerybeat-schedule"]
-    environment: *backend_env
+    environment:
+      <<: *backend_env
+      RUN_MIGRATIONS: "false"
     depends_on:
-      db:
+      backend:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -121,6 +156,7 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
+    logging: *default-logging
     volumes:
       - redis_data:/data
     healthcheck:
@@ -139,10 +175,19 @@ services:
     # - it's a build-time value, not a runtime one.
     image: ghcr.io/lycans-aerodesign/athar-frontend:${IMAGE_TAG:-latest}
     restart: unless-stopped
+    logging: *default-logging
     # No `ports:` - only nginx is reachable from outside the compose
     # network; see the matching comment on the backend service above.
     expose:
       - "3000"
+    # The standalone server listens on $HOSTNAME (the container's own name),
+    # not 127.0.0.1, so the check calls it by that name.
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://' + (process.env.HOSTNAME || '127.0.0.1') + ':3000/en/login').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     depends_on:
       - backend
 
@@ -155,6 +200,7 @@ services:
   nginx:
     image: nginx:1.27-alpine
     restart: unless-stopped
+    logging: *default-logging
     # nginx only reads its certificate at start/reload, and the certbot
     # container below can't signal this one - so without this, a renewed
     # certificate was never picked up and HTTPS broke when the old one expired
@@ -193,6 +239,7 @@ services:
   certbot:
     image: certbot/certbot
     restart: unless-stopped
+    logging: *default-logging
     volumes:
       - certbot_conf:/etc/letsencrypt
       - certbot_www:/var/www/certbot
