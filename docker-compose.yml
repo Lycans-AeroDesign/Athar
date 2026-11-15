@@ -61,8 +61,12 @@ services:
     volumes:
       - ./backend:/app
       - backend_venv:/app/.venv
+    # Django's dev server with DEBUG on - loopback by default. Set
+    # DEV_BIND_ADDRESS=0.0.0.0 (root .env) only to reach it from another
+    # device, e.g. a phone on your Wi-Fi (also point NEXT_PUBLIC_API_URL and
+    # CORS_ALLOWED_ORIGINS at this machine's LAN IP then).
     ports:
-      - "${BACKEND_PORT:-8000}:8000"
+      - "${DEV_BIND_ADDRESS:-127.0.0.1}:${BACKEND_PORT:-8000}:8000"
     depends_on:
       db:
         condition: service_healthy

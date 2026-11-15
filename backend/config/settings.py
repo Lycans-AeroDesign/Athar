@@ -5,6 +5,7 @@ from datetime import timedelta
 from pathlib import Path
 
 import environ
+from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -26,6 +27,17 @@ SECRET_KEY = env(
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env.bool("DEBUG", default=True)
+
+# Refuse to start outside DEBUG with a placeholder SECRET_KEY: the JWT signing
+# key and the backup encryption key both derive from it unless set separately,
+# so a publicly known key would let anyone forge login tokens for any user and
+# decrypt server-side backups. Dev (DEBUG=True) keeps working with the defaults.
+_PLACEHOLDER_SECRET_KEYS = {"change-me-to-a-long-random-string"}
+if not DEBUG and (SECRET_KEY in _PLACEHOLDER_SECRET_KEYS or SECRET_KEY.startswith("django-insecure")):
+    raise ImproperlyConfigured(
+        "SECRET_KEY is still a placeholder while DEBUG is off. Set SECRET_KEY to a long random "
+        "value (e.g. `python -c \"import secrets; print(secrets.token_urlsafe(50))\"`)."
+    )
 
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=[])
 
