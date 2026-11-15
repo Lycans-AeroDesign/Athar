@@ -11,6 +11,7 @@ import { IdentitySettingsForm } from "@/components/settings/IdentitySettingsForm
 import { InvitationsSettingsForm } from "@/components/settings/InvitationsSettingsForm";
 import { PoliciesSettingsForm } from "@/components/settings/PoliciesSettingsForm";
 import { RolesSettingsForm } from "@/components/settings/RolesSettingsForm";
+import { SharedLinksSettings } from "@/components/settings/SharedLinksSettings";
 import { useSettingsPermissions, useVisibleSettingsGroups } from "@/components/settings/sections";
 import { useReportSettingsDirty } from "@/components/settings/SettingsShell";
 import { UsersSettingsForm } from "@/components/settings/UsersSettingsForm";
@@ -81,6 +82,8 @@ export default function SettingsSectionPage({ params }: { params: Promise<{ sect
       return <PoliciesSettingsForm />;
     case "audit":
       return <AuditLogSettingsForm />;
+    case "sharedLinks":
+      return <SharedLinksSettings />;
     case "backups":
       return <BackupsSettingsForm />;
     default:

@@ -56,6 +56,11 @@ class OrganizationSettings(models.Model):
     # On by default.
     product_tour_enabled = models.BooleanField(default=True)
 
+    # Lets members with share_link.create hand out read-only public links to
+    # articles and SOPs (knowledge/sharing.py). Off until an admin turns it
+    # on; turning it off stops every existing link without revoking them.
+    share_links_enabled = models.BooleanField(default=False)
+
     # Per-org upload size limit (MB) for the generic upload endpoint
     # (files.FileUploadView). None = platform default (config.settings'
     # MAX_UPLOAD_SIZE_MB); an org admin sets it from Settings > Identity (max

@@ -305,6 +305,7 @@
       "roles": "الأدوار والصلاحيات",
       "categories": "الفئات",
       "policies": "السياسات",
+      "sharedLinks": "الروابط المشتركة",
       "audit": "سجل التدقيق",
       "backups": "النسخ الاحتياطي"
     },
@@ -322,7 +323,9 @@
     },
     "features": {
       "title": "الميزات",
-      "description": "مفاتيح تشغيل على مستوى المؤسسة تنطبق على جميع الأعضاء."
+      "description": "مفاتيح تشغيل على مستوى المؤسسة تنطبق على جميع الأعضاء.",
+      "shareLinksLabel": "روابط المشاركة العامة",
+      "shareLinksDescription": "السماح للأعضاء المخوّلين بإنشاء روابط للقراءة فقط إلى المقالات وإجراءات التشغيل تُفتح دون حساب. إيقافها يوقف كل الروابط الحالية."
     },
     "branding": {
       "logoTitle": "شعار المؤسسة",
@@ -1561,6 +1564,53 @@
     "tab_test": "الاختبارات",
     "tab_document": "المستندات",
     "tab_course": "الدورات"
+  },
+  "shareLinks": {
+    "dialogTitle": "مشاركة",
+    "memberLinkTitle": "رابط للأعضاء",
+    "memberLinkDescription": "يعمل لأي شخص في مؤسستك يمكنه رؤية هذا العنصر بالفعل.",
+    "publicLinkTitle": "رابط عام",
+    "publicLinkDescription": "يمكن لأي شخص لديه الرابط قراءة هذه الصفحة دون حساب، دون أن يعدّلها أو يرى أي شيء آخر. يمكنك إيقاف الرابط في أي وقت.",
+    "notPublished": "لا يمكن مشاركة إلا المقالات المنشورة بشكل عام.",
+    "restrictedNotAllowed": "هذا العنصر مقيّد. مشاركته علنًا تتطلب صلاحية تعديله.",
+    "labelField": "لمن هذا الرابط؟ (اختياري)",
+    "labelPlaceholder": "مثال: الراعي، الأعضاء الجدد",
+    "expiryField": "ينتهي",
+    "expiryNever": "لا ينتهي",
+    "expiryDays": "{count, plural, one {بعد يوم واحد} two {بعد يومين} few {بعد # أيام} other {بعد # يومًا}}",
+    "create": "إنشاء الرابط ونسخه",
+    "copy": "نسخ الرابط",
+    "copied": "تم النسخ!",
+    "unlabeled": "رابط عام",
+    "expiresOn": "ينتهي في {date}",
+    "expiredOn": "انتهى في {date}",
+    "revokedOn": "أُوقف في {date}",
+    "views": "{count, plural, =0 {لم يُفتح بعد} one {فُتح مرة واحدة} two {فُتح مرتين} few {فُتح # مرات} other {فُتح # مرة}}",
+    "revoke": "إيقاف المشاركة",
+    "confirmRevoke": "تأكيد الإيقاف",
+    "settingsTitle": "الروابط المشتركة",
+    "settingsDescription": "كل الروابط العامة في المؤسسة: ما الذي شورك، ومن شاركه، وحتى متى، وكم مرة فُتح.",
+    "showInactive": "إظهار الروابط الموقوفة والمنتهية",
+    "loading": "جارٍ التحميل...",
+    "emptyState": "لا توجد روابط عامة.",
+    "deletedItem": "عنصر محذوف"
+  },
+  "sharedPage": {
+    "brand": "أثر",
+    "readOnly": "للقراءة فقط",
+    "loading": "جارٍ التحميل...",
+    "unavailableTitle": "هذا الرابط غير متاح",
+    "unavailableBody": "ربما انتهت صلاحيته أو أوقفه من شاركه. اطلب منه رابطًا جديدًا.",
+    "errorTitle": "حدث خطأ ما",
+    "errorBody": "تعذّر تحميل الصفحة. حاول مرة أخرى بعد قليل.",
+    "typeArticle": "مقالة",
+    "typeSop": "إجراء تشغيل قياسي",
+    "byAuthor": "بقلم {name}",
+    "updatedOn": "آخر تحديث {date}",
+    "safetyNotes": "ملاحظات السلامة",
+    "attachments": "المرفقات",
+    "expiresOn": "تنتهي صلاحية هذا الرابط في {date}.",
+    "sharedBy": "شاركته {organization}."
   },
   "imageCrop": {
     "title": "قص الصورة",

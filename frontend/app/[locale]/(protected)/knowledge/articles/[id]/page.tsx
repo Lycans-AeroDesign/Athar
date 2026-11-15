@@ -221,7 +221,15 @@ export default function ArticleDetailPage() {
             </div>
             <div className="flex items-center gap-2">
               <BookmarkButton key={article.id} type="article" objectId={article.id} bookmarkId={article.bookmark_id} />
-              <ShareButton title={article.title} />
+              <ShareButton
+                title={article.title}
+                publicLink={{
+                  type: "article",
+                  objectId: article.id,
+                  isPublished: article.status === "PUBLISHED",
+                  isRestricted: article.visibility === "RESTRICTED",
+                }}
+              />
               {canEditContent && (
                 <Link href={`/knowledge/articles/${article.id}/edit`}>
                   <IconButton icon="edit" variant="secondary" aria-label={t("editButton")} />

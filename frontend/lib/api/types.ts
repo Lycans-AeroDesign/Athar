@@ -160,6 +160,8 @@ export interface OrganizationSettings {
   secondary_color_dark: string;
   /** Org-wide kill switch for the first-run product tour; UserPreferences.has_completed_tour is the per-user flag. */
   product_tour_enabled: boolean;
+  /** Org-wide switch for read-only public links (Settings > Features); off by default. */
+  share_links_enabled: boolean;
   /** The org's own generic-upload limit in MB (Settings > Identity); null = the platform default is in force. */
   max_upload_size_mb: number | null;
   /** The limit actually enforced against uploads right now: the override above, or the platform default. */
@@ -883,4 +885,47 @@ export interface TrashedItem {
   deleted_by: KnowledgeAuthor | null;
   /** When the nightly purge deletes it for good. */
   purge_at: string;
+}
+
+export type ShareableType = "article" | "sop";
+
+/** A public link as its creator / a share_link.manage holder sees it. */
+export interface ShareLinkEntry {
+  id: string;
+  type: ShareableType;
+  object_id: string;
+  target_title: string | null;
+  label: string;
+  /** Goes after /s/ in the public URL - see publicShareUrl(). */
+  token: string;
+  created_by: KnowledgeAuthor | null;
+  created_at: string;
+  /** null = never expires. */
+  expires_at: string | null;
+  revoked_at: string | null;
+  view_count: number;
+  last_viewed_at: string | null;
+  /** Not revoked and not expired. */
+  is_active: boolean;
+}
+
+export interface PublicShareAttachment {
+  id: string;
+  original_filename: string;
+  content_type: string;
+  size: number;
+}
+
+/** What /s/<token> renders - no login. */
+export interface PublicShare {
+  type: ShareableType;
+  title: string;
+  excerpt: string;
+  content: string;
+  safety_notes: string;
+  author_name: string | null;
+  updated_at: string;
+  organization_name: string;
+  expires_at: string | null;
+  attachments: PublicShareAttachment[];
 }

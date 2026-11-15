@@ -296,6 +296,8 @@ REST_FRAMEWORK = {
         "auth": env("THROTTLE_AUTH_RATE", default="10/min"),
         "auth_refresh": env("THROTTLE_AUTH_REFRESH_RATE", default="60/min"),
         "backup_download": env("THROTTLE_BACKUP_DOWNLOAD_RATE", default="10/hour"),
+        # Public share-link pages and their files, per client IP.
+        "share_link": env("THROTTLE_SHARE_LINK_RATE", default="120/min"),
     },
     # Exactly one trusted proxy (nginx) overwrites X-Forwarded-For with the real peer
     # address. Without this, throttles key on the whole client-supplied header, which a
@@ -312,6 +314,7 @@ if "test" in sys.argv:
     REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"]["auth"] = None
     REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"]["auth_refresh"] = None
     REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"]["backup_download"] = None
+    REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"]["share_link"] = None
 
 SPECTACULAR_SETTINGS = {
     "TITLE": "Athar API",

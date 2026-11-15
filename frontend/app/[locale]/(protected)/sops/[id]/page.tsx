@@ -80,7 +80,15 @@ export default function SopDetailPage() {
             )}
           </div>
           <div className="flex items-center gap-2">
-            <ShareButton title={sop.title} />
+            <ShareButton
+              title={sop.title}
+              publicLink={{
+                type: "sop",
+                objectId: sop.id,
+                isPublished: true,
+                isRestricted: sop.visibility === "RESTRICTED",
+              }}
+            />
             <BookmarkButton key={sop.id} type="sop" objectId={sop.id} bookmarkId={sop.bookmark_id} />
             {canEdit && (
               <Link href={`/sops/${sop.id}/edit`}>

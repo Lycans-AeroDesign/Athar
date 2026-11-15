@@ -58,6 +58,7 @@ class OrganizationSettingsSerializer(serializers.ModelSerializer):
             "primary_color_dark",
             "secondary_color_dark",
             "product_tour_enabled",
+            "share_links_enabled",
             "max_upload_size_mb",
             "effective_max_upload_size_mb",
             "max_upload_size_ceiling",
@@ -138,7 +139,7 @@ class OrganizationGeneralUpdateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = OrganizationSettings
-        fields = ["name", "product_tour_enabled", "max_upload_size_mb"]
+        fields = ["name", "product_tour_enabled", "share_links_enabled", "max_upload_size_mb"]
 
     def validate_max_upload_size_mb(self, value):
         # None here means an explicit clean (the request body sent

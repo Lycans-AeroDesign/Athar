@@ -24,10 +24,12 @@ export function FeaturesSettingsForm({ settings, onUpdate, canEdit, onDirtyChang
   const featuresT = useTranslations("settings.features");
   const commonT = useTranslations("common");
   const [productTourEnabled, setProductTourEnabled] = useState(settings.product_tour_enabled);
+  const [shareLinksEnabled, setShareLinksEnabled] = useState(settings.share_links_enabled);
   const [isSaving, setIsSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
 
-  const isDirty = productTourEnabled !== settings.product_tour_enabled;
+  const isDirty =
+    productTourEnabled !== settings.product_tour_enabled || shareLinksEnabled !== settings.share_links_enabled;
 
   useEffect(() => {
     onDirtyChange?.(isDirty);
@@ -36,7 +38,12 @@ export function FeaturesSettingsForm({ settings, onUpdate, canEdit, onDirtyChang
   async function handleSave() {
     setIsSaving(true);
     try {
-      onUpdate(await updateGeneralSettings({ product_tour_enabled: productTourEnabled }));
+      onUpdate(
+        await updateGeneralSettings({
+          product_tour_enabled: productTourEnabled,
+          share_links_enabled: shareLinksEnabled,
+        }),
+      );
       setSavedAt(Date.now());
     } finally {
       setIsSaving(false);
@@ -50,7 +57,7 @@ export function FeaturesSettingsForm({ settings, onUpdate, canEdit, onDirtyChang
         <p className="font-body-md text-body-md text-on-surface-variant mt-1">{featuresT("description")}</p>
       </div>
 
-      <ChangedIndicator changed={isDirty} className="w-fit">
+      <ChangedIndicator changed={productTourEnabled !== settings.product_tour_enabled} className="w-fit">
         <Switch
           disabled={!canEdit}
           checked={productTourEnabled}
@@ -60,11 +67,24 @@ export function FeaturesSettingsForm({ settings, onUpdate, canEdit, onDirtyChang
         />
       </ChangedIndicator>
 
+      <ChangedIndicator changed={shareLinksEnabled !== settings.share_links_enabled} className="w-fit">
+        <Switch
+          disabled={!canEdit}
+          checked={shareLinksEnabled}
+          onChange={setShareLinksEnabled}
+          label={featuresT("shareLinksLabel")}
+          description={featuresT("shareLinksDescription")}
+        />
+      </ChangedIndicator>
+
       {canEdit && (
         <div className="flex items-center gap-4">
           <Button
             variant="secondary"
-            onClick={() => setProductTourEnabled(settings.product_tour_enabled)}
+            onClick={() => {
+              setProductTourEnabled(settings.product_tour_enabled);
+              setShareLinksEnabled(settings.share_links_enabled);
+            }}
             disabled={!isDirty || isSaving}
           >
             {commonT("discard")}

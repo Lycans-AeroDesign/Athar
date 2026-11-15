@@ -10,6 +10,7 @@ from . import relationships, services
 from .search import plain_text_excerpt
 from . import visibility as visibility_rules
 from .models import (
+    ShareLink,
     Answer,
     Article,
     ArticleAttachment,
@@ -1359,3 +1360,79 @@ class TrashedItemSerializer(serializers.Serializer):
                 "purge_at": trash.purge_at(instance),
             }
         )
+
+
+class ShareLinkSerializer(serializers.ModelSerializer):
+    """A public link as its managers see it (creator / share_link.manage) -
+    including the token, so it can be copied again."""
+
+    type = serializers.CharField(source="content_type.model", read_only=True)
+    token = serializers.SerializerMethodField()
+    target_title = serializers.SerializerMethodField()
+    created_by = AuthorSerializer(read_only=True)
+    is_active = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ShareLink
+        fields = [
+            "id",
+            "type",
+            "object_id",
+            "target_title",
+            "label",
+            "token",
+            "created_by",
+            "created_at",
+            "expires_at",
+            "revoked_at",
+            "view_count",
+            "last_viewed_at",
+            "is_active",
+        ]
+
+    def get_token(self, obj) -> str:
+        from . import sharing
+
+        return sharing.token_for(obj)
+
+    def get_target_title(self, obj) -> str | None:
+        target = obj.target
+        return getattr(target, "title", None)
+
+    def get_is_active(self, obj) -> bool:
+        """Not revoked or expired. Other reasons a link may not open (sharing
+        switched off, the item unpublished/trashed) show on the public page."""
+        from django.utils import timezone
+
+        return obj.revoked_at is None and (obj.expires_at is None or obj.expires_at > timezone.now())
+
+
+class CreateShareLinkSerializer(serializers.Serializer):
+    type = serializers.ChoiceField(choices=["article", "sop"])
+    object_id = serializers.UUIDField()
+    label = serializers.CharField(max_length=100, required=False, allow_blank=True, default="")
+    # null = never expires.
+    expires_in_days = serializers.IntegerField(required=False, allow_null=True, default=30)
+
+
+class PublicShareAttachmentSerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    original_filename = serializers.CharField()
+    content_type = serializers.CharField()
+    size = serializers.IntegerField()
+
+
+class PublicShareSerializer(serializers.Serializer):
+    """What someone opening a share link sees - deliberately minimal: no ids
+    of people, no emails, no comments, related items or other content."""
+
+    type = serializers.CharField()
+    title = serializers.CharField()
+    excerpt = serializers.CharField(allow_blank=True)
+    content = serializers.CharField(allow_blank=True)
+    safety_notes = serializers.CharField(allow_blank=True)
+    author_name = serializers.CharField(allow_null=True)
+    updated_at = serializers.DateTimeField()
+    organization_name = serializers.CharField()
+    expires_at = serializers.DateTimeField(allow_null=True)
+    attachments = PublicShareAttachmentSerializer(many=True)

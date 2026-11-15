@@ -46,6 +46,7 @@ from knowledge.models import (
     Question,
     QuestionAttachment,
     RestrictedAccessGrant,
+    ShareLink,
     Sop,
     SopAttachment,
     StorageLocation,
@@ -100,6 +101,7 @@ ROUTES = [
     ("knowledge-article-revisions", [GET], {"pk": "article"}),
     ("knowledge-article-revision-restore", [POST], {"pk": "article", "revision_pk": "article_revision"}),
     ("knowledge-trash-item", [DELETE], {"model_name": "article_type", "pk": "trashed_article"}),
+    ("knowledge-share-link-revoke", [POST], {"pk": "share_link"}),
     ("knowledge-trash-restore", [POST], {"model_name": "article_type", "pk": "trashed_article"}),
     *_entity("question", "question", workflow=("accept", "close", "reopen", "promote")),
     ("knowledge-answer-list-create", [GET, POST], {"pk": "question"}),
@@ -151,6 +153,8 @@ EXEMPT = {
     # Instance-operator (is_superuser) routes: cross-org by design, covered by platform_admin.tests.
     "platform-organization-detail": "platform admin",
     "platform-organization-users": "platform admin",
+    # No login and no organization: the share token decides (knowledge.tests.ShareLinkTests).
+    "public-share-file": "public share link, scoped by its token",
     "platform-organization-active": "platform admin",
     "platform-user-active": "platform admin",
     "platform-user-password-reset-link": "platform admin",
@@ -215,6 +219,12 @@ class TenantIsolationTests(RoleLoginMixin, APITestCase):
         # The trash routes' <model_name> segment - not a row, but _requests reads `.pk`.
         ids["article_type"] = SimpleNamespace(pk="article")
         ids["question"] = Question.objects.create(organization=org, title="Q", author=cls.member)
+        ids["share_link"] = ShareLink.objects.create(
+            organization=org,
+            content_type=ContentType.objects.get_for_model(Article),
+            object_id=ids["article"].pk,
+            created_by=cls.member,
+        )
         ids["answer"] = Answer.objects.create(question=ids["question"], body="x", author=cls.member)
         ids["relation"] = KnowledgeRelation.objects.create(
             organization=org,

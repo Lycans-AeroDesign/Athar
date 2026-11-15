@@ -11,6 +11,7 @@ v1_patterns = [
     path("files/", include("files.urls")),
     path("organization/", include("organization.urls")),
     path("knowledge/", include("knowledge.urls")),
+    path("public/", include("knowledge.public_urls")),
     path("training/", include("training.urls")),
     path("backups/", include("backups.urls")),
     path("policies/", include("policies.urls")),

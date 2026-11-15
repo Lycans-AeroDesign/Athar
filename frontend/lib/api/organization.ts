@@ -8,6 +8,7 @@ export function getOrganizationSettings(): Promise<OrganizationSettings> {
 export function updateGeneralSettings(payload: {
   name?: string;
   product_tour_enabled?: boolean;
+  share_links_enabled?: boolean;
   /** Org upload limit in MB; null clears the override back to the platform default. */
   max_upload_size_mb?: number | null;
 }): Promise<OrganizationSettings> {

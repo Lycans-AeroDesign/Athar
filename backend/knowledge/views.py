@@ -3,14 +3,15 @@ import uuid
 
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Count, Q, QuerySet
-from django.http import Http404, HttpResponse
+from django.http import FileResponse, Http404, HttpResponse
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import status
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.parsers import MultiPartParser
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from accounts.models import User
@@ -18,11 +19,12 @@ from config.openapi import BAD_REQUEST, COMMON_ERRORS, NOT_FOUND
 from config.pagination import paginated_response
 from core.shortcuts import org_object_or_404, uuid_query_param
 from files.models import StoredFile
+from organization.models import OrganizationSettings
 from rbac.permissions import require_permission
 
 from . import search
 from . import services
-from . import trash
+from . import sharing, trash
 from . import visibility as visibility_rules
 from .models import (
     Answer,
@@ -52,6 +54,9 @@ from .models import (
     TestAttachment,
 )
 from .serializers import (
+    CreateShareLinkSerializer,
+    PublicShareSerializer,
+    ShareLinkSerializer,
     TrashedItemSerializer,
     AcceptAnswerSerializer,
     AccessGrantSerializer,
@@ -2660,3 +2665,150 @@ class TrashRestoreView(APIView):
         instance = _trashed_or_404(request, model_name, pk)
         trash.restore(model_name=model_name, instance=instance, actor=request.user, request=request)
         return Response({"type": model_name, "id": str(instance.pk)})
+
+
+class ShareLinkListCreateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        tags=["Knowledge"],
+        summary="Public links the caller manages (own, or all with share_link.manage); "
+        "optional ?type=&object_id=, ?include_inactive=true",
+        responses={200: ShareLinkSerializer(many=True), **COMMON_ERRORS},
+    )
+    def get(self, request):
+        links = sharing.links_for(
+            request.user,
+            model_name=request.query_params.get("type") or None,
+            object_id=uuid_query_param(request, "object_id"),
+            include_inactive=request.query_params.get("include_inactive") == "true",
+        ).prefetch_related("target")
+        return paginated_response(request, links, ShareLinkSerializer)
+
+    @extend_schema(
+        tags=["Knowledge"],
+        summary="Create a read-only public link to an article or SOP",
+        request=CreateShareLinkSerializer,
+        responses={201: ShareLinkSerializer, 400: BAD_REQUEST, **COMMON_ERRORS},
+    )
+    def post(self, request):
+        serializer = CreateShareLinkSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        link = sharing.create_link(
+            actor=request.user,
+            model_name=data["type"],
+            object_id=data["object_id"],
+            label=data["label"],
+            expires_in_days=data["expires_in_days"],
+            request=request,
+        )
+        return Response(ShareLinkSerializer(link).data, status=status.HTTP_201_CREATED)
+
+
+class ShareLinkRevokeView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        tags=["Knowledge"],
+        summary="Revoke a public link (its creator, or share_link.manage)",
+        request=None,
+        responses={200: ShareLinkSerializer, 404: NOT_FOUND, **COMMON_ERRORS},
+    )
+    def post(self, request, pk):
+        link = get_object_or_404(sharing.links_for(request.user, include_inactive=True), pk=pk)
+        link = sharing.revoke_link(link=link, actor=request.user, request=request)
+        return Response(ShareLinkSerializer(link).data)
+
+
+def _public_headers(response):
+    # Shared pages are meant for whoever holds the link, not search engines
+    # or shared caches; and the token in the URL must not leak onward.
+    response["X-Robots-Tag"] = "noindex, nofollow"
+    response["Cache-Control"] = "private, no-store"
+    response["Referrer-Policy"] = "no-referrer"
+    return response
+
+
+def _shared_item_or_404(token):
+    link = sharing.link_for_token(token)
+    instance = sharing.link_target(link)
+    if instance is None:
+        # One answer for forged, revoked, expired, switched-off, unpublished
+        # and deleted alike - nothing to learn from probing.
+        raise Http404
+    return link, instance
+
+
+class PublicShareView(APIView):
+    authentication_classes = []
+    permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "share_link"
+
+    @extend_schema(
+        tags=["Public"],
+        summary="Open a public share link (no login)",
+        responses={200: PublicShareSerializer, 404: NOT_FOUND},
+    )
+    def get(self, request, token):
+        link, instance = _shared_item_or_404(token)
+        sharing.record_view(link, request)
+        model_name = link.content_type.model
+        author = instance.author if model_name == "article" else instance.created_by
+        author_name = f"{author.first_name} {author.last_name}".strip() if author else ""
+        payload = {
+            "type": model_name,
+            "title": instance.title,
+            "excerpt": getattr(instance, "excerpt", ""),
+            "content": instance.content,
+            "safety_notes": getattr(instance, "safety_notes", ""),
+            "author_name": author_name or None,
+            "updated_at": instance.updated_at,
+            "organization_name": OrganizationSettings.load(link.organization).name,
+            "expires_at": link.expires_at,
+            "attachments": sharing.attachments_of(model_name, instance),
+        }
+        return _public_headers(Response(PublicShareSerializer(payload).data))
+
+
+class PublicShareFileView(APIView):
+    authentication_classes = []
+    permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "share_link"
+
+    @extend_schema(
+        tags=["Public"],
+        summary="Download a file attached to or embedded in a shared item (optional ?size=sm|md)",
+        responses={200: OpenApiResponse(description="The file."), 404: NOT_FOUND},
+    )
+    def get(self, request, token, file_id):
+        from files import thumbnails
+
+        link, instance = _shared_item_or_404(token)
+        stored_file = sharing.shared_file(link, instance, file_id)
+        if stored_file is None:
+            raise Http404
+        size = request.query_params.get("size", "").strip()
+        thumbnail = None
+        if size in thumbnails.THUMBNAIL_SIZES:
+            thumbnail = thumbnails.get_or_create_thumbnail(stored_file, size)
+        if thumbnail:
+            base_name = stored_file.original_filename.rsplit(".", 1)[0] or "image"
+            response = FileResponse(
+                stored_file.file.storage.open(thumbnail, "rb"),
+                filename=f"{base_name}-{size}.webp",
+                as_attachment=True,
+                content_type="image/webp",
+            )
+        else:
+            # as_attachment: an uploaded .svg/.html cannot run if this URL is
+            # opened directly; an <img> still renders images regardless.
+            response = FileResponse(
+                stored_file.file.open("rb"),
+                filename=stored_file.original_filename,
+                as_attachment=True,
+                content_type=stored_file.content_type,
+            )
+        return _public_headers(response)

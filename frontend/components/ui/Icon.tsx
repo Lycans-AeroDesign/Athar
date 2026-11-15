@@ -127,6 +127,8 @@ import {
   Wrench,
   X,
   Zap,
+  Paperclip,
+  Unlink,
   type LucideIcon,
 } from "lucide-react";
 
@@ -137,6 +139,7 @@ import {
 const ICONS: Record<string, LucideIcon> = {
   account: User,
   add: Plus,
+  attach_file: Paperclip,
   admin_panel_settings: ShieldCheck,
   alternate_email: AtSign,
   architecture: Building2,
@@ -212,6 +215,7 @@ const ICONS: Record<string, LucideIcon> = {
   light_mode: Sun,
   lightbulb: Lightbulb,
   link: Link2,
+  link_off: Unlink,
   list: List,
   local_library: Library,
   local_shipping: Truck,
@@ -237,6 +241,7 @@ const ICONS: Record<string, LucideIcon> = {
   rate_review: Eye,
   report: OctagonAlert,
   report_problem: AlertTriangle,
+  warning: AlertTriangle,
   rocket_launch: Rocket,
   schedule: Clock,
   school: GraduationCap,

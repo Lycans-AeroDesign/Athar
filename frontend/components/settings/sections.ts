@@ -1,7 +1,17 @@
 import { useHasPermission } from "@/lib/auth/permissions";
+import { useOrganization } from "@/lib/organization/OrganizationProvider";
 
 export type SettingsSectionId =
-  "identity" | "features" | "users" | "invitations" | "roles" | "categories" | "policies" | "audit" | "backups";
+  | "identity"
+  | "features"
+  | "users"
+  | "invitations"
+  | "roles"
+  | "categories"
+  | "policies"
+  | "sharedLinks"
+  | "audit"
+  | "backups";
 
 export type SettingsGroupId = "organization" | "people" | "content" | "data";
 
@@ -42,6 +52,7 @@ const GROUPS: SettingsGroup[] = [
     sections: [
       { id: "categories", icon: "label" },
       { id: "policies", icon: "gavel" },
+      { id: "sharedLinks", icon: "link" },
     ],
   },
   {
@@ -75,6 +86,10 @@ export function useSettingsPermissions() {
   const canManageUsers = useHasPermission("user.manage");
   // GET /audit/logs/ itself requires audit.read.
   const canReadAudit = useHasPermission("audit.read");
+  // GET /knowledge/share-links/ returns everyone's links only with share_link.manage;
+  // the section is hidden entirely while the org has public links switched off.
+  const { settings } = useOrganization();
+  const canManageShareLinks = useHasPermission("share_link.manage") && !!settings?.share_links_enabled;
 
   return {
     canEditGeneral,
@@ -84,6 +99,7 @@ export function useSettingsPermissions() {
     canManageRoles,
     canManageUsers,
     canReadAudit,
+    canManageShareLinks,
   };
 }
 
@@ -109,6 +125,8 @@ function isSectionVisible(id: SettingsSectionId, p: SettingsPermissions): boolea
       return p.canManageCategories || p.canManageTrainingCategories;
     case "audit":
       return p.canReadAudit;
+    case "sharedLinks":
+      return p.canManageShareLinks;
   }
 }
 

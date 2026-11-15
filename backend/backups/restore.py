@@ -89,6 +89,7 @@ from knowledge.models import (
     Question,
     QuestionAttachment,
     RestrictedAccessGrant,
+    ShareLink,
     Sop,
     SopAttachment,
     StorageLocation,
@@ -138,6 +139,9 @@ _DELETE_SPECS = [
     (FailureAttachment, "failure__organization"),
     (SopAttachment, "sop__organization"),
     (TestAttachment, "test__organization"),
+    # Share links aren't in archives (their tokens are tied to this server's
+    # SECRET_KEY anyway) - a restore replaces the content, so old links go.
+    (ShareLink, "organization"),
     (Bookmark, "organization"),
     (RestrictedAccessGrant, "organization"),
     (KnowledgeRelation, "organization"),

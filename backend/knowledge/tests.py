@@ -36,6 +36,8 @@ from .models import (
     KnowledgeRelation,
     Project,
     Question,
+    ShareLink,
+    Visibility,
     QuestionAttachment,
     RestrictedAccessGrant,
     Sop,
@@ -4512,3 +4514,191 @@ class EngineeringTrashTests(KnowledgeTestCase):
             self.assertTrue(type(instance).all_objects.filter(pk=instance.pk).exists(), name)
         listed = self.client.get(reverse("knowledge-trash-list"), {"page_size": 50}, **self._auth(admin_access))
         self.assertEqual({item["type"] for item in listed.data["results"]}, set(items))
+
+
+class ShareLinkTests(KnowledgeTestCase):
+    def setUp(self):
+        from organization.models import OrganizationSettings
+
+        settings_row = OrganizationSettings.load(self.organization)
+        settings_row.share_links_enabled = True
+        settings_row.save()
+
+    def _published_article(self, author, **fields):
+        defaults = {"title": "Shared wing guide", "content": "Body", "status": Article.Status.PUBLISHED}
+        return Article.objects.create(
+            organization=self.organization, slug=f"a-{uuid.uuid4().hex[:8]}", author=author, **{**defaults, **fields}
+        )
+
+    def _create(self, access, obj, model_name="article", **extra):
+        return self.client.post(
+            reverse("knowledge-share-link-list-create"),
+            {"type": model_name, "object_id": str(obj.pk), **extra},
+            format="json",
+            **self._auth(access),
+        )
+
+    def _open(self, token):
+        return self.client.get(reverse("public-share", args=[token]))
+
+    def test_head_shares_a_published_article_that_opens_without_login(self):
+        head, access = self._login_with_role("sharehead@example.com", "Subteam Head")
+        article = self._published_article(head)
+        response = self._create(access, article, label="Sponsor")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertIsNotNone(response.data["expires_at"])  # 30 days by default
+
+        opened = self._open(response.data["token"])
+        self.assertEqual(opened.status_code, status.HTTP_200_OK)
+        self.assertEqual(opened.data["title"], "Shared wing guide")
+        self.assertNotIn("email", str(opened.data))
+        self.assertEqual(opened["X-Robots-Tag"], "noindex, nofollow")
+        self.assertEqual(ShareLink.objects.get(pk=response.data["id"]).view_count, 1)
+        # The same visitor opening it again right away isn't a second view...
+        self._open(response.data["token"])
+        self.assertEqual(ShareLink.objects.get(pk=response.data["id"]).view_count, 1)
+        # ...a different visitor is.
+        self.client.get(reverse("public-share", args=[response.data["token"]]), HTTP_USER_AGENT="Other browser")
+        self.assertEqual(ShareLink.objects.get(pk=response.data["id"]).view_count, 2)
+
+    def test_creation_rules(self):
+        head, head_access = self._login_with_role("sharerules@example.com", "Subteam Head")
+        _, member_access = self._login_with_role("sharemember@example.com", "Member")
+        article = self._published_article(head)
+        # Members lack share_link.create.
+        self.assertEqual(self._create(member_access, article).status_code, status.HTTP_403_FORBIDDEN)
+        # Drafts can't be shared.
+        draft = self._published_article(head, status=Article.Status.DRAFT)
+        self.assertEqual(self._create(head_access, draft).status_code, status.HTTP_400_BAD_REQUEST)
+        # Only the listed expiry choices.
+        self.assertEqual(
+            self._create(head_access, article, expires_in_days=5).status_code, status.HTTP_400_BAD_REQUEST
+        )
+        never = self._create(head_access, article, expires_in_days=None)
+        self.assertEqual(never.status_code, status.HTTP_201_CREATED)
+        self.assertIsNone(never.data["expires_at"])
+
+    def test_switched_off_organization_blocks_creating_and_opening(self):
+        from organization.models import OrganizationSettings
+
+        head, access = self._login_with_role("shareoff@example.com", "Subteam Head")
+        token = self._create(access, self._published_article(head)).data["token"]
+        OrganizationSettings.objects.filter(organization=self.organization).update(share_links_enabled=False)
+        self.assertEqual(self._open(token).status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(
+            self._create(access, self._published_article(head)).status_code, status.HTTP_403_FORBIDDEN
+        )
+
+    def test_restricted_article_needs_article_update_to_share(self):
+        head, head_access = self._login_with_role("sharerestricted@example.com", "Subteam Head")
+        restricted = self._published_article(head, visibility=Visibility.RESTRICTED)
+        # Subteam Head has article.update (via Mentor) - allowed.
+        self.assertEqual(self._create(head_access, restricted).status_code, status.HTTP_201_CREATED)
+
+        role = Role.objects.create(organization=self.organization, name="Sharer only")
+        from rbac.models import Permission
+
+        for codename in ("article.read", "share_link.create"):
+            role.permissions.add(Permission.objects.get(codename=codename))
+        sharer, sharer_access = self._login_with_role("sharersonly@example.com", "Sharer only")
+        own_restricted = self._published_article(sharer, visibility=Visibility.RESTRICTED)
+        self.assertEqual(self._create(sharer_access, own_restricted).status_code, status.HTTP_403_FORBIDDEN)
+
+        # A link made while public stops once the item turns restricted.
+        public = self._published_article(sharer)
+        token = self._create(sharer_access, public).data["token"]
+        self.assertEqual(self._open(token).status_code, status.HTTP_200_OK)
+        Article.objects.filter(pk=public.pk).update(visibility=Visibility.RESTRICTED)
+        self.assertEqual(self._open(token).status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_link_stops_when_revoked_expired_unpublished_or_trashed(self):
+        head, access = self._login_with_role("sharestop@example.com", "Subteam Head")
+
+        def fresh():
+            article = self._published_article(head)
+            data = self._create(access, article).data
+            return article, data["id"], data["token"]
+
+        _, link_id, token = fresh()
+        revoke = self.client.post(reverse("knowledge-share-link-revoke", args=[link_id]), **self._auth(access))
+        self.assertEqual(revoke.status_code, status.HTTP_200_OK)
+        self.assertEqual(self._open(token).status_code, status.HTTP_404_NOT_FOUND)
+
+        _, link_id, token = fresh()
+        ShareLink.objects.filter(pk=link_id).update(expires_at=timezone.now() - datetime.timedelta(seconds=1))
+        self.assertEqual(self._open(token).status_code, status.HTTP_404_NOT_FOUND)
+
+        article, _, token = fresh()
+        Article.objects.filter(pk=article.pk).update(status=Article.Status.ARCHIVED)
+        self.assertEqual(self._open(token).status_code, status.HTTP_404_NOT_FOUND)
+
+        article, _, token = fresh()
+        trash.move_to_trash(model_name="article", instance=article, actor=head)
+        self.assertEqual(self._open(token).status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_forged_and_malformed_tokens_are_404(self):
+        head, access = self._login_with_role("shareforge@example.com", "Subteam Head")
+        token = self._create(access, self._published_article(head)).data["token"]
+        forged = token[:32] + ("0" if token[-1] != "0" else "1") * 32
+        self.assertEqual(self._open(forged).status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(self._open("not-a-token").status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_only_creator_or_manager_sees_and_revokes(self):
+        head, head_access = self._login_with_role("sharecreator@example.com", "Subteam Head")
+        _, other_access = self._login_with_role("shareotherhead@example.com", "Subteam Head")
+        _, admin_access = self._login_with_role("shareadmin@example.com", "Organization Admin")
+        link_id = self._create(head_access, self._published_article(head)).data["id"]
+
+        listed = self.client.get(reverse("knowledge-share-link-list-create"), **self._auth(other_access))
+        self.assertEqual(listed.data["results"], [])
+        revoke = reverse("knowledge-share-link-revoke", args=[link_id])
+        self.assertEqual(self.client.post(revoke, **self._auth(other_access)).status_code, status.HTTP_404_NOT_FOUND)
+
+        listed = self.client.get(reverse("knowledge-share-link-list-create"), **self._auth(admin_access))
+        self.assertEqual([link["id"] for link in listed.data["results"]], [link_id])
+        self.assertEqual(self.client.post(revoke, **self._auth(admin_access)).status_code, status.HTTP_200_OK)
+
+    def test_public_file_route_serves_only_the_shared_items_files(self):
+        head, access = self._login_with_role("sharefiles@example.com", "Subteam Head")
+        inline = StoredFile.objects.create(
+            organization=self.organization,
+            file=SimpleUploadedFile("inline.txt", b"inline"),
+            original_filename="inline.txt",
+            content_type="text/plain",
+        )
+        attached = StoredFile.objects.create(
+            organization=self.organization,
+            file=SimpleUploadedFile("attached.txt", b"attached"),
+            original_filename="attached.txt",
+            content_type="text/plain",
+        )
+        unrelated = StoredFile.objects.create(
+            organization=self.organization,
+            file=SimpleUploadedFile("secret.txt", b"secret"),
+            original_filename="secret.txt",
+            content_type="text/plain",
+        )
+        article = self._published_article(head, content=f"See [notes](/api/v1/files/{inline.pk}/download/)")
+        ArticleAttachment.objects.create(article=article, file=attached, uploaded_by=head)
+        token = self._create(access, article).data["token"]
+
+        opened = self._open(token)
+        self.assertEqual([a["original_filename"] for a in opened.data["attachments"]], ["attached.txt"])
+        for stored_file, expected in ((inline, 200), (attached, 200), (unrelated, 404)):
+            response = self.client.get(reverse("public-share-file", args=[token, stored_file.pk]))
+            self.assertEqual(response.status_code, expected, stored_file.original_filename)
+            if expected == 200:
+                b"".join(response.streaming_content)
+        for stored_file in (inline, attached, unrelated):
+            stored_file.file.delete(save=False)
+
+    def test_sop_can_be_shared(self):
+        head, access = self._login_with_role("sharesop@example.com", "Subteam Head")
+        sop = Sop.objects.create(
+            organization=self.organization, title="Battery charging", content="Steps", safety_notes="Gloves",
+            created_by=head,
+        )
+        token = self._create(access, sop, model_name="sop").data["token"]
+        opened = self._open(token)
+        self.assertEqual(opened.status_code, status.HTTP_200_OK)
+        self.assertEqual((opened.data["type"], opened.data["safety_notes"]), ("sop", "Gloves"))

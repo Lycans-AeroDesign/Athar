@@ -33,6 +33,7 @@ from .models import (
     Project,
     Question,
     RestrictedAccessGrant,
+    ShareLink,
     Sop,
     Test,
 )
@@ -159,12 +160,13 @@ def purge(*, model_name: str, instance, actor=None, request=None) -> None:
 
 def _delete_generic_references(instance) -> None:
     """Generic foreign keys don't cascade - without this, collections,
-    relations, bookmarks and access grants would keep pointing at a row
+    relations, bookmarks, access grants and share links would keep pointing at a row
     that no longer exists."""
     content_type = ContentType.objects.get_for_model(type(instance))
     CollectionItem.objects.filter(content_type=content_type, object_id=instance.pk).delete()
     Bookmark.objects.filter(content_type=content_type, object_id=instance.pk).delete()
     RestrictedAccessGrant.objects.filter(content_type=content_type, object_id=instance.pk).delete()
+    ShareLink.objects.filter(content_type=content_type, object_id=instance.pk).delete()
     KnowledgeRelation.objects.filter(
         Q(source_content_type=content_type, source_object_id=instance.pk)
         | Q(target_content_type=content_type, target_object_id=instance.pk)

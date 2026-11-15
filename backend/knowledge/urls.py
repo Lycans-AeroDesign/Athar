@@ -1,6 +1,8 @@
 from django.urls import path
 
 from .views import (
+    ShareLinkListCreateView,
+    ShareLinkRevokeView,
     TrashItemView,
     TrashListView,
     TrashRestoreView,
@@ -103,6 +105,8 @@ urlpatterns = [
     path("collections/<uuid:pk>/reorder/", CollectionReorderView.as_view(), name="knowledge-collection-reorder"),
     path("tags/", TagListView.as_view(), name="knowledge-tag-list"),
     path("tags/<uuid:pk>/", TagDetailView.as_view(), name="knowledge-tag-detail"),
+    path("share-links/", ShareLinkListCreateView.as_view(), name="knowledge-share-link-list-create"),
+    path("share-links/<uuid:pk>/revoke/", ShareLinkRevokeView.as_view(), name="knowledge-share-link-revoke"),
     path("trash/", TrashListView.as_view(), name="knowledge-trash-list"),
     path("trash/<str:model_name>/<uuid:pk>/", TrashItemView.as_view(), name="knowledge-trash-item"),
     path("trash/<str:model_name>/<uuid:pk>/restore/", TrashRestoreView.as_view(), name="knowledge-trash-restore"),

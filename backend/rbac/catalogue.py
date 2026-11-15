@@ -76,6 +76,8 @@ PERMISSION_CATALOGUE = [
     ("training.delete", "Delete any course (own-draft deletion needs no permission)"),
     ("training.manage", "Manage course categories; view training statistics/admin dashboard"),
     ("trash.purge", "Permanently delete items from the trash before they expire"),
+    ("share_link.create", "Create read-only public links to articles and SOPs"),
+    ("share_link.manage", "See and revoke every public link in the organization"),
 ]
 
 # name -> (description, is_system, [codenames])
@@ -119,6 +121,7 @@ MENTOR_PERMISSIONS = MEMBER_PERMISSIONS + [
     "training.review",
 ]
 SUBTEAM_HEAD_PERMISSIONS = MENTOR_PERMISSIONS + [
+    "share_link.create",
     "article.publish",
     "article.archive",
     "project.create",

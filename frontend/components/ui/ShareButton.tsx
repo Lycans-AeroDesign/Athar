@@ -3,11 +3,19 @@
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
+import { ShareDialog, type PublicLinkTarget } from "@/components/knowledge/ShareDialog";
+import { useHasPermission } from "@/lib/auth/permissions";
+import { useOrganization } from "@/lib/organization/OrganizationProvider";
+
 import { Button } from "./Button";
 import { Icon } from "./Icon";
 
 interface ShareButtonProps {
   title: string;
+  /** Articles/SOPs: when the organization allows public links and the viewer
+   * holds share_link.create, the button opens ShareDialog (member link +
+   * public links) instead of sharing the page URL directly. */
+  publicLink?: PublicLinkTarget;
 }
 
 // window.location.href is read inside the click handler (never at render
@@ -16,11 +24,19 @@ interface ShareButtonProps {
 // Prefers the native share sheet (mobile, and some desktop browsers) and
 // falls back to copying the link, with the same icon-swap "Copied!"
 // feedback as the code-block copy button in Markdown.tsx.
-export function ShareButton({ title }: ShareButtonProps) {
+export function ShareButton({ title, publicLink }: ShareButtonProps) {
   const t = useTranslations("common");
   const [copied, setCopied] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const { settings } = useOrganization();
+  const canCreatePublicLinks = useHasPermission("share_link.create");
+  const usesDialog = !!publicLink && !!settings?.share_links_enabled && canCreatePublicLinks;
 
   async function handleShare() {
+    if (usesDialog) {
+      setDialogOpen(true);
+      return;
+    }
     const url = window.location.href;
     if (navigator.share) {
       try {
@@ -35,10 +51,18 @@ export function ShareButton({ title }: ShareButtonProps) {
     setTimeout(() => setCopied(false), 1500);
   }
 
-  return (
+  const button = (
     <Button variant="secondary" onClick={handleShare}>
       <Icon name={copied ? "check" : "share"} size={16} />
       {copied ? t("copiedLink") : t("share")}
     </Button>
+  );
+
+  if (!usesDialog || !publicLink) return button;
+  return (
+    <>
+      {button}
+      <ShareDialog open={dialogOpen} onOpenChange={setDialogOpen} target={publicLink} />
+    </>
   );
 }

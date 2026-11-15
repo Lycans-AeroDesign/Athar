@@ -94,6 +94,7 @@ function CodeBlock({ children }: { children?: ReactNode }) {
 interface MarkdownContextValue {
   onCropImage?: (src: string, alt?: string) => void;
   linksInNewTab?: boolean;
+  publicFileUrl?: (fileId: string) => string;
 }
 
 const MarkdownContext = createContext<MarkdownContextValue>({});
@@ -107,7 +108,7 @@ const MarkdownContext = createContext<MarkdownContextValue>({});
 // or lightbox displays a crop action.
 function ImageRenderer({ src, alt }: { src?: string | Blob; alt?: string }) {
   const t = useTranslations("markdown");
-  const { onCropImage } = useContext(MarkdownContext);
+  const { onCropImage, publicFileUrl } = useContext(MarkdownContext);
   const [zoomed, setZoomed] = useState(false);
   const caption = imageCaption(alt);
 
@@ -126,6 +127,12 @@ function ImageRenderer({ src, alt }: { src?: string | Blob; alt?: string }) {
   }
 
   function renderImage(className: string) {
+    const publicFileId =
+      publicFileUrl && typeof cleanSrc === "string" ? FILE_DOWNLOAD_HREF_PATTERN.exec(cleanSrc)?.[1] : undefined;
+    if (publicFileUrl && publicFileId) {
+      // eslint-disable-next-line @next/next/no-img-element -- a share-link file, served without login.
+      return <img src={publicFileUrl(publicFileId)} alt={alt ?? ""} className={className} />;
+    }
     return typeof cleanSrc === "string" && cleanSrc.startsWith("/api/v1/files/") ? (
       <AuthenticatedImage src={cleanSrc} alt={alt ?? ""} className={className} />
     ) : (
@@ -200,7 +207,7 @@ function standaloneImageAlt(children: ReactNode): string | null {
 // hand) renders as a normal <a target="_blank">.
 function FileAwareLink({ href, id, children }: { href?: string; id?: string; children?: ReactNode }) {
   const [isDownloading, setIsDownloading] = useState(false);
-  const { linksInNewTab } = useContext(MarkdownContext);
+  const { linksInNewTab, publicFileUrl } = useContext(MarkdownContext);
   const fileId = typeof href === "string" ? FILE_DOWNLOAD_HREF_PATTERN.exec(href)?.[1] : undefined;
 
   // In-page anchors (footnote references and their back-links) - same tab,
@@ -218,6 +225,18 @@ function FileAwareLink({ href, id, children }: { href?: string; id?: string; chi
   // external new-tab link. The editor preview still opens a new tab so
   // clicking one doesn't navigate away from unsaved work.
   const mention = parseMentionHref(href);
+  // On a public share page the viewer has no account - show the mention as
+  // plain text rather than a link into the app they can't open.
+  if (mention && publicFileUrl) {
+    return <span className="font-medium text-on-surface">@{children}</span>;
+  }
+  if (fileId && publicFileUrl) {
+    return (
+      <a href={publicFileUrl(fileId)} rel="noopener noreferrer" className="text-primary underline hover:no-underline">
+        {children}
+      </a>
+    );
+  }
   if (mention && href) {
     return (
       <Link
@@ -468,13 +487,16 @@ interface MarkdownProps {
   /** Open in-app item links (@-mentions) in a new tab - the editor preview,
    * where navigating away would lose unsaved work. */
   linksInNewTab?: boolean;
+  /** Public share page (no login): file references resolve to this URL
+   * instead of the auth-gated /api/v1/files/ route, and @-mentions render as text. */
+  publicFileUrl?: (fileId: string) => string;
 }
 
-export function Markdown({ content, className, onCropImage, linksInNewTab }: MarkdownProps) {
+export function Markdown({ content, className, onCropImage, linksInNewTab, publicFileUrl }: MarkdownProps) {
   return (
     // wrap-break-word (inherited by every block inside) so a long pasted URL or
     // unbroken word wraps instead of pushing past a phone-width screen.
-    <MarkdownContext.Provider value={{ onCropImage, linksInNewTab }}>
+    <MarkdownContext.Provider value={{ onCropImage, linksInNewTab, publicFileUrl }}>
       <div className={`wrap-break-word ${className ?? ""}`}>
         <ReactMarkdown remarkPlugins={REMARK_PLUGINS} rehypePlugins={REHYPE_PLUGINS} components={COMPONENTS}>
           {content}

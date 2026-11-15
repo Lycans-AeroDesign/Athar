@@ -305,6 +305,7 @@
       "roles": "Roles & Permissions",
       "categories": "Categories",
       "policies": "Policies",
+      "sharedLinks": "Shared Links",
       "audit": "Audit Log",
       "backups": "Backups"
     },
@@ -322,7 +323,9 @@
     },
     "features": {
       "title": "Features",
-      "description": "Instance-wide switches that apply to every member of the organization."
+      "description": "Instance-wide switches that apply to every member of the organization.",
+      "shareLinksLabel": "Public share links",
+      "shareLinksDescription": "Let members with permission create read-only links to articles and SOPs that open without an account. Turning this off stops every existing link."
     },
     "branding": {
       "logoTitle": "Organization Logo",
@@ -1561,6 +1564,53 @@
     "tab_test": "Tests",
     "tab_document": "Documents",
     "tab_course": "Courses"
+  },
+  "shareLinks": {
+    "dialogTitle": "Share",
+    "memberLinkTitle": "Link for members",
+    "memberLinkDescription": "Works for anyone in your organization who can already see this.",
+    "publicLinkTitle": "Public link",
+    "publicLinkDescription": "Anyone with the link can read this page without an account - they can't edit it or see anything else. You can stop a link at any time.",
+    "notPublished": "Only published articles can be shared publicly.",
+    "restrictedNotAllowed": "This item is restricted. Sharing it publicly needs permission to edit it.",
+    "labelField": "Who is it for? (optional)",
+    "labelPlaceholder": "e.g. Sponsor, new members",
+    "expiryField": "Expires",
+    "expiryNever": "Never expires",
+    "expiryDays": "{count, plural, one {In # day} other {In # days}}",
+    "create": "Create and copy link",
+    "copy": "Copy link",
+    "copied": "Copied!",
+    "unlabeled": "Public link",
+    "expiresOn": "Expires {date}",
+    "expiredOn": "Expired {date}",
+    "revokedOn": "Stopped {date}",
+    "views": "{count, plural, =0 {Not opened yet} one {Opened once} other {Opened # times}}",
+    "revoke": "Stop sharing",
+    "confirmRevoke": "Confirm stop",
+    "settingsTitle": "Shared links",
+    "settingsDescription": "Every public link in the organization: what was shared, who shared it, until when, and how often it was opened.",
+    "showInactive": "Show stopped and expired links",
+    "loading": "Loading...",
+    "emptyState": "No public links.",
+    "deletedItem": "Deleted item"
+  },
+  "sharedPage": {
+    "brand": "Athar",
+    "readOnly": "Read-only",
+    "loading": "Loading...",
+    "unavailableTitle": "This link isn't available",
+    "unavailableBody": "It may have expired or been stopped by the person who shared it. Ask them for a new link.",
+    "errorTitle": "Something went wrong",
+    "errorBody": "The page couldn't be loaded. Try again in a moment.",
+    "typeArticle": "Article",
+    "typeSop": "Standard Operating Procedure",
+    "byAuthor": "By {name}",
+    "updatedOn": "Updated {date}",
+    "safetyNotes": "Safety notes",
+    "attachments": "Attachments",
+    "expiresOn": "This shared link expires on {date}.",
+    "sharedBy": "Shared by {organization}."
   },
   "imageCrop": {
     "title": "Crop image",

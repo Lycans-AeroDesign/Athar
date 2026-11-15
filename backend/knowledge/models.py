@@ -908,3 +908,40 @@ class CollectionItem(models.Model):
 
     def __str__(self):
         return f"{self.collection_id} # {self.order}: {self.content}"
+
+
+class ShareLink(UUIDPrimaryKeyModel, OrganizationScopedModel, TimeStampedModel):
+    """A read-only public link to one article or SOP, for someone without an
+    Athar account - see knowledge/sharing.py for every rule.
+
+    The URL token isn't stored: it's this row's id plus an HMAC of it under
+    SECRET_KEY (sharing.token_for), so the database alone can't be used to
+    open links, while whoever made a link can still copy it again later.
+    Rotating SECRET_KEY invalidates every link."""
+
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, related_name="+")
+    object_id = models.UUIDField()
+    target = GenericForeignKey("content_type", "object_id")
+    # Who it's for ("New members", "Sponsor - Ahmed") - only shown to people
+    # who can manage the link.
+    label = models.CharField(max_length=100, blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    expires_at = models.DateTimeField(null=True, blank=True)  # None = never
+    revoked_at = models.DateTimeField(null=True, blank=True)
+    revoked_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    view_count = models.PositiveIntegerField(default=0)
+    last_viewed_at = models.DateTimeField(null=True, blank=True)
+    # HMAC of the last viewer's IP + user agent (never the raw IP) - lets
+    # sharing.record_view skip counting the same visitor again right away.
+    last_viewer_key = models.CharField(max_length=64, blank=True, default="")
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [models.Index(fields=["content_type", "object_id"], name="kn_sharelink_target")]
+
+    def __str__(self):
+        return f"share link {self.pk}"
