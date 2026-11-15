@@ -1,12 +1,12 @@
 # Builds and pushes the backend/frontend prod images to GHCR.
 #
-# Normal path: after the Release workflow cuts a version, run this manually
-# from the Actions tab and leave "tag" blank - it finds the newest vX.Y.Z
-# release tag and builds that tag's code (not the branch head, which may
-# already have unreleased commits on it). Pass a tag (e.g. v1.7.0) to rebuild
-# an older release instead. Also runs automatically when a semver tag is
-# pushed by something allowed to trigger workflows (see release.yml's
-# RELEASE_TOKEN note).
+# Normal path: the Release workflow starts this automatically for the version
+# it just cut (its last step dispatches it with that tag). It can also be run
+# by hand from the Actions tab: leave "tag" blank to build the newest vX.Y.Z
+# release tag's code (not the branch head, which may already have unreleased
+# commits on it), or pass a tag (e.g. v1.7.0) to rebuild an older release.
+# The push-tag trigger below only fires for a tag pushed some other way -
+# release tags sit on a [skip ci] commit, which GitHub skips.
 #
 # `latest` only moves when the newest release is being built, so rebuilding
 # an old version never rolls `latest` back.

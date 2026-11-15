@@ -19,6 +19,8 @@ permissions:
   contents: write
   issues: write
   pull-requests: write
+  # Lets the last step start docker-publish.yml when RELEASE_TOKEN isn't set.
+  actions: write
 
 jobs:
   release:
@@ -59,3 +61,20 @@ jobs:
           # semantic-release-bot (its default git identity).
           GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
         run: semantic-release
+
+      # The vX.Y.Z tag sits on the "chore(release): ... [skip ci]" commit, and
+      # GitHub skips push-triggered workflows for a [skip ci] head commit - so
+      # docker-publish.yml's `on: push: tags:` never fires for a release. Start
+      # it explicitly instead (workflow_dispatch is allowed even with
+      # GITHUB_TOKEN). Does nothing when no new version was released.
+      - name: Publish Docker images for the new release
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          tag="$(git tag --points-at HEAD --list 'v*.*.*' | head -n 1)"
+          if [ -z "$tag" ]; then
+            echo "No new release - nothing to publish."
+            exit 0
+          fi
+          echo "Starting Publish Docker Images for $tag"
+          gh workflow run docker-publish.yml --ref main -f tag="$tag"
