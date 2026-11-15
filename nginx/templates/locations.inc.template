@@ -43,13 +43,25 @@ add_header X-Frame-Options DENY always;
 add_header Referrer-Policy "strict-origin-when-cross-origin" always;
 
 # ------------------------------------------------
-# CSP (Content Security Policy) - off by default
-# NOTE: left commented because the example policy below hasn't been
-# verified against a real production build (script-src 'unsafe-eval' in
-# particular is a dev-mode/Turbopack-HMR need, not something to ship
-# blindly) - test thoroughly before enabling, then tighten further.
+# CSP (Content Security Policy) - REPORT-ONLY
+# Browsers never block anything under Report-Only; they only log each
+# violation to the devtools console ("[Report Only] Refused to ..."). This
+# is the observation phase: browse the production site with devtools open,
+# fix or allow whatever shows up, then rename the header to
+# Content-Security-Policy to enforce it.
+#
+# What each source is for:
+# - script/style 'unsafe-inline': Next.js App Router emits inline bootstrap
+#   scripts and styles without nonces.
+# - img https:: Markdown content may embed external images.
+# - blob: (img/frame/media/worker): AuthenticatedImage/PdfViewer load
+#   protected files as blob: object URLs (see CLAUDE.md).
+# - frame-src hosts: the lesson video/document embeds allowed in
+#   frontend/lib/training/video.ts (YouTube, Google Drive, SharePoint/OneDrive).
+# Expect noise in dev (Turbopack HMR uses eval and websockets); judge the
+# policy against a production build only.
 # ------------------------------------------------
-# add_header Content-Security-Policy "default-src 'self'; img-src 'self' data: blob:; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src 'self' http:;" always;
+add_header Content-Security-Policy-Report-Only "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self'; media-src 'self' blob:; worker-src 'self' blob:; frame-src 'self' blob: https://www.youtube.com https://www.youtube-nocookie.com https://drive.google.com https://*.sharepoint.com https://onedrive.live.com https://*.officeapps.live.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'" always;
 
 # ------------------------------------------------
 # STATIC FILES (DJANGO)
