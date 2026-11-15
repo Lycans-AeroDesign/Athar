@@ -12,7 +12,7 @@ import { errorMessage } from "@/lib/errors";
 import { CALLOUT_TYPES, type CalloutType } from "@/lib/markdownCallouts";
 import { updateMe } from "@/lib/api/accounts";
 import { apiFetch } from "@/lib/api/client";
-import { createRelation, searchKnowledge } from "@/lib/api/knowledge";
+import { createRelation, quickSearch } from "@/lib/api/knowledge";
 import { uploadFile } from "@/lib/api/files";
 import type { RelatableType, SearchResult } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth/AuthProvider";
@@ -339,7 +339,7 @@ export function MarkdownEditor({ value: storedValue, onChange: onStoredChange, p
   }, [user, updateUser]);
 
   // "@"-mention picker: typing "@query" opens a dropdown searching every relatable type
-  // (searchKnowledge covers them all); picking one replaces "@query" with a markdown link and, when
+  // (quickSearch covers them all); picking one replaces "@query" with a markdown link and, when
   // `relateFrom` names this content's item, also links the two as Related Knowledge (createRelation
   // is get_or_create-backed, so a repeat mention is a no-op). RelatedContent.tsx still links
   // *without* an inline mention.
@@ -398,7 +398,7 @@ export function MarkdownEditor({ value: storedValue, onChange: onStoredChange, p
     if (!query) return;
     const handle = setTimeout(() => {
       setMentionSearching(true);
-      searchKnowledge(query)
+      quickSearch(query)
         .then((data) => {
           setMentionSearch({ query, results: data.results });
           setMentionActiveIndex(0);

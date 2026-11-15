@@ -128,7 +128,10 @@ class CategoryListView(APIView):
         responses={200: CategorySerializer(many=True), **COMMON_ERRORS},
     )
     def get(self, request):
-        queryset = Category.objects.filter(organization=request.user.organization)
+        # article_count in the same query instead of one COUNT per category.
+        queryset = Category.objects.filter(organization=request.user.organization).annotate(
+            published_article_count=Count("articles", filter=Q(articles__status=Article.Status.PUBLISHED))
+        )
         return paginated_response(request, queryset, CategorySerializer)
 
     @extend_schema(
@@ -221,6 +224,23 @@ class TagDetailView(APIView):
 _TAGGABLE_TYPES = {"article", "question", "project", "component", "sop", "test", "document"}
 
 
+# Columns a list response never shows: the markdown bodies plus the generated
+# search_text/search_vector copies of them (knowledge.search). Deferring them
+# keeps each list row small - a long article was otherwise sent from Postgres
+# three times over per row. Guarded by tests.ListQueryCountTests: touching a
+# deferred field in a list serializer would cost a query per row.
+_SEARCH_COLUMNS = ("search_text", "search_vector")
+_LIST_DEFERRED_FIELDS = {
+    "article": ("content", *_SEARCH_COLUMNS),
+    "question": ("body", *_SEARCH_COLUMNS),
+    "component": ("summary", *_SEARCH_COLUMNS),
+    "failure": ("summary", "root_cause", "corrective_action", "preventive_action", *_SEARCH_COLUMNS),
+    "sop": ("content", *_SEARCH_COLUMNS),
+    "test": ("objective", "configuration", "procedure", "results", "conclusion", *_SEARCH_COLUMNS),
+    "document": ("description", *_SEARCH_COLUMNS),
+}
+
+
 class SearchView(APIView):
     """Postgres full-text search with a trigram-similarity fallback across every relatable
     content type, ranked by relevance (see knowledge/search.py).
@@ -245,7 +265,8 @@ class SearchView(APIView):
                     "{'tag': {id, name} | null, 'results': [{type, id, title, excerpt}, ...], 'has_more': bool, "
                     "'counts': {article, question, project, component, failure, sop, test, document: int}} - counts "
                     "reflect the query/tag across every type regardless of ?type=, so the UI can show "
-                    "per-type totals for a filter list."
+                    "per-type totals for a filter list. ?counts=false skips them ('counts' is null) - for "
+                    "dropdowns/pickers that only need results."
                 )
             ),
             400: BAD_REQUEST,
@@ -305,16 +326,21 @@ class SearchView(APIView):
         sop_matches = matches_for("sop", services.visible_sops_for(request.user))
         test_matches = matches_for("test", services.visible_tests_for(request.user))
         document_matches = matches_for("document", services.visible_documents_for(request.user))
-        counts = {
-            "article": article_matches.count(),
-            "question": question_matches.count(),
-            "project": project_matches.count(),
-            "component": component_matches.count(),
-            "failure": failure_matches.count(),
-            "sop": sop_matches.count(),
-            "test": test_matches.count(),
-            "document": document_matches.count(),
-        }
+        # ?counts=false skips the 8 per-type COUNT queries - the global search
+        # dropdown and the mention/relation pickers never show them, only the
+        # search and tag pages do.
+        counts = None
+        if request.query_params.get("counts", "true").lower() != "false":
+            counts = {
+                "article": article_matches.count(),
+                "question": question_matches.count(),
+                "project": project_matches.count(),
+                "component": component_matches.count(),
+                "failure": failure_matches.count(),
+                "sop": sop_matches.count(),
+                "test": test_matches.count(),
+                "document": document_matches.count(),
+            }
 
         # Each type is paginated independently (offset/limit per type) so "page 2 of articles"
         # and "page 2 of questions" need no shared cursor. has_more is True only for the
@@ -322,14 +348,17 @@ class SearchView(APIView):
         results = []
         has_more = False
 
-        def collect(type_name: str, matches, title_field: str, excerpt_source) -> None:
+        def collect(type_name: str, matches, title_field: str, excerpt_source, excerpt_fields) -> None:
             nonlocal has_more
             if not ((query or tag) and scope in (None, type_name)):
                 return
-            page_qs = matches.order_by(*order)
-            rows = page_qs[offset : offset + 20]
-            has_more = has_more or page_qs[offset + 20 : offset + 21].exists()
-            for row in rows:
+            # Only the columns the result needs - rows otherwise carried the full
+            # markdown body plus its generated search_text/search_vector copies.
+            # One extra row fetched instead of a separate .exists() for has_more.
+            page_qs = matches.order_by(*order).only("id", "updated_at", title_field, *excerpt_fields)
+            rows = list(page_qs[offset : offset + 21])
+            has_more = has_more or len(rows) > 20
+            for row in rows[:20]:
                 excerpt = excerpt_source(row) if callable(excerpt_source) else getattr(row, excerpt_source, "")
                 results.append(
                     {
@@ -340,14 +369,14 @@ class SearchView(APIView):
                     }
                 )
 
-        collect("article", article_matches, "title", "excerpt")
-        collect("question", question_matches, "title", "body")
-        collect("project", project_matches, "name", "description")
-        collect("component", component_matches, "name", "summary")
-        collect("failure", failure_matches, "title", "summary")
-        collect("sop", sop_matches, "title", "content")
-        collect("test", test_matches, "title", lambda t: t.results or t.objective)
-        collect("document", document_matches, "title", "description")
+        collect("article", article_matches, "title", "excerpt", ["excerpt"])
+        collect("question", question_matches, "title", "body", ["body"])
+        collect("project", project_matches, "name", "description", ["description"])
+        collect("component", component_matches, "name", "summary", ["summary"])
+        collect("failure", failure_matches, "title", "summary", ["summary"])
+        collect("sop", sop_matches, "title", "content", ["content"])
+        collect("test", test_matches, "title", lambda t: t.results or t.objective, ["results", "objective"])
+        collect("document", document_matches, "title", "description", ["description"])
 
         return Response(
             {"tag": TagSerializer(tag).data if tag else None, "results": results, "has_more": has_more, "counts": counts}
@@ -551,9 +580,12 @@ class CollectionListView(APIView):
         responses={200: CollectionListSerializer(many=True), **COMMON_ERRORS},
     )
     def get(self, request):
-        queryset = services.visible_collections_for(request.user).select_related(
-            "category", "created_by"
-        ).prefetch_related("tags")
+        queryset = (
+            services.visible_collections_for(request.user)
+            .select_related("category", "created_by")
+            .prefetch_related("tags")
+            .annotate(annotated_item_count=Count("items", distinct=True))
+        )
         mode = request.query_params.get("mode")
         if mode:
             queryset = queryset.filter(mode=mode.upper())
@@ -753,7 +785,7 @@ class ArticleListCreateView(APIView):
             queryset = queryset.filter(status=status_param)
         else:
             queryset = queryset.filter(status=status_param).filter(Q(author=request.user) | Q(pk__in=co_authored_ids))
-        return paginated_response(request, queryset, ArticleListSerializer)
+        return paginated_response(request, queryset.defer(*_LIST_DEFERRED_FIELDS["article"]), ArticleListSerializer)
 
     @extend_schema(
         tags=["Knowledge"],
@@ -910,13 +942,18 @@ class QuestionListCreateView(APIView):
         responses={200: QuestionListSerializer(many=True), **COMMON_ERRORS},
     )
     def get(self, request):
-        questions = services.visible_questions_for(request.user).select_related("author").prefetch_related(
-            "tags", "answers"
+        # answer_count is annotated rather than prefetching every answer body
+        # just to count them.
+        questions = (
+            services.visible_questions_for(request.user)
+            .select_related("author")
+            .prefetch_related("tags")
+            .annotate(annotated_answer_count=Count("answers", distinct=True))
         )
         status_param = request.query_params.get("status")
         if status_param:
             questions = questions.filter(status=status_param)
-        return paginated_response(request, questions, QuestionListSerializer)
+        return paginated_response(request, questions.defer(*_LIST_DEFERRED_FIELDS["question"]), QuestionListSerializer)
 
     @extend_schema(
         tags=["Knowledge"],
@@ -1514,7 +1551,7 @@ class ComponentListCreateView(APIView):
             *_COMPONENT_LIST_RELATED
         ).prefetch_related("tags")
         queryset = _filter_and_order_components(queryset, request)
-        return paginated_response(request, queryset, ComponentListSerializer)
+        return paginated_response(request, queryset.defer(*_LIST_DEFERRED_FIELDS["component"]), ComponentListSerializer)
 
     @extend_schema(
         tags=["Engineering"],
@@ -1939,7 +1976,7 @@ class FailureListCreateView(APIView):
         if query:
             queryset = search.search_filter(queryset, query, "failure")
         queryset = apply_ordering(queryset, request, FAILURE_ORDERING_FIELDS)
-        return paginated_response(request, queryset, FailureListSerializer)
+        return paginated_response(request, queryset.defer(*_LIST_DEFERRED_FIELDS["failure"]), FailureListSerializer)
 
     @extend_schema(
         tags=["Engineering"],
@@ -2073,7 +2110,7 @@ class SopListCreateView(APIView):
         query = request.query_params.get("q", "").strip()
         if query:
             queryset = search.search_filter(queryset, query, "sop")
-        return paginated_response(request, queryset, SopListSerializer)
+        return paginated_response(request, queryset.defer(*_LIST_DEFERRED_FIELDS["sop"]), SopListSerializer)
 
     @extend_schema(
         tags=["Engineering"],
@@ -2225,7 +2262,7 @@ class TestListCreateView(APIView):
         if query:
             queryset = search.search_filter(queryset, query, "test")
         queryset = apply_ordering(queryset, request, TEST_ORDERING_FIELDS)
-        return paginated_response(request, queryset, TestListSerializer)
+        return paginated_response(request, queryset.defer(*_LIST_DEFERRED_FIELDS["test"]), TestListSerializer)
 
     @extend_schema(
         tags=["Engineering"],
@@ -2381,7 +2418,7 @@ class DocumentListCreateView(APIView):
         if query:
             queryset = search.search_filter(queryset, query, "document")
         queryset = apply_ordering(queryset, request, DOCUMENT_ORDERING_FIELDS)
-        return paginated_response(request, queryset, DocumentListSerializer)
+        return paginated_response(request, queryset.defer(*_LIST_DEFERRED_FIELDS["document"]), DocumentListSerializer)
 
     @extend_schema(
         tags=["Engineering"],

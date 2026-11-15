@@ -3,6 +3,8 @@ import uuid
 from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 from django.core.validators import RegexValidator
 from django.db import models
+from django.db.models.signals import m2m_changed
+from django.dispatch import receiver
 from django.db.models.functions import Lower
 from django.utils import timezone
 from django.utils.crypto import get_random_string
@@ -117,17 +119,39 @@ class User(AbstractBaseUser):
             self.email = self.email.strip().lower()
         super().save(*args, **kwargs)
 
+    def _permission_list(self) -> list[str]:
+        """The user's permission codenames, loaded once per User instance. The
+        request's user is re-fetched on every request (JWT auth), so this lives
+        for one request - has_permission() used to run a query on every call,
+        ~20 times for a single search. Cleared when this instance's roles change
+        (see _clear_permission_cache) or on refresh_from_db()."""
+        cached = getattr(self, "_permission_cache", None)
+        if cached is None:
+            if self.is_superuser:
+                codenames = list(Permission.objects.values_list("codename", flat=True))
+            else:
+                codenames = list(
+                    Permission.objects.filter(roles__users=self).values_list("codename", flat=True).distinct()
+                )
+            cached = (codenames, frozenset(codenames))
+            self._permission_cache = cached
+        return cached[0]
+
     def has_permission(self, codename: str) -> bool:
         if self.is_superuser:
             return True
-        return Permission.objects.filter(roles__users=self, codename=codename).exists()
+        self._permission_list()
+        return codename in self._permission_cache[1]
 
     def permission_codenames(self) -> list[str]:
-        if self.is_superuser:
-            return list(Permission.objects.values_list("codename", flat=True))
-        return list(
-            Permission.objects.filter(roles__users=self).values_list("codename", flat=True).distinct()
-        )
+        return list(self._permission_list())
+
+    def invalidate_permission_cache(self) -> None:
+        self.__dict__.pop("_permission_cache", None)
+
+    def refresh_from_db(self, *args, **kwargs):
+        self.invalidate_permission_cache()
+        super().refresh_from_db(*args, **kwargs)
 
     # Django admin compatibility only - the app's own authorization never uses these.
     def has_perm(self, perm, obj=None):
@@ -209,3 +233,11 @@ class PasswordResetLink(UUIDPrimaryKeyModel, OrganizationScopedModel, TimeStampe
 
     def is_valid(self) -> bool:
         return self.used_at is None and self.revoked_at is None and self.expires_at > timezone.now()
+
+
+@receiver(m2m_changed, sender=User.roles.through)
+def _clear_permission_cache(sender, instance, action, **kwargs):
+    """A role added/removed through this user instance is visible to its next
+    has_permission() call within the same request."""
+    if action in ("post_add", "post_remove", "post_clear") and isinstance(instance, User):
+        instance.invalidate_permission_cache()

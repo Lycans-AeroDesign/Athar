@@ -194,6 +194,9 @@ export interface Category {
   article_count: number;
 }
 
+/** A category nested inside an article/SOP/document/collection - no article_count. */
+export type CategoryRef = Omit<Category, "article_count">;
+
 export interface Tag {
   id: string;
   name: string;
@@ -223,7 +226,7 @@ export interface ArticleSummary {
   excerpt: string;
   status: ArticleStatus;
   visibility: Visibility;
-  category: Category | null;
+  category: CategoryRef | null;
   tags: Tag[];
   author: KnowledgeAuthor | null;
   created_at: string;
@@ -498,7 +501,7 @@ export interface FailureDetail extends FailureSummary {
 export interface SopSummary {
   id: string;
   title: string;
-  category: Category | null;
+  category: CategoryRef | null;
   mandatory: boolean;
   visibility: Visibility;
   tags: Tag[];
@@ -547,7 +550,7 @@ export interface CollectionSummary {
   mode: "SERIES" | "FOLDER";
   content_scope: "SOP" | "ARTICLE" | "MIXED";
   visibility: Visibility;
-  category: Category | null;
+  category: CategoryRef | null;
   tags: Tag[];
   created_by: KnowledgeAuthor | null;
   item_count: number;
@@ -639,7 +642,7 @@ export interface DocumentSummary {
   publication_date: string | null;
   url: string;
   file: StoredFile | null;
-  category: Category | null;
+  category: CategoryRef | null;
   tags: Tag[];
   visibility: Visibility;
   created_by: KnowledgeAuthor | null;

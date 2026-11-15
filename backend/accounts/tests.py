@@ -27,6 +27,34 @@ from rbac.models import Permission, Role
 from .models import InvitationCode, PasswordResetLink, User
 
 
+class PermissionCacheTests(APITestCase):
+    """has_permission() used to query on every call (~20 times per search);
+    the codenames are now loaded once per User instance."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.organization = create_test_organization()
+
+    def test_repeated_checks_cost_one_query(self):
+        user = User.objects.create_user(email="permcache@example.com", organization=self.organization)
+        user.roles.add(Role.objects.get(organization=self.organization, name="Member"))
+        user = User.objects.get(pk=user.pk)
+        with self.assertNumQueries(1):
+            for _ in range(10):
+                user.has_permission("article.create")
+                user.has_permission("organization.manage")
+            user.permission_codenames()
+
+    def test_role_change_on_the_same_instance_is_seen_immediately(self):
+        user = User.objects.create_user(email="permcache2@example.com", organization=self.organization)
+        user.roles.add(Role.objects.get(organization=self.organization, name="Member"))
+        self.assertFalse(user.has_permission("organization.manage"))
+        user.roles.add(Role.objects.get(organization=self.organization, name="Organization Admin"))
+        self.assertTrue(user.has_permission("organization.manage"))
+        user.roles.clear()
+        self.assertFalse(user.has_permission("article.create"))
+
+
 class AuthFlowTests(APITestCase):
     @classmethod
     def setUpTestData(cls):

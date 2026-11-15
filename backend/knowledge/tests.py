@@ -2,7 +2,9 @@ from unittest import mock
 
 from django.contrib.contenttypes.models import ContentType
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.db import connection
 from django.db.models import Q
+from django.test.utils import CaptureQueriesContext
 
 from django.urls import reverse
 from rest_framework import status
@@ -820,6 +822,109 @@ class QuestionStatusAndPromotionTests(KnowledgeTestCase):
         # Already promoted - a second attempt is rejected rather than creating a duplicate article.
         response = self.client.post(reverse("knowledge-question-promote", args=[question["id"]]), **self._auth(asker_access))
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+class ListQueryCountTests(KnowledgeTestCase):
+    """Category article counts, question answer counts (and the category nested
+    in every article row) used to cost a query per row. The query count of a
+    list must not grow with its length."""
+
+    def _count(self, access, url):
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
+        with CaptureQueriesContext(connection) as ctx:
+            response = self.client.get(url)
+        self.client.credentials()
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        return len(ctx.captured_queries), response
+
+    def _add_rows(self, access, start, stop):
+        for i in range(start, stop):
+            category = self.client.post(
+                reverse("knowledge-category-list"), {"name": f"Cat {i}"}, format="json", **self._auth(access)
+            ).data
+            article = self.client.post(
+                reverse("knowledge-article-list-create"),
+                {"title": f"Article {i}", "content": "x", "category_id": category["id"]},
+                format="json",
+                **self._auth(access),
+            ).data
+            self.client.post(reverse("knowledge-article-publish", args=[article["id"]]), **self._auth(access))
+            question = self.client.post(
+                reverse("knowledge-question-list-create"), {"title": f"Question {i}?", "body": "x"},
+                format="json", **self._auth(access),
+            ).data
+            self.client.post(
+                reverse("knowledge-answer-list-create", args=[question["id"]]), {"body": "y"},
+                format="json", **self._auth(access),
+            )
+            for name, payload in (
+                ("knowledge-component-list-create", {"name": f"Servo {i}", "summary": "long text"}),
+                ("knowledge-failure-list-create", {"title": f"Failure {i}", "summary": "s", "root_cause": "r"}),
+                ("knowledge-sop-list-create", {"title": f"SOP {i}", "content": "steps"}),
+                ("knowledge-test-list-create", {"title": f"Test {i}", "objective": "o", "results": "r"}),
+                ("knowledge-document-list-create", {"title": f"Doc {i}", "description": "d"}),
+            ):
+                response = self.client.post(reverse(name), payload, format="json", **self._auth(access))
+                self.assertEqual(response.status_code, status.HTTP_201_CREATED, (name, response.data))
+
+    def test_list_query_counts_do_not_grow_with_rows(self):
+        _, admin_access = self._login_with_role("listcount@example.com", "Organization Admin")
+        urls = (
+            reverse("knowledge-category-list"),
+            reverse("knowledge-article-list-create"),
+            reverse("knowledge-question-list-create"),
+            # Also guards the deferred body/search columns (views._LIST_DEFERRED_FIELDS):
+            # a list serializer reading one would add a query per row here.
+            reverse("knowledge-component-list-create"),
+            reverse("knowledge-failure-list-create"),
+            reverse("knowledge-sop-list-create"),
+            reverse("knowledge-test-list-create"),
+            reverse("knowledge-document-list-create"),
+        )
+        self._add_rows(admin_access, 0, 2)
+        small = {url: self._count(admin_access, url)[0] for url in urls}
+        self._add_rows(admin_access, 2, 6)
+        for url in urls:
+            large, response = self._count(admin_access, url)
+            self.assertEqual(large, small[url], f"{url}: {small[url]} queries for 2 rows, {large} for 6")
+
+        categories = self._count(admin_access, urls[0])[1].data["results"]
+        self.assertTrue(all(category["article_count"] == 1 for category in categories))
+        questions = self._count(admin_access, urls[2])[1].data["results"]
+        self.assertTrue(all(question["answer_count"] == 1 for question in questions))
+
+
+class SearchQueryBudgetTests(KnowledgeTestCase):
+    """Search used to cost ~45 queries per keystroke (8 counts + 8 pages + 8
+    exists + ~20 permission lookups). Guards the slimmed-down version."""
+
+    def _search_query_count(self, access, params):
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
+        with CaptureQueriesContext(connection) as ctx:
+            response = self.client.get(reverse("knowledge-search") + params)
+        self.client.credentials()
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        return len(ctx.captured_queries), response
+
+    def test_dropdown_search_skips_counts_and_stays_cheap(self):
+        _, head_access = self._login_with_role("searchbudget@example.com", "Subteam Head")
+        for i in range(25):
+            self.client.post(
+                reverse("knowledge-project-list-create"), {"name": f"Wing spar {i}"}, format="json",
+                **self._auth(head_access),
+            )
+        full, response = self._search_query_count(head_access, "?q=wing")
+        self.assertIsNotNone(response.data["counts"])
+        self.assertTrue(response.data["has_more"])
+        self.assertEqual(len(response.data["results"]), 20)
+
+        quick, response = self._search_query_count(head_access, "?q=wing&counts=false")
+        self.assertIsNone(response.data["counts"])
+        self.assertTrue(response.data["has_more"])
+        self.assertEqual(len(response.data["results"]), 20)
+        # Skipping counts removes the 8 COUNT queries.
+        self.assertEqual(full - quick, 8)
+        self.assertLessEqual(quick, 15, f"dropdown search ran {quick} queries")
 
 
 class SearchTests(KnowledgeTestCase):

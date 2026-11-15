@@ -7,7 +7,7 @@ import { Icon } from "@/components/ui/Icon";
 import { Modal } from "@/components/ui/Modal";
 import { INPUT_CLASS } from "@/components/ui/inputStyles";
 import { Link } from "@/i18n/navigation";
-import { searchKnowledge } from "@/lib/api/knowledge";
+import { quickSearch } from "@/lib/api/knowledge";
 import { createKnowledgeReference, deleteKnowledgeReference, listKnowledgeReferences } from "@/lib/api/training";
 import type { LessonKnowledgeReferenceEntry, SearchResult } from "@/lib/api/types";
 import { errorMessage } from "@/lib/errors";
@@ -20,7 +20,7 @@ interface RelatedKnowledgePanelProps {
 }
 
 // Modeled directly on components/knowledge/RelatedContent.tsx's
-// searchKnowledge()-backed picker, but writes to LessonKnowledgeReference
+// quickSearch()-backed picker, but writes to LessonKnowledgeReference
 // endpoints instead of KnowledgeRelation ones, and has no relation-verb
 // picker step - a lesson->Knowledge reference is one-directional and needs
 // no verb (see backend/training/models.py's LessonKnowledgeReference docstring).
@@ -45,7 +45,7 @@ export function RelatedKnowledgePanel({ lessonId, canEdit }: RelatedKnowledgePan
     if (!trimmed) return;
     const handle = setTimeout(() => {
       setIsSearching(true);
-      searchKnowledge(trimmed)
+      quickSearch(trimmed)
         .then((data) => setResults(data.results))
         .finally(() => setIsSearching(false));
     }, 300);

@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { Modal } from "@/components/ui/Modal";
 import { INPUT_CLASS } from "@/components/ui/inputStyles";
-import { searchKnowledge } from "@/lib/api/knowledge";
+import { quickSearch } from "@/lib/api/knowledge";
 import type { RelatableType, SearchResult } from "@/lib/api/types";
 import { RELATABLE_ICON as ICON_BY_TYPE, relationshipChoicesFor } from "@/lib/knowledgeTypes";
 
@@ -91,7 +91,7 @@ export function RelationPickerModal({
     if (!trimmed) return;
     const handle = setTimeout(() => {
       setIsSearching(true);
-      searchKnowledge(trimmed)
+      quickSearch(trimmed)
         .then((data) => setResults(data.results))
         .finally(() => setIsSearching(false));
     }, 300);

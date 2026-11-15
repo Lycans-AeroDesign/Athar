@@ -13,7 +13,7 @@ vi.mock("@/lib/auth/AuthProvider", () => ({
   useAuth: () => ({ user: { preferences: { has_seen_markdown_help: true } }, updateUser: () => {} }),
 }));
 vi.mock("@/lib/api/knowledge", () => ({
-  searchKnowledge: vi.fn(() => Promise.resolve({ results: [] })),
+  quickSearch: vi.fn(() => Promise.resolve({ results: [], hasMore: false })),
   createRelation: vi.fn(() => Promise.resolve()),
 }));
 vi.mock("./ImageCropModal", () => ({ ImageCropModal: () => null }));

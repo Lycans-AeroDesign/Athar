@@ -95,6 +95,17 @@ export function searchKnowledge(
   return runSearch(params);
 }
 
+/** Results-only search for dropdowns and pickers (GlobalSearch, @-mentions, relation
+ * pickers) - skips the per-type counts (?counts=false), which saves the backend eight COUNT
+ * queries per keystroke. Use searchKnowledge where the counts are shown. */
+export function quickSearch(query: string, type?: RelatableType): Promise<Omit<SearchPage, "counts">> {
+  const params = new URLSearchParams({ q: query, counts: "false" });
+  if (type) params.set("type", type);
+  return apiJson<{ results: SearchResult[]; has_more: boolean }>(
+    `/api/v1/knowledge/search/?${params.toString()}`,
+  ).then((data) => ({ results: data.results, hasMore: data.has_more }));
+}
+
 /** Everything tagged with `tagId` across every taggable type; same endpoint, pagination and
  * visibility rules as searchKnowledge, keyed by tag (backend SearchView doubles as this
  * endpoint). `sort` defaults to "newest" since a tag-only request has no relevance score. */

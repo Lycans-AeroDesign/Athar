@@ -268,14 +268,28 @@ class ProjectLinkMixin(CreationExtrasMixin):
     )
 
 
-class CategorySerializer(serializers.ModelSerializer):
-    article_count = serializers.SerializerMethodField()
+class CategoryRefSerializer(serializers.ModelSerializer):
+    """A category nested inside another item (article, SOP, document,
+    collection). No article_count: that's only shown on the category list,
+    and computing it here cost one COUNT query per row of every such list."""
 
     class Meta:
         model = Category
-        fields = ["id", "name", "slug", "description", "article_count"]
+        fields = ["id", "name", "slug", "description"]
+
+
+class CategorySerializer(CategoryRefSerializer):
+    article_count = serializers.SerializerMethodField()
+
+    class Meta(CategoryRefSerializer.Meta):
+        fields = [*CategoryRefSerializer.Meta.fields, "article_count"]
 
     def get_article_count(self, obj: Category) -> int:
+        # CategoryListView annotates this in the same query; single-object
+        # responses (create/update) fall back to counting.
+        annotated = getattr(obj, "published_article_count", None)
+        if annotated is not None:
+            return annotated
         return obj.articles.filter(status=Article.Status.PUBLISHED).count()
 
 
@@ -298,7 +312,7 @@ class TagWriteSerializer(serializers.ModelSerializer):
 
 
 class CollectionListSerializer(serializers.ModelSerializer):
-    category = CategorySerializer(read_only=True)
+    category = CategoryRefSerializer(read_only=True)
     tags = TagSerializer(many=True, read_only=True)
     created_by = AuthorSerializer(read_only=True)
     # Count of *visible* items is viewer-dependent, so lists count all of them
@@ -324,7 +338,8 @@ class CollectionListSerializer(serializers.ModelSerializer):
         ]
 
     def get_item_count(self, obj: Collection) -> int:
-        return obj.items.count()
+        annotated = getattr(obj, "annotated_item_count", None)  # CollectionListView annotates it
+        return annotated if annotated is not None else obj.items.count()
 
 
 class CollectionDetailSerializer(CollectionListSerializer):
@@ -409,7 +424,7 @@ class ArticleRevisionSerializer(serializers.ModelSerializer):
 
 
 class ArticleListSerializer(serializers.ModelSerializer):
-    category = CategorySerializer(read_only=True)
+    category = CategoryRefSerializer(read_only=True)
     tags = TagSerializer(many=True, read_only=True)
     author = AuthorSerializer(read_only=True)
 
@@ -521,7 +536,8 @@ class QuestionListSerializer(serializers.ModelSerializer):
         ]
 
     def get_answer_count(self, obj: Question) -> int:
-        return obj.answers.count()
+        annotated = getattr(obj, "annotated_answer_count", None)  # QuestionListView annotates it
+        return annotated if annotated is not None else obj.answers.count()
 
     def get_has_accepted_answer(self, obj: Question) -> bool:
         return obj.accepted_answer_id is not None
@@ -1049,7 +1065,7 @@ class FailureWriteSerializer(CreationExtrasMixin, serializers.ModelSerializer):
 
 
 class SopListSerializer(serializers.ModelSerializer):
-    category = CategorySerializer(read_only=True)
+    category = CategoryRefSerializer(read_only=True)
     tags = TagSerializer(many=True, read_only=True)
     created_by = AuthorSerializer(read_only=True)
 
@@ -1225,7 +1241,7 @@ class TestAttachmentSerializer(serializers.ModelSerializer):
 
 
 class DocumentListSerializer(serializers.ModelSerializer):
-    category = CategorySerializer(read_only=True)
+    category = CategoryRefSerializer(read_only=True)
     tags = TagSerializer(many=True, read_only=True)
     created_by = AuthorSerializer(read_only=True)
     file = StoredFileSerializer(read_only=True)

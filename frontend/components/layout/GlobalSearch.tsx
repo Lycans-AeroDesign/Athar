@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { Menu } from "@/components/ui/Menu";
 import { usePathname, useRouter } from "@/i18n/navigation";
-import { searchKnowledge } from "@/lib/api/knowledge";
+import { quickSearch } from "@/lib/api/knowledge";
 import type { RelatableType, SearchResult } from "@/lib/api/types";
 import { useEngineeringListFiltersEnabled } from "@/lib/auth/permissions";
 import { RELATABLE_ICON, RELATABLE_ROUTE_PREFIX } from "@/lib/knowledgeTypes";
@@ -115,7 +115,7 @@ export function GlobalSearch() {
     if (!trimmed) return;
     const handle = setTimeout(() => {
       setIsSearching(true);
-      searchKnowledge(trimmed, scope === "all" ? undefined : scope)
+      quickSearch(trimmed, scope === "all" ? undefined : scope)
         .then((data) => {
           setResults(data.results);
           setActiveIndex(-1);
