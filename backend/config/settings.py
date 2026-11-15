@@ -195,6 +195,10 @@ STORAGES = {
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
+# The test suite's file I/O goes to a throwaway folder, never the real media
+# directory or bucket - see config/test_runner.py.
+TEST_RUNNER = "config.test_runner.IsolatedMediaTestRunner"
+
 # --- S3-compatible object storage (opt-in) ------------------------------
 # Local disk is the default. Set AWS_STORAGE_BUCKET_NAME to switch StoredFile to any
 # S3-compatible provider. Every file consumer goes through the storage API (.open()/.delete(),
@@ -217,6 +221,13 @@ if AWS_STORAGE_BUCKET_NAME:
             "addressing_style": env("AWS_S3_ADDRESSING_STYLE", default="virtual"),
         },
     }
+
+# Set only by config/test_runner.py, for `--parallel` worker processes (which
+# re-import this module): local disk in a throwaway folder, overriding S3 too.
+_TEST_MEDIA_ROOT = env("ATHAR_TEST_MEDIA_ROOT", default="")
+if _TEST_MEDIA_ROOT:
+    MEDIA_ROOT = Path(_TEST_MEDIA_ROOT)
+    STORAGES["default"] = {"BACKEND": "django.core.files.storage.FileSystemStorage"}
 
 # Branding uploads are the main use of the generic upload endpoint, hence the small default.
 MAX_UPLOAD_SIZE_MB = env.int("MAX_UPLOAD_SIZE_MB", default=2)
