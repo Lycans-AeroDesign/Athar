@@ -2020,10 +2020,10 @@
   },
   "whatsNew": {
     "title": "ما الجديد",
-    "description": "إليك ما تغيّر منذ زيارتك الأخيرة.",
+    "released": "صدرت في {date}",
+    "releasedRange": "صدرت بين {from} و{to}",
     "empty": "لا جديد حاليًا.",
     "gotIt": "حسنًا",
-    "open": "ألقِ نظرة",
     "kind": {
       "new": "جديد",
       "improved": "تحسينات",

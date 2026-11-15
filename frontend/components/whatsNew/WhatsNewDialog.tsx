@@ -20,10 +20,12 @@ import {
   type WhatsNewKind,
 } from "@/lib/whatsNew";
 
-const KINDS: { kind: WhatsNewKind; icon: string; badge: string }[] = [
-  { kind: "new", icon: "auto_awesome", badge: "bg-primary-container text-on-primary-container" },
-  { kind: "improved", icon: "bolt", badge: "bg-tertiary-container text-on-tertiary-container" },
-  { kind: "fixed", icon: "check_circle", badge: "bg-secondary-container text-on-secondary-container" },
+// The callout palette (GitHub's) stays legible in both themes; the color only
+// tints the icon tile, while the heading text stays on-surface for contrast.
+const KINDS: { kind: WhatsNewKind; icon: string; tile: string }[] = [
+  { kind: "new", icon: "auto_awesome", tile: "bg-callout-important/15 text-callout-important" },
+  { kind: "improved", icon: "bolt", tile: "bg-callout-note/15 text-callout-note" },
+  { kind: "fixed", icon: "check_circle", tile: "bg-callout-tip/15 text-callout-tip" },
 ];
 
 /** Mounted once in the protected layout. Opens by itself when there are entries this
@@ -72,12 +74,22 @@ export function WhatsNewDialog() {
 
   const isOpen = entries !== null;
 
+  // One release date for the whole list (a range when it covers several releases),
+  // rather than a date on every entry. Noon UTC keeps the calendar day in every time zone.
+  let released: string | undefined;
+  if (entries && entries.length > 0) {
+    const dates = entries.map((entry) => entry.date).sort();
+    const from = formatDate(`${dates[0]}T12:00:00Z`);
+    const to = formatDate(`${dates[dates.length - 1]}T12:00:00Z`);
+    released = from === to ? t("released", { date: to }) : t("releasedRange", { from, to });
+  }
+
   return (
     <Modal
       open={isOpen}
       onOpenChange={(open) => !open && close()}
       title={t("title")}
-      description={entries && entries.length > 0 ? t("description") : undefined}
+      description={released}
       wide
       footer={<Button onClick={close}>{t("gotIt")}</Button>}
     >
@@ -85,41 +97,42 @@ export function WhatsNewDialog() {
         <p className="font-body-md text-body-md text-on-surface-variant">{t("empty")}</p>
       ) : (
         <div className="space-y-6">
-          {KINDS.map(({ kind, icon, badge }) => {
+          {KINDS.map(({ kind, icon, tile }) => {
             const group = (entries ?? []).filter((entry) => entry.kind === kind);
             if (group.length === 0) return null;
             return (
               <section key={kind} aria-labelledby={`whats-new-${kind}`}>
-                <h3
-                  id={`whats-new-${kind}`}
-                  className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 mb-3 font-label-caps text-label-caps ${badge}`}
-                >
-                  <Icon name={icon} size={14} />
-                  {t(`kind.${kind}`)}
-                </h3>
-                <ul className="space-y-4">
+                <div className="flex items-center gap-3 mb-3">
+                  <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${tile}`}>
+                    <Icon name={icon} size={18} />
+                  </span>
+                  <h3 id={`whats-new-${kind}`} className="font-body-lg text-body-lg font-semibold text-on-surface">
+                    {t(`kind.${kind}`)}
+                  </h3>
+                  <span className="rounded-full bg-surface-container-high px-2 py-0.5 font-label-caps text-label-caps text-on-surface-variant">
+                    {group.length}
+                  </span>
+                </div>
+                <ul className="divide-y divide-outline-variant overflow-hidden rounded-xl border border-outline-variant">
                   {group.map((entry) => (
-                    <li key={entry.id} className="min-w-0">
-                      <div className="flex flex-wrap items-baseline justify-between gap-x-3">
-                        <h4 className="font-body-md text-body-md font-semibold text-on-surface">
-                          {t(`entries.${entry.id}.title`)}
-                        </h4>
-                        <span className="font-mono-sm text-mono-sm text-on-surface-variant">
-                          {formatDate(`${entry.date}T12:00:00Z`)}
-                        </span>
-                      </div>
-                      <p className="font-body-md text-body-md text-on-surface-variant mt-0.5">
-                        {t(`entries.${entry.id}.body`)}
-                      </p>
-                      {entry.href && (
+                    <li key={entry.id}>
+                      {entry.href ? (
                         <Link
                           href={entry.href}
                           onClick={close}
-                          className="inline-flex items-center gap-1 mt-1 font-body-md text-body-md text-primary hover:underline"
+                          className="group flex items-center gap-3 px-4 py-3 outline-none transition-colors hover:bg-surface-container-low focus-visible:bg-surface-container-low focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
                         >
-                          {t("open")}
-                          <Icon name="arrow_forward" size={14} />
+                          <EntryText id={entry.id} />
+                          <Icon
+                            name="chevron_right"
+                            size={20}
+                            className="shrink-0 text-on-surface-variant transition-transform group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5"
+                          />
                         </Link>
+                      ) : (
+                        <div className="px-4 py-3">
+                          <EntryText id={entry.id} />
+                        </div>
                       )}
                     </li>
                   ))}
@@ -130,5 +143,15 @@ export function WhatsNewDialog() {
         </div>
       )}
     </Modal>
+  );
+}
+
+function EntryText({ id }: { id: string }) {
+  const t = useTranslations("whatsNew.entries");
+  return (
+    <div className="min-w-0 flex-1">
+      <p className="font-body-md text-body-md font-semibold text-on-surface">{t(`${id}.title`)}</p>
+      <p className="font-body-md text-body-md text-on-surface-variant mt-0.5">{t(`${id}.body`)}</p>
+    </div>
   );
 }
