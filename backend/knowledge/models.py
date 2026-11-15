@@ -6,7 +6,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.db.models.functions import Lower
 
-from core.models import OrganizationScopedModel, TimeStampedModel, UUIDPrimaryKeyModel
+from core.models import OrganizationScopedModel, SoftDeleteModel, TimeStampedModel, UUIDPrimaryKeyModel
 from files.models import StoredFile
 
 from .search import SEARCH_FIELDS, search_columns, search_indexes
@@ -60,7 +60,7 @@ class Tag(models.Model):
         return self.name
 
 
-class Article(models.Model):
+class Article(SoftDeleteModel):
     class Status(models.TextChoices):
         DRAFT = "DRAFT", "Draft"
         IN_REVIEW = "IN_REVIEW", "In Review"
@@ -132,7 +132,7 @@ class ArticleRevision(models.Model):
         return f"{self.article_id} @ {self.created_at:%Y-%m-%d %H:%M}"
 
 
-class Question(models.Model):
+class Question(SoftDeleteModel):
     class Status(models.TextChoices):
         OPEN = "OPEN", "Open"
         ANSWERED = "ANSWERED", "Answered"
@@ -292,7 +292,7 @@ class QuestionAttachment(models.Model):
 # the only place that needs to know these models plug into the relation graph.
 
 
-class Project(models.Model):
+class Project(SoftDeleteModel):
     class Status(models.TextChoices):
         ACTIVE = "ACTIVE", "Active"
         ON_HOLD = "ON_HOLD", "On Hold"
@@ -361,7 +361,7 @@ class StorageLocation(UUIDPrimaryKeyModel, OrganizationScopedModel, TimeStampedM
         return self.name
 
 
-class Component(models.Model):
+class Component(SoftDeleteModel):
     class Status(models.TextChoices):
         CERTIFIED = "CERTIFIED", "Certified"
         TESTING = "TESTING", "Testing"
@@ -455,7 +455,7 @@ class Component(models.Model):
         return self.name
 
 
-class Failure(models.Model):
+class Failure(SoftDeleteModel):
     class Severity(models.TextChoices):
         LOW = "LOW", "Low"
         MEDIUM = "MEDIUM", "Medium"
@@ -502,7 +502,7 @@ class Failure(models.Model):
         return self.title
 
 
-class Sop(models.Model):
+class Sop(SoftDeleteModel):
     id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
     organization = models.ForeignKey("organization.Organization", on_delete=models.CASCADE, related_name="+")
     title = models.CharField(max_length=200)
@@ -537,7 +537,7 @@ class Sop(models.Model):
         return self.title
 
 
-class Test(models.Model):
+class Test(SoftDeleteModel):
     class TestType(models.TextChoices):
         FLIGHT = "FLIGHT", "Flight Test"
         THRUST = "THRUST", "Thrust Test"
@@ -604,7 +604,7 @@ class Test(models.Model):
         return self.title
 
 
-class Document(models.Model):
+class Document(SoftDeleteModel):
     """A relatable type with `visibility`: a single primary `file` or `url`, not a list of
     attachments. RESTRICTED rules mirror Article/Question but without a draft/review
     workflow: visible unless RESTRICTED, or you're created_by, or you hold

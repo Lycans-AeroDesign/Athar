@@ -103,7 +103,7 @@ def _visible_lesson_or_404(request, pk):
     lesson = get_object_or_404(
         Lesson.objects.select_related("module__course__category", "module__course__author"),
         pk=pk,
-        module__course__organization=request.user.organization,
+        module__course__organization=request.user.organization, module__course__deleted_at__isnull=True,
     )
     _ensure_course_visible(request, lesson.module.course)
     return lesson
@@ -546,7 +546,7 @@ class CourseModuleDetailView(APIView):
         responses={200: CourseModuleSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def patch(self, request, pk):
-        module = get_object_or_404(CourseModule, pk=pk, course__organization=request.user.organization)
+        module = get_object_or_404(CourseModule, pk=pk, course__organization=request.user.organization, course__deleted_at__isnull=True)
         serializer = CourseModuleWriteSerializer(module, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         module = services.update_module(module=module, actor=request.user, request=request, **serializer.validated_data)
@@ -557,7 +557,7 @@ class CourseModuleDetailView(APIView):
         responses={204: OpenApiResponse(description="Deleted."), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def delete(self, request, pk):
-        module = get_object_or_404(CourseModule, pk=pk, course__organization=request.user.organization)
+        module = get_object_or_404(CourseModule, pk=pk, course__organization=request.user.organization, course__deleted_at__isnull=True)
         services.delete_module(module=module, actor=request.user, request=request)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -574,7 +574,7 @@ class ModuleLessonListCreateView(APIView):
         responses={201: LessonDetailSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def post(self, request, pk):
-        module = get_object_or_404(CourseModule, pk=pk, course__organization=request.user.organization)
+        module = get_object_or_404(CourseModule, pk=pk, course__organization=request.user.organization, course__deleted_at__isnull=True)
         serializer = LessonWriteSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         lesson = services.create_lesson(module=module, actor=request.user, request=request, **serializer.validated_data)
@@ -590,7 +590,7 @@ class ModuleLessonReorderView(APIView):
         responses={200: LessonSummarySerializer(many=True), 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def post(self, request, pk):
-        module = get_object_or_404(CourseModule, pk=pk, course__organization=request.user.organization)
+        module = get_object_or_404(CourseModule, pk=pk, course__organization=request.user.organization, course__deleted_at__isnull=True)
         serializer = ReorderSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         lessons = services.reorder_lessons(
@@ -621,7 +621,7 @@ class LessonDetailView(APIView):
         responses={200: LessonDetailSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def patch(self, request, pk):
-        lesson = get_object_or_404(Lesson, pk=pk, module__course__organization=request.user.organization)
+        lesson = get_object_or_404(Lesson, pk=pk, module__course__organization=request.user.organization, module__course__deleted_at__isnull=True)
         serializer = LessonWriteSerializer(lesson, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         lesson = services.update_lesson(lesson=lesson, actor=request.user, request=request, **serializer.validated_data)
@@ -632,7 +632,7 @@ class LessonDetailView(APIView):
         responses={204: OpenApiResponse(description="Deleted."), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def delete(self, request, pk):
-        lesson = get_object_or_404(Lesson, pk=pk, module__course__organization=request.user.organization)
+        lesson = get_object_or_404(Lesson, pk=pk, module__course__organization=request.user.organization, module__course__deleted_at__isnull=True)
         services.delete_lesson(lesson=lesson, actor=request.user, request=request)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -673,7 +673,7 @@ class LessonObjectiveListCreateView(APIView):
         responses={201: LearningObjectiveSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def post(self, request, pk):
-        lesson = get_object_or_404(Lesson, pk=pk, module__course__organization=request.user.organization)
+        lesson = get_object_or_404(Lesson, pk=pk, module__course__organization=request.user.organization, module__course__deleted_at__isnull=True)
         serializer = LearningObjectiveWriteSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         objective = services.create_objective(
@@ -691,7 +691,7 @@ class LessonObjectiveReorderView(APIView):
         responses={200: LearningObjectiveSerializer(many=True), 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def post(self, request, pk):
-        lesson = get_object_or_404(Lesson, pk=pk, module__course__organization=request.user.organization)
+        lesson = get_object_or_404(Lesson, pk=pk, module__course__organization=request.user.organization, module__course__deleted_at__isnull=True)
         serializer = ReorderSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         objectives = services.reorder_objectives(
@@ -710,7 +710,7 @@ class ObjectiveDetailView(APIView):
     )
     def patch(self, request, pk):
         objective = get_object_or_404(
-            LearningObjective, pk=pk, lesson__module__course__organization=request.user.organization
+            LearningObjective, pk=pk, lesson__module__course__organization=request.user.organization, lesson__module__course__deleted_at__isnull=True
         )
         serializer = LearningObjectiveWriteSerializer(objective, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
@@ -725,7 +725,7 @@ class ObjectiveDetailView(APIView):
     )
     def delete(self, request, pk):
         objective = get_object_or_404(
-            LearningObjective, pk=pk, lesson__module__course__organization=request.user.organization
+            LearningObjective, pk=pk, lesson__module__course__organization=request.user.organization, lesson__module__course__deleted_at__isnull=True
         )
         services.delete_objective(objective=objective, actor=request.user, request=request)
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -755,7 +755,7 @@ class LessonResourceListCreateView(APIView):
         responses={201: CourseResourceSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def post(self, request, pk):
-        lesson = get_object_or_404(Lesson, pk=pk, module__course__organization=request.user.organization)
+        lesson = get_object_or_404(Lesson, pk=pk, module__course__organization=request.user.organization, module__course__deleted_at__isnull=True)
         serializer = CourseResourceWriteSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         resource = services.create_resource(
@@ -773,7 +773,7 @@ class LessonResourceReorderView(APIView):
         responses={200: CourseResourceSerializer(many=True), 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def post(self, request, pk):
-        lesson = get_object_or_404(Lesson, pk=pk, module__course__organization=request.user.organization)
+        lesson = get_object_or_404(Lesson, pk=pk, module__course__organization=request.user.organization, module__course__deleted_at__isnull=True)
         serializer = ReorderSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         resources = services.reorder_resources(
@@ -791,7 +791,7 @@ class ResourceDetailView(APIView):
         responses={200: CourseResourceSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def patch(self, request, pk):
-        resource = get_object_or_404(CourseResource, pk=pk, lesson__module__course__organization=request.user.organization)
+        resource = get_object_or_404(CourseResource, pk=pk, lesson__module__course__organization=request.user.organization, lesson__module__course__deleted_at__isnull=True)
         serializer = CourseResourceWriteSerializer(resource, data=request.data, partial=True, context={"request": request})
         serializer.is_valid(raise_exception=True)
         resource = services.update_resource(
@@ -804,7 +804,7 @@ class ResourceDetailView(APIView):
         responses={204: OpenApiResponse(description="Deleted."), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def delete(self, request, pk):
-        resource = get_object_or_404(CourseResource, pk=pk, lesson__module__course__organization=request.user.organization)
+        resource = get_object_or_404(CourseResource, pk=pk, lesson__module__course__organization=request.user.organization, lesson__module__course__deleted_at__isnull=True)
         services.delete_resource(resource=resource, actor=request.user, request=request)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -834,7 +834,7 @@ class LessonKnowledgeReferenceListCreateView(APIView):
         responses={201: LessonKnowledgeReferenceSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def post(self, request, pk):
-        lesson = get_object_or_404(Lesson, pk=pk, module__course__organization=request.user.organization)
+        lesson = get_object_or_404(Lesson, pk=pk, module__course__organization=request.user.organization, module__course__deleted_at__isnull=True)
         serializer = CreateKnowledgeReferenceSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         reference = services.create_knowledge_reference(
@@ -852,7 +852,7 @@ class KnowledgeReferenceDetailView(APIView):
     )
     def delete(self, request, pk):
         reference = get_object_or_404(
-            LessonKnowledgeReference, pk=pk, lesson__module__course__organization=request.user.organization
+            LessonKnowledgeReference, pk=pk, lesson__module__course__organization=request.user.organization, lesson__module__course__deleted_at__isnull=True
         )
         services.delete_knowledge_reference(reference=reference, actor=request.user, request=request)
         return Response(status=status.HTTP_204_NO_CONTENT)

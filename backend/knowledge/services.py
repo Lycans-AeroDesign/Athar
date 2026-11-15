@@ -19,7 +19,7 @@ from rest_framework.exceptions import ValidationError
 from audit.services import log_action
 from files.services import confirm_stored_files, confirm_stored_files_in_text
 
-from . import relationships
+from . import relationships, trash
 from . import visibility as visibility_rules
 from .scoring import (
     ACCEPTED_ANSWER_ACTION,
@@ -67,7 +67,9 @@ def _unique_slug(model, base: str, organization) -> str:
     two tenants can each have a "flight-review" slug without colliding."""
     slug = slugify(base)[:120] or "item"
     candidate, suffix = slug, 1
-    while model.objects.filter(organization=organization, slug=candidate).exists():
+    # _base_manager, not objects: a trashed row still holds its slug (and
+    # gets it back on restore).
+    while model._base_manager.filter(organization=organization, slug=candidate).exists():
         suffix += 1
         candidate = f"{slug}-{suffix}"
     return candidate
@@ -382,14 +384,7 @@ def delete_article(*, article: Article, actor, request=None) -> None:
     is_own_draft = actor == article.author and article.status == Article.Status.DRAFT
     if not (is_own_draft or actor.has_permission("article.delete")):
         raise PermissionDenied("You can only delete your own draft, or need article.delete.")
-    log_action(
-        actor=actor,
-        action="article.delete",
-        metadata={"article_id": str(article.pk), "title": article.title},
-        request=request,
-    )
-    delete_collection_items_for(article)
-    article.delete()
+    trash.move_to_trash(model_name="article", instance=article, actor=actor, request=request)
 
 
 def create_question(
@@ -428,14 +423,7 @@ def delete_question(*, question: Question, actor, request=None) -> None:
         codename="question.moderate",
         message="You can only delete your own question.",
     )
-    log_action(
-        actor=actor,
-        action="question.delete",
-        metadata={"question_id": str(question.pk), "title": question.title},
-        request=request,
-    )
-    delete_collection_items_for(question)
-    question.delete()
+    trash.move_to_trash(model_name="question", instance=question, actor=actor, request=request)
 
 
 def _recomputed_open_status(question: Question) -> str:
@@ -612,9 +600,7 @@ def update_project(*, project: Project, actor, request=None, **fields) -> Projec
 
 def delete_project(*, project: Project, actor, request=None) -> None:
     _require_permission(actor, "project.delete", "You need project.delete to remove this project.")
-    log_action(actor=actor, action="project.delete", metadata={"project_id": str(project.pk), "name": project.name}, request=request)
-    delete_collection_items_for(project)
-    project.delete()
+    trash.move_to_trash(model_name="project", instance=project, actor=actor, request=request)
 
 
 # --- Component categories & storage locations -------------------------------
@@ -845,11 +831,7 @@ def update_component(*, component: Component, actor, request=None, **fields) -> 
 
 def delete_component(*, component: Component, actor, request=None) -> None:
     _require_permission(actor, "component.delete", "You need component.delete to remove this component.")
-    log_action(
-        actor=actor, action="component.delete", metadata={"component_id": str(component.pk), "name": component.name}, request=request
-    )
-    delete_collection_items_for(component)
-    component.delete()
+    trash.move_to_trash(model_name="component", instance=component, actor=actor, request=request)
 
 
 def _sync_failure_relations(
@@ -939,9 +921,7 @@ def update_failure(*, failure: Failure, actor, request=None, **fields) -> Failur
 
 def delete_failure(*, failure: Failure, actor, request=None) -> None:
     _require_permission(actor, "failure.delete", "You need failure.delete to remove this failure report.")
-    log_action(actor=actor, action="failure.delete", metadata={"failure_id": str(failure.pk), "title": failure.title}, request=request)
-    delete_collection_items_for(failure)
-    failure.delete()
+    trash.move_to_trash(model_name="failure", instance=failure, actor=actor, request=request)
 
 
 def create_sop(
@@ -983,9 +963,7 @@ def update_sop(*, sop: Sop, actor, request=None, **fields) -> Sop:
 
 def delete_sop(*, sop: Sop, actor, request=None) -> None:
     _require_permission(actor, "sop.delete", "You need sop.delete to remove this SOP.")
-    log_action(actor=actor, action="sop.delete", metadata={"sop_id": str(sop.pk), "title": sop.title}, request=request)
-    delete_collection_items_for(sop)
-    sop.delete()
+    trash.move_to_trash(model_name="sop", instance=sop, actor=actor, request=request)
 
 
 def create_test(
@@ -1075,9 +1053,7 @@ def update_test(*, test: Test, actor, request=None, **fields) -> Test:
 
 def delete_test(*, test: Test, actor, request=None) -> None:
     _require_permission(actor, "test.delete", "You need test.delete to remove this test.")
-    log_action(actor=actor, action="test.delete", metadata={"test_id": str(test.pk), "title": test.title}, request=request)
-    delete_collection_items_for(test)
-    test.delete()
+    trash.move_to_trash(model_name="test", instance=test, actor=actor, request=request)
 
 
 # --- Knowledge collections (folders / series) --------------------------------
@@ -1148,7 +1124,10 @@ def _visible_collection_nodes(collection: Collection, viewer) -> list[tuple[Coll
         ids_by_type.setdefault(node.content_type.model, set()).add(str(node.object_id))
     instances_by_id: dict[str, dict[str, object]] = {}
     for model_name, model_class in model_classes.items():
-        found = model_class.objects.filter(organization=collection.organization, pk__in=ids_by_type[model_name])
+        # _base_manager so a trashed item isn't mistaken for a deleted one and
+        # pruned below - _node_visible_to hides it, and it's back in place if
+        # restored from the trash.
+        found = model_class._base_manager.filter(organization=collection.organization, pk__in=ids_by_type[model_name])
         instances_by_id[model_name] = {str(obj.pk): obj for obj in found}
     result = []
     for node in nodes:
@@ -1219,15 +1198,6 @@ def collections_context_for(instance, viewer) -> list[dict]:
             }
         )
     return contexts
-
-
-def delete_collection_items_for(instance) -> None:
-    """Drops the collection items pointing at `instance` right before its own
-    delete_* service deletes it. GenericForeignKeys don't cascade, so without
-    this a deleted SOP would leave a permanently-dangling phase entry."""
-    CollectionItem.objects.filter(
-        content_type=ContentType.objects.get_for_model(type(instance)), object_id=instance.pk
-    ).delete()
 
 
 def create_collection(
@@ -1445,11 +1415,7 @@ def delete_document(*, document: Document, actor, request=None) -> None:
         codename="document.update",
         message="You can only delete your own document.",
     )
-    log_action(
-        actor=actor, action="document.delete", metadata={"document_id": str(document.pk), "title": document.title}, request=request
-    )
-    delete_collection_items_for(document)
-    document.delete()
+    trash.move_to_trash(model_name="document", instance=document, actor=actor, request=request)
 
 
 def _add_engineering_attachment(*, owner, attachment_model, owner_field: str, file, actor, request, action: str):

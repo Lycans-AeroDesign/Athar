@@ -62,6 +62,7 @@ const NAV_ITEMS: ReadonlyArray<{
     tourId: "nav-training",
   },
   { href: "/bookmarks", labelKey: "bookmarks", icon: "bookmark", separatorBefore: true, tourId: "nav-bookmarks" },
+  { href: "/trash", labelKey: "trash", icon: "delete" },
 ];
 
 interface SideNavProps {

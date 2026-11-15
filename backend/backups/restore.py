@@ -662,6 +662,7 @@ def _restore_projects(ctx, zf, tags_by_id) -> dict[uuid.UUID, Project]:
             status=row["status"],
             visibility=row["visibility"],
             created_by_id=ctx.user_id(row["created_by_id"]),
+            **_trash_fields(ctx, row),
         )
         _set_tags(project, ctx, row, tags_by_id)
         projects_by_id[project.id] = project
@@ -751,6 +752,7 @@ def _restore_components(
             visibility=row["visibility"],
             created_by_id=ctx.user_id(row["created_by_id"]),
             updated_by_id=ctx.user_id(row.get("updated_by_id", "")),
+            **_trash_fields(ctx, row),
         )
         _set_tags(component, ctx, row, tags_by_id)
         components_by_id[component.id] = component
@@ -778,6 +780,7 @@ def _restore_failures(ctx, zf, components_by_id, projects_by_id) -> set[uuid.UUI
             preventive_action=row["preventive_action"],
             visibility=row["visibility"],
             created_by_id=ctx.user_id(row["created_by_id"]),
+            **_trash_fields(ctx, row),
         )
         ids.add(failure.id)
     ctx.summary.created["failures"] = len(ids)
@@ -798,6 +801,7 @@ def _restore_sops(ctx, zf, categories_by_id, tags_by_id) -> set[uuid.UUID]:
             content=row["content"],
             visibility=row["visibility"],
             created_by_id=ctx.user_id(row["created_by_id"]),
+            **_trash_fields(ctx, row),
         )
         _set_tags(sop, ctx, row, tags_by_id)
         ids.add(sop.id)
@@ -826,6 +830,7 @@ def _restore_tests(ctx, zf, projects_by_id, tags_by_id) -> set[uuid.UUID]:
             conclusion=row["conclusion"],
             visibility=row["visibility"],
             created_by_id=ctx.user_id(row["created_by_id"]),
+            **_trash_fields(ctx, row),
         )
         _set_tags(test, ctx, row, tags_by_id)
         ids.add(test.id)
@@ -902,11 +907,21 @@ def _restore_documents(ctx, zf, categories_by_id, tags_by_id, files_by_id) -> No
             category=categories_by_id.get(_uuid_or_none(row["category_id"])),
             visibility=row["visibility"],
             created_by_id=ctx.user_id(row["created_by_id"]),
+            **_trash_fields(ctx, row),
         )
         _set_tags(document, ctx, row, tags_by_id)
         ids.add(document.id)
     ctx.summary.created["documents"] = len(ids)
     ctx.track("document", ids)
+
+
+def _trash_fields(ctx, row) -> dict:
+    """A trashed article/question goes back into the trash, not live.
+    Archives from before the trash existed have no such columns."""
+    deleted_at = _datetime_or_none(row.get("deleted_at"))
+    if deleted_at is None:
+        return {}
+    return {"deleted_at": deleted_at, "deleted_by_id": ctx.user_id(row.get("deleted_by_id"))}
 
 
 def _restore_articles(ctx, zf, categories_by_id, tags_by_id) -> dict[uuid.UUID, Article]:
@@ -924,6 +939,7 @@ def _restore_articles(ctx, zf, categories_by_id, tags_by_id) -> dict[uuid.UUID, 
             category=categories_by_id.get(_uuid_or_none(row["category_id"])),
             author_id=ctx.user_id(row["author_id"]),
             published_at=row["published_at"] or None,
+            **_trash_fields(ctx, row),
         )
         _set_tags(article, ctx, row, tags_by_id)
         _set_co_authors(article, ctx, row)
@@ -963,6 +979,7 @@ def _restore_questions(ctx, zf, tags_by_id) -> dict[uuid.UUID, Question]:
             status=row["status"],
             visibility=row["visibility"],
             author_id=ctx.user_id(row["author_id"]),
+            **_trash_fields(ctx, row),
         )
         _set_tags(question, ctx, row, tags_by_id)
         _set_co_authors(question, ctx, row)
@@ -1002,7 +1019,7 @@ def _restore_question_links(ctx, zf, answers, articles_by_id) -> None:
         if promoted_to_article_id in articles_by_id:
             updates["promoted_to_article_id"] = promoted_to_article_id
         if updates:
-            Question.objects.filter(pk=question_id, organization=ctx.organization).update(**updates)
+            Question.all_objects.filter(pk=question_id, organization=ctx.organization).update(**updates)
 
 
 def _restore_relations(ctx, zf) -> None:
@@ -1100,6 +1117,7 @@ def _restore_courses(ctx, zf, course_categories_by_id, files_by_id) -> dict[uuid
             visibility=row.get("visibility") or Visibility.PUBLIC,
             author_id=ctx.user_id(row["author_id"]),
             published_at=row["published_at"] or None,
+            **_trash_fields(ctx, row),
         )
         _set_co_authors(course, ctx, row)
         courses_by_id[course.id] = course
@@ -1392,7 +1410,9 @@ def _restore_timestamps(ctx: _RestoreContext, zf: zipfile.ZipFile) -> None:
             if pk is not None and all(values.values()):
                 values_by_pk[pk] = values
         owned = set(
-            model.objects.filter(pk__in=values_by_pk, **{org_lookup: ctx.organization}).values_list("pk", flat=True)
+            model._base_manager.filter(pk__in=values_by_pk, **{org_lookup: ctx.organization}).values_list(
+                "pk", flat=True
+            )
         )
         objs = []
         for pk in owned:
@@ -1401,7 +1421,7 @@ def _restore_timestamps(ctx: _RestoreContext, zf: zipfile.ZipFile) -> None:
                 setattr(obj, name, value)
             objs.append(obj)
         if objs:
-            model.objects.bulk_update(objs, present, batch_size=1000)
+            model._base_manager.bulk_update(objs, present, batch_size=1000)
 
 
 def restore_org_backup_archive(organization, archive_file, actor=None) -> RestoreSummary:
@@ -1435,7 +1455,8 @@ def _restore_in_transaction(organization, archive_file, actor, saved_files) -> R
         user_rows = _restore_users(ctx, zf)
 
         for model, org_lookup in _DELETE_SPECS:
-            model.objects.filter(**{org_lookup: organization}).delete()
+            # _base_manager: also the trashed rows a SoftDeleteModel's objects hides.
+            model._base_manager.filter(**{org_lookup: organization}).delete()
 
         files_by_id = _restore_files(ctx, zf)
         _restore_profile_pictures(ctx, user_rows, files_by_id)

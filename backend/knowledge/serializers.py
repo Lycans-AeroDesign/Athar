@@ -732,7 +732,19 @@ class CreateBookmarkSerializer(serializers.Serializer):
 # --- Engineering domain ----------------------------------------------------
 
 
-class ProjectListSerializer(serializers.ModelSerializer):
+class HideTrashedMixin:
+    """For a serializer nested under another object's FK (a failure's project,
+    a test's project, ...): a target in the trash renders as null, the same as
+    an unset link, rather than as a link to a page that 404s. It's restored
+    in place when the target comes back."""
+
+    def to_representation(self, instance):
+        if getattr(instance, "deleted_at", None) is not None:
+            return None
+        return super().to_representation(instance)
+
+
+class ProjectListSerializer(HideTrashedMixin, serializers.ModelSerializer):
     tags = TagSerializer(many=True, read_only=True)
     created_by = AuthorSerializer(read_only=True)
     # Plain-text snippet of the markdown description for list cards - derived
@@ -876,7 +888,7 @@ class StorageLocationRefSerializer(serializers.ModelSerializer):
         fields = ["id", "name"]
 
 
-class ComponentListSerializer(serializers.ModelSerializer):
+class ComponentListSerializer(HideTrashedMixin, serializers.ModelSerializer):
     category = ComponentCategoryRefSerializer(read_only=True)
     location = StorageLocationRefSerializer(read_only=True)
     tags = TagSerializer(many=True, read_only=True)
@@ -1320,3 +1332,30 @@ class DocumentWriteSerializer(ProjectLinkMixin, serializers.ModelSerializer):
             "project_id",
             "relations",
         ]
+
+
+class TrashedItemSerializer(serializers.Serializer):
+    """One row of the trash page. Built from (model name, instance) pairs
+    (see trash.trashed_items_for) - every trashable type in one list."""
+
+    type = serializers.CharField()
+    id = serializers.UUIDField()
+    title = serializers.CharField()
+    deleted_at = serializers.DateTimeField()
+    deleted_by = AuthorSerializer(allow_null=True)
+    purge_at = serializers.DateTimeField()
+
+    def to_representation(self, item):
+        from . import trash
+
+        model_name, instance = item
+        return super().to_representation(
+            {
+                "type": model_name,
+                "id": instance.pk,
+                "title": trash.title_of(model_name, instance),
+                "deleted_at": instance.deleted_at,
+                "deleted_by": instance.deleted_by,
+                "purge_at": trash.purge_at(instance),
+            }
+        )

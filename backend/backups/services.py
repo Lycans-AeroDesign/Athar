@@ -40,6 +40,7 @@ from rest_framework.exceptions import ValidationError
 from accounts.models import InvitationCode, User
 from audit.models import AuditLog
 from core import crypto
+from core.models import SoftDeleteModel
 from files.models import StoredFile
 from knowledge.models import (
     Answer,
@@ -229,7 +230,7 @@ def _export_specs(organization):
             [("id", lambda o: _s(o.id)), ("name", lambda o: o.name), ("created_at", lambda o: _s(o.created_at))],
         ),
         (
-            Article.objects.filter(organization=organization)
+            Article.all_objects.filter(organization=organization)
             .select_related("category", "author")
             .prefetch_related("tags"),
             "articles.csv",
@@ -269,7 +270,7 @@ def _export_specs(organization):
             ],
         ),
         (
-            Question.objects.filter(organization=organization)
+            Question.all_objects.filter(organization=organization)
             .select_related("author")
             .prefetch_related("tags", "co_authors"),
             "questions.csv",
@@ -304,7 +305,7 @@ def _export_specs(organization):
             ],
         ),
         (
-            Project.objects.filter(organization=organization).select_related("created_by").prefetch_related("tags"),
+            Project.all_objects.filter(organization=organization).select_related("created_by").prefetch_related("tags"),
             "projects.csv",
             [
                 ("id", lambda o: _s(o.id)),
@@ -344,7 +345,7 @@ def _export_specs(organization):
             ],
         ),
         (
-            Component.objects.filter(organization=organization)
+            Component.all_objects.filter(organization=organization)
             .select_related("category", "location", "created_by", "updated_by")
             .prefetch_related("tags"),
             "components.csv",
@@ -380,7 +381,7 @@ def _export_specs(organization):
             ],
         ),
         (
-            Failure.objects.filter(organization=organization).select_related("component", "project", "created_by"),
+            Failure.all_objects.filter(organization=organization).select_related("component", "project", "created_by"),
             "failures.csv",
             [
                 ("id", lambda o: _s(o.id)),
@@ -405,7 +406,7 @@ def _export_specs(organization):
             ],
         ),
         (
-            Sop.objects.filter(organization=organization).select_related("category", "created_by").prefetch_related(
+            Sop.all_objects.filter(organization=organization).select_related("category", "created_by").prefetch_related(
                 "tags"
             ),
             "sops.csv",
@@ -427,7 +428,7 @@ def _export_specs(organization):
             ],
         ),
         (
-            Test.objects.filter(organization=organization).select_related("project", "created_by").prefetch_related(
+            Test.all_objects.filter(organization=organization).select_related("project", "created_by").prefetch_related(
                 "tags"
             ),
             "tests.csv",
@@ -501,7 +502,7 @@ def _export_specs(organization):
             ],
         ),
         (
-            Document.objects.filter(organization=organization)
+            Document.all_objects.filter(organization=organization)
             .select_related("category", "created_by", "file")
             .prefetch_related("tags"),
             "documents.csv",
@@ -626,7 +627,7 @@ def _export_specs(organization):
             ],
         ),
         (
-            Course.objects.filter(organization=organization).select_related("category", "author", "cover_image").prefetch_related("co_authors"),
+            Course.all_objects.filter(organization=organization).select_related("category", "author", "cover_image").prefetch_related("co_authors"),
             "courses.csv",
             [
                 ("id", lambda o: _s(o.id)),
@@ -915,6 +916,14 @@ def decompress_zstd_bounded(source, destination, *, max_bytes: int | None = None
         destination.write(chunk)
 
 
+# Every soft-deletable type's export (queried through all_objects) also
+# records whether the row is in the trash, so a restore puts it back there.
+_TRASH_COLUMNS = [
+    ("deleted_at", lambda o: _s(o.deleted_at)),
+    ("deleted_by_id", lambda o: _s(o.deleted_by_id)),
+]
+
+
 def build_org_backup_archive(job: BackupJob) -> None:
     """Writes the full export to a temp file on disk (never in memory, so
     this scales to a large org's data/files) then assigns it to
@@ -931,6 +940,8 @@ def build_org_backup_archive(job: BackupJob) -> None:
             _write_manifest(zf, organization)
             _write_organization_settings(zf, organization)
             for queryset, filename, columns in _export_specs(organization):
+                if issubclass(queryset.model, SoftDeleteModel):
+                    columns = [*columns, *_TRASH_COLUMNS]
                 _write_csv_entry(zf, filename, columns, queryset)
             _write_files(zf, organization)
 

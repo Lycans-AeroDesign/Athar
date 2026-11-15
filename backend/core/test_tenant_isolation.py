@@ -11,11 +11,14 @@ Two guards keep the matrix honest:
   (or deliberately listed in EXEMPT with a reason).
 """
 
+from types import SimpleNamespace
+
 from django.contrib.contenttypes.models import ContentType
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import transaction
 from django.urls import get_resolver, reverse
 from django.urls.resolvers import URLResolver
+from django.utils import timezone
 from rest_framework.test import APITestCase
 
 from accounts.models import InvitationCode, User
@@ -25,6 +28,7 @@ from files.models import StoredFile
 from knowledge.models import (
     Answer,
     Article,
+    ArticleRevision,
     ArticleAttachment,
     Bookmark,
     Category,
@@ -94,6 +98,9 @@ ROUTES = [
     ("knowledge-tag-detail", [DELETE], {"pk": "tag"}),
     *_entity("article", "article", workflow=("submit", "publish", "reject", "archive", "unarchive")),
     ("knowledge-article-revisions", [GET], {"pk": "article"}),
+    ("knowledge-article-revision-restore", [POST], {"pk": "article", "revision_pk": "article_revision"}),
+    ("knowledge-trash-item", [DELETE], {"model_name": "article_type", "pk": "trashed_article"}),
+    ("knowledge-trash-restore", [POST], {"model_name": "article_type", "pk": "trashed_article"}),
     *_entity("question", "question", workflow=("accept", "close", "reopen", "promote")),
     ("knowledge-answer-list-create", [GET, POST], {"pk": "question"}),
     ("knowledge-answer-detail", [PATCH, DELETE], {"pk": "answer"}),
@@ -201,6 +208,12 @@ class TenantIsolationTests(RoleLoginMixin, APITestCase):
         ids["category"] = Category.objects.create(organization=org, name="Cat", slug="cat")
         ids["tag"] = Tag.objects.create(organization=org, name="tag")
         ids["article"] = Article.objects.create(organization=org, title="A", slug="a", author=cls.member)
+        ids["article_revision"] = ArticleRevision.objects.create(article=ids["article"], title="Old", content="old")
+        ids["trashed_article"] = Article.objects.create(
+            organization=org, title="Trashed", slug="trashed", author=cls.member, deleted_at=timezone.now()
+        )
+        # The trash routes' <model_name> segment - not a row, but _requests reads `.pk`.
+        ids["article_type"] = SimpleNamespace(pk="article")
         ids["question"] = Question.objects.create(organization=org, title="Q", author=cls.member)
         ids["answer"] = Answer.objects.create(question=ids["question"], body="x", author=cls.member)
         ids["relation"] = KnowledgeRelation.objects.create(

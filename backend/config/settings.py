@@ -387,7 +387,14 @@ CELERY_BEAT_SCHEDULE = {
         "task": "backups.tasks.fail_stale_jobs",
         "schedule": 3600.0,
     },
+    "purge-expired-trash": {
+        "task": "knowledge.tasks.purge_expired_trash",
+        "schedule": 86400.0,
+    },
 }
+# Days a deleted article/question stays in the trash (restorable) before
+# knowledge.tasks.purge_expired_trash deletes it for good.
+TRASH_RETENTION_DAYS = env.int("TRASH_RETENTION_DAYS", default=30)
 # How long audit entries keep the requester's IP and user agent before
 # audit.tasks.scrub_old_request_metadata clears them (the entry itself is kept).
 AUDIT_IP_RETENTION_DAYS = env.int("AUDIT_IP_RETENTION_DAYS", default=90)

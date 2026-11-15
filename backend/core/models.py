@@ -1,5 +1,6 @@
 import uuid
 
+from django.conf import settings
 from django.db import models
 
 
@@ -39,3 +40,39 @@ class OrganizationScopedModel(models.Model):
 
     class Meta:
         abstract = True
+
+
+class ActiveManager(models.Manager):
+    """Default manager of a SoftDeleteModel: hides rows that are in the trash."""
+
+    def get_queryset(self):
+        return super().get_queryset().filter(deleted_at__isnull=True)
+
+
+class SoftDeleteModel(models.Model):
+    """Deleting moves a row to the trash (knowledge/trash.py) instead of
+    removing it; it's purged for real after TRASH_RETENTION_DAYS.
+
+    `objects` hides trashed rows, so every list, search and lookup that goes
+    through it skips them without changes. `all_objects` sees everything -
+    use it for the trash itself, backups, and uniqueness checks (a trashed
+    article still owns its slug). Django's base manager (used to follow
+    foreign keys and generic relations) stays unfiltered, so a relation or
+    collection pointing at a trashed row still resolves; those read paths
+    hide it through visibility.can_view_instance instead, which keeps the
+    link intact for when the row is restored."""
+
+    deleted_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    deleted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+
+    objects = ActiveManager()
+    all_objects = models.Manager()
+
+    class Meta:
+        abstract = True
+
+    @property
+    def is_trashed(self) -> bool:
+        return self.deleted_at is not None

@@ -1,6 +1,9 @@
 from django.urls import path
 
 from .views import (
+    TrashItemView,
+    TrashListView,
+    TrashRestoreView,
     AccessGrantDetailView,
     AccessGrantListCreateView,
     AnswerDetailView,
@@ -100,6 +103,9 @@ urlpatterns = [
     path("collections/<uuid:pk>/reorder/", CollectionReorderView.as_view(), name="knowledge-collection-reorder"),
     path("tags/", TagListView.as_view(), name="knowledge-tag-list"),
     path("tags/<uuid:pk>/", TagDetailView.as_view(), name="knowledge-tag-detail"),
+    path("trash/", TrashListView.as_view(), name="knowledge-trash-list"),
+    path("trash/<str:model_name>/<uuid:pk>/", TrashItemView.as_view(), name="knowledge-trash-item"),
+    path("trash/<str:model_name>/<uuid:pk>/restore/", TrashRestoreView.as_view(), name="knowledge-trash-restore"),
     path("articles/", ArticleListCreateView.as_view(), name="knowledge-article-list-create"),
     path("articles/<uuid:pk>/", ArticleDetailView.as_view(), name="knowledge-article-detail"),
     path("articles/<uuid:pk>/submit/", ArticleSubmitView.as_view(), name="knowledge-article-submit"),

@@ -891,3 +891,46 @@ class EnrollmentRaceTests(TrainingTestCase):
             with self.assertRaises(DRFValidationError):
                 services.enroll_in_course(course=course, actor=member)
         self.assertEqual(CourseEnrollment.objects.filter(course=course, user=member).count(), 1)
+
+
+class CourseTrashTests(TrainingTestCase):
+    def test_trashed_course_hides_its_lessons_and_enrollments_and_restores_them(self):
+        _, mentor_access = self._login_with_role("trash-mentor@example.com", "Mentor")
+        learner, learner_access = self._login_with_role("trash-learner@example.com", "Member")
+        _, admin_access = self._login_with_role("trash-admin@example.com", "Organization Admin")
+        course = self._create_course(mentor_access, "Trashable Course")
+        module = self._create_module(mentor_access, course["id"])
+        lesson = self._create_lesson(mentor_access, module["id"])
+        self._publish_course(admin_access, course["id"])
+        self.client.post(reverse("training-course-enroll", args=[course["id"]]), **self._auth(learner_access))
+
+        response = self.client.delete(
+            reverse("training-course-detail", args=[course["id"]]) + "?force=true", **self._auth(admin_access)
+        )
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+        course_url = reverse("training-course-detail", args=[course["id"]])
+        lesson_url = reverse("training-lesson-detail", args=[lesson["id"]])
+        self.assertEqual(self.client.get(course_url, **self._auth(learner_access)).status_code, 404)
+        self.assertEqual(self.client.get(lesson_url, **self._auth(learner_access)).status_code, 404)
+        mine = self.client.get(reverse("training-my-courses"), **self._auth(learner_access))
+        self.assertEqual(mine.data["results"], [])
+        # The enrollment is kept (hidden), so restoring gives the learner their progress back.
+        self.assertTrue(CourseEnrollment.objects.filter(course_id=course["id"], user=learner).exists())
+
+        trash_list = self.client.get(reverse("knowledge-trash-list"), {"type": "course"}, **self._auth(admin_access))
+        self.assertEqual([item["title"] for item in trash_list.data["results"]], ["Trashable Course"])
+        restore = self.client.post(
+            reverse("knowledge-trash-restore", args=["course", course["id"]]), **self._auth(admin_access)
+        )
+        self.assertEqual(restore.status_code, status.HTTP_200_OK)
+        self.assertEqual(self.client.get(lesson_url, **self._auth(learner_access)).status_code, 200)
+        mine = self.client.get(reverse("training-my-courses"), **self._auth(learner_access))
+        self.assertEqual(len(mine.data["results"]), 1)
+
+    def test_trashed_course_keeps_its_slug(self):
+        _, mentor_access = self._login_with_role("trash-slug@example.com", "Mentor")
+        first = self._create_course(mentor_access, "Same Course")
+        self.client.delete(reverse("training-course-detail", args=[first["id"]]), **self._auth(mentor_access))
+        second = self._create_course(mentor_access, "Same Course")
+        self.assertNotEqual(first["slug"], second["slug"])

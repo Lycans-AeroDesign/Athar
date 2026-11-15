@@ -3,7 +3,7 @@ import uuid
 
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Count, Q, QuerySet
-from django.http import HttpResponse
+from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import status
@@ -22,6 +22,7 @@ from rbac.permissions import require_permission
 
 from . import search
 from . import services
+from . import trash
 from . import visibility as visibility_rules
 from .models import (
     Answer,
@@ -51,6 +52,7 @@ from .models import (
     TestAttachment,
 )
 from .serializers import (
+    TrashedItemSerializer,
     AcceptAnswerSerializer,
     AccessGrantSerializer,
     AddAttachmentSerializer,
@@ -2605,3 +2607,56 @@ class BookmarkDetailView(APIView):
         bookmark = get_object_or_404(Bookmark, pk=pk, user=request.user)
         services.delete_bookmark(bookmark=bookmark, actor=request.user, request=request)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+def _trashed_or_404(request, model_name, pk):
+    if model_name not in trash.registry():
+        raise Http404
+    instance = trash.get_trashed(request.user, model_name, pk)
+    if instance is None:
+        raise Http404
+    return instance
+
+
+class TrashListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        tags=["Knowledge"],
+        summary="List the trash: items the caller deleted, or every item of a type they manage (optional ?type=)",
+        responses={200: TrashedItemSerializer(many=True), **COMMON_ERRORS},
+    )
+    def get(self, request):
+        model_name = request.query_params.get("type") or None
+        if model_name is not None and model_name not in trash.registry():
+            raise ValidationError({"type": f"Must be one of: {', '.join(sorted(trash.registry()))}."})
+        return paginated_response(request, trash.trashed_items_for(request.user, model_name), TrashedItemSerializer)
+
+
+class TrashItemView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        tags=["Knowledge"],
+        summary="Permanently delete a trashed item (requires trash.purge)",
+        responses={204: OpenApiResponse(description="Deleted for good."), 404: NOT_FOUND, **COMMON_ERRORS},
+    )
+    def delete(self, request, model_name, pk):
+        instance = _trashed_or_404(request, model_name, pk)
+        trash.purge(model_name=model_name, instance=instance, actor=request.user, request=request)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class TrashRestoreView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        tags=["Knowledge"],
+        summary="Restore a trashed item (whoever deleted it, or a holder of the type's delete permission)",
+        request=None,
+        responses={200: OpenApiResponse(description="Restored; the body is {type, id}."), 404: NOT_FOUND, **COMMON_ERRORS},
+    )
+    def post(self, request, model_name, pk):
+        instance = _trashed_or_404(request, model_name, pk)
+        trash.restore(model_name=model_name, instance=instance, actor=request.user, request=request)
+        return Response({"type": model_name, "id": str(instance.pk)})

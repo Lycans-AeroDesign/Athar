@@ -1,3 +1,4 @@
+import datetime
 import uuid
 from unittest import mock
 
@@ -8,6 +9,7 @@ from django.db.models import Q, QuerySet
 from django.test.utils import CaptureQueriesContext
 
 from django.urls import reverse
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 
@@ -17,7 +19,7 @@ from audit.models import AuditLog
 from files.models import StoredFile
 from rbac.models import Role
 
-from . import services
+from . import services, trash
 from .models import (
     Answer,
     Article,
@@ -4236,32 +4238,24 @@ class CollectionTests(KnowledgeTestCase):
         response = self.client.get(reverse("knowledge-collection-list"), **self._auth(member_access))
         self.assertEqual(response.data["count"], 0)
 
-    def test_deleting_content_prunes_its_collection_items(self):
-        _, mentor_access = self._login_with_role("colprune@example.com", "Mentor")
-        _, admin_access = self._login_with_role("colpruneadmin@example.com", "Organization Admin")
+    def test_trashing_hides_a_collection_item_and_purging_removes_it(self):
+        mentor, mentor_access = self._login_with_role("colprune@example.com", "Mentor")
+        admin, admin_access = self._login_with_role("colpruneadmin@example.com", "Organization Admin")
         collection_id = self._create_series(mentor_access).data["id"]
         sop = self._sop("Ephemeral Wing")
         self._add_item(mentor_access, collection_id, "sop", sop.pk)
-        article = Article.objects.create(
-            organization=self.organization, title="Ephemeral Theory", slug="ephemeral-theory"
-        )
-        self._add_item(mentor_access, collection_id, "article", article.pk)
+        self.assertEqual(CollectionItem.objects.filter(collection_id=collection_id).count(), 1)
 
-        self.assertEqual(CollectionItem.objects.filter(collection_id=collection_id).count(), 2)
-        response = self.client.delete(
-            reverse("knowledge-sop-detail", args=[sop.id]), **self._auth(admin_access)
-        )
+        response = self.client.delete(reverse("knowledge-sop-detail", args=[sop.id]), **self._auth(admin_access))
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        # In the trash: hidden from the series, but its place is kept for a restore.
+        collection = Collection.objects.get(pk=collection_id)
+        self.assertEqual(services.collection_items_for(collection, mentor), [])
+        self.assertEqual(CollectionItem.objects.filter(collection_id=collection_id).count(), 1)
 
-        remaining = CollectionItem.objects.filter(collection_id=collection_id)
-        # The SOP is gone and took its phase entry with it; whether the draft
-        # article could be deleted by this actor is a pre-existing rule, and
-        # if it wasn't, its item legitimately remains.
-        remaining_types = {item.content_type.model for item in remaining}
-        if Article.objects.filter(pk=article.pk).exists():
-            self.assertEqual(remaining_types, {"article"})
-        else:
-            self.assertEqual(remaining.count(), 0)
+        # Purged: the phase entry goes with it (generic FKs don't cascade).
+        trash.purge(model_name="sop", instance=Sop.all_objects.get(pk=sop.pk), actor=admin)
+        self.assertEqual(CollectionItem.objects.filter(collection_id=collection_id).count(), 0)
 
     def test_other_organizations_admin_gets_404_on_collections(self):
         other_org = create_test_organization(name="Other Col Org")
@@ -4331,3 +4325,190 @@ class NamedGetOrCreateRaceTests(KnowledgeTestCase):
         with self._first_lookup_misses():
             category = services.get_or_create_component_category("Avionics", actor=head)
         self.assertEqual(category.pk, existing.pk)
+
+
+class TrashTests(KnowledgeTestCase):
+    def _draft(self, access, title="Trash me"):
+        response = self.client.post(
+            reverse("knowledge-article-list-create"),
+            {"title": title, "content": "Body"},
+            format="json",
+            **self._auth(access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        return response.data
+
+    def _delete(self, article, access):
+        return self.client.delete(reverse("knowledge-article-detail", args=[article["id"]]), **self._auth(access))
+
+    def _trash(self, access, **params):
+        response = self.client.get(reverse("knowledge-trash-list"), params, **self._auth(access))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        return response.data["results"]
+
+    def test_delete_moves_to_trash_and_restore_brings_it_back(self):
+        author, access = self._login_with_role("trashauthor@example.com", "Member")
+        article = self._draft(access)
+        self.assertEqual(self._delete(article, access).status_code, status.HTTP_204_NO_CONTENT)
+
+        detail = reverse("knowledge-article-detail", args=[article["id"]])
+        self.assertEqual(self.client.get(detail, **self._auth(access)).status_code, status.HTTP_404_NOT_FOUND)
+        listed = self.client.get(reverse("knowledge-article-list-create"), {"status": "ALL"}, **self._auth(access))
+        self.assertNotIn(article["id"], {a["id"] for a in listed.data["results"]})
+        self.assertTrue(Article.all_objects.filter(pk=article["id"]).exists())
+
+        [item] = self._trash(access)
+        self.assertEqual((item["type"], item["id"], item["title"]), ("article", article["id"], "Trash me"))
+        self.assertEqual(item["deleted_by"]["id"], str(author.id))
+        self.assertIsNotNone(item["purge_at"])
+
+        response = self.client.post(
+            reverse("knowledge-trash-restore", args=["article", article["id"]]), **self._auth(access)
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(self.client.get(detail, **self._auth(access)).status_code, status.HTTP_200_OK)
+        self.assertEqual(self._trash(access), [])
+        actions = set(AuditLog.objects.filter(target_object_id=article["id"]).values_list("action", flat=True))
+        self.assertTrue({"article.trash", "article.restore"} <= actions)
+
+    def test_trash_is_private_to_the_deleter_unless_they_manage_the_type(self):
+        _, access = self._login_with_role("trashowner@example.com", "Member")
+        article = self._draft(access)
+        self._delete(article, access)
+
+        _, other_access = self._login_with_role("trashpeer@example.com", "Member")
+        self.assertEqual(self._trash(other_access), [])
+        restore = reverse("knowledge-trash-restore", args=["article", article["id"]])
+        self.assertEqual(self.client.post(restore, **self._auth(other_access)).status_code, status.HTTP_404_NOT_FOUND)
+
+        _, admin_access = self._login_with_role("trashadmin@example.com", "Organization Admin")
+        self.assertEqual([i["id"] for i in self._trash(admin_access)], [article["id"]])
+
+    def test_permanent_delete_requires_trash_purge(self):
+        _, access = self._login_with_role("purgeauthor@example.com", "Member")
+        article = self._draft(access)
+        self._delete(article, access)
+        url = reverse("knowledge-trash-item", args=["article", article["id"]])
+        self.assertEqual(self.client.delete(url, **self._auth(access)).status_code, status.HTTP_403_FORBIDDEN)
+
+        _, admin_access = self._login_with_role("purgeadmin@example.com", "Organization Admin")
+        self.assertEqual(self.client.delete(url, **self._auth(admin_access)).status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Article.all_objects.filter(pk=article["id"]).exists())
+
+    def test_live_items_are_not_reachable_through_the_trash_endpoints(self):
+        _, admin_access = self._login_with_role("liveadmin@example.com", "Organization Admin")
+        article = self._draft(admin_access)
+        url = reverse("knowledge-trash-item", args=["article", article["id"]])
+        self.assertEqual(self.client.delete(url, **self._auth(admin_access)).status_code, status.HTTP_404_NOT_FOUND)
+        self.assertTrue(Article.objects.filter(pk=article["id"]).exists())
+        bad_type = reverse("knowledge-trash-item", args=["sop", article["id"]])
+        self.assertEqual(
+            self.client.delete(bad_type, **self._auth(admin_access)).status_code, status.HTTP_404_NOT_FOUND
+        )
+
+    def test_expired_items_are_purged_and_recent_ones_kept(self):
+        _, access = self._login_with_role("expiry@example.com", "Member")
+        old, recent = self._draft(access, "Old"), self._draft(access, "Recent")
+        self._delete(old, access)
+        self._delete(recent, access)
+        now = timezone.now()
+        Article.all_objects.filter(pk=old["id"]).update(deleted_at=now - datetime.timedelta(days=31))
+        Article.all_objects.filter(pk=recent["id"]).update(deleted_at=now - datetime.timedelta(days=29))
+
+        self.assertEqual(trash.purge_expired(), 1)
+        self.assertFalse(Article.all_objects.filter(pk=old["id"]).exists())
+        self.assertTrue(Article.all_objects.filter(pk=recent["id"]).exists())
+
+    def test_trashed_article_keeps_its_slug(self):
+        _, access = self._login_with_role("slugtrash@example.com", "Member")
+        first = self._draft(access, "Same Title")
+        self._delete(first, access)
+        second = self._draft(access, "Same Title")
+        self.assertNotEqual(first["slug"], second["slug"])
+
+    def test_collection_hides_a_trashed_item_without_losing_its_place(self):
+        author, _ = self._login_with_role("seriestrash@example.com", "Subteam Head")
+        article = Article.objects.create(
+            organization=self.organization,
+            title="In a series",
+            slug="in-a-series",
+            author=author,
+            status=Article.Status.PUBLISHED,
+        )
+        collection = Collection.objects.create(
+            organization=self.organization, title="Series", slug="series", created_by=author
+        )
+        CollectionItem.objects.create(
+            collection=collection,
+            content_type=ContentType.objects.get_for_model(Article),
+            object_id=article.pk,
+            order=0,
+        )
+        trash.move_to_trash(model_name="article", instance=article, actor=author)
+        self.assertEqual(services.collection_items_for(collection, author), [])
+        self.assertEqual(collection.items.count(), 1)
+
+        trash.restore(model_name="article", instance=Article.all_objects.get(pk=article.pk), actor=author)
+        self.assertEqual(len(services.collection_items_for(collection, author)), 1)
+
+    def test_question_delete_goes_to_trash_visible_to_moderators(self):
+        _, asker_access = self._login_with_role("trashasker@example.com", "Member")
+        question = self.client.post(
+            reverse("knowledge-question-list-create"),
+            {"title": "Deleted question", "body": "..."},
+            format="json",
+            **self._auth(asker_access),
+        ).data
+        response = self.client.delete(
+            reverse("knowledge-question-detail", args=[question["id"]]), **self._auth(asker_access)
+        )
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Question.objects.filter(pk=question["id"]).exists())
+
+        _, mentor_access = self._login_with_role("trashmentor@example.com", "Mentor")
+        self.assertEqual([i["id"] for i in self._trash(mentor_access, type="question")], [question["id"]])
+        self.assertEqual(self._trash(mentor_access, type="article"), [])
+
+
+class EngineeringTrashTests(KnowledgeTestCase):
+    def test_trashed_project_disappears_from_tests_and_comes_back_on_restore(self):
+        head, head_access = self._login_with_role("engtrash@example.com", "Subteam Head")
+        project = Project.objects.create(organization=self.organization, name="Glider", created_by=head)
+        test = Test.objects.create(organization=self.organization, title="Drop test", project=project, created_by=head)
+
+        response = self.client.delete(reverse("knowledge-project-detail", args=[project.pk]), **self._auth(head_access))
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(
+            self.client.get(reverse("knowledge-project-detail", args=[project.pk]), **self._auth(head_access)).status_code,
+            status.HTTP_404_NOT_FOUND,
+        )
+        # The test keeps its link (project_id) but shows no project while it's in the trash.
+        self.assertEqual(Test.objects.get(pk=test.pk).project_id, project.pk)
+        detail = self.client.get(reverse("knowledge-test-detail", args=[test.pk]), **self._auth(head_access))
+        self.assertIsNone(detail.data["project"])
+
+        [item] = self.client.get(reverse("knowledge-trash-list"), {"type": "project"}, **self._auth(head_access)).data[
+            "results"
+        ]
+        self.assertEqual(item["title"], "Glider")
+        self.client.post(reverse("knowledge-trash-restore", args=["project", project.pk]), **self._auth(head_access))
+        detail = self.client.get(reverse("knowledge-test-detail", args=[test.pk]), **self._auth(head_access))
+        self.assertEqual(detail.data["project"]["id"], str(project.pk))
+
+    def test_every_engineering_type_goes_to_the_trash(self):
+        _, admin_access = self._login_with_role("engtrashadmin@example.com", "Organization Admin")
+        org = self.organization
+        items = {
+            "component": Component.objects.create(organization=org, name="Servo"),
+            "failure": Failure.objects.create(organization=org, title="Snapped spar"),
+            "sop": Sop.objects.create(organization=org, title="Battery charging"),
+            "test": Test.objects.create(organization=org, title="Thrust test"),
+            "document": Document.objects.create(organization=org, title="Rules"),
+        }
+        for name, instance in items.items():
+            response = self.client.delete(reverse(f"knowledge-{name}-detail", args=[instance.pk]), **self._auth(admin_access))
+            self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT, name)
+            self.assertFalse(type(instance).objects.filter(pk=instance.pk).exists(), name)
+            self.assertTrue(type(instance).all_objects.filter(pk=instance.pk).exists(), name)
+        listed = self.client.get(reverse("knowledge-trash-list"), {"page_size": 50}, **self._auth(admin_access))
+        self.assertEqual({item["type"] for item in listed.data["results"]}, set(items))

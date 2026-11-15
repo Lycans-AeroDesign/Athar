@@ -871,3 +871,16 @@ export interface TrainingStats {
   completed_learners: number;
   most_popular_courses: Array<{ id: string; title: string; enrolled: number }>;
 }
+
+/** Every relatable type, plus training courses - see backend/knowledge/trash.py registry(). */
+export type TrashType = RelatableType | "course";
+
+export interface TrashedItem {
+  type: TrashType;
+  id: string;
+  title: string;
+  deleted_at: string;
+  deleted_by: KnowledgeAuthor | null;
+  /** When the nightly purge deletes it for good. */
+  purge_at: string;
+}

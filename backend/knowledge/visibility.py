@@ -102,6 +102,11 @@ def can_view_instance(viewer, model_name: str, instance) -> bool:
     RestrictedAccessGrant naming `viewer`."""
     if instance is None:
         return False
+    # Reached through a relation, collection or file attachment (the base
+    # manager doesn't filter trashed rows): a trashed item is hidden from
+    # everyone until it's restored - the trash page is the only way in.
+    if getattr(instance, "deleted_at", None) is not None:
+        return False
     if getattr(instance, "visibility", None) != Visibility.RESTRICTED:
         return True
     if is_privileged_for(viewer, model_name, instance):
@@ -117,6 +122,8 @@ def exclude_inaccessible(queryset: QuerySet, viewer, model, model_name: str) -> 
     """Queryset-level counterpart of can_view_instance, for list/search
     endpoints - drops RESTRICTED rows `viewer` can't see via ownership, the
     org-admin bypass, an override permission, or an explicit grant."""
+    if any(field.name == "deleted_at" for field in model._meta.concrete_fields):
+        queryset = queryset.filter(deleted_at__isnull=True)
     if is_org_admin(viewer) or _has_override(viewer, model_name):
         return queryset
     owner_field = OWNER_FIELD.get(model_name)

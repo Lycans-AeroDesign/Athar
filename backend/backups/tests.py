@@ -604,6 +604,23 @@ class RestoreJobTests(BackupJobTestCase):
     def _login(self, email, password="password123"):
         return self.client.post(reverse("auth-login"), {"email": email, "password": password}, format="json")
 
+    def test_trashed_content_survives_a_backup_round_trip_still_trashed(self):
+        author, _ = self._login_with_role("trashbackup@example.com", "Subteam Head")
+        _, admin_access = self._login_with_role("trashbackupadmin@example.com", "Organization Admin")
+        _, article, _ = self._seed_content(author)
+        from knowledge import services as knowledge_services
+
+        knowledge_services.delete_article(article=article, actor=author)
+        trashed_at = Article.all_objects.get(pk=article.id).deleted_at
+
+        backup_job = self._run_backup(admin_access)
+        self._restore_from(admin_access, backup_job)
+
+        restored = Article.all_objects.get(pk=article.id)
+        self.assertEqual(restored.deleted_at, trashed_at)
+        self.assertEqual(restored.deleted_by_id, author.id)
+        self.assertFalse(Article.objects.filter(pk=article.id).exists())
+
     def test_restore_brings_back_deleted_members_and_deactivates_newer_ones(self):
         author, _ = self._login_with_role("orphanauthor@example.com", "Subteam Head")
         _, admin_access = self._login_with_role("orphanadmin@example.com", "Organization Admin")

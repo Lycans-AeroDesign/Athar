@@ -4,7 +4,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.db.models import Q
 
-from core.models import OrganizationScopedModel, TimeStampedModel, UUIDPrimaryKeyModel
+from core.models import OrganizationScopedModel, SoftDeleteModel, TimeStampedModel, UUIDPrimaryKeyModel
 from files.models import StoredFile
 from knowledge.models import Visibility
 from knowledge.search import search_columns, search_indexes
@@ -34,7 +34,7 @@ class CourseCategory(UUIDPrimaryKeyModel, OrganizationScopedModel, TimeStampedMo
         return self.name
 
 
-class Course(UUIDPrimaryKeyModel, OrganizationScopedModel, TimeStampedModel):
+class Course(UUIDPrimaryKeyModel, OrganizationScopedModel, TimeStampedModel, SoftDeleteModel):
     """Top-level learning unit. Status mirrors knowledge.models.Article.Status (including
     REJECTED, so a rejected course keeps its reviewer feedback trail); the transition functions
     in training.services follow knowledge.services' shape.

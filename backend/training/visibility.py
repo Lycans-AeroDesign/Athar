@@ -27,6 +27,8 @@ def _has_override(viewer) -> bool:
 
 
 def can_view_course(viewer, course: Course) -> bool:
+    if course.deleted_at is not None:  # in the trash - see knowledge/trash.py
+        return False
     if course.visibility != Visibility.RESTRICTED:
         return True
     if course.author_id == viewer.id or course.co_authors.filter(id=viewer.id).exists() or _has_override(viewer):
@@ -40,9 +42,11 @@ def exclude_inaccessible_courses(queryset: QuerySet, viewer, course_field: str =
     """Queryset counterpart of can_view_course. `course_field` is the path to
     the Course from the queryset's model ("" for a Course queryset itself,
     "course" for CourseEnrollment, ...)."""
+    prefix = f"{course_field}__" if course_field else ""
+    # A trashed course is hidden with everything hanging off it (enrollments, progress).
+    queryset = queryset.filter(**{f"{prefix}deleted_at__isnull": True})
     if _has_override(viewer):
         return queryset
-    prefix = f"{course_field}__" if course_field else ""
     granted_ids = RestrictedAccessGrant.objects.filter(
         content_type=ContentType.objects.get_for_model(Course), granted_user=viewer
     ).values_list("object_id", flat=True)

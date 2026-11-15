@@ -46,7 +46,8 @@ def _unique_slug(model, base: str, organization) -> str:
     importing across apps for a 6-line utility isn't worth the coupling."""
     slug = slugify(base)[:120] or "item"
     candidate, suffix = slug, 1
-    while model.objects.filter(organization=organization, slug=candidate).exists():
+    # _base_manager: a trashed course still holds its slug.
+    while model._base_manager.filter(organization=organization, slug=candidate).exists():
         suffix += 1
         candidate = f"{slug}-{suffix}"
     return candidate
@@ -267,14 +268,13 @@ def delete_course(*, course: Course, actor, request=None, force: bool = False) -
     is_own_draft = (actor == course.author or course.co_authors.filter(id=actor.id).exists()) and course.status == Course.Status.DRAFT
     if not (is_own_draft or actor.has_permission("training.delete")):
         raise PermissionDenied("You can only delete your own draft, or need training.delete.")
-    if course.enrollments.exists():
-        if not force:
-            raise ValidationError("A course with enrollments can't be deleted - archive it instead.")
-        course.enrollments.all().delete()
-    log_action(
-        actor=actor, action="course.delete", metadata={"course_id": str(course.pk), "title": course.title}, request=request
-    )
-    course.delete()
+    if course.enrollments.exists() and not force:
+        raise ValidationError("A course with enrollments can't be deleted - archive it instead.")
+    # Enrollments and progress stay with the trashed course (hidden with it),
+    # so restoring it gives everyone their progress back; they go when it's purged.
+    from knowledge import trash
+
+    trash.move_to_trash(model_name="course", instance=course, actor=actor, request=request)
 
 
 # --- Modules / Lessons / Objectives ------------------------------------------
@@ -854,7 +854,7 @@ def course_stats(course: Course) -> dict:
 def training_stats(organization) -> dict:
     courses = Course.objects.filter(organization=organization)
     by_status = {choice: courses.filter(status=choice).count() for choice, _ in Course.Status.choices}
-    enrollments = CourseEnrollment.objects.filter(organization=organization)
+    enrollments = CourseEnrollment.objects.filter(organization=organization, course__deleted_at__isnull=True)
     total_learners = enrollments.values("user").distinct().count()
     active_learners = enrollments.filter(status=CourseEnrollment.Status.IN_PROGRESS).values("user").distinct().count()
     completed_learners = enrollments.filter(status=CourseEnrollment.Status.COMPLETED).values("user").distinct().count()

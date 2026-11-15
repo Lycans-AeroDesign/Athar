@@ -75,6 +75,7 @@ PERMISSION_CATALOGUE = [
     ("training.archive", "Archive/unarchive a published course"),
     ("training.delete", "Delete any course (own-draft deletion needs no permission)"),
     ("training.manage", "Manage course categories; view training statistics/admin dashboard"),
+    ("trash.purge", "Permanently delete items from the trash before they expire"),
 ]
 
 # name -> (description, is_system, [codenames])
