@@ -70,6 +70,7 @@ export default function TestsPage() {
   const error = errorResult?.key === filterKey ? errorResult.message : null;
 
   useEffect(() => {
+    let active = true;
     getTests({
       test_type: typeFilter ?? undefined,
       status: statusFilter ?? undefined,
@@ -78,9 +79,16 @@ export default function TestsPage() {
       page,
       ordering,
     }).then(
-      (data) => setResult({ key: filterKey, tests: data.results, hasNext: data.next !== null, count: data.count }),
-      (err) => setErrorResult({ key: filterKey, message: errorMessage(err) }),
+      (data) => {
+        if (active) setResult({ key: filterKey, tests: data.results, hasNext: data.next !== null, count: data.count });
+      },
+      (err) => {
+        if (active) setErrorResult({ key: filterKey, message: errorMessage(err) });
+      },
     );
+    return () => {
+      active = false;
+    };
   }, [typeFilter, statusFilter, passFailFilter, query, page, filterKey, ordering]);
 
   function updateTypeFilter(value: TestType | null) {

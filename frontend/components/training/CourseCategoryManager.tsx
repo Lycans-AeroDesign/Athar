@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Icon } from "@/components/ui/Icon";
+import { LoadError } from "@/components/ui/LoadError";
 import { Modal } from "@/components/ui/Modal";
 import { SettingsListSkeleton } from "@/components/ui/Skeleton";
 import { INPUT_CLASS } from "@/components/ui/inputStyles";
@@ -30,6 +31,8 @@ export function CourseCategoryManager() {
   const commonT = useTranslations("common");
 
   const [categories, setCategories] = useState<CourseCategory[] | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   // null while the modal is closed; "new" for the create flow; a CourseCategory while renaming it.
   const [editTarget, setEditTarget] = useState<CourseCategory | "new" | null>(null);
   const [name, setName] = useState("");
@@ -39,8 +42,13 @@ export function CourseCategoryManager() {
   const [deleteTarget, setDeleteTarget] = useState<CourseCategory | null>(null);
 
   useEffect(() => {
-    listCourseCategories().then(setCategories);
-  }, []);
+    listCourseCategories().then(setCategories, (err) => setLoadError(errorMessage(err)));
+  }, [loadAttempt]);
+
+  function retryLoad() {
+    setLoadError(null);
+    setLoadAttempt((n) => n + 1);
+  }
 
   function openCreate() {
     setEditTarget("new");
@@ -100,7 +108,9 @@ export function CourseCategoryManager() {
           </Button>
         </div>
 
-        {!categories ? (
+        {loadError ? (
+          <LoadError message={loadError} onRetry={retryLoad} />
+        ) : !categories ? (
           <SettingsListSkeleton />
         ) : categories.length === 0 ? (
           <p className="font-body-md text-body-md text-on-surface-variant">{t("noCourseCategories")}</p>

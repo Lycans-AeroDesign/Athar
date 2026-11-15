@@ -46,6 +46,7 @@ import type {
 } from "@/lib/api/types";
 import { CONDITION_VALUES, INVENTORY_TYPE_VALUES, STOCK_STATUS_VALUES, UNIT_SUGGESTIONS } from "@/lib/inventory";
 import { COMPONENT_STATUS_ICONS, CONDITION_ICONS, INVENTORY_TYPE_ICONS, STOCK_STATUS_ICONS } from "@/lib/optionIcons";
+import { useUnsavedChangesGuard } from "@/lib/useUnsavedChangesGuard";
 
 const STATUS_VALUES: ComponentStatus[] = ["CERTIFIED", "TESTING", "DEPRECATED"];
 
@@ -159,6 +160,7 @@ export function ComponentEditor({ component, onDirtyChange, initialProjectId = n
   };
 
   const isDirty = Object.values(fieldChanged).some(Boolean);
+  useUnsavedChangesGuard(isDirty);
 
   useEffect(() => {
     onDirtyChange?.(isDirty);

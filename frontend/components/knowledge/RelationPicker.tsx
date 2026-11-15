@@ -89,13 +89,29 @@ export function RelationPickerModal({
   useEffect(() => {
     const trimmed = query.trim();
     if (!trimmed) return;
+    // `active` drops responses for a query the user has already typed past, so a
+    // slow earlier request can't land last and replace the current results.
+    let active = true;
     const handle = setTimeout(() => {
       setIsSearching(true);
       quickSearch(trimmed)
-        .then((data) => setResults(data.results))
-        .finally(() => setIsSearching(false));
+        .then(
+          (data) => {
+            if (active) setResults(data.results);
+          },
+          () => {
+            if (active) setResults([]);
+          },
+        )
+        .finally(() => {
+          if (active) setIsSearching(false);
+        });
     }, 300);
-    return () => clearTimeout(handle);
+    return () => {
+      active = false;
+      clearTimeout(handle);
+      setIsSearching(false);
+    };
   }, [query]);
 
   // Filtered at render time (not in the effect) so a caller passing a fresh

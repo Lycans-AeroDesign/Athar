@@ -23,6 +23,7 @@ import { addAccessGrant, removeAccessGrant } from "@/lib/api/accessGrants";
 import { createTest, getProjects, updateTest, type TestWritePayload } from "@/lib/api/engineering";
 import type { ProjectSummary, TestDetail, TestPassFail, TestRunStatus, TestType, Visibility } from "@/lib/api/types";
 import { TEST_PASS_FAIL_ICONS, TEST_STATUS_ICONS, TEST_TYPE_ICONS } from "@/lib/optionIcons";
+import { useUnsavedChangesGuard } from "@/lib/useUnsavedChangesGuard";
 
 const TEST_TYPE_VALUES: TestType[] = [
   "FLIGHT",
@@ -108,6 +109,7 @@ export function TestEditor({ test, onDirtyChange, initialProjectId = null }: Tes
   };
 
   const isDirty = Object.values(fieldChanged).some(Boolean);
+  useUnsavedChangesGuard(isDirty);
 
   useEffect(() => {
     onDirtyChange?.(isDirty);

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
+import { LoadError } from "@/components/ui/LoadError";
 import { Modal } from "@/components/ui/Modal";
 import { SettingsListSkeleton } from "@/components/ui/Skeleton";
 import { INPUT_CLASS } from "@/components/ui/inputStyles";
@@ -65,6 +66,8 @@ export function InventoryListManager({ kind }: { kind: "categories" | "locations
   const api = APIS[kind];
 
   const [entries, setEntries] = useState<ListEntry[] | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   // null while the modal is closed; "new" for the create flow; an entry while renaming it.
   const [editTarget, setEditTarget] = useState<ListEntry | "new" | null>(null);
   const [name, setName] = useState("");
@@ -74,8 +77,13 @@ export function InventoryListManager({ kind }: { kind: "categories" | "locations
   const [deleteTarget, setDeleteTarget] = useState<ListEntry | null>(null);
 
   useEffect(() => {
-    api.list().then(setEntries);
-  }, [api]);
+    api.list().then(setEntries, (err) => setLoadError(errorMessage(err)));
+  }, [api, loadAttempt]);
+
+  function retryLoad() {
+    setLoadError(null);
+    setLoadAttempt((n) => n + 1);
+  }
 
   function openCreate() {
     setEditTarget("new");
@@ -131,7 +139,9 @@ export function InventoryListManager({ kind }: { kind: "categories" | "locations
           </Button>
         </div>
 
-        {!entries ? (
+        {loadError ? (
+          <LoadError message={loadError} onRetry={retryLoad} />
+        ) : !entries ? (
           <SettingsListSkeleton trailing="count-and-icons" />
         ) : entries.length === 0 ? (
           <EmptyState

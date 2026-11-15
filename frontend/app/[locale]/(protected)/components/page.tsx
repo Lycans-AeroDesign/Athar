@@ -167,6 +167,7 @@ function ComponentsPageContent() {
   }, [refreshKey]);
 
   useEffect(() => {
+    let active = true;
     getComponents({
       category: categoryFilter ?? undefined,
       location: locationFilter ?? undefined,
@@ -177,9 +178,16 @@ function ComponentsPageContent() {
       page,
       ordering,
     }).then(
-      (data) => setResult({ key: filterKey, components: data.results, hasNext: data.next !== null, count: data.count }),
-      (err) => setErrorResult({ key: filterKey, message: errorMessage(err) }),
+      (data) => {
+        if (active) setResult({ key: filterKey, components: data.results, hasNext: data.next !== null, count: data.count });
+      },
+      (err) => {
+        if (active) setErrorResult({ key: filterKey, message: errorMessage(err) });
+      },
     );
+    return () => {
+      active = false;
+    };
   }, [categoryFilter, locationFilter, statusFilter, inventoryTypeFilter, stockFilter, query, page, ordering, filterKey]);
 
   useEffect(() => {

@@ -113,17 +113,33 @@ export function GlobalSearch() {
   useEffect(() => {
     const trimmed = query.trim();
     if (!trimmed) return;
+    // `active` drops responses for a query the user has already typed past (or
+    // cleared by picking a result) - otherwise a slow earlier request could land
+    // last and show results for the wrong text, or reopen the closed dropdown.
+    let active = true;
     const handle = setTimeout(() => {
       setIsSearching(true);
       quickSearch(trimmed, scope === "all" ? undefined : scope)
-        .then((data) => {
-          setResults(data.results);
-          setActiveIndex(-1);
-          setIsOpen(true);
-        })
-        .finally(() => setIsSearching(false));
+        .then(
+          (data) => {
+            if (!active) return;
+            setResults(data.results);
+            setActiveIndex(-1);
+            setIsOpen(true);
+          },
+          () => {
+            if (active) setResults([]);
+          },
+        )
+        .finally(() => {
+          if (active) setIsSearching(false);
+        });
     }, 300);
-    return () => clearTimeout(handle);
+    return () => {
+      active = false;
+      clearTimeout(handle);
+      setIsSearching(false);
+    };
   }, [query, scope]);
 
   // Leaving the bar empty once a destination is picked - the search page has

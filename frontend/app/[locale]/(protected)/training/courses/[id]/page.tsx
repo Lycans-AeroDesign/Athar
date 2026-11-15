@@ -67,7 +67,7 @@ export default function CourseDetailPage() {
 
   useEffect(() => {
     if (!course) return;
-    getCourseProgress(course.id).then(setProgress);
+    getCourseProgress(course.id).then(setProgress, (err) => setActionError(errorMessage(err)));
     // Only course.id/status matter here - re-running on every setCourse() from
     // the workflow handlers below would refetch progress that hasn't changed.
     // eslint-disable-next-line react-hooks/exhaustive-deps

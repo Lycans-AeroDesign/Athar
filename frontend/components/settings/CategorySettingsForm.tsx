@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
+import { LoadError } from "@/components/ui/LoadError";
 import { Modal } from "@/components/ui/Modal";
 import { SettingsListSkeleton } from "@/components/ui/Skeleton";
 import { INPUT_CLASS } from "@/components/ui/inputStyles";
@@ -24,6 +25,8 @@ export function CategorySettingsForm() {
   const commonT = useTranslations("common");
 
   const [categories, setCategories] = useState<Category[] | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   // null while the modal is closed; "new" for the create flow; a Category while renaming it.
   const [editTarget, setEditTarget] = useState<Category | "new" | null>(null);
   const [name, setName] = useState("");
@@ -33,8 +36,13 @@ export function CategorySettingsForm() {
   const [deleteTarget, setDeleteTarget] = useState<Category | null>(null);
 
   useEffect(() => {
-    getCategories().then(setCategories);
-  }, []);
+    getCategories().then(setCategories, (err) => setLoadError(errorMessage(err)));
+  }, [loadAttempt]);
+
+  function retryLoad() {
+    setLoadError(null);
+    setLoadAttempt((n) => n + 1);
+  }
 
   function openCreate() {
     setEditTarget("new");
@@ -91,7 +99,9 @@ export function CategorySettingsForm() {
           </Button>
         </div>
 
-        {!categories ? (
+        {loadError ? (
+          <LoadError message={loadError} onRetry={retryLoad} />
+        ) : !categories ? (
           <SettingsListSkeleton />
         ) : categories.length === 0 ? (
           <EmptyState

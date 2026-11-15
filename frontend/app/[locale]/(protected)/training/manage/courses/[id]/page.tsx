@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { useParams, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { CoAuthorPicker } from "@/components/knowledge/CoAuthorPicker";
 import type { KnowledgeAuthor } from "@/lib/api/types";
@@ -128,6 +128,8 @@ export default function CourseEditorPage() {
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
+  const [isActing, setIsActing] = useState(false);
+  const actionInFlight = useRef(false);
   const [coAuthors, setCoAuthors] = useState<KnowledgeAuthor[]>([]);
   const [deleteConfirmedOverride, setDeleteConfirmedOverride] = useState(false);
 
@@ -250,13 +252,25 @@ export default function CourseEditorPage() {
     }
   }
 
-  async function runAction<T>(action: () => Promise<T>) {
+  // Returns whether the action succeeded, so callers only clear their inputs /
+  // close their forms on success (a failed save keeps what was typed). The ref
+  // drops a second call while one is in flight - a double-click or Enter+click
+  // would otherwise create the module/lesson twice.
+  async function runAction<T>(action: () => Promise<T>): Promise<boolean> {
+    if (actionInFlight.current) return false;
+    actionInFlight.current = true;
+    setIsActing(true);
     setError(null);
     try {
       await action();
       await loadCourse();
+      return true;
     } catch (err) {
       setError(errorMessage(err));
+      return false;
+    } finally {
+      actionInFlight.current = false;
+      setIsActing(false);
     }
   }
 
@@ -273,8 +287,7 @@ export default function CourseEditorPage() {
 
   async function handleAddModule() {
     if (!newModuleTitle.trim()) return;
-    await runAction(() => createModule(course!.id, { title: newModuleTitle.trim() }));
-    setNewModuleTitle("");
+    if (await runAction(() => createModule(course!.id, { title: newModuleTitle.trim() }))) setNewModuleTitle("");
   }
 
   async function handleMoveModule(moduleId: string, direction: -1 | 1) {
@@ -288,8 +301,7 @@ export default function CourseEditorPage() {
 
   async function handleDeleteModule() {
     if (!deleteModuleId) return;
-    await runAction(() => deleteModule(deleteModuleId));
-    setDeleteModuleId(null);
+    if (await runAction(() => deleteModule(deleteModuleId))) setDeleteModuleId(null);
   }
 
   function startEditModule(module: CourseModule) {
@@ -305,19 +317,19 @@ export default function CourseEditorPage() {
 
   async function handleSaveModuleEdit(moduleId: string) {
     if (!editModuleTitle.trim()) return;
-    await runAction(() =>
+    const saved = await runAction(() =>
       updateModule(moduleId, {
         title: editModuleTitle.trim(),
         description: editModuleDescription,
         estimated_minutes: editModuleEstimatedMinutes,
       }),
     );
-    setEditingModuleId(null);
+    if (saved) setEditingModuleId(null);
   }
 
   async function handleAddLesson(moduleId: string) {
     if (!newLessonTitle.trim()) return;
-    await runAction(() => createLesson(moduleId, { title: newLessonTitle.trim(), lesson_type: newLessonType }));
+    if (!(await runAction(() => createLesson(moduleId, { title: newLessonTitle.trim(), lesson_type: newLessonType })))) return;
     setNewLessonTitle("");
     setNewLessonType("TEXT");
     setAddingLessonToModuleId(null);
@@ -726,7 +738,7 @@ export default function CourseEditorPage() {
                       onChange={(value) => setNewLessonType(value as LessonType)}
                     />
                   </div>
-                  <Button variant="secondary" onClick={() => handleAddLesson(module.id)} disabled={!newLessonTitle.trim()}>
+                  <Button variant="secondary" onClick={() => handleAddLesson(module.id)} disabled={!newLessonTitle.trim()} loading={isActing}>
                     {t("addLessonButton")}
                   </Button>
                 </div>
@@ -749,7 +761,7 @@ export default function CourseEditorPage() {
               onChange={(e) => setNewModuleTitle(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleAddModule()}
             />
-            <Button onClick={handleAddModule} disabled={!newModuleTitle.trim()}>
+            <Button onClick={handleAddModule} disabled={!newModuleTitle.trim()} loading={isActing}>
               <Icon name="add" size={18} />
               {t("addModuleButton")}
             </Button>
@@ -811,7 +823,9 @@ export default function CourseEditorPage() {
         title={workflowT("archiveConfirmTitle")}
         description={workflowT("archiveConfirmBody")}
         confirmLabel={workflowT("archiveButton")}
-        onConfirm={() => runAction(() => archiveCourse(course!.id))}
+        onConfirm={async () => {
+          await runAction(() => archiveCourse(course!.id));
+        }}
       />
       <Modal
         open={rejectOpen}
@@ -819,7 +833,17 @@ export default function CourseEditorPage() {
         title={workflowT("rejectModalTitle")}
         isDirty={rejectReason.length > 0}
         footer={
-          <Button variant="danger" onClick={() => runAction(() => rejectCourse(course!.id, rejectReason.trim())).then(() => setRejectReason(""))}>
+          <Button
+            variant="danger"
+            disabled={!rejectReason.trim()}
+            loading={isActing}
+            onClick={async () => {
+              if (await runAction(() => rejectCourse(course!.id, rejectReason.trim()))) {
+                setRejectReason("");
+                setRejectOpen(false);
+              }
+            }}
+          >
             {workflowT("rejectButton")}
           </Button>
         }

@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { LoadError } from "@/components/ui/LoadError";
 import { MarkdownEditor } from "@/components/ui/MarkdownEditor";
 import { PoliciesSettingsSkeleton } from "./SettingsSkeletons";
 import { INPUT_CLASS } from "@/components/ui/inputStyles";
@@ -26,16 +27,24 @@ import { errorMessage } from "@/lib/errors";
 export function PoliciesSettingsForm() {
   const t = useTranslations("settings.policies");
   const [overview, setOverview] = useState<PolicyOverview[] | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
 
   function reload() {
     getPolicyOverview().then(setOverview);
   }
 
   useEffect(() => {
-    getPolicyOverview().then(setOverview);
-  }, []);
+    getPolicyOverview().then(setOverview, (err) => setLoadError(errorMessage(err)));
+  }, [loadAttempt]);
+
+  function retryLoad() {
+    setLoadError(null);
+    setLoadAttempt((n) => n + 1);
+  }
 
   if (!overview) {
+    if (loadError) return <LoadError message={loadError} onRetry={retryLoad} />;
     return <PoliciesSettingsSkeleton />;
   }
 

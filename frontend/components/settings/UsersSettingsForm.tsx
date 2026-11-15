@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Icon } from "@/components/ui/Icon";
 import { IconButton } from "@/components/ui/IconButton";
+import { LoadError } from "@/components/ui/LoadError";
 import { Menu, type MenuEntry } from "@/components/ui/Menu";
 import { Modal } from "@/components/ui/Modal";
 import { SettingsListSkeleton } from "@/components/ui/Skeleton";
@@ -34,6 +35,8 @@ export function UsersSettingsForm() {
   const emailEnabled = orgSettings?.email_enabled ?? false;
 
   const [users, setUsers] = useState<User[] | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [blockTarget, setBlockTarget] = useState<User | null>(null);
   const [workingId, setWorkingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -53,8 +56,8 @@ export function UsersSettingsForm() {
   const [search, setSearch] = useState("");
 
   useEffect(() => {
-    getUsers().then(setUsers);
-  }, []);
+    getUsers().then(setUsers, (err) => setLoadError(errorMessage(err)));
+  }, [loadAttempt]);
 
   async function handleBlock() {
     if (!blockTarget) return;
@@ -121,6 +124,11 @@ export function UsersSettingsForm() {
         )
       : users;
 
+  function retryLoad() {
+    setLoadError(null);
+    setLoadAttempt((n) => n + 1);
+  }
+
   function actionsFor(user: User): MenuEntry[] {
     if (!user.is_active) {
       return [{ label: t("unblockAction"), icon: "check_circle", onSelect: () => handleUnblock(user) }];
@@ -169,7 +177,9 @@ export function UsersSettingsForm() {
           />
         </div>
 
-        {!visibleUsers ? (
+        {loadError ? (
+          <LoadError message={loadError} onRetry={retryLoad} />
+        ) : !visibleUsers ? (
           <SettingsListSkeleton titlePill trailing="button" />
         ) : visibleUsers.length === 0 ? (
           <p className="font-body-md text-body-md text-on-surface-variant">{t("noMatches")}</p>

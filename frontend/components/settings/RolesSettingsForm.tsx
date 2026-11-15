@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Combobox } from "@/components/ui/Combobox";
 import { Icon } from "@/components/ui/Icon";
+import { LoadError } from "@/components/ui/LoadError";
 import { Modal } from "@/components/ui/Modal";
 import { MenuListSkeleton } from "@/components/ui/Skeleton";
 import { INPUT_CLASS } from "@/components/ui/inputStyles";
@@ -93,21 +94,31 @@ export function RolesSettingsForm() {
 
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
 
   useEffect(() => {
-    getRoles().then((data) => {
-      setRoles(data);
-      setDraftRoles(data.map(roleToDraft));
-    });
-  }, []);
+    getRoles().then(
+      (data) => {
+        setRoles(data);
+        setDraftRoles(data.map(roleToDraft));
+      },
+      (err) => setLoadError(errorMessage(err)),
+    );
+  }, [loadAttempt]);
 
   useEffect(() => {
-    if (canManagePermissions) getPermissions().then(setPermissionCatalogue);
-  }, [canManagePermissions]);
+    if (canManagePermissions) getPermissions().then(setPermissionCatalogue, (err) => setLoadError(errorMessage(err)));
+  }, [canManagePermissions, loadAttempt]);
 
   useEffect(() => {
-    if (canManageUserRoles) getUsers().then(setUsers);
-  }, [canManageUserRoles]);
+    if (canManageUserRoles) getUsers().then(setUsers, (err) => setLoadError(errorMessage(err)));
+  }, [canManageUserRoles, loadAttempt]);
+
+  function retryLoad() {
+    setLoadError(null);
+    setLoadAttempt((n) => n + 1);
+  }
 
   const selectedRole = draftRoles.find((role) => role.id === selectedRoleId) ?? null;
   const isDirty = draftRoles.some(isRoleDirty);
@@ -293,7 +304,9 @@ export function RolesSettingsForm() {
             <h2 className="font-headline-md text-headline-md text-on-surface">{t("title")}</h2>
           </div>
 
-          {!roles ? (
+          {loadError ? (
+            <LoadError message={loadError} onRetry={retryLoad} />
+          ) : !roles ? (
             <MenuListSkeleton />
           ) : (
             <div className="space-y-1">

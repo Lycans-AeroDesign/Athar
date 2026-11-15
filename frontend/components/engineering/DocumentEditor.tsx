@@ -28,6 +28,7 @@ import { useRouter } from "@/i18n/navigation";
 import { errorMessage } from "@/lib/errors";
 import { useSaveOnce } from "@/lib/useSaveOnce";
 import { DOC_SOURCE_ICONS, DOC_TYPE_ICONS } from "@/lib/optionIcons";
+import { useUnsavedChangesGuard } from "@/lib/useUnsavedChangesGuard";
 
 const DOC_TYPE_VALUES: DocType[] = [
   "COMPETITION_REPORT",
@@ -119,6 +120,7 @@ export function DocumentEditor({ document, onDirtyChange, initialProjectId = nul
   };
 
   const isDirty = Object.values(fieldChanged).some(Boolean);
+  useUnsavedChangesGuard(isDirty);
 
   useEffect(() => {
     onDirtyChange?.(isDirty);

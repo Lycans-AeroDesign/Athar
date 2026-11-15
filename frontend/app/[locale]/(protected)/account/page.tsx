@@ -10,11 +10,13 @@ import { ContributionsPanel } from "@/components/knowledge/ContributionsPanel";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
+import { LoadError } from "@/components/ui/LoadError";
 import { ContributionsPanelSkeleton } from "@/components/knowledge/KnowledgeSkeletons";
 import { getUserProfile } from "@/lib/api/knowledge";
 import type { UserProfile } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { formatDate } from "@/lib/datetime";
+import { errorMessage } from "@/lib/errors";
 import { formatPersonName } from "@/lib/format";
 
 type AccountTab = "contributions" | "preferences" | "data";
@@ -34,11 +36,18 @@ export default function AccountPage() {
   // ContributionsPanel needs the same aggregate counts /users/[id] computes
   // server-side (see knowledge/views.py's UserProfileView).
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   useEffect(() => {
-    if (user) getUserProfile(user.id).then(setProfile);
-  }, [user]);
+    if (user) getUserProfile(user.id).then(setProfile, (err) => setLoadError(errorMessage(err)));
+  }, [user, loadAttempt]);
 
   if (!user) return null;
+
+  function retryLoad() {
+    setLoadError(null);
+    setLoadAttempt((n) => n + 1);
+  }
 
   const tabs: { id: AccountTab; label: string; icon: string }[] = [
     { id: "contributions", label: t("myContributionsTitle"), icon: "trophy" },
@@ -110,6 +119,8 @@ export default function AccountPage() {
       {tab === "contributions" ? (
         profile ? (
           <ContributionsPanel profile={profile} />
+        ) : loadError ? (
+          <LoadError message={loadError} onRetry={retryLoad} />
         ) : (
           <ContributionsPanelSkeleton />
         )

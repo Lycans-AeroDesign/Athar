@@ -75,6 +75,7 @@ export default function DocumentsPage() {
   const error = errorResult?.key === filterKey ? errorResult.message : null;
 
   useEffect(() => {
+    let active = true;
     getDocuments({
       doc_type: docTypeFilter ?? undefined,
       source: sourceFilter ?? undefined,
@@ -82,10 +83,16 @@ export default function DocumentsPage() {
       page,
       ordering,
     }).then(
-      (data) =>
-        setResult({ key: filterKey, documents: data.results, hasNext: data.next !== null, count: data.count }),
-      (err) => setErrorResult({ key: filterKey, message: errorMessage(err) }),
+      (data) => {
+        if (active) setResult({ key: filterKey, documents: data.results, hasNext: data.next !== null, count: data.count });
+      },
+      (err) => {
+        if (active) setErrorResult({ key: filterKey, message: errorMessage(err) });
+      },
     );
+    return () => {
+      active = false;
+    };
   }, [docTypeFilter, sourceFilter, query, page, filterKey, ordering]);
 
   function updateDocTypeFilter(value: DocType | null) {

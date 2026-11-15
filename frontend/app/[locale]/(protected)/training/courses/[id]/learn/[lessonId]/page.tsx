@@ -50,7 +50,7 @@ export default function LessonViewerPage() {
 
   useEffect(() => {
     if (!course) return;
-    getCourseProgress(course.id).then(setProgress);
+    getCourseProgress(course.id).then(setProgress, (err) => setError(errorMessage(err)));
     // Only course.id matters here - re-running this on every setCourse() call
     // elsewhere (there are none on this page, but matching the course detail
     // page's own precedent) would refetch progress that hasn't changed.

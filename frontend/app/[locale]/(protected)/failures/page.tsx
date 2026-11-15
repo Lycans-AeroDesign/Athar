@@ -61,6 +61,7 @@ export default function FailuresPage() {
   const error = errorResult?.key === filterKey ? errorResult.message : null;
 
   useEffect(() => {
+    let active = true;
     getFailures({
       severity: severityFilter ?? undefined,
       status: statusFilter ?? undefined,
@@ -68,9 +69,16 @@ export default function FailuresPage() {
       page,
       ordering,
     }).then(
-      (data) => setResult({ key: filterKey, failures: data.results, hasNext: data.next !== null, count: data.count }),
-      (err) => setErrorResult({ key: filterKey, message: errorMessage(err) }),
+      (data) => {
+        if (active) setResult({ key: filterKey, failures: data.results, hasNext: data.next !== null, count: data.count });
+      },
+      (err) => {
+        if (active) setErrorResult({ key: filterKey, message: errorMessage(err) });
+      },
     );
+    return () => {
+      active = false;
+    };
   }, [severityFilter, statusFilter, query, page, filterKey, ordering]);
 
   function updateSeverityFilter(value: FailureSeverity | null) {

@@ -8,6 +8,7 @@ import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FloatingLabelInput } from "@/components/ui/FloatingLabelInput";
 import { Icon } from "@/components/ui/Icon";
+import { LoadError } from "@/components/ui/LoadError";
 import { Modal } from "@/components/ui/Modal";
 import { SettingsListSkeleton } from "@/components/ui/Skeleton";
 import {
@@ -50,6 +51,8 @@ export function BackupsSettingsForm() {
   const pollTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [restoreJobs, setRestoreJobs] = useState<RestoreJob[] | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [restoreTarget, setRestoreTarget] = useState<BackupJob | null>(null);
   const [restoreError, setRestoreError] = useState<string | null>(null);
   const restorePollTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -72,8 +75,17 @@ export function BackupsSettingsForm() {
   const uploadNeedsPassphrase = uploadTarget !== null && !uploadTarget.name.toLowerCase().endsWith(".zip");
 
   useEffect(() => {
-    getBackupJobs().then(setJobs);
-    getRestoreJobs().then(setRestoreJobs);
+    const onError = (err: unknown) => setLoadError(errorMessage(err));
+    getBackupJobs().then(setJobs, onError);
+    getRestoreJobs().then(setRestoreJobs, onError);
+  }, [loadAttempt]);
+
+  function retryLoad() {
+    setLoadError(null);
+    setLoadAttempt((n) => n + 1);
+  }
+
+  useEffect(() => {
     return () => {
       if (pollTimeout.current) clearTimeout(pollTimeout.current);
       if (restorePollTimeout.current) clearTimeout(restorePollTimeout.current);
@@ -214,7 +226,9 @@ export function BackupsSettingsForm() {
           </Button>
         </div>
 
-        {!jobs ? (
+        {loadError ? (
+          <LoadError message={loadError} onRetry={retryLoad} />
+        ) : !jobs ? (
           <SettingsListSkeleton rows={3} titlePill trailing="button" />
         ) : jobs.length === 0 ? (
           <EmptyState
@@ -314,7 +328,9 @@ export function BackupsSettingsForm() {
           </Button>
         </div>
 
-        {!restoreJobs ? (
+        {loadError ? (
+          <LoadError message={loadError} onRetry={retryLoad} />
+        ) : !restoreJobs ? (
           <SettingsListSkeleton rows={2} titlePill trailing="none" />
         ) : restoreJobs.length === 0 ? (
           <p className="font-body-md text-body-md text-on-surface-variant">{t("restoresEmptyState")}</p>

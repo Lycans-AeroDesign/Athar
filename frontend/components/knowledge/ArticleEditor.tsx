@@ -36,6 +36,7 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 import { useHasPermission } from "@/lib/auth/permissions";
 import { errorMessage } from "@/lib/errors";
 import { useSaveOnce } from "@/lib/useSaveOnce";
+import { useUnsavedChangesGuard } from "@/lib/useUnsavedChangesGuard";
 
 interface ArticleEditorProps {
   /** Omit to create a new article; pass an existing one to edit it in place. */
@@ -112,6 +113,7 @@ export function ArticleEditor({ article, onDirtyChange, initialProjectId = null 
   };
 
   const isDirty = Object.values(fieldChanged).some(Boolean);
+  useUnsavedChangesGuard(isDirty);
 
   useEffect(() => {
     onDirtyChange?.(isDirty);

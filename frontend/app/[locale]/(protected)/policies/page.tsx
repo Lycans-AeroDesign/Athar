@@ -3,25 +3,37 @@
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
+import { LoadError } from "@/components/ui/LoadError";
 import { Markdown } from "@/components/ui/Markdown";
 import { SkeletonRegion, SkeletonText } from "@/components/ui/Skeleton";
 import { getCurrentPolicies, type CurrentPolicy } from "@/lib/api/policies";
 import { formatDateTime } from "@/lib/datetime";
+import { errorMessage } from "@/lib/errors";
 
 // Read-only view of the currently published policies (the ones every member
 // has accepted to get past PolicyGate), linked from the account menu.
 export default function PoliciesPage() {
   const t = useTranslations("policies");
   const [policies, setPolicies] = useState<CurrentPolicy[] | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
-    getCurrentPolicies().then(setPolicies);
-  }, []);
+    getCurrentPolicies().then(setPolicies, (err) => setLoadError(errorMessage(err)));
+  }, [attempt]);
 
   return (
     <section className="max-w-3xl space-y-8">
       <h1 className="font-display text-display text-on-surface">{t("pageTitle")}</h1>
-      {!policies ? (
+      {loadError ? (
+        <LoadError
+          message={loadError}
+          onRetry={() => {
+            setLoadError(null);
+            setAttempt((n) => n + 1);
+          }}
+        />
+      ) : !policies ? (
         <SkeletonRegion className="space-y-8">
           {[0, 1].map((index) => (
             <div key={index} className="bg-surface rounded-xl border border-outline-variant p-6 space-y-4">

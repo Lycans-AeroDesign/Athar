@@ -57,10 +57,18 @@ export default function SopsPage() {
   }, []);
 
   useEffect(() => {
+    let active = true;
     getSops({ category: categoryFilter ?? undefined, q: query || undefined, page }).then(
-      (data) => setResult({ key: filterKey, sops: data.results, hasNext: data.next !== null, count: data.count }),
-      (err) => setErrorResult({ key: filterKey, message: errorMessage(err) }),
+      (data) => {
+        if (active) setResult({ key: filterKey, sops: data.results, hasNext: data.next !== null, count: data.count });
+      },
+      (err) => {
+        if (active) setErrorResult({ key: filterKey, message: errorMessage(err) });
+      },
     );
+    return () => {
+      active = false;
+    };
   }, [categoryFilter, query, page, filterKey]);
 
   function updateCategoryFilter(value: string | null) {

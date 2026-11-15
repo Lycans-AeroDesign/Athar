@@ -23,6 +23,7 @@ import { addAccessGrant, removeAccessGrant } from "@/lib/api/accessGrants";
 import { createProject, updateProject, type ProjectWritePayload } from "@/lib/api/engineering";
 import type { ProjectDetail, ProjectStatus, Visibility } from "@/lib/api/types";
 import { PROJECT_STATUS_ICONS } from "@/lib/optionIcons";
+import { useUnsavedChangesGuard } from "@/lib/useUnsavedChangesGuard";
 
 const STATUS_VALUES: ProjectStatus[] = ["ACTIVE", "ON_HOLD", "COMPLETED"];
 
@@ -69,6 +70,7 @@ export function ProjectEditor({ project, onDirtyChange }: ProjectEditorProps) {
   };
 
   const isDirty = Object.values(fieldChanged).some(Boolean);
+  useUnsavedChangesGuard(isDirty);
 
   useEffect(() => {
     onDirtyChange?.(isDirty);

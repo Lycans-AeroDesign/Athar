@@ -32,6 +32,7 @@ import { createSop, updateSop, type SopWritePayload } from "@/lib/api/engineerin
 import { syncCollectionMembership } from "@/lib/api/collections";
 import { createCategory, getCategories } from "@/lib/api/knowledge";
 import type { Category, KnowledgeAuthor, SopDetail, Visibility } from "@/lib/api/types";
+import { useUnsavedChangesGuard } from "@/lib/useUnsavedChangesGuard";
 
 interface SopEditorProps {
   /** Preselects the project on a new item (e.g. from a ?project= link). */
@@ -112,6 +113,7 @@ export function SopEditor({ sop, onDirtyChange, initialProjectId = null }: SopEd
   };
 
   const isDirty = Object.values(fieldChanged).some(Boolean);
+  useUnsavedChangesGuard(isDirty);
 
   useEffect(() => {
     onDirtyChange?.(isDirty);

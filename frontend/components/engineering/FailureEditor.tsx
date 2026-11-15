@@ -30,6 +30,7 @@ import type {
   Visibility,
 } from "@/lib/api/types";
 import { FAILURE_SEVERITY_ICONS, FAILURE_STATUS_ICONS } from "@/lib/optionIcons";
+import { useUnsavedChangesGuard } from "@/lib/useUnsavedChangesGuard";
 
 const SEVERITY_VALUES: FailureSeverity[] = ["LOW", "MEDIUM", "HIGH"];
 const STATUS_VALUES: FailureStatus[] = ["UNDER_INVESTIGATION", "RESOLVED"];
@@ -105,6 +106,7 @@ export function FailureEditor({ failure, onDirtyChange, initialProjectId = null 
   };
 
   const isDirty = Object.values(fieldChanged).some(Boolean);
+  useUnsavedChangesGuard(isDirty);
 
   useEffect(() => {
     onDirtyChange?.(isDirty);

@@ -8,6 +8,7 @@ import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
+import { LoadError } from "@/components/ui/LoadError";
 import { Modal } from "@/components/ui/Modal";
 import { SettingsListSkeleton } from "@/components/ui/Skeleton";
 import { INPUT_CLASS } from "@/components/ui/inputStyles";
@@ -29,6 +30,8 @@ export function InvitationsSettingsForm() {
   const locale = useLocale();
 
   const [codes, setCodes] = useState<InvitationCode[] | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [maxUses, setMaxUses] = useState(1);
   const [expiresAt, setExpiresAt] = useState<string | null>(null);
@@ -38,8 +41,13 @@ export function InvitationsSettingsForm() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   useEffect(() => {
-    getInvitationCodes().then(setCodes);
-  }, []);
+    getInvitationCodes().then(setCodes, (err) => setLoadError(errorMessage(err)));
+  }, [loadAttempt]);
+
+  function retryLoad() {
+    setLoadError(null);
+    setLoadAttempt((n) => n + 1);
+  }
 
   function openCreate() {
     setMaxUses(1);
@@ -90,7 +98,9 @@ export function InvitationsSettingsForm() {
           </Button>
         </div>
 
-        {!codes ? (
+        {loadError ? (
+          <LoadError message={loadError} onRetry={retryLoad} />
+        ) : !codes ? (
           <SettingsListSkeleton rows={3} />
         ) : codes.length === 0 ? (
           <EmptyState

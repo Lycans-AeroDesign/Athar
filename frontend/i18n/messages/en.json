@@ -10,6 +10,8 @@
     "working": "Working...",
     "discard": "Discard",
     "loading": "Loading...",
+    "loadFailed": "Couldn't load this.",
+    "retry": "Try again",
     "select": "Select...",
     "selectDate": "Select a date",
     "typeToSearch": "Type to search...",

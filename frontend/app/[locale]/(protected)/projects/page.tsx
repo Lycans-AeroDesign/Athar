@@ -57,10 +57,18 @@ export default function ProjectsPage() {
   const error = errorResult?.key === filterKey ? errorResult.message : null;
 
   useEffect(() => {
+    let active = true;
     getProjects({ status: statusFilter ?? undefined, q: query || undefined, page }).then(
-      (data) => setResult({ key: filterKey, projects: data.results, hasNext: data.next !== null, count: data.count }),
-      (err) => setErrorResult({ key: filterKey, message: errorMessage(err) }),
+      (data) => {
+        if (active) setResult({ key: filterKey, projects: data.results, hasNext: data.next !== null, count: data.count });
+      },
+      (err) => {
+        if (active) setErrorResult({ key: filterKey, message: errorMessage(err) });
+      },
     );
+    return () => {
+      active = false;
+    };
   }, [statusFilter, query, page, filterKey]);
 
   function updateStatusFilter(value: ProjectStatus | null) {
