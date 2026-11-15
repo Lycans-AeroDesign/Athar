@@ -10,14 +10,17 @@ import type { StoredFileRef } from "@/lib/api/types";
 interface ComponentPhotoCellProps {
   photo: StoredFileRef;
   alt: string;
+  /** Size of the small image (and its loading placeholder) - the table row
+   * uses h-9 w-9, the grid card's slightly bigger h-10 w-10. */
+  thumbClassName?: string;
 }
 
-// Table-view counterpart to AuthenticatedImage.tsx - same auth-gated
+// Components-list counterpart (table rows and grid cards) to AuthenticatedImage.tsx - same auth-gated
 // blob: URL fetch, but renders both a small thumbnail AND (revealed on
 // hover) a larger preview from that one fetched blob, rather than mounting
 // AuthenticatedImage twice and fetching the same file over the wire again
 // for the hover preview.
-export function ComponentPhotoCell({ photo, alt }: ComponentPhotoCellProps) {
+export function ComponentPhotoCell({ photo, alt, thumbClassName = "h-9 w-9" }: ComponentPhotoCellProps) {
   const [url, setUrl] = useState<string | null>(null);
   const [isVisible, setIsVisible] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
@@ -65,7 +68,7 @@ export function ComponentPhotoCell({ photo, alt }: ComponentPhotoCellProps) {
     return (
       <div
         ref={cellRef}
-        className="flex h-9 w-9 items-center justify-center rounded-lg border border-outline-variant bg-surface-container-low"
+        className={`flex ${thumbClassName} shrink-0 items-center justify-center rounded-lg border border-outline-variant bg-surface-container-low`}
       >
         {/* Same indeterminate-spinner construction as LoadingScreen.tsx - a
             plain bordered circle with one side colored and spun, no extra
@@ -76,7 +79,7 @@ export function ComponentPhotoCell({ photo, alt }: ComponentPhotoCellProps) {
   }
 
   return (
-    <div ref={cellRef} className="inline-block">
+    <div ref={cellRef} className="inline-block shrink-0">
       {/* Popover (portaled to <body>, position: fixed) rather than a plain
           CSS absolute + group-hover overlay - the table wraps its rows in an
           overflow-x-auto scroller (DataTable.tsx), which clips any
@@ -92,7 +95,7 @@ export function ComponentPhotoCell({ photo, alt }: ComponentPhotoCellProps) {
             onMouseLeave={() => setIsHovering(false)}
           >
             {/* eslint-disable-next-line @next/next/no-img-element -- blob: URLs aren't supported by next/image's optimizer. */}
-            <img src={url} alt={alt} className="h-9 w-9 rounded-lg object-cover border border-outline-variant" />
+            <img src={url} alt={alt} className={`block ${thumbClassName} rounded-lg object-cover border border-outline-variant`} />
           </span>
         </Popover.Anchor>
         <Popover.Portal>

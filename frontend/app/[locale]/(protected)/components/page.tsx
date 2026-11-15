@@ -7,10 +7,10 @@ import { Suspense, useEffect, useLayoutEffect, useState } from "react";
 import { Can } from "@/components/auth/Can";
 import { EngineeringStatusPill, StockStatusPill } from "@/components/engineering/ComponentBadges";
 import { ComponentImportModal } from "@/components/engineering/ComponentImportModal";
+import { ComponentPhotoCell } from "@/components/engineering/ComponentPhotoCell";
 import { ComponentsTable } from "@/components/engineering/ComponentsTable";
 import { InventorySummaryPanel } from "@/components/engineering/InventorySummaryPanel";
 import { ActiveFilterChip } from "@/components/ui/ActiveFilterChip";
-import { AuthenticatedImage } from "@/components/ui/AuthenticatedImage";
 import { Button } from "@/components/ui/Button";
 import { Combobox } from "@/components/ui/Combobox";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -448,14 +448,7 @@ function ComponentsPageContent() {
                   </div>
                   <div className="flex items-center gap-3 mb-1">
                     {component.photo && (
-                      <div className="h-10 w-10 rounded-lg border border-outline-variant overflow-hidden shrink-0">
-                        <AuthenticatedImage
-                          src={component.photo.download_url}
-                          size="md"
-                          alt={component.name}
-                          className="h-full w-full object-cover"
-                        />
-                      </div>
+                      <ComponentPhotoCell photo={component.photo} alt={component.name} thumbClassName="h-10 w-10" />
                     )}
                     <h3 className="font-headline-md text-headline-md text-on-surface truncate">{component.name}</h3>
                   </div>
