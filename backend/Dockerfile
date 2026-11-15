@@ -19,7 +19,12 @@ WORKDIR /app
 # create_full_backup` needs a real v18 client. The PGDG apt repo is the
 # standard way to get an exact-version match regardless of Debian's own
 # packaged version.
+# `apt-get upgrade` pulls Debian security fixes the python:slim base image
+# hasn't been rebuilt with yet (e.g. a zlib1g fix) - otherwise the image scan
+# in .github/workflows/security.yml flags already-fixed CVEs until upstream
+# republishes the base.
 RUN apt-get update \
+    && apt-get upgrade -y --no-install-recommends \
     && apt-get install -y --no-install-recommends libpq5 netcat-openbsd curl gnupg \
     && install -d /usr/share/postgresql-common/pgdg \
     && curl -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc --fail https://www.postgresql.org/media/keys/ACCC4CF8.asc \

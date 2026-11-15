@@ -1,0 +1,41 @@
+# Dependency update PRs. Security updates (for an advisory) are raised as
+# soon as one is published regardless of this schedule; the weekly runs below
+# keep everything else from drifting. Minor/patch bumps are grouped into one
+# PR per ecosystem so the queue stays reviewable; majors come one at a time
+# since they're the ones that need real testing.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      frontend-minor-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: uv
+    directory: /backend
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      backend-minor-patch:
+        update-types: [minor, patch]
+
+  # Base images (python:slim, node:alpine, uv) in the two Dockerfiles.
+  - package-ecosystem: docker
+    directories: [/backend, /frontend]
+    schedule:
+      interval: weekly
+    groups:
+      docker-minor-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions-minor-patch:
+        update-types: [minor, patch]

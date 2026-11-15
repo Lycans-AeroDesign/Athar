@@ -38,8 +38,11 @@ FROM base AS prod
 ENV NODE_ENV=production
 # The server starts with `node server.js`; npm and corepack aren't needed at runtime, and the copy
 # bundled in the base image carries its own dependencies (brace-expansion, undici, ...) that trip
-# image scans. Removing them keeps those out of the shipped image.
-RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+# image scans. Removing them keeps those out of the shipped image. `apk upgrade` applies Alpine
+# security fixes the node:alpine base hasn't been republished with yet (the same reason the
+# backend Dockerfile runs apt-get upgrade), so the image scan doesn't flag already-fixed CVEs.
+RUN apk upgrade --no-cache \
+    && rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
         /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack \
     && addgroup -S nodejs && adduser -S nextjs -G nodejs
 COPY --from=builder /app/public ./public
