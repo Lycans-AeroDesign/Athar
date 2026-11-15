@@ -930,6 +930,24 @@ class ArticleRevisionListView(APIView):
         return Response(ArticleRevisionSerializer(article.revisions.select_related("edited_by"), many=True).data)
 
 
+class ArticleRevisionRestoreView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        tags=["Knowledge"],
+        summary="Restore an earlier revision's title and content (same edit rules as updating the article)",
+        request=None,
+        responses={200: ArticleDetailSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
+    )
+    def post(self, request, pk, revision_pk):
+        article = _visible_article_or_404(request, pk)
+        revision = get_object_or_404(article.revisions, pk=revision_pk)
+        article = services.restore_article_revision(
+            article=article, revision=revision, actor=request.user, request=request
+        )
+        return Response(ArticleDetailSerializer(article, context={"request": request}).data)
+
+
 class QuestionListCreateView(APIView):
     def get_permissions(self):
         if self.request.method == "POST":

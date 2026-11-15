@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Attachments } from "@/components/knowledge/Attachments";
 import { ContributorsRow } from "@/components/knowledge/Contributors";
 import { RelatedContent } from "@/components/knowledge/RelatedContent";
+import { RevisionCompareModal } from "@/components/knowledge/RevisionCompareModal";
 import { SeriesStepper } from "@/components/knowledge/SeriesStepper";
 import { StatusPill } from "@/components/knowledge/StatusPill";
 import { Avatar } from "@/components/ui/Avatar";
@@ -38,7 +39,7 @@ import {
   submitArticle,
   unarchiveArticle,
 } from "@/lib/api/knowledge";
-import type { ArticleRevision } from "@/lib/api/types";
+import type { ArticleDetail, ArticleRevision } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { useHasPermission } from "@/lib/auth/permissions";
 import { extractHeadings } from "@/lib/toc";
@@ -47,6 +48,7 @@ import { useResource } from "@/lib/useResource";
 export default function ArticleDetailPage() {
   const { id } = useParams<{ id: string }>();
   const t = useTranslations("knowledge.article");
+  const tRevisions = useTranslations("knowledge.article.revisions");
   const { user } = useAuth();
   const router = useRouter();
   const canUpdateAny = useHasPermission("article.update");
@@ -61,6 +63,7 @@ export default function ArticleDetailPage() {
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [revisions, setRevisions] = useState<ArticleRevision[] | null>(null);
+  const [compareIndex, setCompareIndex] = useState<number | null>(null);
   const [isWorking, setIsWorking] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -93,6 +96,11 @@ export default function ArticleDetailPage() {
   // Attachments/RelatedContent sections below keep using canEdit as-is,
   // since the backend doesn't restrict those by status (yet).
   const canEditContent = canEdit && article.status !== "ARCHIVED";
+  // Restoring is an edit (services.restore_article_revision goes through
+  // update_article), so it follows the same rule: owners only before
+  // publishing, article.update holders at any time, nobody while archived.
+  const canRestore =
+    canEditContent && (canUpdateAny || ["DRAFT", "IN_REVIEW", "REJECTED"].includes(article.status));
   const canDelete = (isAuthor && article.status === "DRAFT") || canDeleteAny;
   const canSubmit = isAuthor && (article.status === "DRAFT" || article.status === "REJECTED");
   const canPublishNow = canPublish && (article.status === "DRAFT" || article.status === "IN_REVIEW");
@@ -155,6 +163,13 @@ export default function ArticleDetailPage() {
     } finally {
       setIsWorking(false);
     }
+  }
+
+  function handleRevisionRestored(restored: ArticleDetail) {
+    setArticle(restored);
+    getArticleRevisions(restored.id)
+      .then(setRevisions)
+      .catch((err) => setActionError(errorMessage(err)));
   }
 
   async function handleDelete() {
@@ -309,7 +324,7 @@ export default function ArticleDetailPage() {
           <div className="pt-6 border-t border-outline-variant space-y-4">
             <h3 className="font-headline-md text-headline-md text-on-surface">{t("historyModalTitle")}</h3>
             <div className="flex flex-col gap-3">
-              {revisions.map((revision) => (
+              {revisions.map((revision, index) => (
                 <div
                   key={revision.id}
                   className="flex gap-3 bg-surface p-4 rounded-xl border border-outline-variant"
@@ -337,12 +352,36 @@ export default function ArticleDetailPage() {
                         {formatDateTime(revision.created_at)}
                       </span>
                     </div>
-                    <p className="font-body-md text-body-md text-on-surface-variant">{revision.title}</p>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="font-body-md text-body-md text-on-surface-variant min-w-0">
+                        {revision.title}
+                        {index === 0 && (
+                          <span className="ms-2 px-2 py-0.5 rounded-full bg-primary-container text-on-primary-container font-label-caps text-label-caps uppercase">
+                            {tRevisions("current")}
+                          </span>
+                        )}
+                      </p>
+                      <Button variant="ghost" size="sm" onClick={() => setCompareIndex(index)}>
+                        <Icon name="update" size={16} />
+                        {tRevisions("compareButton")}
+                      </Button>
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
           </div>
+        )}
+
+        {revisions && (
+          <RevisionCompareModal
+            article={article}
+            revisions={revisions}
+            index={compareIndex}
+            onClose={() => setCompareIndex(null)}
+            canRestore={canRestore}
+            onRestored={handleRevisionRestored}
+          />
         )}
 
         <ConfirmModal

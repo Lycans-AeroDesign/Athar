@@ -923,7 +923,25 @@
       "visibilityLabel": "مستوى الظهور",
       "visibilityPUBLIC": "عام",
       "visibilityRESTRICTED": "مقيّد",
-      "collectionsLabel": "السلاسل والمجموعات"
+      "collectionsLabel": "السلاسل والمجموعات",
+      "revisions": {
+        "compareButton": "مقارنة",
+        "modalTitle": "مقارنة المراجعة",
+        "modalDescription": "حفظها {name} في {date}",
+        "system": "النظام",
+        "comparePrevious": "التغييرات في هذه المراجعة",
+        "compareCurrent": "مقارنة بالنسخة الحالية",
+        "titleLabel": "العنوان",
+        "unchangedLines": "{count, plural, one {سطر واحد بدون تغيير} two {سطران بدون تغيير} few {# أسطر بدون تغيير} other {# سطرًا بدون تغيير}}",
+        "noChanges": "لا توجد اختلافات.",
+        "isCurrent": "هذه المراجعة مطابقة للنسخة الحالية.",
+        "restoreHint": "الاستعادة تجعل هذه النسخة هي الحالية، وتُحفظ كمراجعة جديدة فلا يضيع شيء من السجل.",
+        "restoreButton": "استعادة هذه النسخة",
+        "line_same": "بدون تغيير:",
+        "line_added": "مُضاف:",
+        "line_removed": "محذوف:",
+        "current": "الحالية"
+      }
     },
     "collections": {
       "mode": {

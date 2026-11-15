@@ -923,7 +923,25 @@
       "visibilityLabel": "Visibility",
       "visibilityPUBLIC": "Public",
       "visibilityRESTRICTED": "Restricted",
-      "collectionsLabel": "Series & Collections"
+      "collectionsLabel": "Series & Collections",
+      "revisions": {
+        "compareButton": "Compare",
+        "modalTitle": "Compare revision",
+        "modalDescription": "Saved by {name} on {date}",
+        "system": "System",
+        "comparePrevious": "Changes in this revision",
+        "compareCurrent": "Compared to current",
+        "titleLabel": "Title",
+        "unchangedLines": "{count, plural, one {# unchanged line} other {# unchanged lines}}",
+        "noChanges": "No differences.",
+        "isCurrent": "This revision matches the current version.",
+        "restoreHint": "Restoring makes this the current version. It's saved as a new revision, so nothing in the history is lost.",
+        "restoreButton": "Restore this version",
+        "line_same": "Unchanged:",
+        "line_added": "Added:",
+        "line_removed": "Removed:",
+        "current": "Current"
+      }
     },
     "collections": {
       "mode": {

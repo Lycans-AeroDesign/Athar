@@ -14,6 +14,7 @@ from .views import (
     ArticleRejectView,
     ArticleRelationsView,
     ArticleRevisionListView,
+    ArticleRevisionRestoreView,
     ArticleSubmitView,
     ArticleUnarchiveView,
     BookmarkDetailView,
@@ -107,6 +108,11 @@ urlpatterns = [
     path("articles/<uuid:pk>/archive/", ArticleArchiveView.as_view(), name="knowledge-article-archive"),
     path("articles/<uuid:pk>/unarchive/", ArticleUnarchiveView.as_view(), name="knowledge-article-unarchive"),
     path("articles/<uuid:pk>/revisions/", ArticleRevisionListView.as_view(), name="knowledge-article-revisions"),
+    path(
+        "articles/<uuid:pk>/revisions/<uuid:revision_pk>/restore/",
+        ArticleRevisionRestoreView.as_view(),
+        name="knowledge-article-revision-restore",
+    ),
     path("articles/<uuid:pk>/relations/", ArticleRelationsView.as_view(), name="knowledge-article-relations"),
     path(
         "articles/<uuid:pk>/attachments/",

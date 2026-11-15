@@ -189,6 +189,13 @@ export function getArticleRevisions(id: string): Promise<ArticleRevision[]> {
   return apiJson<ArticleRevision[]>(`/api/v1/knowledge/articles/${id}/revisions/`);
 }
 
+/** Brings back a revision's title and content (recorded as a new revision). */
+export function restoreArticleRevision(id: string, revisionId: string): Promise<ArticleDetail> {
+  return apiJson<ArticleDetail>(`/api/v1/knowledge/articles/${id}/revisions/${revisionId}/restore/`, {
+    method: "POST",
+  });
+}
+
 export function deleteArticle(id: string): Promise<void> {
   return apiVoid(`/api/v1/knowledge/articles/${id}/`, { method: "DELETE" });
 }

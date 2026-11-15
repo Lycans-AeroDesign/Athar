@@ -714,6 +714,63 @@ class ArticleWorkflowExtraTests(KnowledgeTestCase):
         self.assertEqual(len(response.data), 2)
         self.assertEqual(response.data[0]["content"], "V2")
 
+    def _revisioned_draft(self, email):
+        author, access = self._login_with_role(email, "Member")
+        article = self.client.post(
+            reverse("knowledge-article-list-create"),
+            {"title": "Title V1", "content": "V1"},
+            format="json",
+            **self._auth(access),
+        ).data
+        self.client.patch(
+            reverse("knowledge-article-detail", args=[article["id"]]),
+            {"title": "Title V2", "content": "V2"},
+            format="json",
+            **self._auth(access),
+        )
+        revisions = self.client.get(reverse("knowledge-article-revisions", args=[article["id"]]), **self._auth(access))
+        return author, access, article, revisions.data
+
+    def test_restore_revision_brings_back_old_version_as_a_new_revision(self):
+        author, access, article, revisions = self._revisioned_draft("restoreauthor@example.com")
+        oldest = revisions[-1]
+        response = self.client.post(
+            reverse("knowledge-article-revision-restore", args=[article["id"], oldest["id"]]), **self._auth(access)
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["title"], "Title V1")
+        self.assertEqual(response.data["content"], "V1")
+        # History grows rather than being rewound (newest first): restored V1, V2, original V1.
+        after = self.client.get(reverse("knowledge-article-revisions", args=[article["id"]]), **self._auth(access))
+        self.assertEqual([r["content"] for r in after.data], ["V1", "V2", "V1"])
+        self.assertTrue(
+            AuditLog.objects.filter(action="article.restore_revision", target_object_id=str(article["id"])).exists()
+        )
+
+    def test_restore_of_current_version_is_rejected(self):
+        _, access, article, revisions = self._revisioned_draft("restorecurrent@example.com")
+        response = self.client.post(
+            reverse("knowledge-article-revision-restore", args=[article["id"], revisions[0]["id"]]),
+            **self._auth(access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_restore_follows_edit_rules(self):
+        _, access, article, revisions = self._revisioned_draft("restorerules@example.com")
+        _, other_access = self._login_with_role("restoreother@example.com", "Member")
+        url = reverse("knowledge-article-revision-restore", args=[article["id"], revisions[-1]["id"]])
+        # Someone who can't even see the draft gets the same answer as for the article itself.
+        self.assertEqual(self.client.post(url, **self._auth(other_access)).status_code, status.HTTP_403_FORBIDDEN)
+
+        # A revision id from a different article is a 404, not a cross-article restore.
+        _, _, other_article, other_revisions = self._revisioned_draft("restoreforeign@example.com")
+        foreign = reverse("knowledge-article-revision-restore", args=[article["id"], other_revisions[-1]["id"]])
+        self.assertEqual(self.client.post(foreign, **self._auth(access)).status_code, status.HTTP_404_NOT_FOUND)
+
+        # Archived articles stay frozen, restore included.
+        Article.objects.filter(pk=article["id"]).update(status=Article.Status.ARCHIVED)
+        self.assertEqual(self.client.post(url, **self._auth(access)).status_code, status.HTTP_400_BAD_REQUEST)
+
 
 class QuestionStatusAndPromotionTests(KnowledgeTestCase):
     def test_status_follows_answer_and_accept_lifecycle(self):

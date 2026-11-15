@@ -304,6 +304,29 @@ def update_article(*, article: Article, actor, request=None, **fields) -> Articl
     return article
 
 
+def restore_article_revision(*, article: Article, revision: ArticleRevision, actor, request=None) -> Article:
+    """Puts `revision`'s title and content back as the article's current
+    version. Goes through update_article, so the same edit rules apply
+    (owner of a draft, or article.update; never while archived) and the
+    restore is itself recorded as a new revision - history only grows,
+    nothing between `revision` and now is lost."""
+    if revision.article_id != article.pk:
+        raise ValidationError("That revision belongs to a different article.")
+    if revision.title == article.title and revision.content == article.content:
+        raise ValidationError("This revision is already the current version.")
+    article = update_article(
+        article=article, actor=actor, request=request, title=revision.title, content=revision.content
+    )
+    log_action(
+        actor=actor,
+        action="article.restore_revision",
+        target=article,
+        metadata={"revision_id": str(revision.pk), "revision_created_at": revision.created_at.isoformat()},
+        request=request,
+    )
+    return article
+
+
 def submit_article(*, article: Article, actor, request=None) -> Article:
     if not visibility_rules.is_owner_of(actor, "article", article):
         raise PermissionDenied("Only the author or a co-author can submit their own draft for review.")
