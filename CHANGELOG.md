@@ -1,3 +1,13 @@
+## [1.32.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.31.0...v1.32.0) (2026-11-15)
+
+### Features
+
+* **platform:** error log with tracebacks, and phone layout ([a69c220](https://github.com/Lycans-AeroDesign/Athar/commit/a69c220f357be1796cf8fd08abfddfcffea49b4d))
+
+### Bug Fixes
+
+* **ci:** dispatch docker publish with GITHUB_TOKEN ([83de677](https://github.com/Lycans-AeroDesign/Athar/commit/83de677ae5e0a9465f3ccc378204f939d76f26d5))
+
 ## [1.31.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.30.0...v1.31.0) (2026-11-15)
 
 ### Features
