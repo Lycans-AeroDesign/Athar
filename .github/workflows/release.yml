@@ -19,7 +19,7 @@ permissions:
   contents: write
   issues: write
   pull-requests: write
-  # Lets the last step start docker-publish.yml when RELEASE_TOKEN isn't set.
+  # Lets the last step start docker-publish.yml with GITHUB_TOKEN.
   actions: write
 
 jobs:
@@ -65,11 +65,15 @@ jobs:
       # The vX.Y.Z tag sits on the "chore(release): ... [skip ci]" commit, and
       # GitHub skips push-triggered workflows for a [skip ci] head commit - so
       # docker-publish.yml's `on: push: tags:` never fires for a release. Start
-      # it explicitly instead (workflow_dispatch is allowed even with
-      # GITHUB_TOKEN). Does nothing when no new version was released.
+      # it explicitly instead. Does nothing when no new version was released.
+      # Always uses GITHUB_TOKEN here, not RELEASE_TOKEN: a workflow_dispatch
+      # sent with GITHUB_TOKEN still starts the target workflow (the one
+      # exception to GitHub's no-trigger rule), and this job's `actions: write`
+      # grants it - whereas RELEASE_TOKEN is a PAT without Actions write
+      # access and gets a 403 from the dispatches endpoint.
       - name: Publish Docker images for the new release
         env:
-          GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           tag="$(git tag --points-at HEAD --list 'v*.*.*' | head -n 1)"
           if [ -z "$tag" ]; then
