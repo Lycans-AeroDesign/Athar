@@ -353,27 +353,21 @@ body {
   animation: fade-in-up 200ms ease-out;
 }
 
-/* Clipped `truncate` text scrolling into view on hover/focus/touch - set by
-   components/ui/TruncateRoller.tsx, which only toggles [data-rolling] and the
-   two variables. Rolls out, pauses, rolls back (alternate), pausing at each
-   end via the flat 0-15% / 85-100% stretches. Ellipsis is swapped for a clip
-   while moving so the "…" doesn't slide along with the text. */
-@keyframes truncate-roll {
-  0%,
-  15% {
-    text-indent: 0;
-  }
-  85%,
-  100% {
-    text-indent: var(--roll-distance);
-  }
+/* Clipped `truncate` text rolling into view - lib/truncateRoll.ts sets
+   [data-rolling] while it moves; the ellipsis is swapped for a plain clip
+   meanwhile so the "…" doesn't sit over the moving text. */
+.truncate[data-rolling] {
+  text-overflow: clip;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .truncate[data-rolling] {
-    text-overflow: clip;
-    animation: truncate-roll var(--roll-duration) ease-in-out infinite alternate;
-  }
+/* Transform-mode roll: the animated clip-path does the clipping while the
+   element itself slides, so its own overflow clip has to be lifted.
+   min-width: 0 stands in for what overflow:hidden was doing for a flex/grid
+   item (letting it shrink below its text's width) so the row doesn't reflow. */
+.truncate[data-rolling="transform"] {
+  overflow: visible;
+  min-width: 0;
+  will-change: transform, clip-path;
 }
 
 /* Syntax highlighting for fenced code blocks - rehype-highlight emits
