@@ -1,3 +1,9 @@
+## [1.33.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.32.0...v1.33.0) (2026-11-15)
+
+### Features
+
+* **frontend:** what's new pop-up for user-facing changes ([72081ec](https://github.com/Lycans-AeroDesign/Athar/commit/72081ecc998600569f087becb8853c3a968ce0f1))
+
 ## [1.32.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.31.0...v1.32.0) (2026-11-15)
 
 ### Features
