@@ -1,5 +1,8 @@
+from unittest import mock
+
 from django.contrib.contenttypes.models import ContentType
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.db.models import Q
 
 from django.urls import reverse
 from rest_framework import status
@@ -363,6 +366,24 @@ class CategoryAndTagTests(KnowledgeTestCase):
         self.assertGreater(response.data["count"], 0)
 
         response = self.client.get(reverse("knowledge-tag-list"), **self._auth(guest_access))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_duplicate_category_name_is_a_400_not_a_500(self):
+        _, admin_access = self._login_with_role("categdupe@example.com", "Organization Admin")
+        url = reverse("knowledge-category-list")
+        first = self.client.post(url, {"name": "Aero"}, format="json", **self._auth(admin_access))
+        self.assertEqual(first.status_code, status.HTTP_201_CREATED)
+        other = self.client.post(url, {"name": "Structures"}, format="json", **self._auth(admin_access))
+
+        response = self.client.post(url, {"name": "aero"}, format="json", **self._auth(admin_access))
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("name", response.data)
+
+        detail = reverse("knowledge-category-detail", args=[other.data["id"]])
+        response = self.client.patch(detail, {"name": "Aero"}, format="json", **self._auth(admin_access))
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        # Saving a category under its own name is not a clash.
+        response = self.client.patch(detail, {"name": "Structures"}, format="json", **self._auth(admin_access))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_create_and_delete_require_category_manage_permission(self):
@@ -3050,6 +3071,61 @@ MECHANICAL_SHEET_CSV = (
 )
 
 
+class RelinkRemovesOldAutoRelationTests(KnowledgeTestCase):
+    """Changing a failure's component/project (or a test's project) used to only
+    add the new auto-relation, so the old item kept listing it."""
+
+    def _post(self, access, name, payload):
+        response = self.client.post(reverse(name), payload, format="json", **self._auth(access))
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
+        return response.data
+
+    def _linked(self, item_id, other_id):
+        return KnowledgeRelation.objects.filter(
+            Q(source_object_id=item_id, target_object_id=other_id) | Q(source_object_id=other_id, target_object_id=item_id)
+        ).exists()
+
+    def test_moving_a_failure_drops_the_old_component_and_project_links(self):
+        _, head_access = self._login_with_role("relinkhead@example.com", "Subteam Head")
+        motor_a = self._post(head_access, "knowledge-component-list-create", {"name": "Motor A"})
+        motor_b = self._post(head_access, "knowledge-component-list-create", {"name": "Motor B"})
+        falcon = self._post(head_access, "knowledge-project-list-create", {"name": "Falcon"})
+        failure = self._post(
+            head_access, "knowledge-failure-list-create",
+            {"title": "Overheat", "component_id": motor_a["id"], "project_id": falcon["id"]},
+        )
+        self.assertTrue(self._linked(failure["id"], motor_a["id"]))
+        self.assertTrue(self._linked(failure["id"], falcon["id"]))
+
+        response = self.client.patch(
+            reverse("knowledge-failure-detail", args=[failure["id"]]),
+            {"component_id": motor_b["id"], "project_id": None},
+            format="json",
+            **self._auth(head_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertFalse(self._linked(failure["id"], motor_a["id"]))
+        self.assertTrue(self._linked(failure["id"], motor_b["id"]))
+        self.assertFalse(self._linked(failure["id"], falcon["id"]))
+
+    def test_moving_a_test_drops_the_old_project_link(self):
+        _, head_access = self._login_with_role("relinktesthead@example.com", "Subteam Head")
+        falcon = self._post(head_access, "knowledge-project-list-create", {"name": "Falcon"})
+        hawk = self._post(head_access, "knowledge-project-list-create", {"name": "Hawk"})
+        test = self._post(head_access, "knowledge-test-list-create", {"title": "Thrust run", "project_id": falcon["id"]})
+        self.assertTrue(self._linked(test["id"], falcon["id"]))
+
+        response = self.client.patch(
+            reverse("knowledge-test-detail", args=[test["id"]]),
+            {"project_id": hawk["id"]},
+            format="json",
+            **self._auth(head_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertFalse(self._linked(test["id"], falcon["id"]))
+        self.assertTrue(self._linked(test["id"], hawk["id"]))
+
+
 class ComponentInventoryTests(KnowledgeTestCase):
     """Workshop inventory on components - the fields, the automatic stock
     status, and syncing with the inventory spreadsheet through CSV."""
@@ -3169,6 +3245,52 @@ class ComponentInventoryTests(KnowledgeTestCase):
         self.assertEqual(hand_tools["by_status"]["LOW_STOCK"], 1)
 
     # --- importing the sheet ------------------------------------------------------
+
+    def test_import_rejects_out_of_range_cells_as_row_errors(self):
+        # Each of these used to reach the database and 500 mid-commit (DataError /
+        # OverflowError), or - for the javascript: link - be stored as-is.
+        _, mentor_access = self._login_with_role("csvlimits@example.com", "Mentor")
+        csv_content = (
+            "Item,Quantity,Link\n"
+            f"{'x' * 201},1,\n"
+            "Infinite,inf,\n"
+            "Huge,99999999999,\n"
+            "Scripted,1,javascript:alert(1)\n"
+            "Fine,2,https://example.com/part\n"
+        )
+        response = self._import(mentor_access, csv_content, commit=False)
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        actions = [row["action"] for row in response.data["rows"]]
+        self.assertEqual(actions, ["error", "error", "error", "error", "create"])
+        messages = [row.get("message", "") for row in response.data["rows"][:4]]
+        self.assertIn("too long", messages[0])
+        self.assertIn("whole number", messages[1])
+        self.assertIn("at most", messages[2])
+        self.assertIn("http", messages[3])
+
+        response = self._import(mentor_access, csv_content, commit=True)
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertEqual(response.data["applied"]["created"], 1)
+        self.assertEqual(list(Component.objects.values_list("name", flat=True)), ["Fine"])
+
+    def test_import_commit_is_all_or_nothing(self):
+        # A row failing part-way through the commit must not leave earlier rows saved
+        # (re-running the import would otherwise duplicate them).
+        _, mentor_access = self._login_with_role("csvatomic@example.com", "Mentor")
+        real_create = services.create_component
+        calls = []
+
+        def create_then_fail(**kwargs):
+            calls.append(kwargs["name"])
+            if len(calls) == 2:
+                raise RuntimeError("simulated failure on the second row")
+            return real_create(**kwargs)
+
+        with mock.patch.object(services, "create_component", side_effect=create_then_fail):
+            with self.assertRaises(RuntimeError):
+                self._import(mentor_access, "Item,Quantity\nFirst,1\nSecond,1\n", commit=True)
+        self.assertEqual(calls, ["First", "Second"])
+        self.assertFalse(Component.objects.filter(name="First").exists())
 
     def test_sheet_tab_imports_as_is_with_its_own_headers_and_labels(self):
         _, mentor_access = self._login_with_role("sheetimport@example.com", "Mentor")

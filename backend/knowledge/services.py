@@ -1,11 +1,14 @@
 import csv
 import datetime
 import io
+import math
 import re
 import uuid
 
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.core.validators import URLValidator
 from django.db import transaction
 from django.db.models import Count, Max, Q, QuerySet
 from django.utils import timezone
@@ -178,7 +181,20 @@ def visible_tests_for(viewer) -> QuerySet[Test]:
     return visibility_rules.exclude_inaccessible(queryset, viewer, Test, "test")
 
 
+def _ensure_unique_name(model, *, organization, name: str, label: str, exclude_pk=None) -> None:
+    """(organization, name) is unique on the model, but `organization` isn't a
+    serializer field, so DRF never adds that validator and a duplicate reached
+    the database as an IntegrityError (500). Case-insensitive, like the
+    component category/location checks in knowledge.views."""
+    queryset = model.objects.filter(organization=organization, name__iexact=name.strip())
+    if exclude_pk is not None:
+        queryset = queryset.exclude(pk=exclude_pk)
+    if queryset.exists():
+        raise ValidationError({"name": [f"A {label} with this name already exists."]})
+
+
 def create_category(*, actor, request=None, name, description="") -> Category:
+    _ensure_unique_name(Category, organization=actor.organization, name=name, label="category")
     category = Category.objects.create(
         organization=actor.organization,
         name=name,
@@ -190,6 +206,10 @@ def create_category(*, actor, request=None, name, description="") -> Category:
 
 
 def update_category(*, category: Category, actor, request=None, **fields) -> Category:
+    if "name" in fields:
+        _ensure_unique_name(
+            Category, organization=category.organization, name=fields["name"], label="category", exclude_pk=category.pk
+        )
     for field, value in fields.items():
         setattr(category, field, value)
     category.save(update_fields=[*fields.keys()])
@@ -787,7 +807,23 @@ def delete_component(*, component: Component, actor, request=None) -> None:
     component.delete()
 
 
-def _sync_failure_relations(failure: Failure, *, actor, request=None) -> None:
+def _sync_failure_relations(
+    failure: Failure, *, actor, request=None, previous_component=None, previous_project=None
+) -> None:
+    """Mirrors failure.component/project as INVOLVED_IN/HAS_FAILURE relations.
+    `previous_*` is the value before an edit: when it changed (or was cleared),
+    the old auto-created relation is removed - otherwise the old component or
+    project kept listing a failure that no longer belongs to it."""
+    if previous_component is not None and previous_component != failure.component:
+        _remove_relation(
+            actor=actor, request=request, source_type="component", source=previous_component,
+            target_type="failure", target=failure, relation_type="INVOLVED_IN",
+        )
+    if previous_project is not None and previous_project != failure.project:
+        _remove_relation(
+            actor=actor, request=request, source_type="project", source=previous_project,
+            target_type="failure", target=failure, relation_type="HAS_FAILURE",
+        )
     if failure.component is not None:
         _store_relation(
             actor=actor,
@@ -839,11 +875,15 @@ def create_failure(
 
 def update_failure(*, failure: Failure, actor, request=None, **fields) -> Failure:
     _require_permission(actor, "failure.update", "You need failure.update to edit this failure report.")
+    previous_component, previous_project = failure.component, failure.project
     for field, value in fields.items():
         setattr(failure, field, value)
     failure.save(update_fields=[*fields.keys(), "updated_at"])
     if "component" in fields or "project" in fields:
-        _sync_failure_relations(failure, actor=actor, request=request)
+        _sync_failure_relations(
+            failure, actor=actor, request=request,
+            previous_component=previous_component, previous_project=previous_project,
+        )
     confirm_stored_files_in_text(
         *(fields[f] for f in ("summary", "root_cause", "corrective_action", "preventive_action") if f in fields),
         organization=failure.organization,
@@ -958,10 +998,18 @@ def create_test(
 def update_test(*, test: Test, actor, request=None, **fields) -> Test:
     _require_permission(actor, "test.update", "You need test.update to edit this test.")
     tag_names = fields.pop("tag_names", None)
+    previous_project = test.project
     for field, value in fields.items():
         setattr(test, field, value)
     test.save(update_fields=[*fields.keys(), "updated_at"])
     _sync_tags(test, tag_names)
+    # Moving a test to another project (or clearing it) drops the old project's
+    # auto-created HAS_TEST link, so it stops listing the test.
+    if "project" in fields and previous_project is not None and previous_project != test.project:
+        _remove_relation(
+            actor=actor, request=request, source_type="project", source=previous_project,
+            target_type="test", target=test, relation_type="HAS_TEST",
+        )
     if "project" in fields and test.project is not None:
         _store_relation(
             actor=actor,
@@ -1544,6 +1592,34 @@ def _store_relation(*, actor, request, source_type: str, source, target_type: st
             request=request,
         )
     return relation
+
+
+def _remove_relation(*, actor, request, source_type: str, source, target_type: str, target, relation_type: str) -> None:
+    """Inverse of _store_relation - deletes that exact (normalized) relation if it exists."""
+    stored_relation_type, store_source, store_target = _normalized_relation_direction(
+        relation_type, source_type, source, target_type, target
+    )
+    relations = KnowledgeRelation.objects.filter(
+        organization=actor.organization,
+        source_content_type=ContentType.objects.get_for_model(type(store_source)),
+        source_object_id=store_source.pk,
+        target_content_type=ContentType.objects.get_for_model(type(store_target)),
+        target_object_id=store_target.pk,
+        relation_type=stored_relation_type,
+    )
+    for relation in relations:
+        log_action(
+            actor=actor,
+            action="relation.delete",
+            metadata={
+                "relation_id": str(relation.pk),
+                "source": f"{source_type}:{source.pk}",
+                "target": f"{target_type}:{target.pk}",
+                "relation_type": stored_relation_type,
+            },
+            request=request,
+        )
+        relation.delete()
 
 
 def create_relation(
@@ -2337,6 +2413,10 @@ def _choice_error(column: str, raw: str, choices) -> ValueError:
     return ValueError(f'{column} "{raw}" must be one of {", ".join(choices.labels)}.')
 
 
+# Postgres integer max - the ceiling for Component's PositiveIntegerField quantities.
+_MAX_QUANTITY = 2_147_483_647
+
+
 def _parse_whole_number(raw: str, column: str) -> int | None:
     """None for a blank-ish cell (the sheet leaves "Min. Qty Desired" empty
     or writes "None"); accepts "3.0", which is how Excel sometimes saves 3."""
@@ -2347,8 +2427,12 @@ def _parse_whole_number(raw: str, column: str) -> int | None:
         number = float(value)
     except ValueError:
         number = -1
-    if number < 0 or number != int(number):
+    # "inf"/"nan" parse as floats but int() can't take them (OverflowError) -
+    # and quantities are PositiveIntegerFields, capped at Postgres' integer max.
+    if not math.isfinite(number) or number < 0 or number != int(number):
         raise ValueError(f"{column} must be a whole number, 0 or more.")
+    if number > _MAX_QUANTITY:
+        raise ValueError(f"{column} must be at most {_MAX_QUANTITY:,}.")
     return int(number)
 
 
@@ -2454,8 +2538,43 @@ def _parse_component_row(record: dict) -> tuple[dict, dict]:
     if cell("tags"):
         fields["tag_names"] = [tag.strip() for tag in cell("tags").split(",") if tag.strip()]
 
+    _validate_component_row_lengths(fields)
+    if "link" in fields:
+        try:
+            _HTTP_URL_VALIDATOR(fields["link"])
+        except DjangoValidationError:
+            raise ValueError("Link must be a full http:// or https:// URL.") from None
+
     meta = {"athar_id": cell("athar_id"), "last_updated": _parse_date_cell(cell("last_updated"))}
     return fields, meta
+
+
+_HTTP_URL_VALIDATOR = URLValidator(schemes=["http", "https"])
+
+# Parsed field -> (model, model field, CSV column) whose max_length bounds it. Checked
+# while parsing so an over-long cell is a row error in the preview, not a DataError
+# (500) halfway through the commit. Read from the models so the limits can't drift.
+_ROW_LENGTH_LIMITS = (
+    ("name", Component, "name", "Item/Name"),
+    ("manufacturer", Component, "manufacturer", "Manufacturer"),
+    ("part_number", Component, "part_number", "Part Number"),
+    ("unit", Component, "unit", "Unit"),
+    ("link", Component, "link", "Link"),
+    ("category_name", ComponentCategory, "name", "Category"),
+    ("location_name", StorageLocation, "name", "Grid Location"),
+)
+
+
+def _validate_component_row_lengths(fields: dict) -> None:
+    for field, model, model_field, column in _ROW_LENGTH_LIMITS:
+        value = fields.get(field)
+        limit = model._meta.get_field(model_field).max_length
+        if value and len(value) > limit:
+            raise ValueError(f"{column} is too long ({len(value)} characters, max {limit}).")
+    tag_limit = Tag._meta.get_field("name").max_length
+    for tag in fields.get("tag_names", []):
+        if len(tag) > tag_limit:
+            raise ValueError(f'Tag "{tag[:20]}..." is too long (max {tag_limit} characters).')
 
 
 # Maps a parsed field name to the key the import response's `changes` uses -
@@ -2776,20 +2895,23 @@ def import_components_csv(
 
     created = updated = 0
     rows = []
-    for row_number in sorted(results):
-        result = results[row_number]
-        if commit and result["action"] == "create":
-            create_component(actor=actor, request=request, **{
-                "status": "", **_resolve_fields_for_apply(result["fields"], actor=actor, request=request)
-            })
-            created += 1
-        elif commit and result["action"] == "update":
-            update_component(
-                component=result["component"], actor=actor, request=request,
-                **_resolve_fields_for_apply(result["fields"], actor=actor, request=request),
-            )
-            updated += 1
-        rows.append({key: value for key, value in result.items() if key not in ("fields", "component")})
+    # All-or-nothing: a row failing mid-commit used to leave the earlier rows
+    # saved, so re-running the import duplicated them.
+    with transaction.atomic():
+        for row_number in sorted(results):
+            result = results[row_number]
+            if commit and result["action"] == "create":
+                create_component(actor=actor, request=request, **{
+                    "status": "", **_resolve_fields_for_apply(result["fields"], actor=actor, request=request)
+                })
+                created += 1
+            elif commit and result["action"] == "update":
+                update_component(
+                    component=result["component"], actor=actor, request=request,
+                    **_resolve_fields_for_apply(result["fields"], actor=actor, request=request),
+                )
+                updated += 1
+            rows.append({key: value for key, value in result.items() if key not in ("fields", "component")})
 
     summary = {action: sum(1 for row in rows if row["action"] == action) for action in ("create", "update", "unchanged", "error", "merged")}
     summary["duplicate_groups"] = len(duplicate_groups)

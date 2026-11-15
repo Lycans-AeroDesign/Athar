@@ -107,7 +107,20 @@ def _recompute_course_duration(course: Course) -> None:
 # --- Categories -------------------------------------------------------------
 
 
+def _ensure_unique_name(model, *, organization, name: str, label: str, exclude_pk=None) -> None:
+    """(organization, name) is unique on the model, but `organization` isn't a
+    serializer field, so DRF never adds that validator and a duplicate reached
+    the database as an IntegrityError (500). Case-insensitive, like the
+    component category/location checks in knowledge.views."""
+    queryset = model.objects.filter(organization=organization, name__iexact=name.strip())
+    if exclude_pk is not None:
+        queryset = queryset.exclude(pk=exclude_pk)
+    if queryset.exists():
+        raise ValidationError({"name": [f"A {label} with this name already exists."]})
+
+
 def create_course_category(*, actor, request=None, name, description="") -> CourseCategory:
+    _ensure_unique_name(CourseCategory, organization=actor.organization, name=name, label="course category")
     category = CourseCategory.objects.create(
         organization=actor.organization,
         name=name,
@@ -119,6 +132,11 @@ def create_course_category(*, actor, request=None, name, description="") -> Cour
 
 
 def update_course_category(*, category: CourseCategory, actor, request=None, **fields) -> CourseCategory:
+    if "name" in fields:
+        _ensure_unique_name(
+            CourseCategory, organization=category.organization, name=fields["name"],
+            label="course category", exclude_pk=category.pk,
+        )
     for field, value in fields.items():
         setattr(category, field, value)
     category.save(update_fields=[*fields.keys()])

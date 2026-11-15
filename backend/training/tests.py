@@ -293,6 +293,23 @@ class CoursePermissionTests(TrainingTestCase):
 
 
 class CourseCategoryTests(TrainingTestCase):
+    def test_duplicate_course_category_name_is_a_400_not_a_500(self):
+        _, admin_access = self._login_with_role("admin@example.com", "Organization Admin")
+        url = reverse("training-category-list")
+        first = self.client.post(url, {"name": "Robotics"}, format="json", **self._auth(admin_access))
+        self.assertEqual(first.status_code, status.HTTP_201_CREATED)
+        other = self.client.post(url, {"name": "Avionics"}, format="json", **self._auth(admin_access))
+
+        response = self.client.post(url, {"name": "ROBOTICS"}, format="json", **self._auth(admin_access))
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("name", response.data)
+
+        detail = reverse("training-category-detail", args=[other.data["id"]])
+        response = self.client.patch(detail, {"name": "Robotics"}, format="json", **self._auth(admin_access))
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        response = self.client.patch(detail, {"name": "Avionics"}, format="json", **self._auth(admin_access))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
     def test_manage_permission_required_to_create_and_delete(self):
         _, mentor_access = self._login_with_role("mentor@example.com", "Mentor")
         response = self.client.post(
