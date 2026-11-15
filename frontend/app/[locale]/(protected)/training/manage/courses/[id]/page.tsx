@@ -69,6 +69,8 @@ import { DIFFICULTY_ICONS, LESSON_TYPE_ICONS, VISIBILITY_ICONS } from "@/lib/opt
 const DIFFICULTIES: CourseDifficulty[] = ["BEGINNER", "INTERMEDIATE", "ADVANCED"];
 const VISIBILITY_VALUES: Visibility[] = ["PUBLIC", "RESTRICTED"];
 const LESSON_TYPES: LessonType[] = ["TEXT", "VIDEO", "DOCUMENT", "EXTERNAL", "EXERCISE"];
+// Lesson types whose quick editor shows the primary resource URL field.
+const LESSON_TYPES_WITH_URL: LessonType[] = ["VIDEO", "DOCUMENT", "EXTERNAL", "EXERCISE"];
 
 function detectProvider(url: string): CourseResourceProvider {
   if (url.includes("youtube.com") || url.includes("youtu.be")) return "YOUTUBE";
@@ -371,6 +373,12 @@ export default function CourseEditorPage() {
     setEditLessonError(null);
   }
 
+  // The lesson being edited's primary resource when it's not an external link
+  // (an uploaded file) - the quick editor shows a notice instead of the URL
+  // field for it, and saving never touches it.
+  const editingPrimary = editingLesson?.resources.find((r) => r.is_primary) ?? null;
+  const primaryFileResource = editingPrimary && editingPrimary.resource_type !== "EXTERNAL_LINK" ? editingPrimary : null;
+
   async function handleSaveLessonEdit() {
     if (!editingLessonId || !editLessonTitle.trim()) return;
     setIsSavingLesson(true);
@@ -387,8 +395,17 @@ export default function CourseEditorPage() {
 
       const trimmedUrl = editLessonPrimaryUrl.trim();
       const primary = editingLesson?.resources.find((r) => r.is_primary) ?? null;
+      // The URL field only ever manages an external-link primary resource. An
+      // uploaded-file primary (shown as a notice instead of the field) and
+      // lesson types that hide the field leave resources untouched - otherwise
+      // the empty field read as "remove it" and deleted the uploaded file.
+      const managesPrimaryUrl =
+        LESSON_TYPES_WITH_URL.includes(editLessonType) &&
+        (!primary || primary.resource_type === "EXTERNAL_LINK");
 
-      if (trimmedUrl) {
+      if (!managesPrimaryUrl) {
+        // nothing to sync
+      } else if (trimmedUrl) {
         const provider = detectProvider(trimmedUrl);
         const resourcePayload = {
           title: editLessonTitle.trim() || lessonTypeT(editLessonType),
@@ -917,7 +934,14 @@ export default function CourseEditorPage() {
               </div>
             </div>
 
-            {(editLessonType === "VIDEO" || editLessonType === "DOCUMENT" || editLessonType === "EXTERNAL" || editLessonType === "EXERCISE") && (
+            {LESSON_TYPES_WITH_URL.includes(editLessonType) && primaryFileResource && (
+              <p className="font-body-md text-body-md text-on-surface-variant bg-surface-container rounded-lg px-4 py-3">
+                {t("primaryFileNotice", {
+                  name: primaryFileResource.stored_file?.original_filename || primaryFileResource.title,
+                })}
+              </p>
+            )}
+            {LESSON_TYPES_WITH_URL.includes(editLessonType) && !primaryFileResource && (
               <div>
                 <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase mb-1">
                   {editLessonType === "VIDEO" ? "Video URL (SharePoint, YouTube, etc.)" : "Resource URL"}

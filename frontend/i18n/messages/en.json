@@ -1747,7 +1747,8 @@
       "byAuthor": "by {name}",
       "lessonCount": "{count, plural, =0 {No lessons} one {# lesson} other {# lessons}}",
       "enrolledCount": "{count, plural, =0 {No learners} one {# learner} other {# learners}}",
-      "noCoursesInTab": "No courses in \"{status}\"."
+      "noCoursesInTab": "No courses in \"{status}\".",
+      "primaryFileNotice": "This lesson's main content is the uploaded file \"{name}\". Manage it from the lesson's resources - saving here leaves it unchanged."
     },
     "lessonEditor": {
       "loading": "Loading...",
