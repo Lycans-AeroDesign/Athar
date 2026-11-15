@@ -1,12 +1,18 @@
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 
 from accounts.models import User
 from core.testing import RoleLoginMixin, create_test_organization
+from files.models import StoredFile
 from knowledge import services as knowledge_services
 
 from .models import Course, CourseEnrollment, CourseResource, LessonProgress
+
+
+# A minimal file that passes files/validation.py's PNG magic-byte check.
+PNG_BYTES = b"\x89PNG\r\n\x1a\n" + b"0" * 64
 
 
 class TrainingTestCase(RoleLoginMixin, APITestCase):
@@ -36,6 +42,88 @@ class TrainingTestCase(RoleLoginMixin, APITestCase):
 
     def _publish_course(self, access_token, course_id):
         return self.client.post(reverse("training-course-publish", args=[course_id]), **self._auth(access_token))
+
+
+class CourseDescriptionInlineUploadTests(TrainingTestCase):
+    """Images pasted into a course description (MarkdownEditor inline upload) are
+    linked only by URL - they must be confirmed on save or the hourly
+    delete_unconfirmed_files sweep removes them."""
+
+    def _upload(self, access_token):
+        response = self.client.post(
+            reverse("files-upload"),
+            {"file": SimpleUploadedFile("diagram.png", PNG_BYTES, content_type="image/png")},
+            format="multipart",
+            **self._auth(access_token),
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
+        return response.data
+
+    def test_create_course_confirms_files_in_description(self):
+        _, head_access = self._login_with_role("head@example.com", "Subteam Head")
+        uploaded = self._upload(head_access)
+        response = self.client.post(
+            reverse("training-course-list-create"),
+            {"title": "Wing Design", "description": f"![diagram]({uploaded['download_url']})"},
+            format="json",
+            **self._auth(head_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
+        self.assertIsNotNone(StoredFile.objects.get(pk=uploaded["id"]).confirmed_at)
+
+    def test_update_course_confirms_files_in_description(self):
+        _, head_access = self._login_with_role("head@example.com", "Subteam Head")
+        course = self._create_course(head_access)
+        uploaded = self._upload(head_access)
+        response = self.client.patch(
+            reverse("training-course-detail", args=[course["id"]]),
+            {"description": f"See ![diagram]({uploaded['download_url']})"},
+            format="json",
+            **self._auth(head_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertIsNotNone(StoredFile.objects.get(pk=uploaded["id"]).confirmed_at)
+
+
+class AddAfterDeleteOrderTests(TrainingTestCase):
+    """Deletes don't renumber, so a new module/lesson must take max(order)+1 -
+    using the count collided with the unique (course, order) / (module, order)
+    constraint and 500ed."""
+
+    def test_add_module_after_deleting_the_first(self):
+        _, head_access = self._login_with_role("head@example.com", "Subteam Head")
+        course = self._create_course(head_access)
+        modules = [self._create_module(head_access, course["id"], title=f"M{i}") for i in range(3)]
+        response = self.client.delete(
+            reverse("training-module-detail", args=[modules[0]["id"]]), **self._auth(head_access)
+        )
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        response = self.client.post(
+            reverse("training-module-list-create", args=[course["id"]]),
+            {"title": "M3"},
+            format="json",
+            **self._auth(head_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
+        self.assertEqual(response.data["order"], 3)
+
+    def test_add_lesson_after_deleting_the_first(self):
+        _, head_access = self._login_with_role("head@example.com", "Subteam Head")
+        course = self._create_course(head_access)
+        module = self._create_module(head_access, course["id"])
+        lessons = [self._create_lesson(head_access, module["id"], title=f"L{i}") for i in range(3)]
+        response = self.client.delete(
+            reverse("training-lesson-detail", args=[lessons[0]["id"]]), **self._auth(head_access)
+        )
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        response = self.client.post(
+            reverse("training-lesson-list-create", args=[module["id"]]),
+            {"title": "L3"},
+            format="json",
+            **self._auth(head_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
+        self.assertEqual(response.data["order"], 3)
 
 
 class CourseLifecycleTests(TrainingTestCase):

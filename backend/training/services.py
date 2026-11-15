@@ -3,7 +3,7 @@ import re
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
-from django.db.models import Count, QuerySet, Sum
+from django.db.models import Count, Max, QuerySet, Sum
 from django.utils import timezone
 from django.utils.text import slugify
 from rest_framework.exceptions import ValidationError
@@ -162,6 +162,9 @@ def create_course(
     if co_authors:
         _set_co_authors(course=course, actor=actor, co_authors=co_authors)
     confirm_stored_files(cover_image)
+    # Images/files pasted into the description (MarkdownEditor inline upload)
+    # are only linked by URL - without this the unconfirmed-file sweep deletes them.
+    confirm_stored_files_in_text(description, organization=course.organization)
     log_action(actor=actor, action="course.create", target=course, request=request)
     return course
 
@@ -182,6 +185,8 @@ def update_course(*, course: Course, actor, request=None, **fields) -> Course:
     course.save(update_fields=[*fields.keys(), "updated_at"])
     _set_co_authors(course=course, actor=actor, co_authors=co_authors)
     confirm_stored_files(*fields.values())
+    if "description" in fields:
+        confirm_stored_files_in_text(fields["description"], organization=course.organization)
     log_action(actor=actor, action="course.update", target=course, request=request)
     return course
 
@@ -254,11 +259,20 @@ def delete_course(*, course: Course, actor, request=None, force: bool = False) -
 # --- Modules / Lessons / Objectives ------------------------------------------
 
 
+def _next_order(queryset: QuerySet) -> int:
+    """The position after the current last item. Not `.count()`: deletes don't
+    renumber what's left, so after deleting order 0 of [0, 1, 2] the count (2)
+    is already taken - and (course, order) / (module, order) are unique, so
+    that raised an IntegrityError (500) on the next add."""
+    highest = queryset.aggregate(highest=Max("order"))["highest"]
+    return 0 if highest is None else highest + 1
+
+
 def create_module(*, course: Course, actor, request=None, title, description="", estimated_minutes=0) -> CourseModule:
     _require_can_manage_course(actor, course)
     module = CourseModule.objects.create(
         course=course, title=title, description=description,
-        order=course.modules.count(), estimated_minutes=estimated_minutes,
+        order=_next_order(course.modules.all()), estimated_minutes=estimated_minutes,
     )
     log_action(actor=actor, action="module.create", target=module, request=request)
     return module
@@ -293,7 +307,7 @@ def reorder_modules(*, course: Course, actor, request=None, order: list) -> list
 def import_curriculum(*, course: Course, actor, request=None, modules_data: list[dict]) -> Course:
     _require_can_manage_course(actor, course)
     with transaction.atomic():
-        start_order = course.modules.count()
+        start_order = _next_order(course.modules.all())
         for m_idx, m_dict in enumerate(modules_data):
             module_title = str(m_dict.get("title", f"Module {start_order + m_idx + 1}")).strip()[:190]
             module_desc = str(m_dict.get("description", "")).strip()
@@ -393,7 +407,7 @@ def create_lesson(
     _require_can_manage_course(actor, module.course)
     lesson = Lesson.objects.create(
         module=module, title=title, short_description=short_description, lesson_type=lesson_type,
-        content=content, order=module.lessons.count(), estimated_minutes=estimated_minutes, is_required=is_required,
+        content=content, order=_next_order(module.lessons.all()), estimated_minutes=estimated_minutes, is_required=is_required,
     )
     confirm_stored_files_in_text(content, organization=module.course.organization)
     log_action(actor=actor, action="lesson.create", target=lesson, request=request)
@@ -432,7 +446,7 @@ def reorder_lessons(*, module: CourseModule, actor, request=None, order: list) -
 
 def create_objective(*, lesson: Lesson, actor, request=None, text) -> LearningObjective:
     _require_can_manage_course(actor, lesson.module.course)
-    objective = LearningObjective.objects.create(lesson=lesson, text=text, order=lesson.objectives.count())
+    objective = LearningObjective.objects.create(lesson=lesson, text=text, order=_next_order(lesson.objectives.all()))
     log_action(actor=actor, action="objective.create", target=lesson, request=request)
     return objective
 
@@ -487,7 +501,7 @@ def create_resource(
     resource = CourseResource.objects.create(
         lesson=lesson, title=title, description=description, resource_type=resource_type,
         provider=provider, url=url, stored_file=stored_file, is_primary=is_primary,
-        order=lesson.resources.count(), created_by=actor,
+        order=_next_order(lesson.resources.all()), created_by=actor,
     )
     confirm_stored_files(stored_file)
     log_action(
@@ -567,7 +581,7 @@ def create_knowledge_reference(
         lesson=lesson,
         content_type=ContentType.objects.get_for_model(model),
         object_id=instance.pk,
-        defaults={"note": note, "created_by": actor, "order": lesson.knowledge_references.count()},
+        defaults={"note": note, "created_by": actor, "order": _next_order(lesson.knowledge_references.all())},
     )
     if created:
         log_action(

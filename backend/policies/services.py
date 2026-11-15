@@ -4,6 +4,7 @@ from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
 from audit.services import log_action
+from files.services import confirm_stored_files_in_text
 
 from .defaults import DEFAULT_POLICIES
 from .models import PolicyAcceptance, PolicyDraft, PolicyKind, PolicyVersion
@@ -52,6 +53,9 @@ def save_draft(*, organization, kind: str, title: str, content: str, actor, requ
         kind=kind,
         defaults={"title": title, "content": content, "updated_by": actor},
     )
+    # Inline uploads in the policy text are only linked by URL - confirm them so
+    # the unconfirmed-file sweep doesn't delete images members must read.
+    confirm_stored_files_in_text(content, organization=organization)
     log_action(actor=actor, action="policy.draft.update", target=draft, metadata={"kind": kind}, request=request)
     return draft
 

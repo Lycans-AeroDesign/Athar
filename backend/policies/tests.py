@@ -1,9 +1,11 @@
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 
 from accounts.models import User
 from core.testing import create_test_organization
+from files.models import StoredFile
 from rbac.models import Role
 
 from .models import PolicyAcceptance, PolicyVersion
@@ -29,6 +31,26 @@ class PolicyTests(APITestCase):
             reverse("policies-draft", args=[kind]), {"title": title, "content": content}, format="json", **self.admin_auth
         )
         return self.client.post(reverse("policies-publish", args=[kind]), **self.admin_auth)
+
+    def test_saving_a_draft_confirms_inline_uploads(self):
+        # Images in policy text are linked only by URL - unconfirmed, the hourly
+        # delete_unconfirmed_files sweep would remove them from the policy.
+        png = b"\x89PNG\r\n\x1a\n" + b"0" * 64
+        upload = self.client.post(
+            reverse("files-upload"),
+            {"file": SimpleUploadedFile("chart.png", png, content_type="image/png")},
+            format="multipart",
+            **self.admin_auth,
+        )
+        self.assertEqual(upload.status_code, status.HTTP_201_CREATED, upload.data)
+        response = self.client.put(
+            reverse("policies-draft", args=["privacy"]),
+            {"title": "Privacy", "content": f"![chart]({upload.data['download_url']})"},
+            format="json",
+            **self.admin_auth,
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertIsNotNone(StoredFile.objects.get(pk=upload.data["id"]).confirmed_at)
 
     def _accept_all(self, auth):
         current = self.client.get(reverse("policies-current"), **auth).data
