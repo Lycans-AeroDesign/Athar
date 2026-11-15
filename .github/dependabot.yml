@@ -1,41 +1,67 @@
-# Dependency update PRs. Security updates (for an advisory) are raised as
-# soon as one is published regardless of this schedule; the weekly runs below
-# keep everything else from drifting. Minor/patch bumps are grouped into one
-# PR per ecosystem so the queue stays reviewable; majors come one at a time
-# since they're the ones that need real testing.
+# Dependency update PRs, kept to at most one open PR per ecosystem:
+#   * Routine (version) updates run monthly and group every minor/patch bump
+#     of an ecosystem into a single PR.
+#   * Major versions are skipped for routine updates - they need real testing,
+#     so upgrade those deliberately. Security updates still cover them.
+#   * npm/uv use lockfile-only: Dependabot refreshes the lockfiles within the
+#     ranges already in package.json/pyproject.toml instead of opening a PR
+#     per rewritten range.
+#   * Security updates (raised when an advisory is published, independent of
+#     the schedule) are grouped too, so a batch of advisories is one PR.
 version: 2
 updates:
   - package-ecosystem: npm
     directory: /frontend
     schedule:
-      interval: weekly
-    open-pull-requests-limit: 5
+      interval: monthly
+    versioning-strategy: lockfile-only
+    open-pull-requests-limit: 1
+    ignore:
+      - dependency-name: "*"
+        update-types: [version-update:semver-major]
     groups:
-      frontend-minor-patch:
-        update-types: [minor, patch]
+      frontend:
+        applies-to: version-updates
+        patterns: ["*"]
+      frontend-security:
+        applies-to: security-updates
+        patterns: ["*"]
 
   - package-ecosystem: uv
     directory: /backend
     schedule:
-      interval: weekly
-    open-pull-requests-limit: 5
+      interval: monthly
+    versioning-strategy: lockfile-only
+    open-pull-requests-limit: 1
+    ignore:
+      - dependency-name: "*"
+        update-types: [version-update:semver-major]
     groups:
-      backend-minor-patch:
-        update-types: [minor, patch]
+      backend:
+        applies-to: version-updates
+        patterns: ["*"]
+      backend-security:
+        applies-to: security-updates
+        patterns: ["*"]
 
   # Base images (python:slim, node:alpine, uv) in the two Dockerfiles.
   - package-ecosystem: docker
     directories: [/backend, /frontend]
     schedule:
-      interval: weekly
+      interval: monthly
+    open-pull-requests-limit: 1
+    ignore:
+      - dependency-name: "*"
+        update-types: [version-update:semver-major]
     groups:
-      docker-minor-patch:
-        update-types: [minor, patch]
+      docker:
+        patterns: ["*"]
 
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: weekly
+      interval: monthly
+    open-pull-requests-limit: 1
     groups:
-      actions-minor-patch:
-        update-types: [minor, patch]
+      actions:
+        patterns: ["*"]
