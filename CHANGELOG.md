@@ -1,3 +1,9 @@
+## [1.34.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.33.0...v1.34.0) (2026-11-15)
+
+### Features
+
+* **frontend:** clearer what's new layout with one release date ([d880560](https://github.com/Lycans-AeroDesign/Athar/commit/d880560457a8121252fe9c3ca435f7948d3e4459))
+
 ## [1.33.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.32.0...v1.33.0) (2026-11-15)
 
 ### Features
