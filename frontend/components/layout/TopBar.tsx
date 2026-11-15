@@ -14,6 +14,7 @@ import { updateMe } from "@/lib/api/accounts";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { formatPersonName } from "@/lib/format";
 import { runProductTour } from "@/lib/onboarding/tour";
+import { openWhatsNew } from "@/lib/whatsNew";
 import { useOrganization } from "@/lib/organization/OrganizationProvider";
 import { useTheme } from "@/lib/theme/ThemeProvider";
 import type { ThemePreference } from "@/lib/theme/theme";
@@ -106,6 +107,7 @@ export function TopBar({ onOpenMenu, onCloseMenu }: TopBarProps) {
             ...(settings?.product_tour_enabled
               ? [{ label: t("takeTour"), icon: "travel_explore", onSelect: handleStartTour }]
               : []),
+            { label: t("whatsNew"), icon: "auto_awesome", onSelect: openWhatsNew },
             { type: "separator" },
             {
               type: "submenu",

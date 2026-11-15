@@ -6,6 +6,7 @@ import { SideNav } from "@/components/layout/SideNav";
 import { TopBar } from "@/components/layout/TopBar";
 import { ProductTourAutostart } from "@/components/onboarding/ProductTourAutostart";
 import { PolicyGate } from "@/components/policies/PolicyGate";
+import { WhatsNewDialog } from "@/components/whatsNew/WhatsNewDialog";
 import { LoadingScreen } from "@/components/ui/LoadingScreen";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { useAuth } from "@/lib/auth/AuthProvider";
@@ -59,6 +60,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
           sits inside, so it needs to match rather than reintroduce the gap. */}
       <div className="bg-background text-on-background flex h-dvh overflow-hidden">
         <ProductTourAutostart openMobileNav={openMobileNav} closeMobileNav={closeMobileNav} />
+        <WhatsNewDialog />
         <SideNav open={mobileNavOpen} onClose={closeMobileNav} />
         <div className="flex-1 flex flex-col lg:ms-64 overflow-hidden bg-background">
           <TopBar onOpenMenu={openMobileNav} onCloseMenu={closeMobileNav} />

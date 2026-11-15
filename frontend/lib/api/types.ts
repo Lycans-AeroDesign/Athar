@@ -14,6 +14,8 @@ export interface UserPreferences {
   has_completed_tour?: boolean;
   /** Whether this user has seen the MarkdownEditor's "Formatting tips" popover (auto-opens once). */
   has_seen_markdown_help?: boolean;
+  /** Newest "What's new" entry id this user has been shown (lib/whatsNew.ts). */
+  whats_new_seen?: string;
 }
 
 export interface User {

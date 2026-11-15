@@ -257,7 +257,8 @@
     "logoutConfirmTitle": "Log out?",
     "logoutConfirmDescription": "You'll need to log in again to access {orgName}.",
     "logoutConfirmAction": "Log out",
-    "policies": "Policies"
+    "policies": "Policies",
+    "whatsNew": "What's new"
   },
   "tour": {
     "next": "Next",
@@ -2016,5 +2017,87 @@
     "title": "Something went wrong",
     "body": "This page hit an unexpected error. It has been reported to the platform administrators.",
     "retry": "Try again"
+  },
+  "whatsNew": {
+    "title": "What's new",
+    "description": "Here's what changed since your last visit.",
+    "empty": "Nothing new right now.",
+    "gotIt": "Got it",
+    "open": "Take a look",
+    "kind": {
+      "new": "New",
+      "improved": "Improved",
+      "fixed": "Fixed"
+    },
+    "entries": {
+      "platformErrorLog": {
+        "title": "Error log on the Platform page",
+        "body": "See errors from the server and from people's browsers, with full tracebacks. Repeats are grouped, and you can mark each one resolved."
+      },
+      "platformMobile": {
+        "title": "Platform pages work on phones",
+        "body": "The organization and user lists now show as cards on small screens, so every action stays within reach."
+      },
+      "trash": {
+        "title": "Trash: undo a delete for 30 days",
+        "body": "Deleted articles, questions, projects, components, failures, SOPs, tests, documents and courses now go to Trash. Restore them with their links, bookmarks and enrollments intact."
+      },
+      "articleRevisions": {
+        "title": "Compare and restore article versions",
+        "body": "In an article's history, compare any version with the one before it or with the current one, and restore an older version in one click."
+      },
+      "shareLinks": {
+        "title": "Share articles and SOPs with a public link",
+        "body": "Create a read-only link that opens without an account, with an optional expiry. Available once your admin turns on sharing."
+      },
+      "shareLinksSettings": {
+        "title": "Public share links (off by default)",
+        "body": "Members can share published articles and SOPs through read-only links. Turn it on in Settings > Features, then see or stop every link under Settings > Shared Links."
+      },
+      "fasterImages": {
+        "title": "Faster pages and images",
+        "body": "Lists and pages load with fewer requests, and photos load as smaller previews first."
+      },
+      "componentPhotoPreview": {
+        "title": "Photo preview in the components grid",
+        "body": "Hover a component's photo in grid view to see it larger, just like in the table."
+      },
+      "mentionsEditor": {
+        "title": "Better @-mentions",
+        "body": "Mentions show as @Title instead of a raw link, are highlighted in the editor, and are removed whole with a single Backspace."
+      },
+      "loadingAndUnsavedChanges": {
+        "title": "Fewer stuck pages and lost edits",
+        "body": "A page that fails to load now offers Try again instead of loading forever, and editors warn you before closing with unsaved changes."
+      },
+      "arabicLayout": {
+        "title": "Arabic layout fixes",
+        "body": "Arrows and spacing now face the right way in Arabic, and the remaining Training Center text is translated."
+      },
+      "trainingUploads": {
+        "title": "Training Center fixes",
+        "body": "Quick-editing a lesson no longer removes its uploaded files, and lessons keep their order after one is deleted."
+      },
+      "importChecks": {
+        "title": "Clearer CSV and curriculum imports",
+        "body": "Imports now point out bad rows and duplicate categories instead of saving them."
+      },
+      "backupsReliability": {
+        "title": "More reliable backups",
+        "body": "A backup or restore interrupted by a restart is picked up correctly, and two restores can no longer run at once."
+      },
+      "searchKeyboard": {
+        "title": "Use the keyboard in search",
+        "body": "Move through search results with the arrow keys and open one with Enter."
+      },
+      "longTextRoll": {
+        "title": "Read cut-off text",
+        "body": "Names and labels cut off with \"...\" scroll to show the full text when you hover or tap them."
+      },
+      "mobileLists": {
+        "title": "Tidier lists on phones",
+        "body": "Search, filters and buttons on list pages stack neatly on small screens."
+      }
+    }
   }
 }
