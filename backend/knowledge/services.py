@@ -10,7 +10,7 @@ from django.core.cache import cache
 from django.core.exceptions import PermissionDenied
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.validators import URLValidator
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.db.models import Count, Max, Q, QuerySet
 from django.utils import timezone
 from django.utils.text import slugify
@@ -632,8 +632,28 @@ def get_or_create_component_category(name: str, *, actor, request=None) -> Compo
     can create a component can already invent new tags freely, and a CSV
     import row shouldn't fail just because its category is new."""
     name = name.strip()
-    category = ComponentCategory.objects.filter(organization=actor.organization, name__iexact=name).first()
-    return category or create_component_category(actor=actor, request=request, name=name)
+    return _get_or_create_named(
+        ComponentCategory, name, actor, lambda: create_component_category(actor=actor, request=request, name=name)
+    )
+
+
+def _get_or_create_named(model, name: str, actor, create):
+    """Case-insensitive get-or-create by name within the actor's org. Two
+    requests naming the same new value at once (a double-clicked save, or two
+    CSV imports) both miss the lookup; the slower create then hits the unique
+    constraint, so it falls back to the row the other request just made
+    instead of returning a 500."""
+    existing = model.objects.filter(organization=actor.organization, name__iexact=name).first()
+    if existing is not None:
+        return existing
+    try:
+        with transaction.atomic():
+            return create()
+    except IntegrityError:
+        existing = model.objects.filter(organization=actor.organization, name__iexact=name).first()
+        if existing is None:
+            raise
+        return existing
 
 
 def create_storage_location(*, actor, request=None, name, description="") -> StorageLocation:
@@ -686,8 +706,9 @@ def delete_storage_location(*, location: StorageLocation, actor, request=None) -
 
 def get_or_create_storage_location(name: str, *, actor, request=None) -> StorageLocation:
     name = name.strip()
-    location = StorageLocation.objects.filter(organization=actor.organization, name__iexact=name).first()
-    return location or create_storage_location(actor=actor, request=request, name=name)
+    return _get_or_create_named(
+        StorageLocation, name, actor, lambda: create_storage_location(actor=actor, request=request, name=name)
+    )
 
 
 def _resolve_location_name(location_name: str, *, actor, request=None) -> StorageLocation | None:

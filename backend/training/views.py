@@ -9,7 +9,7 @@ from rest_framework.views import APIView
 
 from config.openapi import BAD_REQUEST, COMMON_ERRORS, NOT_FOUND
 from config.pagination import paginated_response
-from core.shortcuts import org_object_or_404
+from core.shortcuts import org_object_or_404, uuid_query_param
 from rbac.permissions import require_permission
 
 from knowledge.models import RestrictedAccessGrant
@@ -198,7 +198,7 @@ class CourseListCreateView(APIView):
             queryset = queryset.filter(status=status_param)
         else:
             queryset = queryset.filter(status=status_param, author=request.user)
-        category_id = request.query_params.get("category")
+        category_id = uuid_query_param(request, "category")
         if category_id:
             queryset = queryset.filter(category_id=category_id)
         difficulty = request.query_params.get("difficulty")
@@ -470,7 +470,7 @@ class TrainingSearchView(APIView):
             ).select_related("category", "author"),
             request.user,
         )
-        category_id = request.query_params.get("category")
+        category_id = uuid_query_param(request, "category")
         if category_id:
             queryset = queryset.filter(category_id=category_id)
         difficulty = request.query_params.get("difficulty")

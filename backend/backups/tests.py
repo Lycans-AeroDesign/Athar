@@ -1,5 +1,6 @@
 import io
 import zipfile
+from unittest import mock
 
 import zstandard
 
@@ -907,6 +908,35 @@ class RestoreJobTests(BackupJobTestCase):
         pixhawk = Component.objects.get(organization=self.organization, name="Pixhawk")
         self.assertEqual(pixhawk.category, ComponentCategory.objects.get(organization=self.organization, name="Avionics"))
         self.assertEqual(pixhawk.stock_status, "")  # untracked, as it was
+
+    def test_failed_restore_deletes_the_file_bytes_it_wrote(self):
+        """The restore's database work rolls back on failure, but files it already
+        wrote to storage don't - they used to be left behind with no row."""
+        file_id = "7b1e0000-0000-4000-8000-0000000000f1"
+        archive = io.BytesIO()
+        with zipfile.ZipFile(archive, "w") as zf:
+            zf.writestr(
+                "files_metadata.csv",
+                "id,original_filename,content_type,size,uploaded_by_id,required_permission,confirmed_at\n"
+                f"{file_id},notes.txt,text/plain,5,,,2026-01-01T00:00:00Z\n",
+            )
+            zf.writestr(f"files/{file_id}/notes.txt", b"hello")
+        archive.seek(0)
+
+        written = []
+
+        def fail_after_files(ctx, user_rows, files_by_id):
+            written.extend((f.file.storage, f.file.name) for f in files_by_id.values())
+            raise RuntimeError("simulated failure mid-restore")
+
+        with mock.patch.object(restore, "_restore_profile_pictures", fail_after_files):
+            with self.assertRaises(RuntimeError):
+                restore.restore_org_backup_archive(self.organization, archive)
+
+        self.assertEqual(len(written), 1)
+        storage, name = written[0]
+        self.assertFalse(storage.exists(name))
+        self.assertFalse(StoredFile.objects.filter(pk=file_id).exists())
 
     def test_only_organization_manage_can_list_or_create_restores(self):
         author, _ = self._login_with_role("restorepermauthor@example.com", "Subteam Head")

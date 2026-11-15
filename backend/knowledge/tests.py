@@ -1,9 +1,10 @@
+import uuid
 from unittest import mock
 
 from django.contrib.contenttypes.models import ContentType
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import connection
-from django.db.models import Q
+from django.db.models import Q, QuerySet
 from django.test.utils import CaptureQueriesContext
 
 from django.urls import reverse
@@ -4223,3 +4224,53 @@ class CollectionTests(KnowledgeTestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
+class MalformedIdFilterTests(KnowledgeTestCase):
+    """?category=<not a uuid> used to reach the UUID column lookup and 500."""
+
+    def test_malformed_category_filter_is_a_400_on_every_list(self):
+        _, access = self._login_with_role("idfilter@example.com", "Organization Admin")
+        names = [
+            "knowledge-collection-list",
+            "knowledge-sop-list-create",
+            "knowledge-document-list-create",
+            "knowledge-component-list-create",
+            "training-course-list-create",
+            "training-search",
+        ]
+        for name in names:
+            with self.subTest(name=name):
+                response = self.client.get(reverse(name), {"category": "not-a-uuid", "q": "x"}, **self._auth(access))
+                self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+                self.assertIn("category", response.data)
+                ok = self.client.get(reverse(name), {"category": str(uuid.uuid4())}, **self._auth(access))
+                self.assertEqual(ok.status_code, status.HTTP_200_OK)
+
+
+class NamedGetOrCreateRaceTests(KnowledgeTestCase):
+    """Two requests naming the same new storage location / component category
+    at once both miss the lookup; the slower insert hits the unique constraint
+    and must reuse the other request's row instead of returning a 500."""
+
+    def _first_lookup_misses(self):
+        real_first = QuerySet.first
+        calls = {"count": 0}
+
+        def first(queryset):
+            calls["count"] += 1
+            return None if calls["count"] == 1 else real_first(queryset)
+
+        return mock.patch.object(QuerySet, "first", first)
+
+    def test_storage_location_race_reuses_the_existing_row(self):
+        head, _ = self._login_with_role("head_loc_race@example.com", "Subteam Head")
+        existing = services.create_storage_location(actor=head, name="Shelf A")
+        with self._first_lookup_misses():
+            location = services.get_or_create_storage_location("shelf a", actor=head)
+        self.assertEqual(location.pk, existing.pk)
+
+    def test_component_category_race_reuses_the_existing_row(self):
+        head, _ = self._login_with_role("head_cat_race@example.com", "Subteam Head")
+        existing = services.create_component_category(actor=head, name="Avionics")
+        with self._first_lookup_misses():
+            category = services.get_or_create_component_category("Avionics", actor=head)
+        self.assertEqual(category.pk, existing.pk)

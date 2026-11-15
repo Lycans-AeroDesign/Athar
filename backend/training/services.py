@@ -5,7 +5,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.validators import URLValidator
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.db.models import Count, Max, QuerySet, Sum
 from django.utils import timezone
 from django.utils.text import slugify
@@ -763,7 +763,14 @@ def enroll_in_course(*, course: Course, actor, request=None) -> CourseEnrollment
         raise ValidationError("Only a published course can be enrolled in.")
     if CourseEnrollment.objects.filter(course=course, user=actor).exists():
         raise ValidationError("You are already enrolled in this course.")
-    enrollment = CourseEnrollment.objects.create(course=course, user=actor, organization=actor.organization)
+    # A double-clicked "Start course" sends two requests that both pass the
+    # check above; the unique (course, user) constraint stops the second, which
+    # gets the same 400 instead of a 500.
+    try:
+        with transaction.atomic():
+            enrollment = CourseEnrollment.objects.create(course=course, user=actor, organization=actor.organization)
+    except IntegrityError:
+        raise ValidationError("You are already enrolled in this course.") from None
     log_action(actor=actor, action="enrollment.create", target=enrollment, request=request)
     return enrollment
 

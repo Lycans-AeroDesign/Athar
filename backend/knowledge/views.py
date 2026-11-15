@@ -16,7 +16,7 @@ from rest_framework.views import APIView
 from accounts.models import User
 from config.openapi import BAD_REQUEST, COMMON_ERRORS, NOT_FOUND
 from config.pagination import paginated_response
-from core.shortcuts import org_object_or_404
+from core.shortcuts import org_object_or_404, uuid_query_param
 from files.models import StoredFile
 from rbac.permissions import require_permission
 
@@ -592,7 +592,7 @@ class CollectionListView(APIView):
         scope = request.query_params.get("scope")
         if scope:
             queryset = queryset.filter(content_scope=scope.upper())
-        category_id = request.query_params.get("category")
+        category_id = uuid_query_param(request, "category")
         if category_id:
             queryset = queryset.filter(category_id=category_id)
         query = request.query_params.get("q", "").strip()
@@ -1494,28 +1494,16 @@ COMPONENT_ORDERING_FIELDS = {
 _COMPONENT_LIST_RELATED = ("category", "location", "created_by", "updated_by", "photo")
 
 
-def _uuid_param(request, name: str):
-    """A ?name=<uuid> filter value, or a 400 - a malformed id would otherwise
-    500 on the UUID column lookup."""
-    raw = request.query_params.get(name, "").strip()
-    if not raw:
-        return None
-    try:
-        return uuid.UUID(raw)
-    except ValueError:
-        raise ValidationError({name: ["Must be a valid id."]})
-
-
 def _filter_and_order_components(queryset, request):
     """Shared filter/?q=/?ordering= handling for ComponentListCreateView.get,
     ComponentExportView.get and ComponentInventorySummaryView.get, so
     "export" and the summary keep meaning "what I'm currently looking at".
     ?stock_status= takes a comma-separated list (the "Needs ordering" view is
     MISSING,ON_ORDER); every other filter takes one value."""
-    category_id = _uuid_param(request, "category")
+    category_id = uuid_query_param(request, "category")
     if category_id:
         queryset = queryset.filter(category_id=category_id)
-    location_id = _uuid_param(request, "location")
+    location_id = uuid_query_param(request, "location")
     if location_id:
         queryset = queryset.filter(location_id=location_id)
     for param in ("status", "inventory_type", "condition"):
@@ -2102,7 +2090,7 @@ class SopListCreateView(APIView):
         queryset = services.visible_sops_for(request.user).select_related(
             "category", "created_by"
         ).prefetch_related("tags", "co_authors")
-        category_id = request.query_params.get("category")
+        category_id = uuid_query_param(request, "category")
         if category_id:
             queryset = queryset.filter(category_id=category_id)
         if request.query_params.get("mandatory") == "true":
@@ -2411,7 +2399,7 @@ class DocumentListCreateView(APIView):
         source = request.query_params.get("source")
         if source:
             queryset = queryset.filter(source=source)
-        category = request.query_params.get("category")
+        category = uuid_query_param(request, "category")
         if category:
             queryset = queryset.filter(category_id=category)
         query = request.query_params.get("q", "").strip()

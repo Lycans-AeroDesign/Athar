@@ -1,7 +1,11 @@
+from unittest import mock
+
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.db.models import QuerySet
 from django.test import SimpleTestCase
 from django.urls import reverse
 from rest_framework import status
+from rest_framework.exceptions import ValidationError as DRFValidationError
 from rest_framework.test import APITestCase
 
 from accounts.models import User
@@ -10,6 +14,7 @@ from files.models import StoredFile
 from knowledge import services as knowledge_services
 
 from .models import Course, CourseEnrollment, CourseModule, CourseResource, Lesson, LessonProgress
+from . import services
 from .services import detect_resource_provider
 
 
@@ -871,3 +876,18 @@ class CourseVisibilityTests(TrainingTestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
+
+class EnrollmentRaceTests(TrainingTestCase):
+    def test_second_concurrent_enrollment_is_a_400_not_a_500(self):
+        _, head_access = self._login_with_role("head_race@example.com", "Subteam Head")
+        member, _ = self._login_with_role("member_race@example.com", "Member")
+        course_id = self._create_course(head_access)["id"]
+        self._publish_course(head_access, course_id)
+        course = Course.objects.get(pk=course_id)
+        # The other request's enrollment lands between our "already enrolled?"
+        # check and our insert.
+        CourseEnrollment.objects.create(course=course, user=member, organization=member.organization)
+        with mock.patch.object(QuerySet, "exists", return_value=False):
+            with self.assertRaises(DRFValidationError):
+                services.enroll_in_course(course=course, actor=member)
+        self.assertEqual(CourseEnrollment.objects.filter(course=course, user=member).count(), 1)

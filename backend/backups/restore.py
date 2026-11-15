@@ -60,6 +60,7 @@ from datetime import UTC
 from django.contrib.contenttypes.models import ContentType
 from django.core.files import File
 from django.db import transaction
+from django.db.models.functions import Lower
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from django.utils.text import slugify
@@ -309,10 +310,13 @@ def _json_or_default(value: str, default):
 
 
 class _RestoreContext:
-    def __init__(self, organization, summary: RestoreSummary, actor=None):
+    def __init__(self, organization, summary: RestoreSummary, actor=None, saved_files=None):
         self.organization = organization
         self.summary = summary
         self.actor = actor
+        # (storage, name) of every file written to storage during this restore,
+        # so a rollback can delete them - see restore_org_backup_archive.
+        self.saved_files = saved_files if saved_files is not None else []
         # archive user id -> real user id in this organization. Starts as the
         # identity map over the org's current members (enough on its own for
         # an archive with no users.csv), then _restore_users adds the
@@ -358,9 +362,11 @@ def _restore_users(ctx: _RestoreContext, zf: zipfile.ZipFile) -> list[dict]:
 
     archive_ids = {_uuid_or_none(row["id"]) for row in rows} - {None}
     emails = {row["email"].strip().lower() for row in rows}
+    # Compared lowercased on both sides: rows saved before emails were
+    # normalized on save may still hold mixed case.
     foreign = User.objects.exclude(organization=organization).filter(id__in=archive_ids) | User.objects.exclude(
         organization=organization
-    ).filter(email__in=emails)
+    ).annotate(email_lower=Lower("email")).filter(email_lower__in=emails)
     foreign_emails = sorted(foreign.values_list("email", flat=True).distinct())
     if foreign_emails:
         sample = ", ".join(foreign_emails[:3]) + (" ..." if len(foreign_emails) > 3 else "")
@@ -414,7 +420,7 @@ def _restore_users(ctx: _RestoreContext, zf: zipfile.ZipFile) -> list[dict]:
         if date_joined:
             User.objects.filter(pk=user.pk).update(date_joined=date_joined)
         members[user.pk] = user
-        members_by_email[user.email] = user
+        members_by_email[user.email.lower()] = user
         ctx.user_map[archive_id] = user.pk
         kept_ids.add(user.pk)
 
@@ -474,7 +480,10 @@ def _restore_roles(ctx: _RestoreContext, zf: zipfile.ZipFile) -> None:
         count += 1
     ctx.summary.created["role_permissions"] = count
 
-    users_by_email = dict(User.objects.filter(organization=organization).values_list("email", "id"))
+    users_by_email = {
+        email.lower(): user_id
+        for email, user_id in User.objects.filter(organization=organization).values_list("email", "id")
+    }
     count = 0
     for row in _read_csv_rows(zf, "user_roles.csv"):
         # Archives from before user_id was exported only carry the email.
@@ -868,6 +877,7 @@ def _restore_files(ctx: _RestoreContext, zf: zipfile.ZipFile) -> dict[uuid.UUID,
             continue
         with zf.open(matches[0], "r") as source:
             stored_file.file.save(row["original_filename"], File(source), save=False)
+        ctx.saved_files.append((stored_file.file.storage, stored_file.file.name))
         stored_file.save()
         files_by_id[file_id] = stored_file
     ctx.summary.created["files"] = len(files_by_id)
@@ -1394,14 +1404,31 @@ def _restore_timestamps(ctx: _RestoreContext, zf: zipfile.ZipFile) -> None:
             model.objects.bulk_update(objs, present, batch_size=1000)
 
 
-@transaction.atomic
 def restore_org_backup_archive(organization, archive_file, actor=None) -> RestoreSummary:
     """`archive_file` is an open, seekable file positioned at the start of a .zip produced by
     services.build_org_backup_archive. `actor` is the admin running the restore (see the module
     docstring). Everything runs in one transaction, so a failure rolls the whole restore back
-    rather than leaving the organization half-wiped."""
+    rather than leaving the organization half-wiped.
+
+    File bytes written to storage aren't part of that transaction, so on failure they're
+    deleted here - otherwise every failed restore left a copy of each archived file behind
+    with no database row pointing at it, and nothing would ever clean it up."""
+    saved_files: list = []
+    try:
+        with transaction.atomic():
+            return _restore_in_transaction(organization, archive_file, actor, saved_files)
+    except BaseException:
+        for storage, name in saved_files:
+            try:
+                storage.delete(name)
+            except Exception:  # best effort - the restore's own error is what matters
+                pass
+        raise
+
+
+def _restore_in_transaction(organization, archive_file, actor, saved_files) -> RestoreSummary:
     summary = RestoreSummary()
-    ctx = _RestoreContext(organization, summary, actor)
+    ctx = _RestoreContext(organization, summary, actor, saved_files)
 
     with zipfile.ZipFile(archive_file) as zf:
         read_manifest(zf)  # validates it, if present
