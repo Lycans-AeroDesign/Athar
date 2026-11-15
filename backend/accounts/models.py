@@ -9,13 +9,13 @@ from django.db.models.functions import Lower
 from django.utils import timezone
 from django.utils.crypto import get_random_string
 
+from core.models import OrganizationScopedModel, TimeStampedModel, UUIDPrimaryKeyModel
+from rbac.models import Permission
+
 username_validator = RegexValidator(
     r"^[a-zA-Z0-9_.-]{3,30}$",
     "Usernames can only contain letters, numbers, dots, underscores, and hyphens (3-30 characters).",
 )
-
-from core.models import OrganizationScopedModel, TimeStampedModel, UUIDPrimaryKeyModel
-from rbac.models import Permission
 
 # Excludes visually-ambiguous characters (0/O, 1/I) since these are meant to
 # be read off a screen and typed in by hand.

@@ -5,8 +5,6 @@ from files.serializers import StoredFileSerializer
 from django.contrib.auth import get_user_model
 from knowledge.serializers import AuthorSerializer, OrgScopedPrimaryKeyRelatedField, RestrictedAccessMixin
 
-User = get_user_model()
-
 from . import services
 from .models import (
     Course,
@@ -18,6 +16,8 @@ from .models import (
     LearningObjective,
     LessonKnowledgeReference,
 )
+
+User = get_user_model()
 
 # Every Knowledge type a Lesson may reference - mirrors
 # knowledge.services._KNOWLEDGE_REFERENCE_MODELS's keys exactly (kept as its

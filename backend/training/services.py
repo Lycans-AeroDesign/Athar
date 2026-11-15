@@ -3,6 +3,8 @@ from urllib.parse import urlparse
 
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.core.validators import URLValidator
 from django.db import transaction
 from django.db.models import Count, Max, QuerySet, Sum
 from django.utils import timezone
@@ -343,14 +345,67 @@ def reorder_modules(*, course: Course, actor, request=None, order: list) -> list
     return modules
 
 
+# Bounds for curriculum import - the payload comes from a pasted/AI-generated
+# outline, so every field is checked here: a wrong type used to surface as a
+# 500 (AttributeError/ValueError) and an out-of-range number as a database
+# error half-way through the import.
+_IMPORT_MAX_MODULES = 200
+_IMPORT_MAX_LESSONS_PER_MODULE = 500
+_IMPORT_MAX_MINUTES = 100_000
+_IMPORT_MAX_URL_LENGTH = 2000  # CourseResource.url max_length
+_validate_import_url = URLValidator(schemes=["http", "https"])
+
+
+def _import_minutes(value, field: str) -> int:
+    if value is None or value == "":
+        return 0
+    if isinstance(value, bool):
+        raise ValidationError({field: "Must be a whole number of minutes."})
+    try:
+        minutes = int(value)
+    except (TypeError, ValueError):
+        raise ValidationError({field: "Must be a whole number of minutes."}) from None
+    if not 0 <= minutes <= _IMPORT_MAX_MINUTES:
+        raise ValidationError({field: f"Must be between 0 and {_IMPORT_MAX_MINUTES}."})
+    return minutes
+
+
+def _import_bool(value, field: str, default: bool) -> bool:
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    normalized = str(value).strip().lower()
+    if normalized in ("true", "yes", "1"):
+        return True
+    if normalized in ("false", "no", "0"):
+        return False
+    raise ValidationError({field: "Must be true or false."})
+
+
+def _import_url_ok(url: str) -> bool:
+    if len(url) > _IMPORT_MAX_URL_LENGTH:
+        return False
+    try:
+        _validate_import_url(url)
+    except DjangoValidationError:
+        return False
+    return True
+
+
 def import_curriculum(*, course: Course, actor, request=None, modules_data: list[dict]) -> Course:
     _require_can_manage_course(actor, course)
+    if len(modules_data) > _IMPORT_MAX_MODULES:
+        raise ValidationError({"modules": f"At most {_IMPORT_MAX_MODULES} modules per import."})
     with transaction.atomic():
         start_order = _next_order(course.modules.all())
         for m_idx, m_dict in enumerate(modules_data):
-            module_title = str(m_dict.get("title", f"Module {start_order + m_idx + 1}")).strip()[:190]
-            module_desc = str(m_dict.get("description", "")).strip()
-            module_est = int(m_dict.get("estimated_minutes", 0) or 0)
+            where = f"modules[{m_idx}]"
+            if not isinstance(m_dict, dict):
+                raise ValidationError({where: "Must be an object."})
+            module_title = str(m_dict.get("title") or "").strip()[:190] or f"Module {start_order + m_idx + 1}"
+            module_desc = str(m_dict.get("description") or "").strip()
+            module_est = _import_minutes(m_dict.get("estimated_minutes"), f"{where}.estimated_minutes")
             module = CourseModule.objects.create(
                 course=course,
                 title=module_title,
@@ -359,22 +414,34 @@ def import_curriculum(*, course: Course, actor, request=None, modules_data: list
                 estimated_minutes=module_est,
             )
             log_action(actor=actor, action="module.create", target=module, request=request)
-            lessons_data = m_dict.get("lessons", [])
+            lessons_data = m_dict.get("lessons") or []
+            if not isinstance(lessons_data, list):
+                raise ValidationError({f"{where}.lessons": "Must be a list of lessons."})
+            if len(lessons_data) > _IMPORT_MAX_LESSONS_PER_MODULE:
+                raise ValidationError({f"{where}.lessons": f"At most {_IMPORT_MAX_LESSONS_PER_MODULE} lessons per module."})
             for l_idx, l_dict in enumerate(lessons_data):
-                l_title = str(l_dict.get("title", f"Lesson {l_idx + 1}")).strip()
-                l_desc = str(l_dict.get("short_description", "")).strip()
-                l_content = str(l_dict.get("content", "")).strip()
+                l_where = f"{where}.lessons[{l_idx}]"
+                if not isinstance(l_dict, dict):
+                    raise ValidationError({l_where: "Must be an object."})
+                l_title = str(l_dict.get("title") or "").strip() or f"Lesson {l_idx + 1}"
+                l_desc = str(l_dict.get("short_description") or "").strip()
+                l_content = str(l_dict.get("content") or "").strip()
                 l_type = str(l_dict.get("lesson_type", Lesson.LessonType.TEXT)).upper()
                 if l_type not in Lesson.LessonType.values:
                     l_type = Lesson.LessonType.TEXT
 
                 # Extract any primary URL passed explicitly or present in content/desc
-                primary_url = str(l_dict.get("primary_url", "")).strip()
-                if not primary_url:
+                primary_url = str(l_dict.get("primary_url") or "").strip()
+                if primary_url:
+                    if not _import_url_ok(primary_url):
+                        raise ValidationError({f"{l_where}.primary_url": "Must be a valid http(s) URL."})
+                else:
+                    # A URL found in the text is only a guess - skip it rather
+                    # than fail the import when it isn't usable.
                     all_text = f"{l_content} {l_desc}"
-                    found_urls = re.findall(r"https?://[^\s)]+", all_text)
-                    if found_urls:
-                        primary_url = found_urls[0]
+                    primary_url = next(
+                        (url for url in re.findall(r"https?://[^\s)]+", all_text) if _import_url_ok(url)), ""
+                    )
 
                 # Strip primary_url from desc and content so length limits don't chop it
                 if primary_url:
@@ -399,8 +466,8 @@ def import_curriculum(*, course: Course, actor, request=None, modules_data: list
                     l_desc = l_desc[:290].strip()
                     l_content = f"{desc_overflow}\n{l_content}".strip()
 
-                l_est = int(l_dict.get("estimated_minutes", 0) or 0)
-                l_req = bool(l_dict.get("is_required", True))
+                l_est = _import_minutes(l_dict.get("estimated_minutes"), f"{l_where}.estimated_minutes")
+                l_req = _import_bool(l_dict.get("is_required"), f"{l_where}.is_required", default=True)
                 lesson = Lesson.objects.create(
                     module=module,
                     title=l_title,

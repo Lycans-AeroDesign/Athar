@@ -9,7 +9,7 @@ from core.testing import RoleLoginMixin, create_test_organization
 from files.models import StoredFile
 from knowledge import services as knowledge_services
 
-from .models import Course, CourseEnrollment, CourseResource, LessonProgress
+from .models import Course, CourseEnrollment, CourseModule, CourseResource, Lesson, LessonProgress
 from .services import detect_resource_provider
 
 
@@ -383,6 +383,46 @@ class ModuleLessonOrderingTests(TrainingTestCase):
         self.assertEqual(len(res.data["modules"][0]["lessons"]), 2)
         self.assertEqual(res.data["modules"][0]["lessons"][0]["lesson_type"], "VIDEO")
         self.assertEqual(len(res.data["modules"][1]["lessons"]), 1)
+
+    def test_import_curriculum_rejects_malformed_payloads_with_400(self):
+        _, head_access = self._login_with_role("head_badimport@example.com", "Subteam Head")
+        course = self._create_course(head_access)
+        url = reverse("training-course-import-curriculum", args=[course["id"]])
+        bad_payloads = [
+            {"modules": "not a list"},
+            {"modules": ["not an object"]},
+            {"modules": [{"title": "M", "lessons": "not a list"}]},
+            {"modules": [{"title": "M", "lessons": ["not an object"]}]},
+            {"modules": [{"title": "M", "estimated_minutes": "abc"}]},
+            {"modules": [{"title": "M", "estimated_minutes": -5}]},
+            {"modules": [{"title": "M", "lessons": [{"title": "L", "estimated_minutes": 10**12}]}]},
+            {"modules": [{"title": "M", "lessons": [{"title": "L", "is_required": "maybe"}]}]},
+            {"modules": [{"title": "M", "lessons": [{"title": "L", "primary_url": "javascript:alert(1)"}]}]},
+            {"modules": [{"title": "M", "lessons": [{"title": "L", "primary_url": "https://x.com/" + "a" * 2100}]}]},
+        ]
+        for payload in bad_payloads:
+            with self.subTest(payload=str(payload)[:80]):
+                res = self.client.post(url, payload, format="json", **self._auth(head_access))
+                self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        # Nothing from a rejected import is left behind (the whole import is atomic).
+        self.assertEqual(CourseModule.objects.filter(course_id=course["id"]).count(), 0)
+
+    def test_import_curriculum_parses_string_booleans_and_skips_unusable_text_urls(self):
+        _, head_access = self._login_with_role("head_boolimport@example.com", "Subteam Head")
+        course = self._create_course(head_access)
+        payload = {"modules": [{"title": None, "lessons": [
+            {"title": "", "is_required": "false", "content": "see https://x.com/" + "a" * 2100},
+        ]}]}
+        res = self.client.post(
+            reverse("training-course-import-curriculum", args=[course["id"]]),
+            payload, format="json", **self._auth(head_access),
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        lesson = Lesson.objects.get(module__course_id=course["id"])
+        self.assertFalse(lesson.is_required)
+        self.assertEqual(lesson.title, "Lesson 1")
+        self.assertEqual(lesson.module.title, "Module 1")
+        self.assertFalse(lesson.resources.exists())
 
     def test_module_and_lesson_order_unique_and_sequential(self):
         _, head_access = self._login_with_role("head@example.com", "Subteam Head")

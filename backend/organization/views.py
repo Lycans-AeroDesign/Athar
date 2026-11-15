@@ -1,4 +1,3 @@
-from django.conf import settings
 from django.db.models import Count
 from django.http import FileResponse, Http404
 from drf_spectacular.utils import OpenApiResponse, extend_schema
