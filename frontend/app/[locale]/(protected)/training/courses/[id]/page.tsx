@@ -46,6 +46,7 @@ export default function CourseDetailPage() {
   const manageT = useTranslations("training.manage");
   const commonT = useTranslations("common");
   const cardT = useTranslations("training.card");
+  const difficultyT = useTranslations("training.difficulty");
   const { user } = useAuth();
   const router = useRouter();
 
@@ -423,14 +424,14 @@ export default function CourseDetailPage() {
                   <li className="flex items-center justify-between gap-2">
                     <span className="flex items-center gap-2 text-on-surface-variant">
                       <Icon name="folder" size={16} className="text-on-surface-variant/70" />
-                      Modules
+                      {t("modulesStat")}
                     </span>
                     <span className="font-medium font-mono">{course.module_count}</span>
                   </li>
                   <li className="flex items-center justify-between gap-2">
                     <span className="flex items-center gap-2 text-on-surface-variant">
                       <Icon name="menu_book" size={16} className="text-on-surface-variant/70" />
-                      Lessons
+                      {t("lessonsStat")}
                     </span>
                     <span className="font-medium font-mono">{course.lesson_count}</span>
                   </li>
@@ -438,17 +439,17 @@ export default function CourseDetailPage() {
                     <li className="flex items-center justify-between gap-2">
                       <span className="flex items-center gap-2 text-on-surface-variant">
                         <Icon name="schedule" size={16} className="text-on-surface-variant/70" />
-                        Duration
+                        {t("durationStat")}
                       </span>
-                      <span className="font-medium font-mono">{course.estimated_minutes} min</span>
+                      <span className="font-medium font-mono">{t("durationMinutes", { minutes: course.estimated_minutes })}</span>
                     </li>
                   )}
                   <li className="flex items-center justify-between gap-2">
                     <span className="flex items-center gap-2 text-on-surface-variant">
                       <Icon name="speed" size={16} className="text-on-surface-variant/70" />
-                      Level
+                      {t("levelStat")}
                     </span>
-                    <span className="font-medium capitalize">{course.difficulty.toLowerCase()}</span>
+                    <span className="font-medium">{difficultyT(course.difficulty)}</span>
                   </li>
                 </ul>
               </div>

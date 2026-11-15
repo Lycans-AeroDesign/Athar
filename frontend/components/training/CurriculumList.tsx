@@ -226,7 +226,7 @@ export function CurriculumList({
                   name="chevron_right"
                   size={18}
                   className={`text-on-surface-variant transition-transform duration-200 ${
-                    isOpen ? "rotate-90" : ""
+                    isOpen ? "rotate-90 rtl:-rotate-90" : ""
                   }`}
                 />
               </div>

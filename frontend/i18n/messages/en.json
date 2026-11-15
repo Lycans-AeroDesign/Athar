@@ -1528,7 +1528,15 @@
     "cancel": "Cancel",
     "selectedSize": "{w} × {h} px selected",
     "dragHint": "Drag to select the area to keep",
-    "loadFailed": "Couldn't load the image - you can still keep the original."
+    "loadFailed": "Couldn't load the image - you can still keep the original.",
+    "resizeTopLeft": "Resize from top left",
+    "resizeTopRight": "Resize from top right",
+    "resizeBottomRight": "Resize from bottom right",
+    "resizeBottomLeft": "Resize from bottom left",
+    "resizeTop": "Resize from top",
+    "resizeRight": "Resize from right",
+    "resizeBottom": "Resize from bottom",
+    "resizeLeft": "Resize from left"
   },
   "modal": {
     "close": "Close",
@@ -1640,7 +1648,12 @@
       "totalEnrolled": "Total Enrolled",
       "active": "Active",
       "completed": "Completed",
-      "completionRate": "Completion Rate"
+      "completionRate": "Completion Rate",
+      "modulesStat": "Modules",
+      "lessonsStat": "Lessons",
+      "durationStat": "Duration",
+      "levelStat": "Level",
+      "durationMinutes": "{minutes} min"
     },
     "lesson": {
       "moduleLabel": "Module {order}",
@@ -1661,7 +1674,12 @@
       "notFound": "This lesson isn't accessible to you.",
       "previewBanner": "Preview mode",
       "editLessonLink": "Edit Lesson",
-      "enrollToTrack": "Enroll in this course to track your progress."
+      "enrollToTrack": "Enroll in this course to track your progress.",
+      "sharePointVideo": "Microsoft SharePoint Video",
+      "externalVideo": "External Video Stream",
+      "sharePointVideoHint": "Hosted on SharePoint. Click to stream in full resolution with player controls.",
+      "externalVideoHint": "Click to stream this video in a new tab.",
+      "openInSharePoint": "Open Video in SharePoint"
     },
     "relatedKnowledge": {
       "title": "Related Knowledge",
@@ -1750,7 +1768,18 @@
       "lessonCount": "{count, plural, =0 {No lessons} one {# lesson} other {# lessons}}",
       "enrolledCount": "{count, plural, =0 {No learners} one {# learner} other {# learners}}",
       "noCoursesInTab": "No courses in \"{status}\".",
-      "primaryFileNotice": "This lesson's main content is the uploaded file \"{name}\". Manage it from the lesson's resources - saving here leaves it unchanged."
+      "primaryFileNotice": "This lesson's main content is the uploaded file \"{name}\". Manage it from the lesson's resources - saving here leaves it unchanged.",
+      "fullLessonEditor": "Full Lesson Editor",
+      "lessonTypeLabel": "Type",
+      "videoUrlLabel": "Video URL (SharePoint, YouTube, etc.)",
+      "resourceUrlLabel": "Resource URL",
+      "videoUrlHint": "Direct SharePoint video link or YouTube embed link set as main lesson content.",
+      "exerciseUrlHint": "Direct PDF, SharePoint doc link, or exercise document set as main lesson content.",
+      "resourceUrlHint": "Direct link set as the main lesson content.",
+      "lessonShortDescriptionLabel": "Short Description",
+      "lessonShortDescriptionPlaceholder": "Brief summary (optional)",
+      "lessonNotesLabel": "Content / Notes (Markdown)",
+      "lessonNotesPlaceholder": "Detailed notes or lesson text..."
     },
     "lessonEditor": {
       "loading": "Loading...",

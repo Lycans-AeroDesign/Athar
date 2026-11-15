@@ -1528,7 +1528,15 @@
     "cancel": "إلغاء",
     "selectedSize": "تم تحديد {w} × {h} بكسل",
     "dragHint": "اسحب لتحديد الجزء الذي تريد الاحتفاظ به",
-    "loadFailed": "تعذّر تحميل الصورة - لا يزال بإمكانك استخدام الصورة الأصلية."
+    "loadFailed": "تعذّر تحميل الصورة - لا يزال بإمكانك استخدام الصورة الأصلية.",
+    "resizeTopLeft": "تغيير الحجم من أعلى اليسار",
+    "resizeTopRight": "تغيير الحجم من أعلى اليمين",
+    "resizeBottomRight": "تغيير الحجم من أسفل اليمين",
+    "resizeBottomLeft": "تغيير الحجم من أسفل اليسار",
+    "resizeTop": "تغيير الحجم من الأعلى",
+    "resizeRight": "تغيير الحجم من اليمين",
+    "resizeBottom": "تغيير الحجم من الأسفل",
+    "resizeLeft": "تغيير الحجم من اليسار"
   },
   "modal": {
     "close": "إغلاق",
@@ -1640,7 +1648,12 @@
       "totalEnrolled": "إجمالي المسجلين",
       "active": "نشط",
       "completed": "مكتمل",
-      "completionRate": "معدل الإكمال"
+      "completionRate": "معدل الإكمال",
+      "modulesStat": "الوحدات",
+      "lessonsStat": "الدروس",
+      "durationStat": "المدة",
+      "levelStat": "المستوى",
+      "durationMinutes": "{minutes} دقيقة"
     },
     "lesson": {
       "moduleLabel": "الوحدة {order}",
@@ -1661,7 +1674,12 @@
       "notFound": "هذا الدرس غير متاح لك.",
       "previewBanner": "وضع المعاينة",
       "editLessonLink": "تعديل الدرس",
-      "enrollToTrack": "سجّل في هذه الدورة لتتبع تقدمك."
+      "enrollToTrack": "سجّل في هذه الدورة لتتبع تقدمك.",
+      "sharePointVideo": "فيديو Microsoft SharePoint",
+      "externalVideo": "بث فيديو خارجي",
+      "sharePointVideoHint": "مستضاف على SharePoint. اضغط للمشاهدة بالدقة الكاملة مع أدوات التشغيل.",
+      "externalVideoHint": "اضغط لمشاهدة هذا الفيديو في علامة تبويب جديدة.",
+      "openInSharePoint": "فتح الفيديو في SharePoint"
     },
     "relatedKnowledge": {
       "title": "معرفة ذات صلة",
@@ -1750,7 +1768,18 @@
       "lessonCount": "{count, plural, =0 {لا دروس} one {درس واحد} two {درسان} few {# دروس} many {# درسًا} other {# درس}}",
       "enrolledCount": "{count, plural, =0 {لا متعلمين} one {متعلم واحد} two {متعلمان} few {# متعلمين} many {# متعلمًا} other {# متعلم}}",
       "noCoursesInTab": "لا توجد دورات في \"{status}\".",
-      "primaryFileNotice": "المحتوى الرئيسي لهذا الدرس هو الملف المرفوع \"{name}\". يمكنك إدارته من موارد الدرس - الحفظ هنا لا يغيّره."
+      "primaryFileNotice": "المحتوى الرئيسي لهذا الدرس هو الملف المرفوع \"{name}\". يمكنك إدارته من موارد الدرس - الحفظ هنا لا يغيّره.",
+      "fullLessonEditor": "محرر الدرس الكامل",
+      "lessonTypeLabel": "النوع",
+      "videoUrlLabel": "رابط الفيديو (SharePoint أو YouTube وغيرها)",
+      "resourceUrlLabel": "رابط المورد",
+      "videoUrlHint": "رابط فيديو SharePoint مباشر أو رابط تضمين YouTube يُعرض كمحتوى الدرس الرئيسي.",
+      "exerciseUrlHint": "رابط PDF مباشر أو مستند SharePoint أو ملف تمرين يُعرض كمحتوى الدرس الرئيسي.",
+      "resourceUrlHint": "رابط مباشر يُعرض كمحتوى الدرس الرئيسي.",
+      "lessonShortDescriptionLabel": "وصف مختصر",
+      "lessonShortDescriptionPlaceholder": "ملخص قصير (اختياري)",
+      "lessonNotesLabel": "المحتوى / الملاحظات (Markdown)",
+      "lessonNotesPlaceholder": "ملاحظات مفصلة أو نص الدرس..."
     },
     "lessonEditor": {
       "loading": "جارٍ التحميل...",

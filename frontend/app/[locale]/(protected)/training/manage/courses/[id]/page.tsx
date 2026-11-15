@@ -887,14 +887,14 @@ export default function CourseEditorPage() {
               className="text-xs text-primary hover:underline flex items-center gap-1"
             >
               <Icon name="open_in_new" size={14} />
-              Full Lesson Editor
+              {t("fullLessonEditor")}
             </Link>
             <div className="flex items-center gap-2">
               <Button variant="secondary" onClick={handleCloseEditLesson} disabled={isSavingLesson}>
                 {commonT("cancel")}
               </Button>
               <Button onClick={handleSaveLessonEdit} disabled={isSavingLesson || !editLessonTitle.trim()}>
-                {isSavingLesson ? "Saving..." : commonT("save")}
+                {isSavingLesson ? commonT("saving") : commonT("save")}
               </Button>
             </div>
           </div>
@@ -926,7 +926,7 @@ export default function CourseEditorPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase mb-1">
-                  Type
+                  {t("lessonTypeLabel")}
                 </label>
                 <Combobox
                   value={editLessonType}
@@ -962,33 +962,33 @@ export default function CourseEditorPage() {
             {LESSON_TYPES_WITH_URL.includes(editLessonType) && !primaryFileResource && (
               <div>
                 <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase mb-1">
-                  {editLessonType === "VIDEO" ? "Video URL (SharePoint, YouTube, etc.)" : "Resource URL"}
+                  {editLessonType === "VIDEO" ? t("videoUrlLabel") : t("resourceUrlLabel")}
                 </label>
                 <input
                   type="url"
-                  placeholder="https://alexuuni-my.sharepoint.com/... or https://youtu.be/..."
+                  placeholder="https://..."
                   className="block w-full px-4 py-2 font-body-md text-body-md text-on-surface bg-surface border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none"
                   value={editLessonPrimaryUrl}
                   onChange={(e) => setEditLessonPrimaryUrl(e.target.value)}
                 />
                 <p className="mt-1 text-xs text-on-surface-variant">
                   {editLessonType === "VIDEO"
-                    ? "Direct SharePoint video link or YouTube embed link set as main lesson content."
+                    ? t("videoUrlHint")
                     : editLessonType === "EXERCISE"
-                      ? "Direct PDF, SharePoint doc link, or exercise document set as main lesson content."
-                      : "Direct link set as the main lesson content."}
+                      ? t("exerciseUrlHint")
+                      : t("resourceUrlHint")}
                 </p>
               </div>
             )}
 
             <div>
               <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase mb-1">
-                Short Description
+                {t("lessonShortDescriptionLabel")}
               </label>
               <textarea
                 rows={2}
                 maxLength={290}
-                placeholder="Brief summary (optional)"
+                placeholder={t("lessonShortDescriptionPlaceholder")}
                 className="block w-full px-4 py-2 font-body-md text-body-md text-on-surface bg-surface border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none"
                 value={editLessonShortDesc}
                 onChange={(e) => setEditLessonShortDesc(e.target.value)}
@@ -1000,11 +1000,11 @@ export default function CourseEditorPage() {
 
             <div>
               <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase mb-1">
-                Content / Notes (Markdown)
+                {t("lessonNotesLabel")}
               </label>
               <textarea
                 rows={4}
-                placeholder="Detailed notes or lesson text..."
+                placeholder={t("lessonNotesPlaceholder")}
                 className="block w-full px-4 py-2 font-body-md text-body-md text-on-surface bg-surface border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none font-mono text-sm"
                 value={editLessonContent}
                 onChange={(e) => setEditLessonContent(e.target.value)}

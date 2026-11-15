@@ -272,6 +272,12 @@ const ICONS: Record<string, LucideIcon> = {
   visibility_off: EyeOff,
 };
 
+// Icons that point along the reading direction. In RTL (Arabic) they're mirrored
+// here once, so "back" points right and "next" points left without every call
+// site having to remember an rtl: class. Up/down arrows and non-directional
+// glyphs (open_in_new, logout) stay as they are.
+const DIRECTIONAL_ICONS = new Set(["arrow_back", "arrow_forward", "chevron_right", "send"]);
+
 interface IconProps {
   name: string;
   className?: string;
@@ -296,7 +302,7 @@ export function Icon({ name, className, filled, size }: IconProps) {
 
   return (
     <LucideIconComponent
-      className={className}
+      className={DIRECTIONAL_ICONS.has(name) ? `rtl:-scale-x-100 ${className ?? ""}`.trim() : className}
       size={size ?? 24}
       strokeWidth={2}
       fill={filled ? "currentColor" : "none"}

@@ -64,7 +64,7 @@ export function SettingsShell({ children }: { children: ReactNode }) {
             onClick={(e) => handleLinkClick(e, "/settings")}
             className="inline-flex items-center gap-1 -ms-1 py-1 font-body-md text-body-md text-primary"
           >
-            <Icon name="chevron_right" size={18} className="rotate-180 rtl:rotate-0" />
+            <Icon name="chevron_right" size={18} className="rotate-180" />
             {t("title")}
           </Link>
           {activeGroup && (
@@ -115,7 +115,7 @@ export function SettingsShell({ children }: { children: ReactNode }) {
                         <Icon
                           name="chevron_right"
                           size={18}
-                          className="lg:hidden shrink-0 text-on-surface-variant rtl:rotate-180"
+                          className="lg:hidden shrink-0 text-on-surface-variant"
                         />
                       </Link>
                     );

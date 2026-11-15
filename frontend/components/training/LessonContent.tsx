@@ -26,6 +26,7 @@ function VideoStreamCard({
   title: string;
   openLabel: string;
 }) {
+  const t = useTranslations("training.lesson");
   const url = resource.url || "";
   const isSharePoint = hostMatches(url, SHAREPOINT_DOMAINS);
 
@@ -46,15 +47,13 @@ function VideoStreamCard({
         <div className="space-y-1.5 max-w-lg">
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-surface-container-highest border border-outline-variant text-on-surface-variant">
             <Icon name={isSharePoint ? "cloud" : "videocam"} size={14} />
-            {isSharePoint ? "Microsoft SharePoint Video" : "External Video Stream"}
+            {isSharePoint ? t("sharePointVideo") : t("externalVideo")}
           </span>
           <h4 className="font-headline-sm text-headline-sm font-bold text-on-surface line-clamp-2">
             {title || resource.title}
           </h4>
           <p className="font-body-sm text-body-sm text-on-surface-variant">
-            {isSharePoint
-              ? "Hosted on SharePoint. Click to stream in full resolution with player controls."
-              : "Click to stream this video in a new tab."}
+            {isSharePoint ? t("sharePointVideoHint") : t("externalVideoHint")}
           </p>
         </div>
       </a>
@@ -65,7 +64,7 @@ function VideoStreamCard({
           className="gap-2 shadow-md"
         >
           <Icon name="open_in_new" size={18} />
-          {isSharePoint ? "Open Video in SharePoint" : openLabel}
+          {isSharePoint ? t("openInSharePoint") : openLabel}
         </Button>
       </div>
     </div>

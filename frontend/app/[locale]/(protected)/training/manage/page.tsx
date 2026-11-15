@@ -70,7 +70,7 @@ export default function TrainingManageDashboardPage() {
             href="/training"
             className="inline-flex items-center text-on-surface-variant hover:text-on-surface transition-colors"
           >
-            <Icon name="arrow_back" size={20} className="rtl:rotate-180" />
+            <Icon name="arrow_back" size={20} />
           </Link>
           <h1 className="font-display text-display text-on-surface">{t("dashboardTitle")}</h1>
         </div>
@@ -273,7 +273,7 @@ function PendingCourseCard({ course, isReviewer }: { course: CourseSummary; isRe
         </div>
         <span className="inline-flex items-center gap-1 font-body-md text-body-md text-primary shrink-0">
           {isReviewer ? t("reviewButton") : t("viewButton")}
-          <Icon name="arrow_forward" size={16} className="rtl:rotate-180" />
+          <Icon name="arrow_forward" size={16} />
         </span>
       </div>
     </Link>

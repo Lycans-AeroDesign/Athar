@@ -22,7 +22,7 @@ export function CategoryPanel({ categories, selectedCategoryId, onSelect }: Cate
           key={category.id}
           type="button"
           onClick={() => onSelect(category.id === selectedCategoryId ? null : category.id)}
-          className={`flex items-center justify-between w-full px-2 py-2 rounded-lg font-body-md text-body-md text-left transition-colors ${
+          className={`flex items-center justify-between w-full px-2 py-2 rounded-lg font-body-md text-body-md text-start transition-colors ${
             category.id === selectedCategoryId
               ? "bg-secondary-container text-on-secondary-container"
               : "text-on-surface hover:bg-surface-variant"
@@ -32,7 +32,7 @@ export function CategoryPanel({ categories, selectedCategoryId, onSelect }: Cate
             <Icon name="folder" size={18} />
             {category.name}
           </span>
-          <span className="shrink-0 ml-2 font-mono-sm text-mono-sm text-on-surface-variant border border-outline-variant rounded-full px-2 py-0.5">
+          <span className="shrink-0 ms-2 font-mono-sm text-mono-sm text-on-surface-variant border border-outline-variant rounded-full px-2 py-0.5">
             {category.article_count}
           </span>
         </button>

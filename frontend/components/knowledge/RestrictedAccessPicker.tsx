@@ -104,7 +104,7 @@ export function RestrictedAccessPicker({ initialGrants, value, onChange }: Restr
                 <button
                   type="button"
                   onClick={() => handleUndoRemoveExisting(grantId!)}
-                  className="font-label-caps text-label-caps uppercase text-on-surface-variant hover:text-primary transition-colors shrink-0 ml-2"
+                  className="font-label-caps text-label-caps uppercase text-on-surface-variant hover:text-primary transition-colors shrink-0 ms-2"
                 >
                   {t("undo")}
                 </button>
@@ -113,7 +113,7 @@ export function RestrictedAccessPicker({ initialGrants, value, onChange }: Restr
                   type="button"
                   onClick={() => handleRemovePendingAdd(user.id)}
                   aria-label={t("remove")}
-                  className="text-on-surface-variant hover:text-error transition-colors shrink-0 ml-2"
+                  className="text-on-surface-variant hover:text-error transition-colors shrink-0 ms-2"
                 >
                   <Icon name="close" size={14} />
                 </button>
@@ -121,7 +121,7 @@ export function RestrictedAccessPicker({ initialGrants, value, onChange }: Restr
                 <button
                   type="button"
                   onClick={() => handleRemoveExisting(grantId!)}
-                  className="font-label-caps text-label-caps uppercase text-on-surface-variant hover:text-error transition-colors shrink-0 ml-2"
+                  className="font-label-caps text-label-caps uppercase text-on-surface-variant hover:text-error transition-colors shrink-0 ms-2"
                 >
                   {t("remove")}
                 </button>

@@ -139,7 +139,7 @@ export default function LessonViewerPage() {
                   style={{ width: `${Math.min(100, Math.max(0, progress.percent))}%` }}
                 />
               </div>
-              <div className="text-[11px] text-on-surface-variant text-right">
+              <div className="text-[11px] text-on-surface-variant text-end">
                 {courseT("progressLabel", { completed: progress.completed_lessons, total: progress.total_lessons })}
               </div>
             </div>

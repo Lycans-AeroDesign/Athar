@@ -142,7 +142,7 @@ export function ImportCurriculumModal({
                       icon="delete"
                       size={16}
                       variant="danger"
-                      aria-label="Delete module"
+                      aria-label={t("deleteModuleButton")}
                       onClick={() => handleDeleteModule(mIdx)}
                     />
                   </div>
@@ -173,7 +173,7 @@ export function ImportCurriculumModal({
                           icon="delete"
                           size={14}
                           variant="ghost"
-                          aria-label="Delete lesson"
+                          aria-label={t("deleteLessonButton")}
                           onClick={() => handleDeleteLesson(mIdx, lIdx)}
                         />
                       </li>

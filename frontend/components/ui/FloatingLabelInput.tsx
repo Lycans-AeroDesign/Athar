@@ -27,7 +27,7 @@ export const FloatingLabelInput = forwardRef<HTMLInputElement, FloatingLabelInpu
     const t = useTranslations("auth");
     const [showPassword, setShowPassword] = useState(false);
     const isPassword = type === "password";
-    const leftInset = icon ? "left-10" : "left-4";
+    const startInset = icon ? "start-10" : "start-4";
 
     return (
       <div>
@@ -37,7 +37,7 @@ export const FloatingLabelInput = forwardRef<HTMLInputElement, FloatingLabelInpu
             would stretch it and throw every absolute child's centering off. */}
         <div className="relative">
           {icon && (
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-on-surface-variant peer-focus:text-primary">
+            <div className="absolute inset-y-0 start-0 ps-3 flex items-center pointer-events-none text-on-surface-variant peer-focus:text-primary">
               <Icon name={icon} size={18} />
             </div>
           )}
@@ -47,12 +47,12 @@ export const FloatingLabelInput = forwardRef<HTMLInputElement, FloatingLabelInpu
             placeholder=" "
             type={isPassword && showPassword ? "text" : type}
             aria-invalid={!!error}
-            className={`peer block w-full ${icon ? "pl-10" : "pl-4"} ${isPassword ? "pr-10" : "pr-4"} pt-7 pb-3 font-mono-sm text-mono-sm text-on-surface bg-surface-container border rounded-lg focus:ring-1 outline-none transition-colors ${error ? "border-error focus:border-error focus:ring-error" : "border-outline-variant focus:border-primary focus:ring-primary"} ${className ?? ""}`}
+            className={`peer block w-full ${icon ? "ps-10" : "ps-4"} ${isPassword ? "pe-10" : "pe-4"} pt-7 pb-3 font-mono-sm text-mono-sm text-on-surface bg-surface-container border rounded-lg focus:ring-1 outline-none transition-colors ${error ? "border-error focus:border-error focus:ring-error" : "border-outline-variant focus:border-primary focus:ring-primary"} ${className ?? ""}`}
             {...props}
           />
           <label
             htmlFor={id}
-            className={`absolute ${leftInset} top-1/2 -translate-y-1/2 font-body-md text-body-md text-on-surface-variant pointer-events-none transition-all duration-150 peer-focus:top-2 peer-focus:translate-y-0 peer-focus:font-label-caps peer-focus:text-label-caps peer-focus:uppercase peer-focus:text-primary peer-not-placeholder-shown:top-2 peer-not-placeholder-shown:translate-y-0 peer-not-placeholder-shown:font-label-caps peer-not-placeholder-shown:text-label-caps peer-not-placeholder-shown:uppercase`}
+            className={`absolute ${startInset} top-1/2 -translate-y-1/2 font-body-md text-body-md text-on-surface-variant pointer-events-none transition-all duration-150 peer-focus:top-2 peer-focus:translate-y-0 peer-focus:font-label-caps peer-focus:text-label-caps peer-focus:uppercase peer-focus:text-primary peer-not-placeholder-shown:top-2 peer-not-placeholder-shown:translate-y-0 peer-not-placeholder-shown:font-label-caps peer-not-placeholder-shown:text-label-caps peer-not-placeholder-shown:uppercase`}
           >
             {label}
           </label>
@@ -60,7 +60,7 @@ export const FloatingLabelInput = forwardRef<HTMLInputElement, FloatingLabelInpu
             <button
               type="button"
               onClick={() => setShowPassword((visible) => !visible)}
-              className="absolute inset-y-0 right-0 pr-3 flex items-center text-on-surface-variant hover:text-primary transition-colors"
+              className="absolute inset-y-0 end-0 pe-3 flex items-center text-on-surface-variant hover:text-primary transition-colors"
               aria-label={showPassword ? t("hidePassword") : t("showPassword")}
             >
               <Icon name={showPassword ? "visibility_off" : "visibility"} size={18} />

@@ -471,25 +471,25 @@ export function ImageCropModal({
                   {/* Corner Anchors */}
                   <button
                     type="button"
-                    aria-label="Resize Top Left"
+                    aria-label={t("resizeTopLeft")}
                     className="absolute -top-2 -left-2 w-4 h-4 bg-white border-2 border-primary rounded-full shadow-md cursor-nwse-resize hover:scale-125 transition-transform z-20"
                     onPointerDown={(e) => handleAnchorPointerDown(e, "nw")}
                   />
                   <button
                     type="button"
-                    aria-label="Resize Top Right"
+                    aria-label={t("resizeTopRight")}
                     className="absolute -top-2 -right-2 w-4 h-4 bg-white border-2 border-primary rounded-full shadow-md cursor-nesw-resize hover:scale-125 transition-transform z-20"
                     onPointerDown={(e) => handleAnchorPointerDown(e, "ne")}
                   />
                   <button
                     type="button"
-                    aria-label="Resize Bottom Right"
+                    aria-label={t("resizeBottomRight")}
                     className="absolute -bottom-2 -right-2 w-4 h-4 bg-white border-2 border-primary rounded-full shadow-md cursor-nwse-resize hover:scale-125 transition-transform z-20"
                     onPointerDown={(e) => handleAnchorPointerDown(e, "se")}
                   />
                   <button
                     type="button"
-                    aria-label="Resize Bottom Left"
+                    aria-label={t("resizeBottomLeft")}
                     className="absolute -bottom-2 -left-2 w-4 h-4 bg-white border-2 border-primary rounded-full shadow-md cursor-nesw-resize hover:scale-125 transition-transform z-20"
                     onPointerDown={(e) => handleAnchorPointerDown(e, "sw")}
                   />
@@ -499,25 +499,25 @@ export function ImageCropModal({
                     <>
                       <button
                         type="button"
-                        aria-label="Resize Top"
+                        aria-label={t("resizeTop")}
                         className="absolute -top-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white border-2 border-primary rounded-full shadow-md cursor-ns-resize hover:scale-125 transition-transform z-20"
                         onPointerDown={(e) => handleAnchorPointerDown(e, "n")}
                       />
                       <button
                         type="button"
-                        aria-label="Resize Right"
+                        aria-label={t("resizeRight")}
                         className="absolute top-1/2 -right-2 -translate-y-1/2 w-4 h-4 bg-white border-2 border-primary rounded-full shadow-md cursor-ew-resize hover:scale-125 transition-transform z-20"
                         onPointerDown={(e) => handleAnchorPointerDown(e, "e")}
                       />
                       <button
                         type="button"
-                        aria-label="Resize Bottom"
+                        aria-label={t("resizeBottom")}
                         className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white border-2 border-primary rounded-full shadow-md cursor-ns-resize hover:scale-125 transition-transform z-20"
                         onPointerDown={(e) => handleAnchorPointerDown(e, "s")}
                       />
                       <button
                         type="button"
-                        aria-label="Resize Left"
+                        aria-label={t("resizeLeft")}
                         className="absolute top-1/2 -left-2 -translate-y-1/2 w-4 h-4 bg-white border-2 border-primary rounded-full shadow-md cursor-ew-resize hover:scale-125 transition-transform z-20"
                         onPointerDown={(e) => handleAnchorPointerDown(e, "w")}
                       />

@@ -315,14 +315,14 @@ export function RolesSettingsForm() {
                   key={role.id}
                   type="button"
                   onClick={() => setSelectedRoleId(role.id)}
-                  className={`flex items-center justify-between w-full px-3 py-2 rounded-lg font-body-md text-body-md text-left transition-colors ${
+                  className={`flex items-center justify-between w-full px-3 py-2 rounded-lg font-body-md text-body-md text-start transition-colors ${
                     role.id === selectedRoleId
                       ? "bg-secondary-container text-on-secondary-container"
                       : "text-on-surface hover:bg-surface-variant"
                   } ${role.isDeleted ? "opacity-60" : ""}`}
                 >
                   <span className={`truncate ${role.isDeleted ? "line-through" : ""}`}>{role.name}</span>
-                  <span className="flex items-center gap-1 shrink-0 ml-2">
+                  <span className="flex items-center gap-1 shrink-0 ms-2">
                     {role.is_system && (
                       <span className="font-label-caps text-label-caps uppercase text-on-surface-variant bg-surface-variant rounded-full px-2 py-0.5">
                         {t("systemRole")}
@@ -414,7 +414,7 @@ export function RolesSettingsForm() {
                       {effectivePermissions.map(({ permission, pending }) => (
                         <span
                           key={permission.id}
-                          className={`inline-flex items-center gap-2 font-mono-sm text-mono-sm border rounded-full pl-3 pr-1 py-1 ${
+                          className={`inline-flex items-center gap-2 font-mono-sm text-mono-sm border rounded-full ps-3 pe-1 py-1 ${
                             pending === "add"
                               ? "bg-primary-container text-on-primary-container border-transparent"
                               : pending === "remove"

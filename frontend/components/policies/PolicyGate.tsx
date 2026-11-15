@@ -245,7 +245,7 @@ function PolicyWalkthrough({ policies, onAccepted }: { policies: CurrentPolicy[]
             <div className="flex flex-col-reverse sm:flex-row gap-3">
               {step > 0 && (
                 <Button variant="secondary" onClick={() => goTo(step - 1)} disabled={isSubmitting}>
-                  <Icon name="arrow_back" size={16} className="rtl:rotate-180" />
+                  <Icon name="arrow_back" size={16} />
                   {t("back")}
                 </Button>
               )}
@@ -256,7 +256,7 @@ function PolicyWalkthrough({ policies, onAccepted }: { policies: CurrentPolicy[]
               ) : (
                 <Button onClick={() => goTo(step + 1)} disabled={!isChecked}>
                   {t("next")}
-                  <Icon name="arrow_forward" size={16} className="rtl:rotate-180" />
+                  <Icon name="arrow_forward" size={16} />
                 </Button>
               )}
             </div>

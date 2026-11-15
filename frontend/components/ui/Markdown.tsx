@@ -387,7 +387,7 @@ const COMPONENTS: Components = {
     </ul>
   ),
   ol: ({ children }) => (
-    <ol className="list-decimal pl-6 mb-4 space-y-1 font-body-lg text-body-lg text-on-surface">{children}</ol>
+    <ol className="list-decimal ps-6 mb-4 space-y-1 font-body-lg text-body-lg text-on-surface">{children}</ol>
   ),
   li: ({ children }) => <li>{children}</li>,
   input: ({ type, checked }) =>
