@@ -9,7 +9,13 @@ from .models import BackupJob, RestoreJob
 logger = logging.getLogger(__name__)
 
 
-@shared_task
+# Longer than the global task limits, but kept under BACKUP_JOB_STALE_AFTER_HOURS
+# (6h): the soft limit lands in the task's except-block (job -> FAILED with a
+# message); a hard kill leaves the job RUNNING for fail_stale_jobs to collect.
+_LONG_TASK_LIMITS = {"soft_time_limit": 5 * 3600, "time_limit": int(5.5 * 3600)}
+
+
+@shared_task(**_LONG_TASK_LIMITS)
 def generate_org_backup(job_id) -> None:
     """Runs build_org_backup_archive in the background (see BackupJob) -
     triggered by BackupJobListCreateView.post, polled via
@@ -47,7 +53,7 @@ def _discard_uploaded_archive(job: RestoreJob) -> None:
         job.save(update_fields=["uploaded_archive", "updated_at"])
 
 
-@shared_task
+@shared_task(**_LONG_TASK_LIMITS)
 def restore_org_backup(restore_job_id) -> None:
     """Runs restore.restore_org_backup_archive in the background (see
     RestoreJob) - triggered by RestoreJobListCreateView.post, polled via

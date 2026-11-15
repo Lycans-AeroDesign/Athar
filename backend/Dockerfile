@@ -72,4 +72,5 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 FROM base AS prod
 COPY --from=builder /app /app
 EXPOSE 8000
-CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3"]
+# Workers/threads/timeouts live in gunicorn.conf.py (env-tunable).
+CMD ["gunicorn", "config.wsgi:application", "--config", "gunicorn.conf.py"]

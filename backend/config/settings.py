@@ -126,6 +126,11 @@ DATABASES = {
     # environment, dev included. Raises ImproperlyConfigured if unset.
     "default": env.db("DATABASE_URL"),
 }
+# Reuse a worker's Postgres connection across requests instead of opening a
+# new one every time (the default, 0). Health checks make a reused connection
+# that Postgres has since dropped reconnect transparently instead of erroring.
+DATABASES["default"]["CONN_MAX_AGE"] = env.int("DB_CONN_MAX_AGE", default=60)
+DATABASES["default"]["CONN_HEALTH_CHECKS"] = True
 # knowledge.search's trigram fallback filters with the GIN-indexable %>
 # operator, which compares against this per-session setting (pg_trgm's own
 # default is 0.6) - see knowledge.search.TRIGRAM_THRESHOLD.
@@ -343,6 +348,14 @@ CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = TIME_ZONE
+# No task may run forever: the soft limit raises SoftTimeLimitExceeded inside
+# the task (its own error handling then runs), the hard limit kills it. Backup
+# and restore tasks set their own longer limits (backups/tasks.py).
+CELERY_TASK_SOFT_TIME_LIMIT = 25 * 60
+CELERY_TASK_TIME_LIMIT = 30 * 60
+# Take one task at a time, so a worker busy with a long backup doesn't also
+# hold queued tasks that an idle worker could run.
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
 # Tests run tasks inline (no Redis/worker in CI), gated like the throttle override above.
 CELERY_TASK_ALWAYS_EAGER = "test" in sys.argv
 CELERY_TASK_EAGER_PROPAGATES = True
