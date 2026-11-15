@@ -28,11 +28,16 @@ WORKDIR /app
 # hasn't been rebuilt with yet (e.g. a zlib1g fix) - otherwise the image scan
 # in .github/workflows/security.yml flags already-fixed CVEs until upstream
 # republishes the base.
+# The key download retries: www.postgresql.org occasionally stalls a connection
+# and drops it ~100s later, which used to fail the whole image build (and the
+# CI Docker/Trivy jobs with it) on a one-off network hiccup.
 RUN apt-get update \
     && apt-get upgrade -y --no-install-recommends \
     && apt-get install -y --no-install-recommends libpq5 netcat-openbsd curl gnupg \
     && install -d /usr/share/postgresql-common/pgdg \
-    && curl -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc --fail https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+    && curl -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc --fail --silent --show-error \
+        --connect-timeout 15 --max-time 60 --retry 5 --retry-delay 5 --retry-all-errors \
+        https://www.postgresql.org/media/keys/ACCC4CF8.asc \
     && echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt trixie-pgdg main" > /etc/apt/sources.list.d/pgdg.list \
     && apt-get update \
     && apt-get install -y --no-install-recommends postgresql-client-18 \
