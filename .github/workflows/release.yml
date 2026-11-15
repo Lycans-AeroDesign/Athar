@@ -53,5 +53,9 @@ jobs:
 
       - name: Run semantic-release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # The maintainer's token when set, so the GitHub release is credited
+          # to them rather than github-actions[bot].
+          # The "chore(release)" commit itself stays authored by
+          # semantic-release-bot (its default git identity).
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
         run: semantic-release
