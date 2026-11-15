@@ -8,7 +8,14 @@ import { Icon } from "@/components/ui/Icon";
 import { Markdown } from "@/components/ui/Markdown";
 import { downloadFile } from "@/lib/api/files";
 import type { CourseResource, LessonDetail } from "@/lib/api/types";
-import { getGoogleDriveEmbedUrl, getSharePointEmbedUrl, getVideoEmbedUrl } from "@/lib/training/video";
+import {
+  SHAREPOINT_DOMAINS,
+  detectResourceProvider,
+  getGoogleDriveEmbedUrl,
+  getSharePointEmbedUrl,
+  getVideoEmbedUrl,
+  hostMatches,
+} from "@/lib/training/video";
 
 function VideoStreamCard({
   resource,
@@ -20,7 +27,7 @@ function VideoStreamCard({
   openLabel: string;
 }) {
   const url = resource.url || "";
-  const isSharePoint = url.includes("sharepoint.com") || url.includes("1drv.ms");
+  const isSharePoint = hostMatches(url, SHAREPOINT_DOMAINS);
 
   return (
     <div className="relative w-full aspect-video min-h-[260px] sm:min-h-[360px] rounded-2xl overflow-hidden border border-outline-variant bg-gradient-to-br from-surface-container-high via-surface-container to-surface-container-lowest flex flex-col items-center justify-center p-6 sm:p-8 text-center group shadow-md transition-all">
@@ -193,13 +200,7 @@ export function LessonContent({ lesson }: { lesson: LessonDetail }) {
         title: lesson.title,
         description: "",
         resource_type: "EXTERNAL_LINK",
-        provider: match[0].includes("youtu")
-          ? "YOUTUBE"
-          : match[0].includes("drive")
-            ? "GOOGLE_DRIVE"
-            : match[0].includes("vimeo")
-              ? "VIMEO"
-              : "WEBSITE",
+        provider: detectResourceProvider(match[0]),
         url: match[0],
         stored_file: null,
         is_primary: true,

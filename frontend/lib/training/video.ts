@@ -3,6 +3,35 @@
 // functions only return a URL built from a validated id (a regex-matched Drive file id, or a
 // YouTube id parsed off a real URL), and LessonContent.tsx is the only place rendering an <iframe>
 // from resource data. The URL is never fetched server-side (SSRF is out of scope for Training).
+import type { CourseResourceProvider } from "@/lib/api/types";
+
+/** Whether `url`'s host is one of `domains` or a subdomain of one. A parsed,
+ * dot-anchored comparison - a substring/endsWith check would also accept
+ * look-alikes such as "evilsharepoint.com" or "example.com/?youtube.com". */
+export function hostMatches(url: string, domains: readonly string[]): boolean {
+  let host: string;
+  try {
+    host = new URL(url).hostname.toLowerCase();
+  } catch {
+    return false;
+  }
+  return domains.some((domain) => host === domain || host.endsWith(`.${domain}`));
+}
+
+const PROVIDER_DOMAINS: [CourseResourceProvider, readonly string[]][] = [
+  ["YOUTUBE", ["youtube.com", "youtu.be"]],
+  ["GOOGLE_DRIVE", ["drive.google.com"]],
+  ["VIMEO", ["vimeo.com"]],
+  ["GITHUB", ["github.com"]],
+];
+
+/** The resource provider a link belongs to (by host), else WEBSITE. */
+export function detectResourceProvider(url: string): CourseResourceProvider {
+  return PROVIDER_DOMAINS.find(([, domains]) => hostMatches(url, domains))?.[0] ?? "WEBSITE";
+}
+
+export const SHAREPOINT_DOMAINS = ["sharepoint.com", "1drv.ms", "onedrive.live.com", "officeapps.live.com"] as const;
+
 const DRIVE_FILE_PATTERN = /^https:\/\/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)\/(?:view|preview)/;
 
 export function getGoogleDriveEmbedUrl(url: string): string | null {
@@ -45,14 +74,7 @@ export function getSharePointEmbedUrl(rawUrl: string): string | null {
 
   try {
     const parsed = new URL(url);
-    const host = parsed.hostname.toLowerCase();
-    const isSharePointOrOffice =
-      host.endsWith("sharepoint.com") ||
-      host.endsWith("1drv.ms") ||
-      host.endsWith("onedrive.live.com") ||
-      host.endsWith("officeapps.live.com");
-
-    if (isSharePointOrOffice) {
+    if (hostMatches(url, SHAREPOINT_DOMAINS)) {
       const pathname = parsed.pathname.toLowerCase();
       const search = parsed.search.toLowerCase();
       if (

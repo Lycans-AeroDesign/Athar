@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { getGoogleDriveEmbedUrl, getVideoEmbedUrl, getYoutubeEmbedUrl } from "./video";
+import {
+  detectResourceProvider,
+  getGoogleDriveEmbedUrl,
+  getSharePointEmbedUrl,
+  getVideoEmbedUrl,
+  getYoutubeEmbedUrl,
+  hostMatches,
+} from "./video";
 
 describe("getYoutubeEmbedUrl", () => {
   it("extracts the video id from a watch URL", () => {
@@ -69,5 +76,38 @@ describe("getVideoEmbedUrl", () => {
 
   it("returns null for a plain website link", () => {
     expect(getVideoEmbedUrl("https://github.com/lycans/athar")).toBeNull();
+  });
+});
+
+describe("hostMatches", () => {
+  it("accepts the domain itself and real subdomains", () => {
+    expect(hostMatches("https://sharepoint.com/x", ["sharepoint.com"])).toBe(true);
+    expect(hostMatches("https://alexuuni-my.sharepoint.com/x", ["sharepoint.com"])).toBe(true);
+  });
+
+  it("rejects look-alike hosts and domains hidden in the path or query", () => {
+    expect(hostMatches("https://evilsharepoint.com/x", ["sharepoint.com"])).toBe(false);
+    expect(hostMatches("https://sharepoint.com.evil.example/x", ["sharepoint.com"])).toBe(false);
+    expect(hostMatches("https://evil.example/?u=sharepoint.com", ["sharepoint.com"])).toBe(false);
+    expect(hostMatches("not a url", ["sharepoint.com"])).toBe(false);
+  });
+});
+
+describe("detectResourceProvider", () => {
+  it("classifies by host, not by substring", () => {
+    expect(detectResourceProvider("https://www.youtube.com/watch?v=dQw4w9WgXcQ")).toBe("YOUTUBE");
+    expect(detectResourceProvider("https://youtu.be/dQw4w9WgXcQ")).toBe("YOUTUBE");
+    expect(detectResourceProvider("https://drive.google.com/file/d/abc/view")).toBe("GOOGLE_DRIVE");
+    expect(detectResourceProvider("https://evil.example/?next=youtube.com")).toBe("WEBSITE");
+    expect(detectResourceProvider("https://notgithub.com/repo")).toBe("WEBSITE");
+  });
+});
+
+describe("getSharePointEmbedUrl", () => {
+  it("embeds real SharePoint embed links but not look-alike hosts", () => {
+    expect(getSharePointEmbedUrl("https://team.sharepoint.com/_layouts/15/embed.aspx?id=1")).toBe(
+      "https://team.sharepoint.com/_layouts/15/embed.aspx?id=1",
+    );
+    expect(getSharePointEmbedUrl("https://evilsharepoint.com/_layouts/15/embed.aspx?id=1")).toBeNull();
   });
 });

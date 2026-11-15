@@ -1,4 +1,5 @@
 import re
+from urllib.parse import urlparse
 
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied
@@ -277,6 +278,26 @@ def delete_course(*, course: Course, actor, request=None, force: bool = False) -
 # --- Modules / Lessons / Objectives ------------------------------------------
 
 
+_PROVIDER_DOMAINS = (
+    (CourseResource.Provider.YOUTUBE, ("youtube.com", "youtu.be")),
+    (CourseResource.Provider.GOOGLE_DRIVE, ("drive.google.com",)),
+    (CourseResource.Provider.VIMEO, ("vimeo.com",)),
+    (CourseResource.Provider.GITHUB, ("github.com",)),
+)
+
+
+def detect_resource_provider(url: str) -> str:
+    """The provider a link belongs to, by its parsed host (the domain itself or
+    a subdomain) - a substring check also matched look-alikes such as
+    "notgithub.com" or "example.com/?v=youtube.com". Mirrors the frontend's
+    lib/training/video.ts detectResourceProvider."""
+    host = (urlparse(url).hostname or "").lower()
+    for provider, domains in _PROVIDER_DOMAINS:
+        if any(host == domain or host.endswith(f".{domain}") for domain in domains):
+            return provider
+    return CourseResource.Provider.WEBSITE
+
+
 def _next_order(queryset: QuerySet) -> int:
     """The position after the current last item. Not `.count()`: deletes don't
     renumber what's left, so after deleting order 0 of [0, 1, 2] the count (2)
@@ -395,15 +416,7 @@ def import_curriculum(*, course: Course, actor, request=None, modules_data: list
                 log_action(actor=actor, action="lesson.create", target=lesson, request=request)
 
                 if primary_url:
-                    provider = CourseResource.Provider.WEBSITE
-                    if "youtube.com" in primary_url or "youtu.be" in primary_url:
-                        provider = CourseResource.Provider.YOUTUBE
-                    elif "drive.google.com" in primary_url:
-                        provider = CourseResource.Provider.GOOGLE_DRIVE
-                    elif "vimeo.com" in primary_url:
-                        provider = CourseResource.Provider.VIMEO
-                    elif "github.com" in primary_url:
-                        provider = CourseResource.Provider.GITHUB
+                    provider = detect_resource_provider(primary_url)
 
                     CourseResource.objects.create(
                         lesson=lesson,

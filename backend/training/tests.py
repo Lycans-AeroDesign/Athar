@@ -1,4 +1,5 @@
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import SimpleTestCase
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
@@ -9,10 +10,28 @@ from files.models import StoredFile
 from knowledge import services as knowledge_services
 
 from .models import Course, CourseEnrollment, CourseResource, LessonProgress
+from .services import detect_resource_provider
 
 
 # A minimal file that passes files/validation.py's PNG magic-byte check.
 PNG_BYTES = b"\x89PNG\r\n\x1a\n" + b"0" * 64
+
+
+class DetectResourceProviderTests(SimpleTestCase):
+    """Provider is decided by the parsed host, not a substring (CodeQL
+    py/incomplete-url-substring-sanitization)."""
+
+    def test_real_hosts_and_subdomains(self):
+        self.assertEqual(detect_resource_provider("https://www.youtube.com/watch?v=x"), CourseResource.Provider.YOUTUBE)
+        self.assertEqual(detect_resource_provider("https://youtu.be/x"), CourseResource.Provider.YOUTUBE)
+        self.assertEqual(
+            detect_resource_provider("https://drive.google.com/file/d/x/view"), CourseResource.Provider.GOOGLE_DRIVE
+        )
+        self.assertEqual(detect_resource_provider("https://github.com/org/repo"), CourseResource.Provider.GITHUB)
+
+    def test_look_alikes_are_plain_websites(self):
+        for url in ("https://notgithub.com/x", "https://evil.example/?next=youtube.com", "https://vimeo.com.evil.example/", "garbage"):
+            self.assertEqual(detect_resource_provider(url), CourseResource.Provider.WEBSITE, url)
 
 
 class TrainingTestCase(RoleLoginMixin, APITestCase):

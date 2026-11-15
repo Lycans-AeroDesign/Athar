@@ -212,7 +212,9 @@ def _validate_archive_contents(archive_file, organization) -> None:
             try:
                 services.decompress_zstd_bounded(archive_file, decompressed, max_bytes=max_bytes * 10)
             except services.ArchiveTooLarge as exc:
-                raise ValidationError({"archive": [str(exc)]}) from exc
+                # A fixed message rather than str(exc) - same wording, but no
+                # exception text reaches the response (CodeQL stack-trace-exposure).
+                raise ValidationError({"archive": ["This archive expands to an unreasonable size."]}) from exc
             except zstandard.ZstdError as exc:
                 logger.info("Backup archive failed to decompress: %s", exc)
                 raise ValidationError({"archive": ["This isn't an Athar backup file."]}) from exc

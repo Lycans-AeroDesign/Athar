@@ -56,7 +56,6 @@ import type {
   CourseDetail,
   CourseDifficulty,
   CourseModule,
-  CourseResourceProvider,
   LessonDetail,
   LessonType,
   Visibility,
@@ -65,6 +64,7 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 import { useHasPermission } from "@/lib/auth/permissions";
 import { errorMessage } from "@/lib/errors";
 import { DIFFICULTY_ICONS, LESSON_TYPE_ICONS, VISIBILITY_ICONS } from "@/lib/optionIcons";
+import { detectResourceProvider } from "@/lib/training/video";
 
 const DIFFICULTIES: CourseDifficulty[] = ["BEGINNER", "INTERMEDIATE", "ADVANCED"];
 const VISIBILITY_VALUES: Visibility[] = ["PUBLIC", "RESTRICTED"];
@@ -72,13 +72,7 @@ const LESSON_TYPES: LessonType[] = ["TEXT", "VIDEO", "DOCUMENT", "EXTERNAL", "EX
 // Lesson types whose quick editor shows the primary resource URL field.
 const LESSON_TYPES_WITH_URL: LessonType[] = ["VIDEO", "DOCUMENT", "EXTERNAL", "EXERCISE"];
 
-function detectProvider(url: string): CourseResourceProvider {
-  if (url.includes("youtube.com") || url.includes("youtu.be")) return "YOUTUBE";
-  if (url.includes("drive.google.com")) return "GOOGLE_DRIVE";
-  if (url.includes("vimeo.com")) return "VIMEO";
-  if (url.includes("github.com")) return "GITHUB";
-  return "WEBSITE";
-}
+const detectProvider = detectResourceProvider;
 
 export default function CourseEditorPage() {
   const { id } = useParams<{ id: string }>();
