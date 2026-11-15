@@ -158,6 +158,9 @@ EXEMPT = {
     "platform-organization-active": "platform admin",
     "platform-user-active": "platform admin",
     "platform-user-password-reset-link": "platform admin",
+    # Instance-wide error log (not organization data), covered by platform_admin.test_error_log.
+    "platform-error-detail": "platform admin",
+    "platform-error-resolved": "platform admin",
 }
 
 # Request bodies for routes that look up a second object named in the body (else they 404 on it).
