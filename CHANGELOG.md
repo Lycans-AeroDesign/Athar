@@ -1,3 +1,12 @@
+## [1.31.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.30.0...v1.31.0) (2026-11-15)
+
+### Features
+
+* **components:** image hover preview in grid view ([af9a057](https://github.com/Lycans-AeroDesign/Athar/commit/af9a057e1044c97911386cb215d0a8a7b022248d))
+* **knowledge:** compare and restore article revisions ([c74899d](https://github.com/Lycans-AeroDesign/Athar/commit/c74899ddf1a9fe9290f11697cce33defa011268a))
+* **knowledge:** read-only public share links ([669024a](https://github.com/Lycans-AeroDesign/Athar/commit/669024ab6d852cc4c323325dc0117aabad99e3fa))
+* move deleted content to a 30-day trash ([df7c998](https://github.com/Lycans-AeroDesign/Athar/commit/df7c998a6a3a63f85da48a670c98376fca491f07))
+
 ## [1.30.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.29.0...v1.30.0) (2026-11-15)
 
 ### Features
