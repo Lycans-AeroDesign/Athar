@@ -1,3 +1,14 @@
+## [1.37.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.36.0...v1.37.0) (2026-11-16)
+
+### Features
+
+* **frontend:** focus the title field on create forms ([e3dc6a9](https://github.com/Lycans-AeroDesign/Athar/commit/e3dc6a9b8965948acea326911a5d5ebb7ecc0168))
+* **frontend:** theme the page and main column scrollbars ([3d95eaa](https://github.com/Lycans-AeroDesign/Athar/commit/3d95eaafb51bae5bb47efbbe0305358ee8ca51ed))
+
+### Bug Fixes
+
+* **docker:** bind dev Postgres to localhost only ([47514b6](https://github.com/Lycans-AeroDesign/Athar/commit/47514b6ab23c239302dc49d24577896b520532aa))
+
 ## [1.36.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.35.0...v1.36.0) (2026-11-16)
 
 ### Features
