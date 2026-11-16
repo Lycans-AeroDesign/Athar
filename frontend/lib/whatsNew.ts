@@ -33,6 +33,8 @@ export interface WhatsNewEntry {
 }
 
 export const WHATS_NEW: readonly WhatsNewEntry[] = [
+  { id: "inlineDocumentPreview", date: "2026-11-16", kind: "improved", href: "/documents", permission: "document.read" },
+  { id: "lessonPreviewTab", date: "2026-11-16", kind: "improved", href: "/training/manage", permission: "training.manage" },
   { id: "platformErrorLog", date: "2026-11-15", kind: "new", href: "/platform/errors", platformAdmin: true },
   { id: "platformMobile", date: "2026-11-15", kind: "fixed", href: "/platform", platformAdmin: true },
   { id: "trash", date: "2026-11-15", kind: "new", href: "/trash" },

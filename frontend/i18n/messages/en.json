@@ -2023,7 +2023,6 @@
   "whatsNew": {
     "title": "What's new",
     "released": "Released {date}",
-    "releasedRange": "Released {from} – {to}",
     "empty": "Nothing new right now.",
     "gotIt": "Got it",
     "kind": {
@@ -2032,6 +2031,14 @@
       "fixed": "Fixed"
     },
     "entries": {
+      "inlineDocumentPreview": {
+        "title": "Read documents without opening them",
+        "body": "PDFs and images now show right on the document page, so you can read them without opening a preview."
+      },
+      "lessonPreviewTab": {
+        "title": "Preview lessons before editing",
+        "body": "Opening a lesson in a course that's in review now shows it the way learners will see it. Switch to the Edit tab to change it."
+      },
       "platformErrorLog": {
         "title": "Error log on the Platform page",
         "body": "See errors from the server and from people's browsers, with full tracebacks. Repeats are grouped, and you can mark each one resolved."

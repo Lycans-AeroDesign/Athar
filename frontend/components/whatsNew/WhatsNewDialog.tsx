@@ -74,14 +74,12 @@ export function WhatsNewDialog() {
 
   const isOpen = entries !== null;
 
-  // One release date for the whole list (a range when it covers several releases),
-  // rather than a date on every entry. Noon UTC keeps the calendar day in every time zone.
+  // One date for the whole list: the newest release in it, even when the list spans
+  // several releases. Noon UTC keeps the calendar day in every time zone.
   let released: string | undefined;
   if (entries && entries.length > 0) {
-    const dates = entries.map((entry) => entry.date).sort();
-    const from = formatDate(`${dates[0]}T12:00:00Z`);
-    const to = formatDate(`${dates[dates.length - 1]}T12:00:00Z`);
-    released = from === to ? t("released", { date: to }) : t("releasedRange", { from, to });
+    const newest = entries.map((entry) => entry.date).sort().at(-1);
+    released = t("released", { date: formatDate(`${newest}T12:00:00Z`) });
   }
 
   return (
