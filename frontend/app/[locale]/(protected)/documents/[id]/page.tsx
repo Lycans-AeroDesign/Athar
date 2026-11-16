@@ -6,6 +6,8 @@ import { useState } from "react";
 
 import { ContributorsRow } from "@/components/knowledge/Contributors";
 import { RelatedContent } from "@/components/knowledge/RelatedContent";
+import { AuthenticatedImage } from "@/components/ui/AuthenticatedImage";
+import { AuthenticatedPdfEmbed } from "@/components/ui/AuthenticatedPdfEmbed";
 import { BookmarkButton } from "@/components/ui/BookmarkButton";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { DetailMessage } from "@/components/ui/DetailMessage";
@@ -164,6 +166,32 @@ export default function DocumentDetailPage() {
             </a>
           )}
         </div>
+      )}
+
+      {/* PDFs and images show inline so the document can be read without
+          opening the preview; the filename chip above still opens it full size. */}
+      {document.file?.content_type === "application/pdf" && (
+        <div className="w-full h-[75vh] rounded-xl overflow-hidden border border-outline-variant bg-surface-container-high">
+          <AuthenticatedPdfEmbed
+            src={document.file.download_url}
+            title={document.file.original_filename}
+            className="h-full w-full"
+          />
+        </div>
+      )}
+      {document.file?.content_type.startsWith("image/") && (
+        <button
+          type="button"
+          onClick={() => setPreviewOpen(true)}
+          aria-label={document.file.original_filename}
+          className="block w-full rounded-xl overflow-hidden border border-outline-variant bg-surface-container-high"
+        >
+          <AuthenticatedImage
+            src={document.file.download_url}
+            alt={document.file.original_filename}
+            className="w-full max-h-[75vh] object-contain"
+          />
+        </button>
       )}
 
       {document.description && (
