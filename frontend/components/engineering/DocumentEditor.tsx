@@ -21,6 +21,7 @@ import { uploadFile } from "@/lib/api/files";
 import { getCategories } from "@/lib/api/knowledge";
 import type { Category, DocType, DocumentDetail, DocumentSource, Visibility } from "@/lib/api/types";
 import { SavingOverlay } from "@/components/ui/SavingOverlay";
+import { TitleInput } from "@/components/ui/TitleInput";
 import { PendingRelations, toRelationInputs, type PendingRelation } from "@/components/knowledge/PendingRelations";
 import { effectiveVisibility, VisibilitySelect } from "@/components/knowledge/VisibilitySelect";
 import { ProjectSelect } from "@/components/knowledge/ProjectSelect";
@@ -195,12 +196,7 @@ export function DocumentEditor({ document, onDirtyChange, initialProjectId = nul
     <div className="space-y-4 max-w-[800px] mx-auto">
       <div className="space-y-4 border-b border-outline-variant pb-4">
         <ChangedIndicator changed={fieldChanged.title}>
-          <input
-            className="w-full font-headline-lg text-headline-lg font-bold border-none bg-transparent placeholder:text-on-surface-variant/50 focus:ring-0 p-0 text-on-surface outline-none"
-            placeholder={t("titlePlaceholder")}
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
+          <TitleInput value={title} onChange={setTitle} placeholder={t("titlePlaceholder")} autoFocus={!document} />
         </ChangedIndicator>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <ChangedIndicator changed={fieldChanged.docType}>

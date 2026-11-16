@@ -13,6 +13,7 @@ import { FileDropzone } from "@/components/ui/FileDropzone";
 import { Icon } from "@/components/ui/Icon";
 import { IconButton } from "@/components/ui/IconButton";
 import { MarkdownEditor } from "@/components/ui/MarkdownEditor";
+import { TitleInput } from "@/components/ui/TitleInput";
 import { LessonEditorSkeleton } from "@/components/training/TrainingSkeletons";
 import { Link } from "@/i18n/navigation";
 import { uploadFile } from "@/lib/api/files";
@@ -460,12 +461,7 @@ export default function LessonEditorPage() {
       ) : (
         <>
         <div className="space-y-4 bg-surface-container-low border border-outline-variant rounded-xl p-6">
-          <input
-            className="w-full font-headline-lg text-headline-lg font-bold border-none bg-transparent placeholder:text-on-surface-variant/50 focus:ring-0 p-0 text-on-surface outline-none"
-            placeholder={t("titlePlaceholder")}
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
+          <TitleInput value={title} onChange={setTitle} placeholder={t("titlePlaceholder")} />
           <input
             className="w-full bg-transparent border-none font-body-md text-body-md text-on-surface-variant placeholder:text-on-surface-variant/50 focus:ring-0 p-0 outline-none"
             placeholder={t("shortDescriptionPlaceholder")}

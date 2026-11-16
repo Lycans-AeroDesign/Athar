@@ -20,6 +20,7 @@ import { PendingRelations, toRelationInputs, type PendingRelation } from "@/comp
 import { effectiveVisibility, VisibilitySelect } from "@/components/knowledge/VisibilitySelect";
 import { ProjectSelect } from "@/components/knowledge/ProjectSelect";
 import { INPUT_CLASS } from "@/components/ui/inputStyles";
+import { TitleInput } from "@/components/ui/TitleInput";
 import { useRouter } from "@/i18n/navigation";
 import { errorMessage } from "@/lib/errors";
 import { useSaveOnce } from "@/lib/useSaveOnce";
@@ -237,12 +238,7 @@ export function ComponentEditor({ component, onDirtyChange, initialProjectId = n
     <div className="space-y-4 max-w-[800px] mx-auto">
       <div className="space-y-4 border-b border-outline-variant pb-4">
         <ChangedIndicator changed={fieldChanged.name}>
-          <input
-            className="w-full font-headline-lg text-headline-lg font-bold border-none bg-transparent placeholder:text-on-surface-variant/50 focus:ring-0 p-0 text-on-surface outline-none"
-            placeholder={t("namePlaceholder")}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
+          <TitleInput value={name} onChange={setName} placeholder={t("namePlaceholder")} autoFocus={!component} />
         </ChangedIndicator>
         <ChangedIndicator changed={fieldChanged.photo} className="inline-block" dotPosition="bottom-end">
           <PhotoDropzone

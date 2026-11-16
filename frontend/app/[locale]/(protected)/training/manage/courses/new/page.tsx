@@ -15,6 +15,7 @@ import { Combobox } from "@/components/ui/Combobox";
 import { Icon } from "@/components/ui/Icon";
 import { MarkdownEditor } from "@/components/ui/MarkdownEditor";
 import { PhotoDropzone } from "@/components/ui/PhotoDropzone";
+import { TitleInput } from "@/components/ui/TitleInput";
 import { Link, useRouter } from "@/i18n/navigation";
 import { uploadFile } from "@/lib/api/files";
 import { addCourseAccessGrant, createCourse, listCourseCategories } from "@/lib/api/training";
@@ -103,12 +104,7 @@ export default function NewCoursePage() {
       <h1 className="font-display text-display text-on-surface">{t("createCourseButton")}</h1>
 
       <div className="space-y-4 bg-surface-container-low border border-outline-variant rounded-xl p-4 sm:p-6">
-        <input
-          className="w-full font-headline-lg text-headline-lg font-bold border-none bg-transparent placeholder:text-on-surface-variant/50 focus:ring-0 p-0 text-on-surface outline-none"
-          placeholder={t("titlePlaceholder")}
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-        />
+        <TitleInput value={title} onChange={setTitle} placeholder={t("titlePlaceholder")} autoFocus />
         <input
           className="w-full bg-transparent border-none font-body-md text-body-md text-on-surface-variant placeholder:text-on-surface-variant/50 focus:ring-0 p-0 outline-none"
           placeholder={t("shortDescriptionPlaceholder")}

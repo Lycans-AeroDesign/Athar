@@ -24,6 +24,7 @@ import { Modal } from "@/components/ui/Modal";
 import { PhotoDropzone } from "@/components/ui/PhotoDropzone";
 import { CourseEditorSkeleton } from "@/components/training/TrainingSkeletons";
 import { Switch } from "@/components/ui/Switch";
+import { TitleInput } from "@/components/ui/TitleInput";
 import { Link, useRouter } from "@/i18n/navigation";
 import { uploadFile } from "@/lib/api/files";
 import {
@@ -520,13 +521,7 @@ export default function CourseEditorPage() {
       {activeTab === "settings" && (
         <div className="space-y-4 bg-surface-container-low border border-outline-variant rounded-xl p-4 sm:p-6">
           <h2 className="font-headline-md text-headline-md text-on-surface">{t("courseEditorTitle")}</h2>
-        <input
-          className="w-full font-headline-lg text-headline-lg font-bold border-none bg-transparent placeholder:text-on-surface-variant/50 focus:ring-0 p-0 text-on-surface outline-none"
-          placeholder={t("titlePlaceholder")}
-          value={title}
-          disabled={!canEdit}
-          onChange={(e) => setTitle(e.target.value)}
-        />
+        <TitleInput value={title} onChange={setTitle} placeholder={t("titlePlaceholder")} disabled={!canEdit} />
         <input
           className="w-full bg-transparent border-none font-body-md text-body-md text-on-surface-variant placeholder:text-on-surface-variant/50 focus:ring-0 p-0 outline-none"
           placeholder={t("shortDescriptionPlaceholder")}

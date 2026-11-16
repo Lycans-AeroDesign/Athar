@@ -14,6 +14,7 @@ import {
   type RestrictedAccessDraft,
 } from "@/components/knowledge/RestrictedAccessPicker";
 import { SavingOverlay } from "@/components/ui/SavingOverlay";
+import { TitleInput } from "@/components/ui/TitleInput";
 import { PendingRelations, toRelationInputs, type PendingRelation } from "@/components/knowledge/PendingRelations";
 import { effectiveVisibility, VisibilitySelect } from "@/components/knowledge/VisibilitySelect";
 import { useRouter } from "@/i18n/navigation";
@@ -115,12 +116,7 @@ export function ProjectEditor({ project, onDirtyChange }: ProjectEditorProps) {
     <div className="space-y-4 max-w-[800px] mx-auto">
       <div className="space-y-4 border-b border-outline-variant pb-4">
         <ChangedIndicator changed={fieldChanged.name}>
-          <input
-            className="w-full font-headline-lg text-headline-lg font-bold border-none bg-transparent placeholder:text-on-surface-variant/50 focus:ring-0 p-0 text-on-surface outline-none"
-            placeholder={t("namePlaceholder")}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
+          <TitleInput value={name} onChange={setName} placeholder={t("namePlaceholder")} autoFocus={!project} />
         </ChangedIndicator>
         <div className="flex flex-wrap gap-3 items-center">
           <ChangedIndicator changed={fieldChanged.tags} className="flex-1 min-w-[200px]">

@@ -50,6 +50,7 @@ npm test        # vitest unit tests (*.test.ts / *.test.tsx next to the code)
   - Dropdowns/selects → `Combobox` (used for every option picker, including short filter lists). Don't use a native `<select>`.
   - Action/overflow menus → `Menu`. Toggles → `Switch`. Dates → `DatePicker`. Tags → `TagInput`.
   - Popups → `Modal` (fixed header/footer, scrolling body) or `ConfirmModal` for yes/no; file/image viewing → `FilePreviewModal`, `ImageLightbox`, `PdfViewer`.
+  - The big title/name field at the top of a create/edit form → `TitleInput` (pass `autoFocus` on create forms).
   - Text fields → `FloatingLabelInput` or `INPUT_CLASS` from `inputStyles.ts`; buttons → `Button`/`IconButton`; icons → `Icon`.
   - Lists/tables → `DataTable`, `Pagination`, `EmptyState`, `Skeleton`, `LoadError`, `ActiveFilterChip`, `ViewModeToggle`.
   - Uploads → `FileDropzone`/`PhotoDropzone`; markdown → `Markdown`/`MarkdownEditor`; protected images → `AuthenticatedImage`.

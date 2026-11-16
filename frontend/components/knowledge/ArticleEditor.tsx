@@ -9,6 +9,7 @@ import { Combobox } from "@/components/ui/Combobox";
 import { MarkdownEditor } from "@/components/ui/MarkdownEditor";
 import { SavingOverlay } from "@/components/ui/SavingOverlay";
 import { TagInput } from "@/components/ui/TagInput";
+import { TitleInput } from "@/components/ui/TitleInput";
 import { CoAuthorPicker } from "@/components/knowledge/CoAuthorPicker";
 import { CollectionMembershipPicker } from "@/components/knowledge/CollectionMembershipPicker";
 import { PendingRelations, toRelationInputs, type PendingRelation } from "@/components/knowledge/PendingRelations";
@@ -186,12 +187,7 @@ export function ArticleEditor({ article, onDirtyChange, initialProjectId = null 
     <div className="space-y-4 max-w-[800px] mx-auto">
       <div className="space-y-4 border-b border-outline-variant pb-4">
         <ChangedIndicator changed={fieldChanged.title}>
-          <input
-            className="w-full font-headline-lg text-headline-lg font-bold border-none bg-transparent placeholder:text-on-surface-variant/50 focus:ring-0 p-0 text-on-surface outline-none"
-            placeholder={t("titlePlaceholder")}
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
+          <TitleInput value={title} onChange={setTitle} placeholder={t("titlePlaceholder")} autoFocus={!article} />
         </ChangedIndicator>
         <div className="flex flex-wrap gap-3 items-center">
           <ChangedIndicator changed={fieldChanged.category} className="w-56">
