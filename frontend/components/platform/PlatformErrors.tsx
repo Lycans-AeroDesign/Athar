@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
+import { Combobox } from "@/components/ui/Combobox";
 import { Icon } from "@/components/ui/Icon";
 import { INPUT_CLASS } from "@/components/ui/inputStyles";
 import { LoadError } from "@/components/ui/LoadError";
@@ -19,7 +20,6 @@ import type { Paginated } from "@/lib/api/types";
 import { formatRelativeTime } from "@/lib/datetime";
 import { errorMessage } from "@/lib/errors";
 
-const SELECT_CLASS = `${INPUT_CLASS} sm:w-auto`;
 
 // Platform-admin error log: backend exceptions/ERROR logs and browser-reported errors,
 // grouped so each row is one distinct bug (see backend platform_admin/error_log.py).
@@ -77,26 +77,30 @@ export function PlatformErrors() {
             className={`${INPUT_CLASS} sm:flex-1 sm:min-w-56`}
           />
           <div className="grid grid-cols-2 sm:flex gap-3">
-            <select
-              value={status}
-              onChange={(e) => filterChanged(setStatus)(e.target.value as PlatformErrorStatus)}
-              aria-label={t("statusFilter")}
-              className={SELECT_CLASS}
-            >
-              <option value="open">{t("statusOpen")}</option>
-              <option value="resolved">{t("statusResolved")}</option>
-              <option value="all">{t("statusAll")}</option>
-            </select>
-            <select
-              value={source}
-              onChange={(e) => filterChanged(setSource)(e.target.value as PlatformErrorSource | "")}
-              aria-label={t("sourceFilter")}
-              className={SELECT_CLASS}
-            >
-              <option value="">{t("sourceAll")}</option>
-              <option value="backend">{t("sourceBackend")}</option>
-              <option value="frontend">{t("sourceFrontend")}</option>
-            </select>
+            <div className="sm:w-44">
+              <Combobox
+                ariaLabel={t("statusFilter")}
+                options={[
+                  { value: "open", label: t("statusOpen") },
+                  { value: "resolved", label: t("statusResolved") },
+                  { value: "all", label: t("statusAll") },
+                ]}
+                value={status}
+                onChange={(value) => filterChanged(setStatus)(value as PlatformErrorStatus)}
+              />
+            </div>
+            <div className="sm:w-44">
+              <Combobox
+                ariaLabel={t("sourceFilter")}
+                options={[
+                  { value: "", label: t("sourceAll") },
+                  { value: "backend", label: t("sourceBackend") },
+                  { value: "frontend", label: t("sourceFrontend") },
+                ]}
+                value={source}
+                onChange={(value) => filterChanged(setSource)(value as PlatformErrorSource | "")}
+              />
+            </div>
           </div>
         </div>
 

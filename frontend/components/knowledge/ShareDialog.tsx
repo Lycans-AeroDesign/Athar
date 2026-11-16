@@ -4,6 +4,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
+import { Combobox } from "@/components/ui/Combobox";
 import { Icon } from "@/components/ui/Icon";
 import { Modal } from "@/components/ui/Modal";
 import { formatDate } from "@/lib/datetime";
@@ -135,22 +136,17 @@ export function ShareDialog({ open, onOpenChange, target }: ShareDialogProps) {
                   className="block w-full px-3 py-2 font-body-md text-body-md text-on-surface bg-surface-container border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none"
                 />
               </label>
-              <label className="space-y-1">
-                <span className="block font-label-caps text-label-caps uppercase text-on-surface-variant">
-                  {t("expiryField")}
-                </span>
-                <select
+              <div className="w-40">
+                <Combobox
+                  label={t("expiryField")}
+                  options={EXPIRY_OPTIONS.map((option) => ({
+                    value: option,
+                    label: option === "never" ? t("expiryNever") : t("expiryDays", { count: Number(option) }),
+                  }))}
                   value={expiry}
-                  onChange={(e) => setExpiry(e.target.value as (typeof EXPIRY_OPTIONS)[number])}
-                  className="block px-3 py-2 font-body-md text-body-md text-on-surface bg-surface-container border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary outline-none"
-                >
-                  {EXPIRY_OPTIONS.map((option) => (
-                    <option key={option} value={option}>
-                      {option === "never" ? t("expiryNever") : t("expiryDays", { count: Number(option) })}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                  onChange={(value) => setExpiry(value as (typeof EXPIRY_OPTIONS)[number])}
+                />
+              </div>
               <Button onClick={handleCreate} loading={isCreating}>
                 <Icon name="link" size={16} />
                 {t("create")}

@@ -12,6 +12,7 @@ import {
   type SearchScope,
 } from "@/components/knowledge/SearchResultsPanel";
 import { ActiveFilterChip } from "@/components/ui/ActiveFilterChip";
+import { Combobox } from "@/components/ui/Combobox";
 import { useRouter } from "@/i18n/navigation";
 import { searchKnowledge, type SearchSort } from "@/lib/api/knowledge";
 import type { SearchResult } from "@/lib/api/types";
@@ -107,17 +108,14 @@ function SearchResults() {
             results.length > 0 && (
               <div className="flex items-center justify-end gap-2">
                 <span className="font-label-caps text-label-caps text-on-surface-variant uppercase">{t("sortByLabel")}</span>
-                <select
-                  value={sort}
-                  onChange={(e) => updateParams({ sort: e.target.value as SearchSort, page: 1 })}
-                  className="bg-transparent border-none font-body-md text-body-md text-primary font-bold focus:ring-0 cursor-pointer py-0 ps-0 pe-6"
-                >
-                  {SORT_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {t(option.labelKey)}
-                    </option>
-                  ))}
-                </select>
+                <div className="w-48">
+                  <Combobox
+                    ariaLabel={t("sortByLabel")}
+                    options={SORT_OPTIONS.map((option) => ({ value: option.value, label: t(option.labelKey) }))}
+                    value={sort}
+                    onChange={(value) => updateParams({ sort: value as SearchSort, page: 1 })}
+                  />
+                </div>
               </div>
             )
           }

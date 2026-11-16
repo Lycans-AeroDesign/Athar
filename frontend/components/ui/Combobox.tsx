@@ -47,6 +47,9 @@ interface ComboboxProps {
   onCreate?: (query: string) => void;
   /** Overrides the create row's label template ({query} is replaced). */
   createLabel?: string;
+  /** Accessible name for the trigger when there's no visible `label`
+   * (e.g. a compact filter bar). */
+  ariaLabel?: string;
 }
 
 // The "dropdown list" primitive - a type-to-filter select. The Stitch
@@ -63,6 +66,7 @@ export function Combobox({
   triggerClassName,
   onCreate,
   createLabel,
+  ariaLabel,
 }: ComboboxProps) {
   const t = useTranslations("common");
   const [open, setOpen] = useState(false);
@@ -101,6 +105,7 @@ export function Combobox({
         <Popover.Trigger asChild>
           <button
             type="button"
+            aria-label={ariaLabel}
             className={`flex items-center justify-between w-full px-4 py-2 bg-surface border border-outline-variant rounded-lg font-body-md text-body-md text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow ${triggerClassName ?? ""}`}
           >
             <span className={`min-w-0 ${selected ? "" : "text-outline"}`}>
