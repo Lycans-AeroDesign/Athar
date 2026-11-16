@@ -12,8 +12,11 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-lycans}
     volumes:
       - postgres_data:/var/lib/postgresql
+    # Always this machine only (not DEV_BIND_ADDRESS): the default password is
+    # public, and Docker-published ports bypass host firewalls like ufw. The
+    # backend reaches it over the compose network (db:5432), not this port.
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-lycans} -d ${POSTGRES_DB:-lycans_kms}"]
       interval: 5s
