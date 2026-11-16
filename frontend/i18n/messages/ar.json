@@ -1940,7 +1940,9 @@
       "resourcesTitle": "الموارد",
       "addResourceButton": "إضافة مورد",
       "editResource": "تعديل",
-      "removeResource": "إزالة"
+      "removeResource": "إزالة",
+      "editTab": "تعديل",
+      "previewUnsavedHint": "لديك تغييرات غير محفوظة - المعاينة تتضمنها. احفظها من تبويب التعديل للإبقاء عليها."
     },
     "resourceEditor": {
       "titlePlaceholder": "عنوان المورد",

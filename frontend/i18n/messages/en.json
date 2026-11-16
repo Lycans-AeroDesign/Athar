@@ -1940,7 +1940,9 @@
       "resourcesTitle": "Resources",
       "addResourceButton": "Add Resource",
       "editResource": "Edit",
-      "removeResource": "Remove"
+      "removeResource": "Remove",
+      "editTab": "Edit",
+      "previewUnsavedHint": "You have unsaved changes - the preview includes them. Save in the Edit tab to keep them."
     },
     "resourceEditor": {
       "titlePlaceholder": "Resource title",
