@@ -334,29 +334,39 @@ body {
   color: var(--color-on-background);
 }
 
-/* Subtle scrollbars for every inner scroll region (modals, side nav,
-   dropdowns, popovers): a 6px rounded thumb on a transparent track. The page
-   itself (html) and the main content column keep the native scrollbar.
+/* Themed scrollbars everywhere - the page, the main column, modals, side nav,
+   dropdowns: a rounded thumb in the theme's outline color on a transparent
+   track, so it follows light/dark mode. The main column's is a little wider
+   than inner regions' so the page scroll stays easy to find and grab.
    Chromium/Safari use the ::-webkit-scrollbar rules; setting the standard
    scrollbar-width/-color there would make Chromium ignore them, so those are
    only applied where the webkit pseudo-elements don't exist (Firefox). */
-:where(:not(html, main))::-webkit-scrollbar {
+::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
-:where(:not(html, main))::-webkit-scrollbar-track,
-:where(:not(html, main))::-webkit-scrollbar-corner {
+:where(html, main)::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
   background: transparent;
 }
-:where(:not(html, main))::-webkit-scrollbar-thumb {
+::-webkit-scrollbar-thumb {
   background: color-mix(in srgb, var(--color-outline) 55%, transparent);
+  background-clip: padding-box;
   border-radius: 999px;
 }
-:where(:not(html, main))::-webkit-scrollbar-thumb:hover {
-  background: var(--color-outline);
+/* Inset the wider page thumb from the window edge so it reads as 6px, like the rest. */
+:where(html, main)::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-outline);
 }
 @supports not selector(::-webkit-scrollbar) {
-  :where(:not(html, main)) {
+  * {
     scrollbar-width: thin;
     scrollbar-color: color-mix(in srgb, var(--color-outline) 55%, transparent) transparent;
   }
