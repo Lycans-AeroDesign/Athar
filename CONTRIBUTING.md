@@ -47,13 +47,16 @@ Follow the [Angular commit message conventions](https://github.com/angular/angul
 | **test**     | Adding or correcting tests                                  |
 | **build**    | Build system or dependency changes                          |
 | **ci**       | CI configuration changes                                    |
+| **style**    | Formatting only, no change in behavior                      |
+| **chore**    | Maintenance that fits no other type (release commits use it) |
+| **revert**   | Reverts an earlier commit                                   |
 
 ### Rules
 
 - Use **imperative, present tense**: "add" not "added" nor "adds"
 - Do not capitalize the first letter of the summary
 - No period at the end of the summary
-- Scope is optional; use the affected area (e.g. `backend`, `frontend`, `docker`, or a Django app name — `accounts`, `knowledge`, `rbac`, `organization`, `files`, `audit`)
+- Scope is optional; use the affected area (e.g. `backend`, `frontend`, `docker`, or a Django app name — `core`, `accounts`, `knowledge`, `training`, `rbac`, `organization`, `files`, `audit`, `backups`, `policies`, `platform_admin`)
 
 ### Examples
 
@@ -136,11 +139,11 @@ Follow the [Angular commit message conventions](https://github.com/angular/angul
 - **npm** with `package-lock.json` — avoid introducing yarn/pnpm lockfiles.
 - New code must type-check: run `npm run build` before merging.
 - Run `npm run lint` and fix new violations in files you touch.
-- Run `npm test` (Vitest) and fix/add tests for files you touch — see §4.8.
+- Run `npm test` (Vitest) and fix/add tests for files you touch — see §4.9.
 
 ### 4.2 Project structure and routing
 
-- Routes live under `app/[locale]/...` (App Router + `next-intl`). Auth/role-gated routes are grouped under `(protected)` (e.g. `app/[locale]/(protected)/knowledge/`) rather than sprinkling `if (!user)` checks through pages; `login/` and `register/` stay outside that group.
+- Routes live under `app/[locale]/...` (App Router + `next-intl`). Auth/role-gated routes are grouped under `(protected)` (e.g. `app/[locale]/(protected)/knowledge/`) rather than sprinkling `if (!user)` checks through pages; the public pages (`login/`, `register/`, `forgot-password/`, `reset-password/`, and `s/` for public share links) stay outside that group.
 - Keep pages thin — push data fetching and API calls into a dedicated layer (see 4.3) rather than inlining `fetch` in components.
 
 ### 4.3 API layer
@@ -156,7 +159,7 @@ Follow the [Angular commit message conventions](https://github.com/angular/angul
 
 ### 4.5 UI and styling
 
-- Reuse the shared UI primitives in `frontend/components/ui/` (`Button`, `Modal`, `ConfirmModal`, `Combobox`, `DatePicker`, `FloatingLabelInput`, `Markdown`, `MarkdownEditor`, `AuthenticatedImage`, ...) and existing layout patterns instead of one-off component styling. This custom Radix/cmdk-based kit is the current primitive layer; `shadcn/ui` (see `docs/VISION.md` §32) is only under evaluation as a possible future replacement, not yet adopted.
+- **Reuse before you build.** Look in `frontend/components/ui/` (primitives), `frontend/components/<feature>/` and `frontend/lib/` before writing a new component, hook or helper; if something nearly fits, extend it with a prop instead of copying it. Create a new one only when nothing fits, and put generic ones in `components/ui/`. The shared primitives (`Button`, `Modal`, `ConfirmModal`, `Combobox`, `Menu`, `Switch`, `DatePicker`, `TagInput`, `FloatingLabelInput`, `TitleInput`, `DataTable`, `Pagination`, `EmptyState`, `Markdown`, `MarkdownEditor`, `AuthenticatedImage`, `AuthenticatedPdfEmbed`, `FilePreviewModal`, ...) and existing layout patterns replace one-off component styling. This custom Radix/cmdk-based kit is the current primitive layer; `shadcn/ui` (see `docs/VISION.md` §32) is only under evaluation as a possible future replacement, not yet adopted.
 - Styling uses Tailwind CSS; follow existing class naming and responsive breakpoints.
 - Shared frontend helpers — use these rather than re-declaring them per file:
   - `errorMessage(err)` from `@/lib/errors` for turning a caught value into display text (instead of `err instanceof Error ? err.message : String(err)`).
@@ -164,6 +167,12 @@ Follow the [Angular commit message conventions](https://github.com/angular/angul
   - `INPUT_CLASS` from `@/components/ui/inputStyles` for a plain text input/textarea (matches `FloatingLabelInput`'s look). For option pickers use `Combobox`, not a native `<select>`.
   - `components/engineering/statusClasses.ts` for the failure/test/project status and severity pill colors, shared by the list tables and detail pages (`ComponentBadges.tsx` does the same for components).
   - `formatCalendarDate` from `@/lib/format` for plain `YYYY-MM-DD` dates and `formatDate`/`formatDateTime` from `@/lib/datetime` for UTC timestamps — don't define a local copy.
+- Specific patterns:
+  - Option pickers use `Combobox`, never a native `<select>`.
+  - The big title/name field at the top of a create/edit form is `TitleInput`; pass `autoFocus` on create forms so the cursor starts there.
+  - Popups use `Modal`: it keeps the header and footer fixed and scrolls only the body, so don't put your own `overflow`/`max-h` scroll wrapper around a modal's whole content.
+  - Scrollbars are themed globally in `app/[locale]/globals.css`; don't add per-component scrollbar CSS.
+  - Protected files: a PDF shown on a page uses `AuthenticatedPdfEmbed` (it handles mobile browsers without a PDF viewer); images use `AuthenticatedImage`.
 - Comments follow the backend rule in §3.6: explain *why*, briefly, and don't cite planning documents.
 - **Dark mode**: all UI must work in both themes. Don't use a hardcoded light background/text class (`bg-white`, `text-slate-900`) without its dark counterpart (`dark:bg-slate-900`, `dark:text-white`). Prefer CSS variables that adapt automatically where the design system provides them.
 
@@ -177,7 +186,11 @@ The app is routed under `app/[locale]/...` (via `next-intl`, `frontend/i18n/requ
 - **Adding a new language**: add its code to `locales` in `frontend/i18n/request.ts`, give it a display name in `localeNames` and a text direction in `localeDirections` (also in `request.ts`), then add a `frontend/i18n/messages/<code>.json` file with the same keys as `en.json` (copy `en.json` as a starting point and translate the values). The Settings > General language picker is generated from `locales`/`localeNames`, so a language only appears there once its message file exists — there's no separate hardcoded language catalogue to update.
 - `ar.json` is genuinely translated (not a copy of `en.json`) and kept in sync key-for-key — when adding a language that isn't yet fully translated, lagging wording quality is fine temporarily, but a key present in `en.json` and missing from another locale's file is not: next-intl has no per-key fallback configured and will error on a genuinely missing key.
 
-### 4.7 Permission gating (client-side)
+### 4.7 "What's new" release notes
+
+User-facing changes (new features, visible improvements, bug fixes people would notice) get an entry in the in-app "What's new" pop-up. Add it at the top of `WHATS_NEW` in `frontend/lib/whatsNew.ts` (newest first, unique `id`, release `date`, `kind`, optional `href`, and `permission`/`platformAdmin` if only some users can use it), plus `whatsNew.entries.<id>.title`/`.body` in both `en.json` and `ar.json`, written for team members rather than developers. `lib/whatsNew.test.ts` fails if a translation is missing. Internal changes (CI, refactors, dependency bumps) stay out of it; `CHANGELOG.md` covers those.
+
+### 4.8 Permission gating (client-side)
 
 The backend is the only real access-control boundary — see §6. This section is purely about UX: don't render a control that would just 403 if the user clicked it.
 
@@ -188,9 +201,9 @@ The backend is the only real access-control boundary — see §6. This section i
 - **Read-only-for-everyone vs gated-read**: if an endpoint is genuinely public to read and only writes are gated (e.g. organization general/branding settings), keep rendering the view and gate just the edit controls via `canEdit*` boolean props passed down from the page (see `IdentitySettingsForm`, which gates its name and branding fields separately). If the *read* itself requires a permission (e.g. `role.manage` on `GET /rbac/roles/`), gate the whole section/tab instead — there's nothing to show without it.
 - **Adding a new permission codename**: add it to `PERMISSION_CATALOGUE` (and to a `ROLE_CATALOGUE` entry, if a default role should grant it) in `backend/rbac/management/commands/seed_rbac.py`, then re-run `uv run manage.py seed_rbac`. Enforce it on the view with `rbac.permissions.require_permission("your.codename")` — don't build a parallel authorization mechanism per app.
 
-### 4.8 Testing
+### 4.9 Testing
 
-The frontend's test suite is new and deliberately small (see `docs/VISION.md` §32 "Testing") — this section is the starting strategy, not a mature convention yet.
+The frontend's test suite is still small (see `docs/VISION.md` §32 "Testing") — this section is the current strategy, not a mature convention yet.
 
 - **Stack**: [Vitest](https://vitest.dev) + [React Testing Library](https://testing-library.com/react), configured in `frontend/vitest.config.ts` (jsdom environment, `@vitejs/plugin-react`, `@testing-library/jest-dom` matchers loaded via `vitest.setup.ts`). Chosen over Jest for ESM-native config that doesn't fight the project's `moduleResolution: "bundler"` TypeScript setup. Tests deliberately skip the React Compiler Babel transform — it's a build-time optimization, irrelevant to whether the logic under test is correct.
 - **Run with**: `npm test` (single run, what CI should use) or `npm run test:watch` (watch mode during development).
@@ -198,9 +211,9 @@ The frontend's test suite is new and deliberately small (see `docs/VISION.md` §
   1. Pure functions in `lib/` with no React/network dependency (e.g. `lib/format.ts`, `lib/slug.ts`, `lib/toc.ts`) — cheapest to test, easiest to keep passing.
   2. Small, clearly-scoped logic that only needs one hook or module mocked (e.g. `lib/auth/permissions.ts`'s `useHasPermission`, mocking `useAuth`; `lib/api/client.ts`'s `extractApiError`, constructing a fake `Response`-shaped object rather than a real fetch).
   3. Small presentational components with a clear prop surface (e.g. `components/ui/Avatar.tsx`) — mock child components that do their own data fetching (see `Avatar.test.tsx` mocking `AuthenticatedImage`) rather than pulling `apiFetch` into a component test.
-  4. Anything that calls `apiFetch` directly, full pages, or components with heavy `next-intl`/routing dependencies — not yet attempted; don't reach for a network-mocking library (e.g. MSW) until a test actually needs one, per the "don't add infrastructure ahead of a real need" principle elsewhere in this doc.
+  4. Components that call `apiFetch` — mock `@/lib/api/client` with `vi.mock` (see `FilePreviewModal.test.tsx`) rather than adding a network-mocking library (e.g. MSW); don't reach for one until a test genuinely needs it, per the "don't add infrastructure ahead of a real need" principle elsewhere in this doc. Full pages and components with heavy `next-intl`/routing dependencies are not yet attempted.
 - **Co-locate tests** with the code they cover (`format.ts` → `format.test.ts` next to it), matching this project's existing "keep related things together" pattern rather than a parallel `__tests__/` tree.
-- Not yet covered by any test, deliberately deferred rather than an oversight to fix immediately: component tests for anything hitting `apiFetch`, page-level tests, and end-to-end/browser tests (Playwright is listed as a future addition in `docs/VISION.md` §32, not started).
+- Not yet covered by any test, deliberately deferred rather than an oversight to fix immediately: page-level tests and end-to-end/browser tests (Playwright is listed as a future addition in `docs/VISION.md` §32, not started).
 
 ---
 
@@ -230,7 +243,7 @@ The frontend's test suite is new and deliberately small (see `docs/VISION.md` §
 - Keep diffs focused on the feature or fix; avoid unrelated refactors or formatting-only churn in files you didn't need to touch.
 - Describe **what** changed and **why** in the PR description.
 - `pr-checks.yml` validates the PR title format and labels the PR by size/changed paths — expect a bot comment if the title doesn't follow the convention in §2.
-- `ci.yml` must pass: backend checks/migrations/tests, frontend lint/build, and a Docker build of all four image targets.
+- `ci.yml` must pass: backend checks/migrations/tests, frontend lint/build, and Docker builds of the backend `dev` and `prod` images and the frontend `prod` image.
 
 ---
 
@@ -246,7 +259,8 @@ The frontend's test suite is new and deliberately small (see `docs/VISION.md` §
 - [ ] **Frontend**: `npm run lint`, `npm run build`, and `npm test` pass; dark mode works; no secrets in `NEXT_PUBLIC_*`.
 - [ ] **i18n**: no hardcoded UI text — every string goes through `useTranslations`/`getTranslations`; new keys added to `en.json` (and kept in sync, even if untranslated, in every other locale file).
 - [ ] **Security** (§6): no new endpoint relies on frontend-only access control; new id-bearing routes are in the tenant-isolation matrix; no secrets committed or logged.
-- [ ] **Permission gating** (§4.7): new gated UI uses `useHasPermission`/`<Can>` rather than ad hoc `user.permissions.includes(...)`; any new codename is added to `seed_rbac.py`'s catalogue and enforced server-side with `require_permission`.
+- [ ] **What's new** (§4.7): user-facing changes have a `WHATS_NEW` entry with `en`/`ar` text.
+- [ ] **Permission gating** (§4.8): new gated UI uses `useHasPermission`/`<Can>` rather than ad hoc `user.permissions.includes(...)`; any new codename is added to `seed_rbac.py`'s catalogue and enforced server-side with `require_permission`.
 - [ ] **CI**: `ci.yml` passes (backend, frontend, docker jobs).
 
 If you have questions, open an issue or ask the maintainers.
