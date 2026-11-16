@@ -1,3 +1,9 @@
+## [1.35.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.34.0...v1.35.0) (2026-11-16)
+
+### Features
+
+* **frontend:** thin scrollbars and a scrolling modal body ([13ec977](https://github.com/Lycans-AeroDesign/Athar/commit/13ec9778c19da22694c5bb851b69afe17d27b494))
+
 ## [1.34.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.33.0...v1.34.0) (2026-11-15)
 
 ### Features
