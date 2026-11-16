@@ -334,6 +334,34 @@ body {
   color: var(--color-on-background);
 }
 
+/* Subtle scrollbars for every inner scroll region (modals, side nav,
+   dropdowns, popovers): a 6px rounded thumb on a transparent track. The page
+   itself (html) and the main content column keep the native scrollbar.
+   Chromium/Safari use the ::-webkit-scrollbar rules; setting the standard
+   scrollbar-width/-color there would make Chromium ignore them, so those are
+   only applied where the webkit pseudo-elements don't exist (Firefox). */
+:where(:not(html, main))::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+:where(:not(html, main))::-webkit-scrollbar-track,
+:where(:not(html, main))::-webkit-scrollbar-corner {
+  background: transparent;
+}
+:where(:not(html, main))::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--color-outline) 55%, transparent);
+  border-radius: 999px;
+}
+:where(:not(html, main))::-webkit-scrollbar-thumb:hover {
+  background: var(--color-outline);
+}
+@supports not selector(::-webkit-scrollbar) {
+  :where(:not(html, main)) {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--color-outline) 55%, transparent) transparent;
+  }
+}
+
 /* Generic "just swapped in" transition - e.g. Components' grid/table view
    toggle remounts its result panel under a new `key` when the view changes,
    so this plays a short fade+rise instead of an abrupt cut. Kept generic

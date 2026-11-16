@@ -59,8 +59,10 @@ function ModalBase({
       <Dialog.Root open={open} onOpenChange={handleOpenChange}>
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 bg-inverse-surface/40 z-40" />
-          <Dialog.Content className={`fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[calc(100%-2rem)] ${wide ? "max-w-2xl" : "max-w-md"} max-h-[85vh] overflow-y-auto bg-surface-container-lowest border border-outline-variant rounded-xl p-6 shadow-[0_4px_16px_0_rgba(0,0,0,0.12)] focus:outline-none`}>
-            <div className="flex items-start justify-between gap-4 mb-4">
+          <Dialog.Content className={`fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[calc(100%-2rem)] ${wide ? "max-w-2xl" : "max-w-md"} max-h-[85vh] flex flex-col overflow-hidden bg-surface-container-lowest border border-outline-variant rounded-xl shadow-[0_4px_16px_0_rgba(0,0,0,0.12)] focus:outline-none`}>
+            {/* Fixed header and footer; only the body scrolls, so its scrollbar
+                sits inside the content area instead of riding the rounded edge. */}
+            <div className="shrink-0 flex items-start justify-between gap-4 px-6 pt-6 pb-4">
               <div>
                 <Dialog.Title className="font-headline-md text-headline-md text-on-surface">
                   {title}
@@ -81,9 +83,11 @@ function ModalBase({
               </Dialog.Close>
             </div>
 
-            {children}
+            <div className={`min-h-0 flex-1 overflow-y-auto mx-2 px-4 ${footer ? "pb-1" : "pb-6"}`}>
+              {children}
+            </div>
 
-            {footer && <div className="flex justify-end gap-2 mt-6">{footer}</div>}
+            {footer && <div className="shrink-0 flex justify-end gap-2 px-6 pt-5 pb-6">{footer}</div>}
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root>
