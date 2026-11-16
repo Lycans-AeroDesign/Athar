@@ -1,3 +1,11 @@
+## [1.36.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.35.0...v1.36.0) (2026-11-16)
+
+### Features
+
+* **frontend:** one release date in what's new, plus two new entries ([911a34e](https://github.com/Lycans-AeroDesign/Athar/commit/911a34e24a43edf9987651dc3a20838542430c1e))
+* **frontend:** preview and edit tabs in the lesson editor ([4668fb4](https://github.com/Lycans-AeroDesign/Athar/commit/4668fb45473d43c8207126c7413ad38b581ab237))
+* **frontend:** show document PDFs and images inline ([c28ac63](https://github.com/Lycans-AeroDesign/Athar/commit/c28ac63c2c148e005130aeb7044d48a09249997e))
+
 ## [1.35.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.34.0...v1.35.0) (2026-11-16)
 
 ### Features
