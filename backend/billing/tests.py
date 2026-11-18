@@ -10,7 +10,7 @@ from rest_framework import status
 from rest_framework.exceptions import ValidationError
 from rest_framework.test import APITestCase
 
-from accounts.models import User
+from accounts.models import InvitationCode, User
 from audit.models import AuditLog
 from core.testing import RoleLoginMixin, create_test_organization
 from organization.services import create_organization
@@ -157,6 +157,46 @@ class EnforcementTests(RoleLoginMixin, APITestCase):
         self.assertNotEqual(
             self.client.post(reverse("auth-logout"), **self.auth).status_code, status.HTTP_403_FORBIDDEN
         )
+
+    def _register(self, code):
+        return self.client.post(
+            reverse("auth-register"),
+            {
+                "email": "late@x.example",
+                "password": "somepassword123",
+                "invitation_code": code.code,
+                "username": "late",
+            },
+            format="json",
+        )
+
+    def test_expired_org_refuses_registration_and_new_codes(self):
+        code = InvitationCode.objects.create(organization=self.organization, max_uses=1)
+        self._expire()
+        _enable_subscriptions()
+
+        response = self._register(code)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("invitation_code", response.data)
+        self.assertFalse(User.objects.filter(email="late@x.example").exists())
+        code.refresh_from_db()
+        self.assertEqual(code.uses_count, 0)  # the refused attempt doesn't burn the code
+
+        _, admin_token = self._login_with_role("admin@x.example", "Organization Admin")
+        response = self.client.post(
+            reverse("auth-invitation-list-create"),
+            {"max_uses": 1},
+            format="json",
+            HTTP_AUTHORIZATION=f"Bearer {admin_token}",
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.data["code"], "subscription_expired")
+
+    def test_expired_org_still_registers_while_billing_is_off(self):
+        code = InvitationCode.objects.create(organization=self.organization, max_uses=1)
+        self._expire()
+        _enable_subscriptions(False)
+        self.assertEqual(self._register(code).status_code, status.HTTP_201_CREATED)
 
     def test_grace_period_still_allows_writes(self):
         Subscription.objects.update_or_create(

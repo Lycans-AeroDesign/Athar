@@ -14,7 +14,7 @@ from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, Ou
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from audit.services import log_action
-from billing.services import check_user_limit
+from billing.services import check_user_limit, is_read_only
 from files.services import confirm_stored_files
 from rbac.models import Role
 
@@ -59,6 +59,16 @@ def register_user(
     entry. Runs in one transaction with consume_invitation_code() so a user is never created
     without consuming a valid code."""
     invitation = consume_invitation_code(invitation_code)
+    # Registration is unauthenticated, so the read-only gate in policies/authentication.py never
+    # sees it - refuse here, or an expired org could keep growing on codes made before expiry.
+    # Raising rolls back the code use consumed above.
+    if is_read_only(invitation.organization):
+        raise ValidationError(
+            {
+                "invitation_code": "This organization's subscription has expired, so it can't take new members "
+                "until it's renewed. Contact the person who invited you."
+            }
+        )
     check_user_limit(invitation.organization)
 
     user = User.objects.create_user(

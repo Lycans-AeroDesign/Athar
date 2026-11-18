@@ -15,6 +15,7 @@ import { SettingsListSkeleton } from "@/components/ui/Skeleton";
 import { getPathname } from "@/i18n/navigation";
 import { createInvitationCode, getInvitationCodes, revokeInvitationCode } from "@/lib/api/invitations";
 import type { InvitationCode } from "@/lib/api/types";
+import { useSubscription } from "@/lib/billing/SubscriptionProvider";
 import { formatDateTime } from "@/lib/datetime";
 import { errorMessage } from "@/lib/errors";
 
@@ -39,6 +40,8 @@ export function InvitationsSettingsForm() {
   const [createError, setCreateError] = useState<string | null>(null);
   const [revokeTarget, setRevokeTarget] = useState<InvitationCode | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  // UX only - the backend refuses both creating codes and registering while read-only.
+  const isReadOnly = useSubscription().subscription?.read_only ?? false;
 
   useEffect(() => {
     getInvitationCodes().then(setCodes, (err) => setLoadError(errorMessage(err)));
@@ -91,8 +94,9 @@ export function InvitationsSettingsForm() {
           <div>
             <h2 className="font-headline-md text-headline-md text-on-surface">{t("title")}</h2>
             <p className="font-body-md text-body-md text-on-surface-variant mt-1">{t("description")}</p>
+            {isReadOnly && <p className="font-body-sm text-body-sm text-error mt-1">{t("readOnlyNotice")}</p>}
           </div>
-          <Button onClick={openCreate}>
+          <Button onClick={openCreate} disabled={isReadOnly} title={isReadOnly ? t("readOnlyNotice") : undefined}>
             <Icon name="add" size={18} />
             {t("generateCode")}
           </Button>
@@ -107,7 +111,7 @@ export function InvitationsSettingsForm() {
             icon="mail"
             message={t("emptyState")}
             action={
-              <Button onClick={openCreate}>
+              <Button onClick={openCreate} disabled={isReadOnly}>
                 <Icon name="add" size={18} />
                 {t("generateCode")}
               </Button>

@@ -508,6 +508,7 @@
       "title": "Invitation Codes",
       "description": "Registration requires a valid code - generate one to invite a new member.",
       "generateCode": "Generate Code",
+      "readOnlyNotice": "The subscription has expired, so new members can't join and no new codes can be made until it's renewed.",
       "emptyState": "No invitation codes yet.",
       "maxUsesLabel": "Max Uses",
       "expiresAtLabel": "Expires At (optional)",
