@@ -1,6 +1,7 @@
 from django.core.exceptions import PermissionDenied
 
 from audit.services import log_action
+from billing.services import check_user_limit
 
 from .catalogue import PERMISSION_CATALOGUE, ROLE_CATALOGUE
 from .models import Permission, Role, RolePermission, UserRole
@@ -124,6 +125,8 @@ def set_user_active(*, user, is_active: bool, actor, request=None):
         raise PermissionDenied("You can't block or unblock your own account.")
     if user.is_superuser and not actor.is_superuser:
         raise PermissionDenied("You can't block or unblock a platform administrator.")
+    if is_active and not user.is_active:
+        check_user_limit(user.organization)
     user.is_active = is_active
     user.save(update_fields=["is_active"])
     log_action(

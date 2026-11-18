@@ -79,6 +79,7 @@ INSTALLED_APPS = [
     "backups",
     "policies",
     "platform_admin",
+    "billing",
 ]
 
 AUTH_USER_MODEL = "accounts.User"
@@ -352,6 +353,13 @@ ENABLE_REGISTRATION = env.bool("ENABLE_REGISTRATION", default=True)
 # Gates only creating a brand-new organization (organization.views.OrganizationCreateView);
 # ENABLE_REGISTRATION gates joining an existing org by invitation code.
 ENABLE_ORGANIZATION_REGISTRATION = env.bool("ENABLE_ORGANIZATION_REGISTRATION", default=True)
+# Per-organization annual subscriptions (billing app). Off by default; a platform admin's toggle
+# in Platform > Settings overrides this. An org past its paid/trial period plus the grace period
+# becomes read-only.
+SUBSCRIPTIONS_ENABLED = env.bool("SUBSCRIPTIONS_ENABLED", default=False)
+SUBSCRIPTION_TRIAL_DAYS = env.int("SUBSCRIPTION_TRIAL_DAYS", default=14)
+SUBSCRIPTION_GRACE_DAYS = env.int("SUBSCRIPTION_GRACE_DAYS", default=14)
+SUBSCRIPTION_RENEWAL_NOTICE_DAYS = env.int("SUBSCRIPTION_RENEWAL_NOTICE_DAYS", default=30)
 # Celery: backups.tasks.generate_org_backup on demand, plus the periodic jobs below.
 # config.celery's `namespace="CELERY"` maps CELERY_BROKER_URL to Celery's `broker_url`.
 
@@ -395,6 +403,11 @@ CELERY_BEAT_SCHEDULE = {
     },
     "purge-old-error-events": {
         "task": "platform_admin.tasks.purge_old_error_events",
+        "schedule": 86400.0,
+    },
+    # Renewal reminders to org admins (30/7/1 days before, on expiry, on going read-only).
+    "send-subscription-reminders": {
+        "task": "billing.tasks.send_subscription_reminders",
         "schedule": 86400.0,
     },
 }

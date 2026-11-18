@@ -2,6 +2,8 @@ from rest_framework import serializers
 
 from accounts.models import User
 from accounts.serializers import validate_reset_link_base
+from billing.models import Payment, Subscription
+from billing.services import Status
 
 from .models import ErrorEvent
 
@@ -16,6 +18,13 @@ class ContentCountsSerializer(serializers.Serializer):
     tests = serializers.IntegerField()
     documents = serializers.IntegerField()
     courses = serializers.IntegerField()
+
+
+class SubscriptionSummarySerializer(serializers.Serializer):
+    status = serializers.ChoiceField(choices=Status.choices)
+    access_until = serializers.DateTimeField(allow_null=True)
+    read_only_from = serializers.DateTimeField(allow_null=True)
+    renewal_due = serializers.BooleanField()
 
 
 class PlatformOrganizationSerializer(serializers.Serializer):
@@ -33,6 +42,7 @@ class PlatformOrganizationSerializer(serializers.Serializer):
     total_bytes = serializers.IntegerField()
     last_activity = serializers.DateTimeField(allow_null=True)
     content_counts = ContentCountsSerializer()
+    subscription = SubscriptionSummarySerializer()
 
 
 class PlatformSummarySerializer(serializers.Serializer):
@@ -89,7 +99,77 @@ class PlatformPasswordResetResultSerializer(serializers.Serializer):
 
 
 class PlatformSettingsSerializer(serializers.Serializer):
-    organization_registration_enabled = serializers.BooleanField()
+    """Every field is optional on PATCH; only the ones sent are changed."""
+
+    organization_registration_enabled = serializers.BooleanField(required=False)
+    subscriptions_enabled = serializers.BooleanField(required=False)
+    subscription_price = serializers.DecimalField(
+        max_digits=10, decimal_places=2, min_value=0, allow_null=True, required=False
+    )
+    subscription_currency = serializers.RegexField(r"^[A-Za-z]{3}$", required=False)
+    subscription_payment_instructions = serializers.CharField(max_length=4000, allow_blank=True, required=False)
+
+    def validate_subscription_currency(self, value: str) -> str:
+        return value.upper()
+
+
+class PaymentSerializer(serializers.ModelSerializer):
+    recorded_by_email = serializers.EmailField(source="recorded_by.email", default=None, read_only=True)
+
+    class Meta:
+        model = Payment
+        fields = [
+            "id",
+            "amount",
+            "currency",
+            "paid_on",
+            "period_start",
+            "period_end",
+            "reference",
+            "notes",
+            "recorded_by_email",
+            "created_at",
+        ]
+        read_only_fields = fields
+
+
+class PlatformSubscriptionSerializer(serializers.ModelSerializer):
+    """GET: the stored dates plus the derived status and payment history. PATCH: manual
+    adjustments to exempt / trial_ends_at / paid_until / notes."""
+
+    status = serializers.CharField(read_only=True)
+    access_until = serializers.DateTimeField(read_only=True, allow_null=True)
+    read_only_from = serializers.DateTimeField(read_only=True, allow_null=True)
+    renewal_due = serializers.BooleanField(read_only=True)
+    user_count = serializers.IntegerField(read_only=True)
+    storage_bytes = serializers.IntegerField(read_only=True)
+    payments = PaymentSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Subscription
+        fields = [
+            "exempt",
+            "trial_ends_at",
+            "paid_until",
+            "notes",
+            "max_users",
+            "max_storage_gb",
+            "status",
+            "access_until",
+            "read_only_from",
+            "renewal_due",
+            "user_count",
+            "storage_bytes",
+            "payments",
+        ]
+
+
+class RecordPaymentSerializer(serializers.Serializer):
+    amount = serializers.DecimalField(max_digits=10, decimal_places=2, min_value=0)
+    currency = serializers.RegexField(r"^[A-Za-z]{3}$")
+    paid_on = serializers.DateField()
+    reference = serializers.CharField(max_length=200, allow_blank=True, required=False, default="")
+    notes = serializers.CharField(max_length=4000, allow_blank=True, required=False, default="")
 
 
 class ErrorEventListSerializer(serializers.ModelSerializer):

@@ -8,6 +8,8 @@ from .views import (
     OrganizationActiveView,
     OrganizationDetailView,
     OrganizationListView,
+    OrganizationPaymentView,
+    OrganizationSubscriptionView,
     OrganizationUsersView,
     SettingsView,
     SummaryView,
@@ -26,6 +28,16 @@ urlpatterns = [
     path("organizations/<uuid:pk>/", OrganizationDetailView.as_view(), name="platform-organization-detail"),
     path("organizations/<uuid:pk>/users/", OrganizationUsersView.as_view(), name="platform-organization-users"),
     path("organizations/<uuid:pk>/active/", OrganizationActiveView.as_view(), name="platform-organization-active"),
+    path(
+        "organizations/<uuid:pk>/subscription/",
+        OrganizationSubscriptionView.as_view(),
+        name="platform-organization-subscription",
+    ),
+    path(
+        "organizations/<uuid:pk>/subscription/payments/",
+        OrganizationPaymentView.as_view(),
+        name="platform-organization-payments",
+    ),
     path("users/<uuid:pk>/active/", UserActiveView.as_view(), name="platform-user-active"),
     path(
         "users/<uuid:pk>/password-reset-link/",

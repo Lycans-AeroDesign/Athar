@@ -15,9 +15,11 @@ import { useSettingsPermissions, useVisibleSettingsGroups } from "@/components/s
 import { useReportSettingsDirty } from "@/components/settings/SettingsShell";
 import { FeaturesSettingsSkeleton, IdentitySettingsSkeleton } from "@/components/settings/SettingsSkeletons";
 import { SharedLinksSettings } from "@/components/settings/SharedLinksSettings";
+import { SubscriptionSettings } from "@/components/settings/SubscriptionSettings";
 import { UsersSettingsForm } from "@/components/settings/UsersSettingsForm";
 import { CourseCategoryManager } from "@/components/training/CourseCategoryManager";
 import { useRouter } from "@/i18n/navigation";
+import { useSubscription } from "@/lib/billing/SubscriptionProvider";
 import { useOrganization } from "@/lib/organization/OrganizationProvider";
 
 export default function SettingsSectionPage({ params }: { params: Promise<{ section: string }> }) {
@@ -31,9 +33,11 @@ export default function SettingsSectionPage({ params }: { params: Promise<{ sect
   // An unknown section, or one this viewer's role can't open (e.g. a stale
   // bookmark after a role change) - back to /settings, which forwards to
   // the first section they *can* open.
+  // Waits for the subscription status: whether the Subscription section exists depends on it.
+  const { isLoading: isSubscriptionLoading } = useSubscription();
   useEffect(() => {
-    if (!isAllowed) router.replace("/settings");
-  }, [isAllowed, router]);
+    if (!isAllowed && !isSubscriptionLoading) router.replace("/settings");
+  }, [isAllowed, isSubscriptionLoading, router]);
 
   if (!isAllowed) return null;
 
@@ -86,6 +90,8 @@ export default function SettingsSectionPage({ params }: { params: Promise<{ sect
       return <SharedLinksSettings />;
     case "backups":
       return <BackupsSettingsForm />;
+    case "subscription":
+      return <SubscriptionSettings />;
     default:
       return null;
   }

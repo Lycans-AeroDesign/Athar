@@ -1,9 +1,11 @@
 import { useHasPermission } from "@/lib/auth/permissions";
+import { useSubscription } from "@/lib/billing/SubscriptionProvider";
 import { useOrganization } from "@/lib/organization/OrganizationProvider";
 
 export type SettingsSectionId =
   | "identity"
   | "features"
+  | "subscription"
   | "users"
   | "invitations"
   | "roles"
@@ -37,6 +39,7 @@ const GROUPS: SettingsGroup[] = [
     sections: [
       { id: "identity", icon: "domain" },
       { id: "features", icon: "auto_awesome" },
+      { id: "subscription", icon: "payments" },
     ],
   },
   {
@@ -90,6 +93,9 @@ export function useSettingsPermissions() {
   // the section is hidden entirely while the org has public links switched off.
   const { settings } = useOrganization();
   const canManageShareLinks = useHasPermission("share_link.manage") && !!settings?.share_links_enabled;
+  // Only while subscriptions are switched on for this instance (backend/billing).
+  const { subscription } = useSubscription();
+  const subscriptionsEnabled = !!subscription?.enabled;
 
   return {
     canEditGeneral,
@@ -100,6 +106,7 @@ export function useSettingsPermissions() {
     canManageUsers,
     canReadAudit,
     canManageShareLinks,
+    subscriptionsEnabled,
   };
 }
 
@@ -127,6 +134,8 @@ function isSectionVisible(id: SettingsSectionId, p: SettingsPermissions): boolea
       return p.canReadAudit;
     case "sharedLinks":
       return p.canManageShareLinks;
+    case "subscription":
+      return p.canEditGeneral && p.subscriptionsEnabled;
   }
 }
 

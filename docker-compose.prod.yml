@@ -52,6 +52,9 @@ services:
       JWT_REFRESH_COOKIE_DOMAIN: ${JWT_REFRESH_COOKIE_DOMAIN:-}
       ENABLE_REGISTRATION: ${ENABLE_REGISTRATION:-True}
       ENABLE_ORGANIZATION_REGISTRATION: ${ENABLE_ORGANIZATION_REGISTRATION:-True}
+      SUBSCRIPTIONS_ENABLED: ${SUBSCRIPTIONS_ENABLED:-False}
+      SUBSCRIPTION_TRIAL_DAYS: ${SUBSCRIPTION_TRIAL_DAYS:-14}
+      SUBSCRIPTION_GRACE_DAYS: ${SUBSCRIPTION_GRACE_DAYS:-14}
       # File storage - empty means local disk, using the backend_media volume
       # below (see backend/.env.example); set AWS_STORAGE_BUCKET_NAME (root
       # .env) to switch to S3-compatible object storage instead, at which

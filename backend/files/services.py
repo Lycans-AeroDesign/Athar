@@ -5,6 +5,7 @@ from datetime import timedelta
 from django.utils import timezone
 
 from audit.services import log_action
+from billing.services import check_storage_limit
 
 from .models import StoredFile
 
@@ -26,6 +27,7 @@ _DOWNLOAD_URL_RE = re.compile(
 
 
 def upload_file(*, uploaded_file, required_permission: str, actor, request=None) -> StoredFile:
+    check_storage_limit(actor.organization, uploaded_file.size)
     stored_file = StoredFile.objects.create(
         organization=actor.organization,
         file=uploaded_file,

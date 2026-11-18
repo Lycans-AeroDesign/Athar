@@ -4,6 +4,7 @@ from django.utils.text import slugify
 from rest_framework.exceptions import ValidationError
 
 from audit.services import log_action
+from billing.services import create_for_new_organization as create_subscription_for_new_organization
 from files.services import confirm_stored_files
 from rbac.services import seed_rbac_for_organization
 
@@ -68,6 +69,7 @@ def create_organization(
 
     organization = Organization.objects.create(name=name, slug=_unique_org_slug(name))
     OrganizationSettings.objects.create(organization=organization, name=name)
+    create_subscription_for_new_organization(organization)
     seed_rbac_for_organization(organization)
 
     admin = User.objects.create_user(

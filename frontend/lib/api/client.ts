@@ -56,7 +56,7 @@ export async function apiFetch(path: string, options: RequestInit = {}, _retried
     return apiFetch(path, options, true);
   }
 
-  if (res.status === 403) void notifyIfPolicyRequired(res.clone());
+  if (res.status === 403) void notifyIfGated(res.clone());
 
   return res;
 }
@@ -69,11 +69,21 @@ export const POLICY_REQUIRED_EVENT = "athar:policy-acceptance-required";
 /** The 403 body `code` for that - see backend/policies/authentication.py. */
 export const POLICY_ACCEPTANCE_REQUIRED = "policy_acceptance_required";
 
-async function notifyIfPolicyRequired(res: Response): Promise<void> {
+/** Fired on `window` when a write is refused because the org's subscription has expired (it went
+ * read-only mid-session) - SubscriptionProvider listens for it and re-checks. */
+export const SUBSCRIPTION_EXPIRED_EVENT = "athar:subscription-expired";
+
+/** The 403 body `code` for that - see backend/policies/authentication.py. */
+export const SUBSCRIPTION_EXPIRED = "subscription_expired";
+
+async function notifyIfGated(res: Response): Promise<void> {
   try {
     const body = await res.json();
-    if (body?.code === POLICY_ACCEPTANCE_REQUIRED && typeof window !== "undefined") {
+    if (typeof window === "undefined") return;
+    if (body?.code === POLICY_ACCEPTANCE_REQUIRED) {
       window.dispatchEvent(new Event(POLICY_REQUIRED_EVENT));
+    } else if (body?.code === SUBSCRIPTION_EXPIRED) {
+      window.dispatchEvent(new Event(SUBSCRIPTION_EXPIRED_EVENT));
     }
   } catch {
     // Not JSON - not a policy refusal.

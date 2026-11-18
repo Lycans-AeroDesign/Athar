@@ -33,6 +33,7 @@ export interface WhatsNewEntry {
 }
 
 export const WHATS_NEW: readonly WhatsNewEntry[] = [
+  { id: "orgSubscriptions", date: "2026-11-18", kind: "new", href: "/platform", platformAdmin: true },
   {
     id: "inlineDocumentPreview",
     date: "2026-11-16",

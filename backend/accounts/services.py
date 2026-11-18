@@ -14,6 +14,7 @@ from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, Ou
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from audit.services import log_action
+from billing.services import check_user_limit
 from files.services import confirm_stored_files
 from rbac.models import Role
 
@@ -58,6 +59,7 @@ def register_user(
     entry. Runs in one transaction with consume_invitation_code() so a user is never created
     without consuming a valid code."""
     invitation = consume_invitation_code(invitation_code)
+    check_user_limit(invitation.organization)
 
     user = User.objects.create_user(
         email=email,

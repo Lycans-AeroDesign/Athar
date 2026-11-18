@@ -16,6 +16,7 @@ v1_patterns = [
     path("backups/", include("backups.urls")),
     path("policies/", include("policies.urls")),
     path("platform/", include("platform_admin.urls")),
+    path("billing/", include("billing.urls")),
 ]
 
 urlpatterns = [

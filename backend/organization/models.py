@@ -5,8 +5,8 @@ from core.models import TimeStampedModel, UUIDPrimaryKeyModel
 
 class Organization(UUIDPrimaryKeyModel, TimeStampedModel):
     """The multi-tenancy root: every tenant-owned row traces back to one via
-    core.OrganizationScopedModel or a direct FK (accounts.User). Deliberately minimal; no
-    billing/plan/quota fields.
+    core.OrganizationScopedModel or a direct FK (accounts.User). Deliberately minimal; billing
+    lives in billing.Subscription.
 
     `slug` is reserved for future subdomain routing and isn't wired up; requests resolve their
     organization from `request.user.organization`."""

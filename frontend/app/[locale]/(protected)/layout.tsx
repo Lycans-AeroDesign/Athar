@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { SubscriptionBanner } from "@/components/billing/SubscriptionBanner";
 import { SideNav } from "@/components/layout/SideNav";
 import { TopBar } from "@/components/layout/TopBar";
 import { ProductTourAutostart } from "@/components/onboarding/ProductTourAutostart";
@@ -10,6 +11,7 @@ import { LoadingScreen } from "@/components/ui/LoadingScreen";
 import { WhatsNewDialog } from "@/components/whatsNew/WhatsNewDialog";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { SubscriptionProvider } from "@/lib/billing/SubscriptionProvider";
 
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -55,20 +57,25 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
     // PolicyGate renders a blocking "accept the updated policies" screen
     // instead of the shell while any published policy is unaccepted.
     <PolicyGate>
-      {/* h-dvh, not h-screen - see SideNav.tsx's own comment on the same
-          mobile-viewport issue; this wrapper sets the height SideNav's h-dvh
-          sits inside, so it needs to match rather than reintroduce the gap. */}
-      <div className="bg-background text-on-background flex h-dvh overflow-hidden">
-        <ProductTourAutostart openMobileNav={openMobileNav} closeMobileNav={closeMobileNav} />
-        <WhatsNewDialog />
-        <SideNav open={mobileNavOpen} onClose={closeMobileNav} />
-        <div className="flex-1 flex flex-col lg:ms-64 overflow-hidden bg-background">
-          <TopBar onOpenMenu={openMobileNav} onCloseMenu={closeMobileNav} />
-          <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-10 bg-background">
-            <div className="max-w-[1600px] w-full mx-auto space-y-8">{children}</div>
-          </main>
+      <SubscriptionProvider>
+        {/* h-dvh, not h-screen - see SideNav.tsx's own comment on the same
+            mobile-viewport issue; this wrapper sets the height SideNav's h-dvh
+            sits inside, so it needs to match rather than reintroduce the gap. */}
+        <div className="bg-background text-on-background flex h-dvh overflow-hidden">
+          <ProductTourAutostart openMobileNav={openMobileNav} closeMobileNav={closeMobileNav} />
+          <WhatsNewDialog />
+          <SideNav open={mobileNavOpen} onClose={closeMobileNav} />
+          <div className="flex-1 flex flex-col lg:ms-64 overflow-hidden bg-background">
+            <TopBar onOpenMenu={openMobileNav} onCloseMenu={closeMobileNav} />
+            <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-10 bg-background">
+              <div className="max-w-[1600px] w-full mx-auto space-y-8">
+                <SubscriptionBanner />
+                {children}
+              </div>
+            </main>
+          </div>
         </div>
-      </div>
+      </SubscriptionProvider>
     </PolicyGate>
   );
 }

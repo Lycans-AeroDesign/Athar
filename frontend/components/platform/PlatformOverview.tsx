@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
+import { SubscriptionStatusBadge } from "@/components/billing/SubscriptionStatusBadge";
 import { Icon } from "@/components/ui/Icon";
 import { Pagination } from "@/components/ui/Pagination";
 import { TableSkeleton } from "@/components/ui/Skeleton";
@@ -20,10 +21,19 @@ import {
 } from "@/lib/api/platform";
 import type { Paginated } from "@/lib/api/types";
 import { formatBytes } from "@/lib/bytes";
-import { formatRelativeTime } from "@/lib/datetime";
+import { formatDate, formatRelativeTime } from "@/lib/datetime";
 import { errorMessage } from "@/lib/errors";
 
-const COLUMNS = ["nameColumn", "statusColumn", "usersColumn", "storageColumn", "activityColumn"] as const;
+import { PlatformBillingSettings } from "./PlatformBillingSettings";
+
+const COLUMNS = [
+  "nameColumn",
+  "statusColumn",
+  "subscriptionColumn",
+  "usersColumn",
+  "storageColumn",
+  "activityColumn",
+] as const;
 
 // Instance-operator dashboard: per-organization administrative stats only (counts, sizes,
 // activity timestamps), never organization content. The backend enforces is_superuser.
@@ -155,6 +165,8 @@ export function PlatformOverview() {
         </div>
       )}
 
+      {platformSettings && <PlatformBillingSettings settings={platformSettings} onUpdate={setPlatformSettings} />}
+
       <div className="bg-surface rounded-xl border border-outline-variant overflow-hidden">
         <div className="p-4 sm:p-6 pb-4 sm:pb-4 flex flex-wrap items-center justify-between gap-3">
           <h2 className="font-headline-md text-headline-md text-on-surface">{t("organizations")}</h2>
@@ -172,7 +184,7 @@ export function PlatformOverview() {
         </div>
 
         {!data ? (
-          <TableSkeleton variant="flush" rows={5} columns={["two-line", "pill", "text", "text", "text"]} />
+          <TableSkeleton variant="flush" rows={5} columns={["two-line", "pill", "pill", "text", "text", "text"]} />
         ) : data.results.length === 0 ? (
           <p className="px-4 sm:px-6 pb-6 font-body-md text-body-md text-on-surface-variant">{t("emptyState")}</p>
         ) : (
@@ -195,6 +207,10 @@ export function PlatformOverview() {
                     />
                   </div>
                   <dl className="grid grid-cols-2 gap-x-4 gap-y-1 font-body-md text-body-md">
+                    <dt className="text-on-surface-variant">{t("subscriptionColumn")}</dt>
+                    <dd className="text-end">
+                      <SubscriptionCell org={org} />
+                    </dd>
                     <dt className="text-on-surface-variant">{t("usersColumn")}</dt>
                     <dd className="text-on-surface text-end">
                       {org.active_user_count} / {org.user_count}
@@ -238,6 +254,9 @@ export function PlatformOverview() {
                           label={org.is_active ? t("statusActive") : t("statusSuspended")}
                         />
                       </td>
+                      <td className="px-6 py-2.5">
+                        <SubscriptionCell org={org} />
+                      </td>
                       <td className="px-6 py-2.5 text-on-surface-variant">
                         {org.active_user_count} / {org.user_count}
                       </td>
@@ -279,6 +298,20 @@ function StatusPill({ active, label }: { active: boolean; label: string }) {
       }
     >
       {label}
+    </span>
+  );
+}
+
+function SubscriptionCell({ org }: { org: PlatformOrganization }) {
+  const { status, access_until } = org.subscription;
+  return (
+    <span className="inline-flex flex-col items-end md:items-start gap-0.5">
+      <SubscriptionStatusBadge status={status} />
+      {access_until && (
+        <span className="font-body-md text-body-md text-on-surface-variant whitespace-nowrap">
+          {formatDate(access_until)}
+        </span>
+      )}
     </span>
   );
 }

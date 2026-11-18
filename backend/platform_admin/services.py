@@ -4,6 +4,7 @@ Everything here is metadata (counts, byte sizes, timestamps, account info). Neve
 return organization content (articles, answers, file names, ...)."""
 
 import shutil
+from dataclasses import asdict
 
 from django.conf import settings
 from django.db import transaction
@@ -15,12 +16,14 @@ from accounts.services import create_password_reset_link
 from audit.models import AuditLog
 from audit.services import log_action
 from backups.models import BackupJob
+from billing.models import Subscription
+from billing.services import evaluate
 from files.models import StoredFile
 from knowledge.models import Article, Component, Document, Failure, Project, Question, Sop, Test
 from organization.models import Organization
 from training.models import Course
 
-from .models import ErrorEvent, PlatformSettings, organization_registration_enabled
+from .models import ErrorEvent, PlatformSettings, organization_registration_enabled, subscriptions_enabled
 
 CONTENT_MODELS = {
     "articles": Article,
@@ -71,6 +74,7 @@ def organization_stats(organizations) -> list[dict]:
         for key, model in CONTENT_MODELS.items()
     }
     backups = _backup_bytes(ids)
+    subscriptions = {row.organization_id: row for row in Subscription.objects.filter(organization_id__in=ids)}
     admins: dict = {}
     for user in User.objects.filter(organization_id__in=ids, is_active=True, roles__name="Organization Admin").order_by(
         "date_joined"
@@ -97,6 +101,7 @@ def organization_stats(organizations) -> list[dict]:
                 "total_bytes": file_bytes + backup_bytes,
                 "last_activity": (activity.get(org.id) or {}).get("last"),
                 "content_counts": {key: (counts[key].get(org.id) or {}).get("n", 0) for key in CONTENT_MODELS},
+                "subscription": asdict(evaluate(subscriptions.get(org.id))),
             }
         )
     return result
@@ -194,18 +199,34 @@ def issue_password_reset_link(*, user: User, actor, request=None):
 
 
 def get_platform_settings() -> dict:
-    return {"organization_registration_enabled": organization_registration_enabled()}
+    row = PlatformSettings.load()
+    return {
+        "organization_registration_enabled": organization_registration_enabled(),
+        "subscriptions_enabled": subscriptions_enabled(),
+        "subscription_price": row.subscription_price,
+        "subscription_currency": row.subscription_currency,
+        "subscription_payment_instructions": row.subscription_payment_instructions,
+    }
+
+
+# The on/off switches each get their own audit action; the subscription pricing fields share one.
+_TOGGLE_ACTIONS = {
+    "organization_registration_enabled": "platform.settings.organization_registration",
+    "subscriptions_enabled": "platform.settings.subscriptions",
+}
 
 
 @transaction.atomic
-def set_organization_registration_enabled(*, enabled: bool, actor, request=None) -> dict:
+def update_platform_settings(*, changes: dict, actor, request=None) -> dict:
+    """Saves only the fields in `changes` (a validated PlatformSettingsSerializer payload)."""
     row = PlatformSettings.load()
-    row.organization_registration_enabled = enabled
-    row.save(update_fields=["organization_registration_enabled", "updated_at"])
-    log_action(
-        actor=actor,
-        action="platform.settings.organization_registration",
-        metadata={"enabled": enabled},
-        request=request,
-    )
+    for field, value in changes.items():
+        setattr(row, field, value)
+    row.save(update_fields=[*changes, "updated_at"])
+    for field, action in _TOGGLE_ACTIONS.items():
+        if field in changes:
+            log_action(actor=actor, action=action, metadata={"enabled": changes[field]}, request=request)
+    pricing = {key: str(value) for key, value in changes.items() if key not in _TOGGLE_ACTIONS}
+    if pricing:
+        log_action(actor=actor, action="platform.settings.subscription", metadata=pricing, request=request)
     return get_platform_settings()

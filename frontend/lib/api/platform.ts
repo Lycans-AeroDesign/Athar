@@ -1,3 +1,4 @@
+import type { SubscriptionStatus } from "./billing";
 import { apiJson, apiVoid } from "./client";
 import type { Paginated } from "./types";
 
@@ -46,6 +47,54 @@ export interface PlatformOrganization {
   total_bytes: number;
   last_activity: string | null;
   content_counts: PlatformContentCounts;
+  subscription: PlatformSubscriptionSummary;
+}
+
+export interface PlatformSubscriptionSummary {
+  status: SubscriptionStatus;
+  access_until: string | null;
+  read_only_from: string | null;
+  renewal_due: boolean;
+}
+
+export interface PlatformPayment {
+  id: string;
+  amount: string;
+  currency: string;
+  paid_on: string;
+  period_start: string;
+  period_end: string;
+  reference: string;
+  notes: string;
+  recorded_by_email: string | null;
+  created_at: string;
+}
+
+/** One organization's subscription as a platform admin sees it (backend/billing). */
+export interface PlatformSubscription extends PlatformSubscriptionSummary {
+  exempt: boolean;
+  trial_ends_at: string | null;
+  paid_until: string | null;
+  notes: string;
+  /** Null = unlimited. Only enforced while subscriptions are switched on. */
+  max_users: number | null;
+  max_storage_gb: number | null;
+  user_count: number;
+  storage_bytes: number;
+  payments: PlatformPayment[];
+}
+
+export type PlatformSubscriptionUpdate = Partial<
+  Pick<PlatformSubscription, "exempt" | "trial_ends_at" | "paid_until" | "notes" | "max_users" | "max_storage_gb">
+>;
+
+export interface RecordPaymentInput {
+  amount: string;
+  currency: string;
+  /** YYYY-MM-DD */
+  paid_on: string;
+  reference?: string;
+  notes?: string;
 }
 
 export interface PlatformUser {
@@ -113,17 +162,48 @@ export function sendPlatformPasswordResetLink(
 
 export interface PlatformSettings {
   organization_registration_enabled: boolean;
+  /** Whether org subscriptions are enforced (expired orgs go read-only). */
+  subscriptions_enabled: boolean;
+  /** Flat annual price as a decimal string, or null when not set. */
+  subscription_price: string | null;
+  subscription_currency: string;
+  subscription_payment_instructions: string;
 }
 
 export function getPlatformSettings(): Promise<PlatformSettings> {
   return apiJson<PlatformSettings>("/api/v1/platform/settings/");
 }
 
-export function updatePlatformSettings(settings: PlatformSettings): Promise<PlatformSettings> {
+/** Only the fields sent are changed. */
+export function updatePlatformSettings(settings: Partial<PlatformSettings>): Promise<PlatformSettings> {
   return apiJson<PlatformSettings>("/api/v1/platform/settings/", {
     method: "PATCH",
     headers: JSON_HEADERS,
     body: JSON.stringify(settings),
+  });
+}
+
+export function getPlatformSubscription(orgId: string): Promise<PlatformSubscription> {
+  return apiJson<PlatformSubscription>(`/api/v1/platform/organizations/${orgId}/subscription/`);
+}
+
+export function updatePlatformSubscription(
+  orgId: string,
+  changes: PlatformSubscriptionUpdate,
+): Promise<PlatformSubscription> {
+  return apiJson<PlatformSubscription>(`/api/v1/platform/organizations/${orgId}/subscription/`, {
+    method: "PATCH",
+    headers: JSON_HEADERS,
+    body: JSON.stringify(changes),
+  });
+}
+
+/** Adds one year of access (from the current period's end if it's still ahead, else from now). */
+export function recordPlatformPayment(orgId: string, payment: RecordPaymentInput): Promise<PlatformSubscription> {
+  return apiJson<PlatformSubscription>(`/api/v1/platform/organizations/${orgId}/subscription/payments/`, {
+    method: "POST",
+    headers: JSON_HEADERS,
+    body: JSON.stringify(payment),
   });
 }
 

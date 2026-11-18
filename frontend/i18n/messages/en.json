@@ -209,7 +209,52 @@
       "noTraceback": "No traceback was recorded for this error.",
       "copy": "Copy",
       "copied": "Copied"
-    }
+    },
+    "billing": {
+      "title": "Subscriptions",
+      "description": "Charge each organization a flat annual fee for hosting. Organizations that existed before this was turned on are not billed.",
+      "enabledLabel": "Enforce subscriptions",
+      "enabledDescription": "When on, an organization whose paid period or trial ended more than 14 days ago becomes read-only. New organizations get a 14-day trial.",
+      "enableTitle": "Turn on subscriptions?",
+      "enableBody": "Organizations marked as not billed stay unaffected. Any organization whose access has run out becomes read-only straight away, and admins start getting renewal reminder emails.",
+      "enableConfirm": "Turn on",
+      "price": "Annual price",
+      "currency": "Currency",
+      "instructions": "How to pay (shown to organization admins and in reminder emails)",
+      "instructionsPlaceholder": "e.g. bank transfer details, or who to contact",
+      "save": "Save",
+      "saved": "Saved",
+      "cancel": "Cancel",
+      "orgTitle": "Subscription",
+      "adjust": "Adjust",
+      "adjustDescription": "Change dates, limits and notes by hand. To add a paid year, record a payment instead.",
+      "recordPayment": "Record payment",
+      "recordPaymentDescription": "Adds one year of access, starting when the current paid period or trial ends (or today, if it already has).",
+      "exemptLabel": "Not billed",
+      "exemptDescription": "This organization never becomes read-only and has no limits. Recording a payment turns this off.",
+      "trialEnds": "Trial ends",
+      "paidUntil": "Paid until",
+      "readOnlyFrom": "Read-only from",
+      "renewalDue": "Renewal due",
+      "yes": "Yes",
+      "no": "No",
+      "members": "Active members",
+      "storage": "Storage",
+      "usedOf": "{used} of {total}",
+      "unlimited": "{used} (no limit)",
+      "maxUsers": "Max active members",
+      "maxStorageGb": "Max storage (GB)",
+      "limitHint": "Leave empty for no limit",
+      "notes": "Notes (only platform admins see these)",
+      "amount": "Amount",
+      "paidOn": "Paid on",
+      "reference": "Reference (e.g. transfer number)",
+      "paymentHistory": "Payments",
+      "noPayments": "No payments recorded yet.",
+      "coversPeriod": "Covers {start} - {end}",
+      "recordedBy": "Recorded by {email}"
+    },
+    "subscriptionColumn": "Subscription"
   },
   "nav": {
     "platform": "Platform",
@@ -348,7 +393,8 @@
       "policies": "Policies",
       "sharedLinks": "Shared Links",
       "audit": "Audit Log",
-      "backups": "Backups"
+      "backups": "Backups",
+      "subscription": "Subscription"
     },
     "sectionNavLabel": "Settings section",
     "noSectionsTitle": "Nothing to manage here",
@@ -2031,6 +2077,10 @@
       "fixed": "Fixed"
     },
     "entries": {
+      "orgSubscriptions": {
+        "title": "Charge organizations for hosting",
+        "body": "The Platform page can now track a yearly subscription for each organization: set a price, record payments, and optionally limit members or storage. It stays off until you switch it on, and organizations that already exist are never billed."
+      },
       "inlineDocumentPreview": {
         "title": "Read documents without opening them",
         "body": "PDFs and images now show right on the document page, so you can read them without opening a preview."
@@ -2107,6 +2157,45 @@
         "title": "Tidier lists on phones",
         "body": "Search, filters and buttons on list pages stack neatly on small screens."
       }
+    }
+  },
+  "billing": {
+    "title": "Subscription",
+    "description": "Your organization's hosting subscription. Payments are recorded by the platform administrator.",
+    "status": {
+      "exempt": "Not billed",
+      "trialing": "Trial",
+      "active": "Active",
+      "grace": "Grace period",
+      "expired": "Read-only"
+    },
+    "statusHelp": {
+      "exempt": "This organization isn't billed.",
+      "trialing": "You're on a free trial. Renew before it ends to keep full access.",
+      "active": "Your subscription is active.",
+      "grace": "Your subscription has ended. Everything keeps working until the read-only date - renew before then.",
+      "expired": "Your subscription has expired, so the workspace is read-only: everyone can still read and export everything, but nothing can be added or changed until it's renewed."
+    },
+    "trialEnds": "Trial ends",
+    "accessUntil": "Paid until",
+    "readOnlyFrom": "Read-only from",
+    "price": "Price",
+    "pricePerYear": "{price} {currency} / year",
+    "members": "Active members",
+    "storage": "Storage",
+    "usedOf": "{used} of {total}",
+    "howToPay": "How to renew",
+    "paymentHistory": "Payment history",
+    "noPayments": "No payments recorded yet.",
+    "coversPeriod": "Covers {start} - {end}",
+    "banner": {
+      "trialEnding": "Your free trial ends on {date}.",
+      "renewalDue": "Your subscription ends on {date}.",
+      "grace": "Your subscription ended on {date}. The workspace becomes read-only on {readOnlyDate} unless it's renewed.",
+      "readOnly": "Your subscription has expired, so this workspace is read-only. You can still read and export everything.",
+      "manageLink": "View subscription",
+      "contactAdmin": "Ask an organization admin to renew it.",
+      "dismiss": "Dismiss"
     }
   }
 }

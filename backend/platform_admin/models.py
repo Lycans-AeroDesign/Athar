@@ -10,6 +10,12 @@ class PlatformSettings(models.Model):
     means "not overridden": fall back to the matching environment setting."""
 
     organization_registration_enabled = models.BooleanField(null=True, blank=True)
+    # Billing (billing app): whether expired subscriptions are enforced, plus the flat annual
+    # price and how to pay, both shown to org admins.
+    subscriptions_enabled = models.BooleanField(null=True, blank=True)
+    subscription_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    subscription_currency = models.CharField(max_length=3, default="USD")
+    subscription_payment_instructions = models.TextField(blank=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -26,6 +32,13 @@ def organization_registration_enabled() -> bool:
     they've set one, else settings.ENABLE_ORGANIZATION_REGISTRATION."""
     override = PlatformSettings.objects.filter(pk=1).values_list("organization_registration_enabled", flat=True).first()
     return settings.ENABLE_ORGANIZATION_REGISTRATION if override is None else override
+
+
+def subscriptions_enabled() -> bool:
+    """Whether org subscriptions are enforced (billing.services): the operator's toggle if
+    they've set one, else settings.SUBSCRIPTIONS_ENABLED (off by default)."""
+    override = PlatformSettings.objects.filter(pk=1).values_list("subscriptions_enabled", flat=True).first()
+    return settings.SUBSCRIPTIONS_ENABLED if override is None else override
 
 
 class ErrorEvent(UUIDPrimaryKeyModel):

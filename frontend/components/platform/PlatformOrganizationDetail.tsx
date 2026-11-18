@@ -25,6 +25,8 @@ import { formatBytes } from "@/lib/bytes";
 import { formatDate, formatRelativeTime } from "@/lib/datetime";
 import { errorMessage } from "@/lib/errors";
 
+import { PlatformOrganizationSubscription } from "./PlatformOrganizationSubscription";
+
 const USER_COLUMNS = [
   "userColumn",
   "rolesColumn",
@@ -178,6 +180,8 @@ export function PlatformOrganizationDetail({ id }: { id: string }) {
               icon="history"
             />
           </div>
+
+          <PlatformOrganizationSubscription orgId={org.id} />
 
           <div className="bg-surface rounded-xl border border-outline-variant p-4 sm:p-6">
             <h2 className="font-headline-md text-headline-md text-on-surface mb-1">{t("contentCounts")}</h2>
