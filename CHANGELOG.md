@@ -1,3 +1,14 @@
+## [1.38.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.37.0...v1.38.0) (2026-11-18)
+
+### Features
+
+* **billing:** block registration and new invite codes while expired ([1282c1e](https://github.com/Lycans-AeroDesign/Athar/commit/1282c1e20a82c4563890bab54aa8a3a0af2c573c))
+* **billing:** per-organization annual subscriptions ([ed6da87](https://github.com/Lycans-AeroDesign/Athar/commit/ed6da8792a6240cbf5dbbb126f79a6a55460f974))
+
+### Bug Fixes
+
+* **knowledge:** return 400, not 500, when editing an answer without a body ([0ae513d](https://github.com/Lycans-AeroDesign/Athar/commit/0ae513db783ab30f5e7332a4c0aa48cd65f10c86))
+
 ## [1.37.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.36.0...v1.37.0) (2026-11-16)
 
 ### Features
