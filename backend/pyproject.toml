@@ -34,3 +34,12 @@ build-backend = "uv_build"
 
 [tool.uv]
 package = false
+
+[tool.ruff]
+line-length = 120
+# Generated, and already-applied ones must never change (CONTRIBUTING.md 3.2).
+extend-exclude = ["*/migrations/*"]
+
+[tool.ruff.lint]
+# Defaults (pyflakes + core pycodestyle errors) plus import sorting.
+extend-select = ["I"]

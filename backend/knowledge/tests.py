@@ -7,15 +7,14 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import connection
 from django.db.models import Q, QuerySet
 from django.test.utils import CaptureQueriesContext
-
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from core.testing import RoleLoginMixin, create_test_organization
 from accounts.models import User
 from audit.models import AuditLog
+from core.testing import RoleLoginMixin, create_test_organization
 from files.models import StoredFile
 from rbac.models import Role
 
@@ -36,14 +35,14 @@ from .models import (
     KnowledgeRelation,
     Project,
     Question,
-    ShareLink,
-    Visibility,
     QuestionAttachment,
     RestrictedAccessGrant,
+    ShareLink,
     Sop,
     StorageLocation,
     Tag,
     Test,
+    Visibility,
 )
 
 
@@ -123,21 +122,15 @@ class ArticleTests(KnowledgeTestCase):
         article_id = created["id"]
 
         _, other_access = self._login_with_role("other3@example.com", "Member")
-        response = self.client.post(
-            reverse("knowledge-article-submit", args=[article_id]), **self._auth(other_access)
-        )
+        response = self.client.post(reverse("knowledge-article-submit", args=[article_id]), **self._auth(other_access))
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-        response = self.client.post(
-            reverse("knowledge-article-submit", args=[article_id]), **self._auth(author_access)
-        )
+        response = self.client.post(reverse("knowledge-article-submit", args=[article_id]), **self._auth(author_access))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["status"], Article.Status.IN_REVIEW)
 
         # Submitting again is invalid - 400, not a 500.
-        response = self.client.post(
-            reverse("knowledge-article-submit", args=[article_id]), **self._auth(author_access)
-        )
+        response = self.client.post(reverse("knowledge-article-submit", args=[article_id]), **self._auth(author_access))
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
         _, senior_access = self._login_with_role("senior@example.com", "Mentor")
@@ -147,9 +140,7 @@ class ArticleTests(KnowledgeTestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
         _, head_access = self._login_with_role("head@example.com", "Subteam Head")
-        response = self.client.post(
-            reverse("knowledge-article-publish", args=[article_id]), **self._auth(head_access)
-        )
+        response = self.client.post(reverse("knowledge-article-publish", args=[article_id]), **self._auth(head_access))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["status"], Article.Status.PUBLISHED)
         self.assertIsNotNone(response.data["published_at"])
@@ -659,12 +650,8 @@ class ArticleWorkflowExtraTests(KnowledgeTestCase):
             format="json",
             **self._auth(head_access),
         ).data
-        self.client.post(
-            reverse("knowledge-article-submit", args=[other_published["id"]]), **self._auth(head_access)
-        )
-        self.client.post(
-            reverse("knowledge-article-publish", args=[other_published["id"]]), **self._auth(head_access)
-        )
+        self.client.post(reverse("knowledge-article-submit", args=[other_published["id"]]), **self._auth(head_access))
+        self.client.post(reverse("knowledge-article-publish", args=[other_published["id"]]), **self._auth(head_access))
 
         _, other_access = self._login_with_role("allother@example.com", "Member")
         other_draft = self.client.post(
@@ -794,7 +781,9 @@ class QuestionStatusAndPromotionTests(KnowledgeTestCase):
             format="json",
             **self._auth(answerer_access),
         ).data
-        response = self.client.get(reverse("knowledge-question-detail", args=[question["id"]]), **self._auth(asker_access))
+        response = self.client.get(
+            reverse("knowledge-question-detail", args=[question["id"]]), **self._auth(asker_access)
+        )
         self.assertEqual(response.data["status"], Question.Status.ANSWERED)
 
         self.client.post(
@@ -803,7 +792,9 @@ class QuestionStatusAndPromotionTests(KnowledgeTestCase):
             format="json",
             **self._auth(asker_access),
         )
-        response = self.client.get(reverse("knowledge-question-detail", args=[question["id"]]), **self._auth(asker_access))
+        response = self.client.get(
+            reverse("knowledge-question-detail", args=[question["id"]]), **self._auth(asker_access)
+        )
         self.assertEqual(response.data["status"], Question.Status.SOLVED)
 
         self.client.post(
@@ -812,7 +803,9 @@ class QuestionStatusAndPromotionTests(KnowledgeTestCase):
             format="json",
             **self._auth(asker_access),
         )
-        response = self.client.get(reverse("knowledge-question-detail", args=[question["id"]]), **self._auth(asker_access))
+        response = self.client.get(
+            reverse("knowledge-question-detail", args=[question["id"]]), **self._auth(asker_access)
+        )
         self.assertEqual(response.data["status"], Question.Status.ANSWERED)
 
     def test_close_blocks_new_answers_and_reopen_recomputes_status(self):
@@ -825,10 +818,14 @@ class QuestionStatusAndPromotionTests(KnowledgeTestCase):
         ).data
 
         _, other_access = self._login_with_role("closeother@example.com", "Member")
-        response = self.client.post(reverse("knowledge-question-close", args=[question["id"]]), **self._auth(other_access))
+        response = self.client.post(
+            reverse("knowledge-question-close", args=[question["id"]]), **self._auth(other_access)
+        )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-        response = self.client.post(reverse("knowledge-question-close", args=[question["id"]]), **self._auth(asker_access))
+        response = self.client.post(
+            reverse("knowledge-question-close", args=[question["id"]]), **self._auth(asker_access)
+        )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["status"], Question.Status.CLOSED)
 
@@ -840,7 +837,9 @@ class QuestionStatusAndPromotionTests(KnowledgeTestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-        response = self.client.post(reverse("knowledge-question-reopen", args=[question["id"]]), **self._auth(asker_access))
+        response = self.client.post(
+            reverse("knowledge-question-reopen", args=[question["id"]]), **self._auth(asker_access)
+        )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["status"], Question.Status.OPEN)
 
@@ -853,7 +852,9 @@ class QuestionStatusAndPromotionTests(KnowledgeTestCase):
             **self._auth(asker_access),
         ).data
 
-        response = self.client.post(reverse("knowledge-question-promote", args=[question["id"]]), **self._auth(asker_access))
+        response = self.client.post(
+            reverse("knowledge-question-promote", args=[question["id"]]), **self._auth(asker_access)
+        )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
         answer = self.client.post(
@@ -870,19 +871,27 @@ class QuestionStatusAndPromotionTests(KnowledgeTestCase):
         )
 
         _, guest_access = self._login_with_role("promoteguest@example.com", "Guest")
-        response = self.client.post(reverse("knowledge-question-promote", args=[question["id"]]), **self._auth(guest_access))
+        response = self.client.post(
+            reverse("knowledge-question-promote", args=[question["id"]]), **self._auth(guest_access)
+        )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-        response = self.client.post(reverse("knowledge-question-promote", args=[question["id"]]), **self._auth(asker_access))
+        response = self.client.post(
+            reverse("knowledge-question-promote", args=[question["id"]]), **self._auth(asker_access)
+        )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertIn("Check the power supply", response.data["content"])
         article_id = response.data["id"]
 
-        response = self.client.get(reverse("knowledge-question-detail", args=[question["id"]]), **self._auth(asker_access))
+        response = self.client.get(
+            reverse("knowledge-question-detail", args=[question["id"]]), **self._auth(asker_access)
+        )
         self.assertEqual(response.data["promoted_to_article"], article_id)
 
         # Already promoted - a second attempt is rejected rather than creating a duplicate article.
-        response = self.client.post(reverse("knowledge-question-promote", args=[question["id"]]), **self._auth(asker_access))
+        response = self.client.post(
+            reverse("knowledge-question-promote", args=[question["id"]]), **self._auth(asker_access)
+        )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
 
@@ -912,12 +921,16 @@ class ListQueryCountTests(KnowledgeTestCase):
             ).data
             self.client.post(reverse("knowledge-article-publish", args=[article["id"]]), **self._auth(access))
             question = self.client.post(
-                reverse("knowledge-question-list-create"), {"title": f"Question {i}?", "body": "x"},
-                format="json", **self._auth(access),
+                reverse("knowledge-question-list-create"),
+                {"title": f"Question {i}?", "body": "x"},
+                format="json",
+                **self._auth(access),
             ).data
             self.client.post(
-                reverse("knowledge-answer-list-create", args=[question["id"]]), {"body": "y"},
-                format="json", **self._auth(access),
+                reverse("knowledge-answer-list-create", args=[question["id"]]),
+                {"body": "y"},
+                format="json",
+                **self._auth(access),
             )
             for name, payload in (
                 ("knowledge-component-list-create", {"name": f"Servo {i}", "summary": "long text"}),
@@ -972,7 +985,9 @@ class SearchQueryBudgetTests(KnowledgeTestCase):
         _, head_access = self._login_with_role("searchbudget@example.com", "Subteam Head")
         for i in range(25):
             self.client.post(
-                reverse("knowledge-project-list-create"), {"name": f"Wing spar {i}"}, format="json",
+                reverse("knowledge-project-list-create"),
+                {"name": f"Wing spar {i}"},
+                format="json",
                 **self._auth(head_access),
             )
         full, response = self._search_query_count(head_access, "?q=wing")
@@ -1055,7 +1070,9 @@ class SearchTests(KnowledgeTestCase):
         # so a filter list can show every option's total from one request.
         self.assertEqual(response.data["counts"], expected_counts)
 
-        response = self.client.get(reverse("knowledge-search") + "?q=pixhawk&type=question", **self._auth(author_access))
+        response = self.client.get(
+            reverse("knowledge-search") + "?q=pixhawk&type=question", **self._auth(author_access)
+        )
         self.assertTrue(all(r["type"] == "question" for r in response.data["results"]))
         self.assertTrue(any("rebooting" in r["title"] for r in response.data["results"]))
 
@@ -1108,9 +1125,7 @@ class SearchTests(KnowledgeTestCase):
         ).data
 
         _, other_access = self._login_with_role("searchrestrictedqother@example.com", "Member")
-        response = self.client.get(
-            reverse("knowledge-search") + "?q=confidential", **self._auth(other_access)
-        )
+        response = self.client.get(reverse("knowledge-search") + "?q=confidential", **self._auth(other_access))
         self.assertNotIn(question["id"], {r["id"] for r in response.data["results"]})
         self.assertEqual(response.data["counts"]["question"], 0)
 
@@ -1245,7 +1260,9 @@ class SearchTests(KnowledgeTestCase):
             format="json",
             **self._auth(other_head_access),
         ).data
-        self.client.post(reverse("knowledge-article-publish", args=[other_article["id"]]), **self._auth(other_head_access))
+        self.client.post(
+            reverse("knowledge-article-publish", args=[other_article["id"]]), **self._auth(other_head_access)
+        )
         other_tags = self.client.get(reverse("knowledge-tag-list"), **self._auth(other_head_access)).data["results"]
         other_tag_id = next(t["id"] for t in other_tags if t["name"] == "shared-name")
 
@@ -1270,7 +1287,9 @@ class VisibilityTests(KnowledgeTestCase):
         self.client.post(reverse("knowledge-article-publish", args=[article["id"]]), **self._auth(head_access))
 
         _, other_access = self._login_with_role("visother@example.com", "Member")
-        response = self.client.get(reverse("knowledge-article-detail", args=[article["id"]]), **self._auth(other_access))
+        response = self.client.get(
+            reverse("knowledge-article-detail", args=[article["id"]]), **self._auth(other_access)
+        )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
         # Not in the published list either.
@@ -1278,7 +1297,9 @@ class VisibilityTests(KnowledgeTestCase):
         self.assertNotIn(article["id"], {a["id"] for a in response.data["results"]})
 
         # But the author and a reviewer/publisher can still see it.
-        response = self.client.get(reverse("knowledge-article-detail", args=[article["id"]]), **self._auth(author_access))
+        response = self.client.get(
+            reverse("knowledge-article-detail", args=[article["id"]]), **self._auth(author_access)
+        )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         response = self.client.get(reverse("knowledge-article-detail", args=[article["id"]]), **self._auth(head_access))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -1303,12 +1324,15 @@ class VisibilityTests(KnowledgeTestCase):
         ).data
 
         _, other_access = self._login_with_role("visqother@example.com", "Member")
-        response = self.client.get(reverse("knowledge-question-detail", args=[question["id"]]), **self._auth(other_access))
+        response = self.client.get(
+            reverse("knowledge-question-detail", args=[question["id"]]), **self._auth(other_access)
+        )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-        response = self.client.get(reverse("knowledge-question-detail", args=[question["id"]]), **self._auth(author_access))
+        response = self.client.get(
+            reverse("knowledge-question-detail", args=[question["id"]]), **self._auth(author_access)
+        )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-
 
     def _restricted_question(self, author_access):
         return self.client.post(
@@ -1325,11 +1349,15 @@ class VisibilityTests(KnowledgeTestCase):
         _, author_access = self._login_with_role("ansauthor@example.com", "Member")
         question = self._restricted_question(author_access)
         answers_url = reverse("knowledge-answer-list-create", args=[question["id"]])
-        response = self.client.post(answers_url, {"body": "Owner's own answer"}, format="json", **self._auth(author_access))
+        response = self.client.post(
+            answers_url, {"body": "Owner's own answer"}, format="json", **self._auth(author_access)
+        )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
         _, other_access = self._login_with_role("ansother@example.com", "Member")
-        self.assertEqual(self.client.get(answers_url, **self._auth(other_access)).status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            self.client.get(answers_url, **self._auth(other_access)).status_code, status.HTTP_403_FORBIDDEN
+        )
         response = self.client.post(answers_url, {"body": "Outsider"}, format="json", **self._auth(other_access))
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
@@ -1350,7 +1378,12 @@ class VisibilityTests(KnowledgeTestCase):
         ).data
         response = self.client.post(
             reverse("knowledge-relation-create"),
-            {"source_type": "article", "source_id": own_article["id"], "target_type": "question", "target_id": question["id"]},
+            {
+                "source_type": "article",
+                "source_id": own_article["id"],
+                "target_type": "question",
+                "target_id": question["id"],
+            },
             format="json",
             **self._auth(other_access),
         )
@@ -1377,7 +1410,9 @@ class VisibilityTests(KnowledgeTestCase):
 
         download_url = reverse("files-download", args=[file_id])
         _, other_access = self._login_with_role("dlother@example.com", "Member")
-        self.assertEqual(self.client.get(download_url, **self._auth(other_access)).status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            self.client.get(download_url, **self._auth(other_access)).status_code, status.HTTP_403_FORBIDDEN
+        )
         self.assertEqual(self.client.get(download_url, **self._auth(author_access)).status_code, status.HTTP_200_OK)
 
 
@@ -1399,7 +1434,12 @@ class KnowledgeRelationTests(KnowledgeTestCase):
 
         response = self.client.post(
             reverse("knowledge-relation-create"),
-            {"source_type": "article", "source_id": article_a["id"], "target_type": "article", "target_id": article_b["id"]},
+            {
+                "source_type": "article",
+                "source_id": article_a["id"],
+                "target_type": "article",
+                "target_id": article_b["id"],
+            },
             format="json",
             **self._auth(author_access),
         )
@@ -1409,25 +1449,38 @@ class KnowledgeRelationTests(KnowledgeTestCase):
         relation_id = response.data["id"]
 
         # Visible from both sides, each showing "the other one".
-        response = self.client.get(reverse("knowledge-article-relations", args=[article_a["id"]]), **self._auth(author_access))
+        response = self.client.get(
+            reverse("knowledge-article-relations", args=[article_a["id"]]), **self._auth(author_access)
+        )
         self.assertEqual(response.data[0]["other_id"], article_b["id"])
-        response = self.client.get(reverse("knowledge-article-relations", args=[article_b["id"]]), **self._auth(author_access))
+        response = self.client.get(
+            reverse("knowledge-article-relations", args=[article_b["id"]]), **self._auth(author_access)
+        )
         self.assertEqual(response.data[0]["other_id"], article_a["id"])
 
         # Duplicate creation is idempotent (get_or_create), not an error or a second row.
         self.client.post(
             reverse("knowledge-relation-create"),
-            {"source_type": "article", "source_id": article_a["id"], "target_type": "article", "target_id": article_b["id"]},
+            {
+                "source_type": "article",
+                "source_id": article_a["id"],
+                "target_type": "article",
+                "target_id": article_b["id"],
+            },
             format="json",
             **self._auth(author_access),
         )
         self.assertEqual(KnowledgeRelation.objects.count(), 1)
 
         _, other_access = self._login_with_role("relother@example.com", "Member")
-        response = self.client.delete(reverse("knowledge-relation-detail", args=[relation_id]), **self._auth(other_access))
+        response = self.client.delete(
+            reverse("knowledge-relation-detail", args=[relation_id]), **self._auth(other_access)
+        )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-        response = self.client.delete(reverse("knowledge-relation-detail", args=[relation_id]), **self._auth(author_access))
+        response = self.client.delete(
+            reverse("knowledge-relation-detail", args=[relation_id]), **self._auth(author_access)
+        )
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(KnowledgeRelation.objects.exists())
 
@@ -1458,7 +1511,12 @@ class KnowledgeRelationTests(KnowledgeTestCase):
         ).data
         response = self.client.post(
             reverse("knowledge-relation-create"),
-            {"source_type": "article", "source_id": article["id"], "target_type": "question", "target_id": question["id"]},
+            {
+                "source_type": "article",
+                "source_id": article["id"],
+                "target_type": "question",
+                "target_id": question["id"],
+            },
             format="json",
             **self._auth(author_access),
         )
@@ -1468,17 +1526,23 @@ class KnowledgeRelationTests(KnowledgeTestCase):
         # (public) article's relations endpoint at all, but the restricted
         # question must not appear in the list - not its title, not its id.
         _, other_access = self._login_with_role("relvisother@example.com", "Member")
-        response = self.client.get(reverse("knowledge-article-relations", args=[article["id"]]), **self._auth(other_access))
+        response = self.client.get(
+            reverse("knowledge-article-relations", args=[article["id"]]), **self._auth(other_access)
+        )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data, [])
 
         # The question's own author still sees it.
-        response = self.client.get(reverse("knowledge-article-relations", args=[article["id"]]), **self._auth(author_access))
+        response = self.client.get(
+            reverse("knowledge-article-relations", args=[article["id"]]), **self._auth(author_access)
+        )
         self.assertEqual([r["other_id"] for r in response.data], [question["id"]])
 
         # So does a question.moderate holder who isn't the author.
         _, moderator_access = self._login_with_role("relvismod@example.com", "Mentor")
-        response = self.client.get(reverse("knowledge-article-relations", args=[article["id"]]), **self._auth(moderator_access))
+        response = self.client.get(
+            reverse("knowledge-article-relations", args=[article["id"]]), **self._auth(moderator_access)
+        )
         self.assertEqual([r["other_id"] for r in response.data], [question["id"]])
 
     def test_cannot_relate_to_self_or_unknown_type(self):
@@ -1492,7 +1556,12 @@ class KnowledgeRelationTests(KnowledgeTestCase):
 
         response = self.client.post(
             reverse("knowledge-relation-create"),
-            {"source_type": "article", "source_id": article["id"], "target_type": "article", "target_id": article["id"]},
+            {
+                "source_type": "article",
+                "source_id": article["id"],
+                "target_type": "article",
+                "target_id": article["id"],
+            },
             format="json",
             **self._auth(author_access),
         )
@@ -1516,7 +1585,12 @@ class KnowledgeRelationTests(KnowledgeTestCase):
         _, other_access = self._login_with_role("relother2@example.com", "Member")
         response = self.client.post(
             reverse("knowledge-relation-create"),
-            {"source_type": "question", "source_id": question["id"], "target_type": "article", "target_id": article["id"]},
+            {
+                "source_type": "question",
+                "source_id": question["id"],
+                "target_type": "article",
+                "target_id": article["id"],
+            },
             format="json",
             **self._auth(other_access),
         )
@@ -1608,7 +1682,10 @@ class KnowledgeRelationTests(KnowledgeTestCase):
             reverse("knowledge-project-list-create"), {"name": "DBF 2027"}, format="json", **self._auth(head_access)
         ).data
         sop = self.client.post(
-            reverse("knowledge-sop-list-create"), {"title": "Preflight Checklist"}, format="json", **self._auth(head_access)
+            reverse("knowledge-sop-list-create"),
+            {"title": "Preflight Checklist"},
+            format="json",
+            **self._auth(head_access),
         ).data
 
         response = self.client.post(
@@ -1633,14 +1710,25 @@ class KnowledgeRelationTests(KnowledgeTestCase):
         relation created before this registry existed is one of these."""
         author, author_access = self._login_with_role("semrelplain@example.com", "Member")
         article_a = self.client.post(
-            reverse("knowledge-article-list-create"), {"title": "A", "content": "..."}, format="json", **self._auth(author_access)
+            reverse("knowledge-article-list-create"),
+            {"title": "A", "content": "..."},
+            format="json",
+            **self._auth(author_access),
         ).data
         article_b = self.client.post(
-            reverse("knowledge-article-list-create"), {"title": "B", "content": "..."}, format="json", **self._auth(author_access)
+            reverse("knowledge-article-list-create"),
+            {"title": "B", "content": "..."},
+            format="json",
+            **self._auth(author_access),
         ).data
         response = self.client.post(
             reverse("knowledge-relation-create"),
-            {"source_type": "article", "source_id": article_a["id"], "target_type": "article", "target_id": article_b["id"]},
+            {
+                "source_type": "article",
+                "source_id": article_a["id"],
+                "target_type": "article",
+                "target_id": article_b["id"],
+            },
             format="json",
             **self._auth(author_access),
         )
@@ -1790,10 +1878,14 @@ class EngineeringDomainTests(KnowledgeTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["status"], "ON_HOLD")
 
-        response = self.client.delete(reverse("knowledge-project-detail", args=[project["id"]]), **self._auth(member_access))
+        response = self.client.delete(
+            reverse("knowledge-project-detail", args=[project["id"]]), **self._auth(member_access)
+        )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)  # no project.delete
 
-        response = self.client.delete(reverse("knowledge-project-detail", args=[project["id"]]), **self._auth(head_access))
+        response = self.client.delete(
+            reverse("knowledge-project-detail", args=[project["id"]]), **self._auth(head_access)
+        )
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(Project.objects.exists())
 
@@ -1834,13 +1926,20 @@ class EngineeringDomainTests(KnowledgeTestCase):
             (source_ct, source_id), (target_ct, target_id) = ends
             KnowledgeRelation.objects.create(
                 organization=self.organization,
-                source_content_type=source_ct, source_object_id=source_id,
-                target_content_type=target_ct, target_object_id=target_id,
+                source_content_type=source_ct,
+                source_object_id=source_id,
+                target_content_type=target_ct,
+                target_object_id=target_id,
             )
 
         # `busy` made two related items (one linked each direction) - ranked ahead of the owner's one.
-        relate(Component.objects.create(organization=self.organization, name="Spar", created_by=busy), project_is_source=True)
-        relate(Sop.objects.create(organization=self.organization, title="Layup", created_by=busy), project_is_source=False)
+        relate(
+            Component.objects.create(organization=self.organization, name="Spar", created_by=busy),
+            project_is_source=True,
+        )
+        relate(
+            Sop.objects.create(organization=self.organization, title="Layup", created_by=busy), project_is_source=False
+        )
         # Only related item by this person is restricted - they must not appear for a Member.
         relate(
             Document.objects.create(
@@ -2060,8 +2159,8 @@ class EngineeringDomainTests(KnowledgeTestCase):
         csv_content = (
             "Name,Category,Manufacturer,Part Number,Link,Quantity Available,Status,Visibility,Tags,Summary,"
             "Specifications\n"
-            "Brushless Motor,Propulsion,T-Motor,MN5212,,4,Testing,Public,\"motor, propulsion\",,"
-            "\"KV: 340; Weight: 238g\"\n"  # new - create
+            'Brushless Motor,Propulsion,T-Motor,MN5212,,4,Testing,Public,"motor, propulsion",,'
+            '"KV: 340; Weight: 238g"\n'  # new - create
             "ESC 40A,,,,,5,Certified,,,,\n"  # existing, quantity+status changed - update
             "Frame Kit,,,,,1,,,,,\n"  # existing, identical - unchanged
             ",Propulsion,,,,1,,,,,\n"  # missing Name - error
@@ -2106,8 +2205,8 @@ class EngineeringDomainTests(KnowledgeTestCase):
         csv_content = (
             "Name,Category,Manufacturer,Part Number,Link,Quantity Available,Status,Visibility,Tags,Summary,"
             "Specifications\n"
-            "Brushless Motor,Propulsion,T-Motor,MN5212,,4,Testing,Public,\"motor, propulsion\",,"
-            "\"KV: 340; Weight: 238g\"\n"
+            'Brushless Motor,Propulsion,T-Motor,MN5212,,4,Testing,Public,"motor, propulsion",,'
+            '"KV: 340; Weight: 238g"\n'
             "ESC 40A,,,,,5,Certified,,,,\n"  # Manufacturer left blank - should NOT clear Hobbywing
         )
 
@@ -2119,7 +2218,9 @@ class EngineeringDomainTests(KnowledgeTestCase):
         created = Component.objects.get(organization=self.organization, name="Brushless Motor")
         self.assertEqual(created.manufacturer, "T-Motor")
         self.assertEqual(created.quantity_available, 4)
-        self.assertEqual(created.specifications, [{"label": "KV", "value": "340"}, {"label": "Weight", "value": "238g"}])
+        self.assertEqual(
+            created.specifications, [{"label": "KV", "value": "340"}, {"label": "Weight", "value": "238g"}]
+        )
         self.assertCountEqual([tag.name for tag in created.tags.all()], ["motor", "propulsion"])
         self.assertEqual(
             created.category, ComponentCategory.objects.get(organization=self.organization, name__iexact="Propulsion")
@@ -2197,17 +2298,25 @@ class EngineeringDomainTests(KnowledgeTestCase):
         # failure.delete isn't granted below Organization Admin (pre-existing
         # catalogue - see seed_rbac.py) - Team Head still can't delete one.
         _, head_access = self._login_with_role("failhead@example.com", "Subteam Head")
-        response = self.client.delete(reverse("knowledge-failure-detail", args=[failure["id"]]), **self._auth(head_access))
+        response = self.client.delete(
+            reverse("knowledge-failure-detail", args=[failure["id"]]), **self._auth(head_access)
+        )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
         _, admin_access = self._login_with_role("failadmin@example.com", "Organization Admin")
-        response = self.client.delete(reverse("knowledge-failure-detail", args=[failure["id"]]), **self._auth(admin_access))
+        response = self.client.delete(
+            reverse("knowledge-failure-detail", args=[failure["id"]]), **self._auth(admin_access)
+        )
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(Failure.objects.exists())
 
     def test_failure_list_ordering(self):
         _, member_access = self._login_with_role("failordering@example.com", "Member")
-        for title, severity in [("Zener Diode Failure", "LOW"), ("Antenna Snap", "HIGH"), ("Motor Mount Crack", "MEDIUM")]:
+        for title, severity in [
+            ("Zener Diode Failure", "LOW"),
+            ("Antenna Snap", "HIGH"),
+            ("Motor Mount Crack", "MEDIUM"),
+        ]:
             self.client.post(
                 reverse("knowledge-failure-list-create"),
                 {"title": title, "severity": severity},
@@ -2249,7 +2358,12 @@ class EngineeringDomainTests(KnowledgeTestCase):
         _, senior_access = self._login_with_role("sopsenior@example.com", "Mentor")
         response = self.client.post(
             reverse("knowledge-sop-list-create"),
-            {"title": "IMU Calibration SOP", "mandatory": True, "safety_notes": "Disconnect power first.", "content": "1. ..."},
+            {
+                "title": "IMU Calibration SOP",
+                "mandatory": True,
+                "safety_notes": "Disconnect power first.",
+                "content": "1. ...",
+            },
             format="json",
             **self._auth(senior_access),
         )
@@ -2324,7 +2438,11 @@ class EngineeringDomainTests(KnowledgeTestCase):
 
     def test_test_list_ordering(self):
         _, member_access = self._login_with_role("testordering@example.com", "Member")
-        for title, test_type in [("Zener Bench Test", "ELECTRICAL"), ("Autopilot Flight Test", "FLIGHT"), ("Motor Thrust Test", "THRUST")]:
+        for title, test_type in [
+            ("Zener Bench Test", "ELECTRICAL"),
+            ("Autopilot Flight Test", "FLIGHT"),
+            ("Motor Thrust Test", "THRUST"),
+        ]:
             self.client.post(
                 reverse("knowledge-test-list-create"),
                 {"title": title, "test_type": test_type},
@@ -2332,7 +2450,9 @@ class EngineeringDomainTests(KnowledgeTestCase):
                 **self._auth(member_access),
             )
 
-        response = self.client.get(reverse("knowledge-test-list-create") + "?ordering=title", **self._auth(member_access))
+        response = self.client.get(
+            reverse("knowledge-test-list-create") + "?ordering=title", **self._auth(member_access)
+        )
         self.assertEqual(
             [t["title"] for t in response.data["results"]],
             ["Autopilot Flight Test", "Motor Thrust Test", "Zener Bench Test"],
@@ -2350,7 +2470,10 @@ class EngineeringDomainTests(KnowledgeTestCase):
     def test_test_relations_and_search(self):
         _, head_access = self._login_with_role("testrel@example.com", "Subteam Head")
         component = self.client.post(
-            reverse("knowledge-component-list-create"), {"name": "Zephyrix ESC"}, format="json", **self._auth(head_access)
+            reverse("knowledge-component-list-create"),
+            {"name": "Zephyrix ESC"},
+            format="json",
+            **self._auth(head_access),
         ).data
         test = self.client.post(
             reverse("knowledge-test-list-create"),
@@ -2383,7 +2506,10 @@ class EngineeringDomainTests(KnowledgeTestCase):
             reverse("knowledge-component-list-create"), {"name": "Pixhawk 6X"}, format="json", **self._auth(head_access)
         ).data
         sop = self.client.post(
-            reverse("knowledge-sop-list-create"), {"title": "IMU Calibration SOP"}, format="json", **self._auth(head_access)
+            reverse("knowledge-sop-list-create"),
+            {"title": "IMU Calibration SOP"},
+            format="json",
+            **self._auth(head_access),
         ).data
         failure = self.client.post(
             reverse("knowledge-failure-list-create"), {"title": "IMU Desync"}, format="json", **self._auth(head_access)
@@ -2392,7 +2518,12 @@ class EngineeringDomainTests(KnowledgeTestCase):
         for target_type, target_id in [("component", component["id"]), ("sop", sop["id"])]:
             response = self.client.post(
                 reverse("knowledge-relation-create"),
-                {"source_type": "failure", "source_id": failure["id"], "target_type": target_type, "target_id": target_id},
+                {
+                    "source_type": "failure",
+                    "source_id": failure["id"],
+                    "target_type": target_type,
+                    "target_id": target_id,
+                },
                 format="json",
                 **self._auth(head_access),
             )
@@ -2401,7 +2532,10 @@ class EngineeringDomainTests(KnowledgeTestCase):
         failure_relations = self.client.get(
             reverse("knowledge-failure-relations", args=[failure["id"]]), **self._auth(head_access)
         ).data
-        self.assertEqual({(r["other_type"], r["other_id"]) for r in failure_relations}, {("component", component["id"]), ("sop", sop["id"])})
+        self.assertEqual(
+            {(r["other_type"], r["other_id"]) for r in failure_relations},
+            {("component", component["id"]), ("sop", sop["id"])},
+        )
 
         # Bidirectional - the component's own relation list shows the failure too.
         component_relations = self.client.get(
@@ -2412,7 +2546,10 @@ class EngineeringDomainTests(KnowledgeTestCase):
     def test_search_surfaces_all_four_engineering_types(self):
         _, head_access = self._login_with_role("searcheng@example.com", "Subteam Head")
         self.client.post(
-            reverse("knowledge-project-list-create"), {"name": "Zephyrix Project"}, format="json", **self._auth(head_access)
+            reverse("knowledge-project-list-create"),
+            {"name": "Zephyrix Project"},
+            format="json",
+            **self._auth(head_access),
         )
         self.client.post(
             reverse("knowledge-component-list-create"),
@@ -2427,7 +2564,10 @@ class EngineeringDomainTests(KnowledgeTestCase):
             **self._auth(head_access),
         )
         self.client.post(
-            reverse("knowledge-sop-list-create"), {"title": "Zephyrix Startup SOP"}, format="json", **self._auth(head_access)
+            reverse("knowledge-sop-list-create"),
+            {"title": "Zephyrix Startup SOP"},
+            format="json",
+            **self._auth(head_access),
         )
 
         response = self.client.get(reverse("knowledge-search") + "?q=zephyrix", **self._auth(head_access))
@@ -2453,7 +2593,10 @@ class EngineeringDomainTests(KnowledgeTestCase):
             **self._auth(head_access),
         )
         self.client.post(
-            reverse("knowledge-project-list-create"), {"name": "Unrelated Rover"}, format="json", **self._auth(head_access)
+            reverse("knowledge-project-list-create"),
+            {"name": "Unrelated Rover"},
+            format="json",
+            **self._auth(head_access),
         )
         response = self.client.get(reverse("knowledge-project-list-create") + "?q=dbf", **self._auth(head_access))
         self.assertEqual([p["name"] for p in response.data["results"]], ["DBF 2027"])
@@ -2465,11 +2608,12 @@ class EngineeringDomainTests(KnowledgeTestCase):
             **self._auth(head_access),
         )
         self.client.post(
-            reverse("knowledge-component-list-create"), {"name": "Unrelated Motor"}, format="json", **self._auth(head_access)
+            reverse("knowledge-component-list-create"),
+            {"name": "Unrelated Motor"},
+            format="json",
+            **self._auth(head_access),
         )
-        response = self.client.get(
-            reverse("knowledge-component-list-create") + "?q=holybro", **self._auth(head_access)
-        )
+        response = self.client.get(reverse("knowledge-component-list-create") + "?q=holybro", **self._auth(head_access))
         self.assertEqual([c["name"] for c in response.data["results"]], ["Sensor Board"])
 
         self.client.post(
@@ -2479,15 +2623,19 @@ class EngineeringDomainTests(KnowledgeTestCase):
             **self._auth(head_access),
         )
         self.client.post(
-            reverse("knowledge-failure-list-create"), {"title": "Unrelated Failure"}, format="json", **self._auth(head_access)
+            reverse("knowledge-failure-list-create"),
+            {"title": "Unrelated Failure"},
+            format="json",
+            **self._auth(head_access),
         )
-        response = self.client.get(
-            reverse("knowledge-failure-list-create") + "?q=vibration", **self._auth(head_access)
-        )
+        response = self.client.get(reverse("knowledge-failure-list-create") + "?q=vibration", **self._auth(head_access))
         self.assertEqual([f["title"] for f in response.data["results"]], ["IMU Desync"])
 
         self.client.post(
-            reverse("knowledge-sop-list-create"), {"title": "Thermal Calibration"}, format="json", **self._auth(head_access)
+            reverse("knowledge-sop-list-create"),
+            {"title": "Thermal Calibration"},
+            format="json",
+            **self._auth(head_access),
         )
         self.client.post(
             reverse("knowledge-sop-list-create"), {"title": "Unrelated SOP"}, format="json", **self._auth(head_access)
@@ -2500,7 +2648,10 @@ class UserProfileTests(KnowledgeTestCase):
     def test_profile_returns_public_fields_and_stats_not_roles_or_permissions(self):
         owner, owner_access = self._login_with_role("profileowner@example.com", "Subteam Head")
         article = self.client.post(
-            reverse("knowledge-article-list-create"), {"title": "A", "content": "..."}, format="json", **self._auth(owner_access)
+            reverse("knowledge-article-list-create"),
+            {"title": "A", "content": "..."},
+            format="json",
+            **self._auth(owner_access),
         ).data
         # Stats only count PUBLISHED articles (same rule visible_articles_for
         # applies everywhere else) - a draft shouldn't count toward the stat.
@@ -2510,7 +2661,10 @@ class UserProfileTests(KnowledgeTestCase):
             reverse("knowledge-project-list-create"), {"name": "P"}, format="json", **self._auth(owner_access)
         )
         question = self.client.post(
-            reverse("knowledge-question-list-create"), {"title": "Q", "body": "..."}, format="json", **self._auth(owner_access)
+            reverse("knowledge-question-list-create"),
+            {"title": "Q", "body": "..."},
+            format="json",
+            **self._auth(owner_access),
         ).data
 
         viewer, viewer_access = self._login_with_role("profileviewer@example.com", "Member")
@@ -2637,7 +2791,9 @@ class DocumentTests(KnowledgeTestCase):
             **self._auth(other_access),
         )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-        response = self.client.delete(reverse("knowledge-document-detail", args=[document["id"]]), **self._auth(other_access))
+        response = self.client.delete(
+            reverse("knowledge-document-detail", args=[document["id"]]), **self._auth(other_access)
+        )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
         # A Mentor (document.update) can edit and delete someone else's document.
@@ -2649,13 +2805,19 @@ class DocumentTests(KnowledgeTestCase):
             **self._auth(senior_access),
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        response = self.client.delete(reverse("knowledge-document-detail", args=[document["id"]]), **self._auth(senior_access))
+        response = self.client.delete(
+            reverse("knowledge-document-detail", args=[document["id"]]), **self._auth(senior_access)
+        )
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(Document.objects.exists())
 
     def test_document_list_ordering(self):
         _, member_access = self._login_with_role("docordering@example.com", "Member")
-        for title, doc_type in [("Zener Diode Datasheet", "DATASHEET"), ("Airframe Manual", "MANUAL"), ("Motor ESC Manual", "MANUAL")]:
+        for title, doc_type in [
+            ("Zener Diode Datasheet", "DATASHEET"),
+            ("Airframe Manual", "MANUAL"),
+            ("Motor ESC Manual", "MANUAL"),
+        ]:
             self.client.post(
                 reverse("knowledge-document-list-create"),
                 {"title": title, "doc_type": doc_type},
@@ -2684,11 +2846,19 @@ class DocumentTests(KnowledgeTestCase):
         # rights on the *source* (the document), not the target.
         _, head_access = self._login_with_role("docresthead@example.com", "Subteam Head")
         project = self.client.post(
-            reverse("knowledge-project-list-create"), {"name": "Zephyrix Project"}, format="json", **self._auth(head_access)
+            reverse("knowledge-project-list-create"),
+            {"name": "Zephyrix Project"},
+            format="json",
+            **self._auth(head_access),
         ).data
         self.client.post(
             reverse("knowledge-relation-create"),
-            {"source_type": "document", "source_id": document["id"], "target_type": "project", "target_id": project["id"]},
+            {
+                "source_type": "document",
+                "source_id": document["id"],
+                "target_type": "project",
+                "target_id": project["id"],
+            },
             format="json",
             **self._auth(owner_access),
         )
@@ -2696,21 +2866,29 @@ class DocumentTests(KnowledgeTestCase):
         _, other_access = self._login_with_role("docrestother@example.com", "Member")
 
         # Not visible directly, in the list, in search, or as a relation's other side.
-        response = self.client.get(reverse("knowledge-document-detail", args=[document["id"]]), **self._auth(other_access))
+        response = self.client.get(
+            reverse("knowledge-document-detail", args=[document["id"]]), **self._auth(other_access)
+        )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         response = self.client.get(reverse("knowledge-document-list-create"), **self._auth(other_access))
         self.assertNotIn(document["id"], {d["id"] for d in response.data["results"]})
         response = self.client.get(reverse("knowledge-search") + "?q=zephyrix+sponsor", **self._auth(other_access))
         self.assertNotIn(document["id"], {r["id"] for r in response.data["results"] if r["type"] == "document"})
-        response = self.client.get(reverse("knowledge-project-relations", args=[project["id"]]), **self._auth(other_access))
+        response = self.client.get(
+            reverse("knowledge-project-relations", args=[project["id"]]), **self._auth(other_access)
+        )
         self.assertEqual(response.data, [])
 
         # The owner and a document.update holder can see it everywhere above.
         _, senior_access = self._login_with_role("docrestsenior@example.com", "Mentor")
         for access in (owner_access, senior_access):
-            response = self.client.get(reverse("knowledge-document-detail", args=[document["id"]]), **self._auth(access))
+            response = self.client.get(
+                reverse("knowledge-document-detail", args=[document["id"]]), **self._auth(access)
+            )
             self.assertEqual(response.status_code, status.HTTP_200_OK)
-            response = self.client.get(reverse("knowledge-project-relations", args=[project["id"]]), **self._auth(access))
+            response = self.client.get(
+                reverse("knowledge-project-relations", args=[project["id"]]), **self._auth(access)
+            )
             self.assertEqual([r["other_id"] for r in response.data], [document["id"]])
 
 
@@ -2751,18 +2929,20 @@ class MultiTenancyIsolationTests(RoleLoginMixin, APITestCase):
 
         # Not fetchable by id, even though it's PUBLISHED and PUBLIC (not RESTRICTED) -
         # org boundary applies regardless of visibility.
-        response = self.client.get(reverse("knowledge-article-detail", args=[article["id"]]), **self._auth(b_head_access))
+        response = self.client.get(
+            reverse("knowledge-article-detail", args=[article["id"]]), **self._auth(b_head_access)
+        )
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
         # Not in Org B's search results.
-        response = self.client.get(
-            reverse("knowledge-search") + "?q=battery+chemistry", **self._auth(b_head_access)
-        )
+        response = self.client.get(reverse("knowledge-search") + "?q=battery+chemistry", **self._auth(b_head_access))
         self.assertNotIn(article["id"], {r["id"] for r in response.data["results"]})
         self.assertEqual(response.data["counts"]["article"], 0)
 
         # Org A's own head still sees it fine, unaffected by any of the above.
-        response = self.client.get(reverse("knowledge-article-detail", args=[article["id"]]), **self._auth(a_head_access))
+        response = self.client.get(
+            reverse("knowledge-article-detail", args=[article["id"]]), **self._auth(a_head_access)
+        )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_relation_creation_across_organizations_is_rejected(self):
@@ -2770,12 +2950,18 @@ class MultiTenancyIsolationTests(RoleLoginMixin, APITestCase):
         guessed target UUID, since source and target resolve independently."""
         _, a_head_access = self._login_with_role("a-relhead@example.com", "Subteam Head", self.org_a)
         a_project = self.client.post(
-            reverse("knowledge-project-list-create"), {"name": "Org A Project"}, format="json", **self._auth(a_head_access)
+            reverse("knowledge-project-list-create"),
+            {"name": "Org A Project"},
+            format="json",
+            **self._auth(a_head_access),
         ).data
 
         _, b_head_access = self._login_with_role("b-relhead@example.com", "Subteam Head", self.org_b)
         b_project = self.client.post(
-            reverse("knowledge-project-list-create"), {"name": "Org B Project"}, format="json", **self._auth(b_head_access)
+            reverse("knowledge-project-list-create"),
+            {"name": "Org B Project"},
+            format="json",
+            **self._auth(b_head_access),
         ).data
 
         # Org B's head tries to relate their own project to Org A's project
@@ -2847,8 +3033,7 @@ class MultiTenancyIsolationTests(RoleLoginMixin, APITestCase):
 
         # Org B's admin also can't see Org A's users.
         b_user_ids = {
-            u["id"]
-            for u in self.client.get(reverse("rbac-users"), **self._auth(b_admin_access)).data["results"]
+            u["id"] for u in self.client.get(reverse("rbac-users"), **self._auth(b_admin_access)).data["results"]
         }
         a_admin_id = str(User.objects.get(email="a-rbacadmin@example.com").id)
         self.assertNotIn(a_admin_id, b_user_ids)
@@ -2865,8 +3050,10 @@ class BookmarkListTests(KnowledgeTestCase):
 
     def _bookmark(self, access, content_type, object_id):
         response = self.client.post(
-            reverse("knowledge-bookmark-list-create"), {"content_type": content_type, "object_id": object_id},
-            format="json", **self._auth(access),
+            reverse("knowledge-bookmark-list-create"),
+            {"content_type": content_type, "object_id": object_id},
+            format="json",
+            **self._auth(access),
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
 
@@ -2901,16 +3088,20 @@ class BookmarkListTests(KnowledgeTestCase):
 
         # Own unpublished draft: still listed (a published-only filter would drop it).
         draft = self.client.post(
-            reverse("knowledge-article-list-create"), {"title": "My draft", "content": "x"},
-            format="json", **self._auth(member_access),
+            reverse("knowledge-article-list-create"),
+            {"title": "My draft", "content": "x"},
+            format="json",
+            **self._auth(member_access),
         ).data
         self._bookmark(member_access, "article", draft["id"])
         # Someone else's item that later turns RESTRICTED: dropped.
         secret = self._project(admin_access, "Secret")
         self._bookmark(member_access, "project", secret["id"])
         self.client.patch(
-            reverse("knowledge-project-detail", args=[secret["id"]]), {"visibility": "RESTRICTED"},
-            format="json", **self._auth(admin_access),
+            reverse("knowledge-project-detail", args=[secret["id"]]),
+            {"visibility": "RESTRICTED"},
+            format="json",
+            **self._auth(admin_access),
         )
         _, results = self._list(member_access)
         listed = {result["object_id"] for result in results}
@@ -2931,8 +3122,10 @@ class ContributionScoreCacheTests(KnowledgeTestCase):
             services.compute_contribution_scores_for(organization)
 
         article = self.client.post(
-            reverse("knowledge-article-list-create"), {"title": "Scored", "content": "x"},
-            format="json", **self._auth(head_access),
+            reverse("knowledge-article-list-create"),
+            {"title": "Scored", "content": "x"},
+            format="json",
+            **self._auth(head_access),
         ).data
         self.client.post(reverse("knowledge-article-publish", args=[article["id"]]), **self._auth(head_access))
         after = services.compute_contribution_scores_for(organization).get(user.id, 0)
@@ -2995,7 +3188,9 @@ class ContributionScoringTests(KnowledgeTestCase):
         )
 
         other_org = create_test_organization(name="Other Org For Leaderboard")
-        other_user = User.objects.create_user(email="otherorgleader@example.com", password="password123", organization=other_org)
+        other_user = User.objects.create_user(
+            email="otherorgleader@example.com", password="password123", organization=other_org
+        )
         Role.objects.get(organization=other_org, name="Member").user_roles.create(user=other_user)
         other_login = self.client.post(
             reverse("auth-login"), {"email": "otherorgleader@example.com", "password": "password123"}, format="json"
@@ -3060,7 +3255,9 @@ class ContributionScoringTests(KnowledgeTestCase):
             **self._auth(senior_access),
         )
 
-        response = self.client.get(reverse("knowledge-article-detail", args=[article["id"]]), **self._auth(author_access))
+        response = self.client.get(
+            reverse("knowledge-article-detail", args=[article["id"]]), **self._auth(author_access)
+        )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         contributor_ids = {c["id"] for c in response.data["contributors"]}
         self.assertEqual(contributor_ids, {str(author.id), str(senior.id)})
@@ -3082,15 +3279,15 @@ class ContributionScoringTests(KnowledgeTestCase):
             **self._auth(other_access),
         )
 
-        response = self.client.get(
-            reverse("audit-user-activity", args=[target.id]), **self._auth(other_access)
-        )
+        response = self.client.get(reverse("audit-user-activity", args=[target.id]), **self._auth(other_access))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data["results"]), 1)
         self.assertEqual(response.data["results"][0]["action"], "question.create")
 
         other_org = create_test_organization(name="Other Org For Activity")
-        outsider = User.objects.create_user(email="activityoutsider@example.com", password="password123", organization=other_org)
+        outsider = User.objects.create_user(
+            email="activityoutsider@example.com", password="password123", organization=other_org
+        )
         Role.objects.get(organization=other_org, name="Member").user_roles.create(user=outsider)
         outsider_login = self.client.post(
             reverse("auth-login"), {"email": "activityoutsider@example.com", "password": "password123"}, format="json"
@@ -3121,7 +3318,9 @@ class RestrictedAccessGrantTests(KnowledgeTestCase):
         grantee, other_access = self._login_with_role("grantee@example.com", "Member")
 
         # Not visible yet - no grant, no override permission, not the owner.
-        response = self.client.get(reverse("knowledge-project-detail", args=[project["id"]]), **self._auth(other_access))
+        response = self.client.get(
+            reverse("knowledge-project-detail", args=[project["id"]]), **self._auth(other_access)
+        )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         response = self.client.get(reverse("knowledge-project-list-create"), **self._auth(other_access))
         self.assertNotIn(project["id"], {p["id"] for p in response.data["results"]})
@@ -3146,18 +3345,22 @@ class RestrictedAccessGrantTests(KnowledgeTestCase):
         grant_id = response.data["id"]
         self.assertEqual(response.data["granted_user"]["id"], str(grantee.id))
 
-        response = self.client.get(reverse("knowledge-project-detail", args=[project["id"]]), **self._auth(other_access))
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(
-            {g["user"]["id"] for g in response.data["restricted_to"]}, {str(grantee.id)}
+        response = self.client.get(
+            reverse("knowledge-project-detail", args=[project["id"]]), **self._auth(other_access)
         )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual({g["user"]["id"] for g in response.data["restricted_to"]}, {str(grantee.id)})
         response = self.client.get(reverse("knowledge-project-list-create"), **self._auth(other_access))
         self.assertIn(project["id"], {p["id"] for p in response.data["results"]})
 
         # Revoke it - back to inaccessible.
-        response = self.client.delete(reverse("knowledge-access-grant-detail", args=[grant_id]), **self._auth(head_access))
+        response = self.client.delete(
+            reverse("knowledge-access-grant-detail", args=[grant_id]), **self._auth(head_access)
+        )
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
-        response = self.client.get(reverse("knowledge-project-detail", args=[project["id"]]), **self._auth(other_access))
+        response = self.client.get(
+            reverse("knowledge-project-detail", args=[project["id"]]), **self._auth(other_access)
+        )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_org_admin_bypasses_restricted_visibility_without_a_grant(self):
@@ -3170,7 +3373,9 @@ class RestrictedAccessGrantTests(KnowledgeTestCase):
         ).data
 
         _, admin_access = self._login_with_role("adminbypass@example.com", "Organization Admin")
-        response = self.client.get(reverse("knowledge-project-detail", args=[project["id"]]), **self._auth(admin_access))
+        response = self.client.get(
+            reverse("knowledge-project-detail", args=[project["id"]]), **self._auth(admin_access)
+        )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         response = self.client.get(reverse("knowledge-project-list-create"), **self._auth(admin_access))
         self.assertIn(project["id"], {p["id"] for p in response.data["results"]})
@@ -3181,7 +3386,10 @@ class BookmarkTests(KnowledgeTestCase):
     def test_bookmark_create_list_and_delete(self):
         _, head_access = self._login_with_role("bookmarkhead@example.com", "Subteam Head")
         project = self.client.post(
-            reverse("knowledge-project-list-create"), {"name": "Bookmarked Airframe"}, format="json", **self._auth(head_access)
+            reverse("knowledge-project-list-create"),
+            {"name": "Bookmarked Airframe"},
+            format="json",
+            **self._auth(head_access),
         ).data
 
         _, member_access = self._login_with_role("bookmarkmember@example.com", "Member")
@@ -3196,13 +3404,17 @@ class BookmarkTests(KnowledgeTestCase):
         self.assertEqual(response.data["type"], "project")
         self.assertEqual(response.data["title"], "Bookmarked Airframe")
 
-        response = self.client.get(reverse("knowledge-project-detail", args=[project["id"]]), **self._auth(member_access))
+        response = self.client.get(
+            reverse("knowledge-project-detail", args=[project["id"]]), **self._auth(member_access)
+        )
         self.assertEqual(response.data["bookmark_id"], bookmark_id)
 
         response = self.client.get(reverse("knowledge-bookmark-list-create"), **self._auth(member_access))
         self.assertEqual([b["id"] for b in response.data["results"]], [bookmark_id])
 
-        response = self.client.delete(reverse("knowledge-bookmark-detail", args=[bookmark_id]), **self._auth(member_access))
+        response = self.client.delete(
+            reverse("knowledge-bookmark-detail", args=[bookmark_id]), **self._auth(member_access)
+        )
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         response = self.client.get(reverse("knowledge-bookmark-list-create"), **self._auth(member_access))
         self.assertEqual(response.data["results"], [])
@@ -3229,7 +3441,10 @@ class BookmarkTests(KnowledgeTestCase):
     def test_bookmark_drops_out_of_list_once_target_turns_restricted(self):
         _, head_access = self._login_with_role("bookmarkdrophead@example.com", "Subteam Head")
         project = self.client.post(
-            reverse("knowledge-project-list-create"), {"name": "Later Restricted Airframe"}, format="json", **self._auth(head_access)
+            reverse("knowledge-project-list-create"),
+            {"name": "Later Restricted Airframe"},
+            format="json",
+            **self._auth(head_access),
         ).data
 
         _, member_access = self._login_with_role("bookmarkdropmember@example.com", "Member")
@@ -3291,7 +3506,10 @@ class CrossOrgAccessGrantAndBookmarkTests(RoleLoginMixin, APITestCase):
     def test_cannot_bookmark_content_in_another_organization_by_guessed_id(self):
         _, a_head_access = self._login_with_role("a-bookmarkhead@example.com", "Subteam Head", self.org_a)
         a_project = self.client.post(
-            reverse("knowledge-project-list-create"), {"name": "Org A Project To Guess"}, format="json", **self._auth(a_head_access)
+            reverse("knowledge-project-list-create"),
+            {"name": "Org A Project To Guess"},
+            format="json",
+            **self._auth(a_head_access),
         ).data
 
         _, b_member_access = self._login_with_role("b-bookmarkmember@example.com", "Member", self.org_b)
@@ -3310,8 +3528,8 @@ class CrossOrgAccessGrantAndBookmarkTests(RoleLoginMixin, APITestCase):
 MECHANICAL_SHEET_CSV = (
     "Category,Item,Grid Location,Quantity,Unit,Condition,Status,Min. Qty Desired,Notes,Last Updated,Updated By\n"
     "Power Tools,Mini Drill Kit,Total Mini Drill Kit,1,set,New,In Stock,,Main mini drill kit,2026-09-20,Initial Import\n"
-    "Hand Tools,Scissors,Fuselage Box -> Hand Tools,1,each,Good,In Stock,,\"Loose, from hand tools shelf\",2026-09-20,Initial Import\n"
-    "Hand Tools,Scissors,Fuselage Box -> Hand Tools,2,each,Good,In Stock,,\"Loose, from hand tools shelf\",2026-09-20,Initial Import\n"
+    'Hand Tools,Scissors,Fuselage Box -> Hand Tools,1,each,Good,In Stock,,"Loose, from hand tools shelf",2026-09-20,Initial Import\n'
+    'Hand Tools,Scissors,Fuselage Box -> Hand Tools,2,each,Good,In Stock,,"Loose, from hand tools shelf",2026-09-20,Initial Import\n'
     "Hand Tools,Screwdriver – Phillips,Fuselage Box -> Hand Tools,1,each,Good,In Stock,None,,2026-09-20,Initial Import\n"
     "Hand Tools,Cutter / Utility Knife,Fuselage Box -> Hand Tools,2,each,Good,Low Stock,,,2026-09-20,Initial Import\n"
     "Wood & Sheet Goods,Balsa Sheet 2mm,Wood Rack,0,sheet,,Missing / Need to Order,5,,2026-09-20,Initial Import\n"
@@ -3330,7 +3548,8 @@ class RelinkRemovesOldAutoRelationTests(KnowledgeTestCase):
 
     def _linked(self, item_id, other_id):
         return KnowledgeRelation.objects.filter(
-            Q(source_object_id=item_id, target_object_id=other_id) | Q(source_object_id=other_id, target_object_id=item_id)
+            Q(source_object_id=item_id, target_object_id=other_id)
+            | Q(source_object_id=other_id, target_object_id=item_id)
         ).exists()
 
     def test_moving_a_failure_drops_the_old_component_and_project_links(self):
@@ -3339,7 +3558,8 @@ class RelinkRemovesOldAutoRelationTests(KnowledgeTestCase):
         motor_b = self._post(head_access, "knowledge-component-list-create", {"name": "Motor B"})
         falcon = self._post(head_access, "knowledge-project-list-create", {"name": "Falcon"})
         failure = self._post(
-            head_access, "knowledge-failure-list-create",
+            head_access,
+            "knowledge-failure-list-create",
             {"title": "Overheat", "component_id": motor_a["id"], "project_id": falcon["id"]},
         )
         self.assertTrue(self._linked(failure["id"], motor_a["id"]))
@@ -3360,7 +3580,9 @@ class RelinkRemovesOldAutoRelationTests(KnowledgeTestCase):
         _, head_access = self._login_with_role("relinktesthead@example.com", "Subteam Head")
         falcon = self._post(head_access, "knowledge-project-list-create", {"name": "Falcon"})
         hawk = self._post(head_access, "knowledge-project-list-create", {"name": "Hawk"})
-        test = self._post(head_access, "knowledge-test-list-create", {"title": "Thrust run", "project_id": falcon["id"]})
+        test = self._post(
+            head_access, "knowledge-test-list-create", {"title": "Thrust run", "project_id": falcon["id"]}
+        )
         self.assertTrue(self._linked(test["id"], falcon["id"]))
 
         response = self.client.patch(
@@ -3458,9 +3680,13 @@ class ComponentInventoryTests(KnowledgeTestCase):
 
     def test_list_filters_by_inventory_type_location_and_stock_statuses(self):
         _, mentor_access = self._login_with_role("invfilter@example.com", "Mentor")
-        self._create(mentor_access, name="Drill", inventory_type="MECHANICAL", quantity_available=1, location_name="Box A")
+        self._create(
+            mentor_access, name="Drill", inventory_type="MECHANICAL", quantity_available=1, location_name="Box A"
+        )
         self._create(mentor_access, name="Balsa", inventory_type="MECHANICAL", quantity_available=0)
-        self._create(mentor_access, name="Motor", inventory_type="ELECTRICAL", quantity_available=2, stock_status="ON_ORDER")
+        self._create(
+            mentor_access, name="Motor", inventory_type="ELECTRICAL", quantity_available=2, stock_status="ON_ORDER"
+        )
         url = reverse("knowledge-component-list-create")
 
         def names(query):
@@ -3565,7 +3791,9 @@ class ComponentInventoryTests(KnowledgeTestCase):
         self.assertEqual(cutter.stock_status, Component.StockStatus.LOW_STOCK)
         self.assertEqual(cutter.inventory_notes, "")
 
-        scissors = Component.objects.filter(organization=self.organization, name="Scissors").order_by("quantity_available")
+        scissors = Component.objects.filter(organization=self.organization, name="Scissors").order_by(
+            "quantity_available"
+        )
         self.assertEqual([c.quantity_available for c in scissors], [1, 2])
 
         # The sheet's categories never reach the knowledge category list.
@@ -3665,8 +3893,14 @@ class ComponentInventoryTests(KnowledgeTestCase):
         _, mentor_access = self._login_with_role("sheetroundtrip@example.com", "Mentor")
         self._import(mentor_access, MECHANICAL_SHEET_CSV, commit=True, inventory_type="MECHANICAL")
         self._create(
-            mentor_access, name="Pixhawk", inventory_type="ELECTRICAL", quantity_available=2, tag_names=["Avionics"],
-            specifications=[{"label": "IMU", "value": "Triple"}], summary="Line one\nLine two", status="CERTIFIED",
+            mentor_access,
+            name="Pixhawk",
+            inventory_type="ELECTRICAL",
+            quantity_available=2,
+            tag_names=["Avionics"],
+            specifications=[{"label": "IMU", "value": "Triple"}],
+            summary="Line one\nLine two",
+            status="CERTIFIED",
         )
 
         response = self._import(mentor_access, self._export(mentor_access), commit=False)
@@ -3764,7 +3998,9 @@ class CreationFlowTests(KnowledgeTestCase):
     def test_article_inherits_project_visibility_and_grants_and_is_linked(self):
         project = self._project("RESTRICTED")
         grantee = User.objects.create_user(email="cf-grantee@example.com", password="x", organization=self.organization)
-        services.add_restricted_access(actor=self.head, content_type="project", object_id=project["id"], user_id=grantee.id)
+        services.add_restricted_access(
+            actor=self.head, content_type="project", object_id=project["id"], user_id=grantee.id
+        )
 
         response = self.client.post(
             reverse("knowledge-article-list-create"),
@@ -3890,7 +4126,9 @@ class CreationFlowTests(KnowledgeTestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
         # Listed among the co-author's own drafts.
-        response = self.client.get(reverse("knowledge-article-list-create"), {"status": "DRAFT"}, **self._auth(co_access))
+        response = self.client.get(
+            reverse("knowledge-article-list-create"), {"status": "DRAFT"}, **self._auth(co_access)
+        )
         self.assertIn(article["id"], {a["id"] for a in response.data["results"]})
 
     def test_cross_org_co_author_is_rejected(self):
@@ -3956,7 +4194,8 @@ class CreationFlowTests(KnowledgeTestCase):
 
         # Listed among the co-author's contributions too.
         response = self.client.get(
-            reverse("knowledge-user-contributions", args=[co_author.id]), {"type": "question"},
+            reverse("knowledge-user-contributions", args=[co_author.id]),
+            {"type": "question"},
             **self._auth(self.member_access),
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -3975,7 +4214,8 @@ class CreationFlowTests(KnowledgeTestCase):
         self.assertEqual(scores.get(co_author.id), 1 + 6)
 
         response = self.client.get(
-            reverse("knowledge-user-contributions", args=[co_author.id]), {"type": "sop"},
+            reverse("knowledge-user-contributions", args=[co_author.id]),
+            {"type": "sop"},
             **self._auth(self.member_access),
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -4089,9 +4329,7 @@ class CollectionTests(KnowledgeTestCase):
 
     def _create_series(self, access, **overrides):
         payload = {"title": "Wing Sizing Series", "mode": "SERIES", **overrides}
-        return self.client.post(
-            reverse("knowledge-collection-list"), payload, format="json", **self._auth(access)
-        )
+        return self.client.post(reverse("knowledge-collection-list"), payload, format="json", **self._auth(access))
 
     def _add_item(self, access, collection_id, content_type, object_id, **extra):
         return self.client.post(
@@ -4155,9 +4393,7 @@ class CollectionTests(KnowledgeTestCase):
             **self._auth(mentor_access),
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(
-            [item["content"]["title"] for item in response.data["items"]], ["Wing 3D", "Airfoil 2D"]
-        )
+        self.assertEqual([item["content"]["title"] for item in response.data["items"]], ["Wing 3D", "Airfoil 2D"])
         response = self.client.post(  # same id twice -> a duplicate, not a reorder
             reverse("knowledge-collection-reorder", args=[collection_id]),
             {"item_ids": [item_a, item_a]},
@@ -4174,9 +4410,7 @@ class CollectionTests(KnowledgeTestCase):
         self._add_item(mentor_access, collection_id, "sop", sop_a.pk)
         self._add_item(mentor_access, collection_id, "sop", sop_b.pk)
 
-        detail = self.client.get(
-            reverse("knowledge-sop-detail", args=[sop_a.id]), **self._auth(mentor_access)
-        ).data
+        detail = self.client.get(reverse("knowledge-sop-detail", args=[sop_a.id]), **self._auth(mentor_access)).data
         self.assertEqual(len(detail["collections"]), 1)
         context = detail["collections"][0]
         self.assertEqual(context["id"], collection_id)
@@ -4185,9 +4419,7 @@ class CollectionTests(KnowledgeTestCase):
         self.assertIsNone(context["prev_item"])
         self.assertEqual(context["next_item"]["id"], str(sop_b.pk))
 
-        detail = self.client.get(
-            reverse("knowledge-sop-detail", args=[sop_b.id]), **self._auth(mentor_access)
-        ).data
+        detail = self.client.get(reverse("knowledge-sop-detail", args=[sop_b.id]), **self._auth(mentor_access)).data
         context = detail["collections"][0]
         self.assertEqual(context["prev_item"]["id"], str(sop_a.pk))
         self.assertIsNone(context["next_item"])
@@ -4261,9 +4493,7 @@ class CollectionTests(KnowledgeTestCase):
 
     def test_other_organizations_admin_gets_404_on_collections(self):
         other_org = create_test_organization(name="Other Col Org")
-        collection = Collection.objects.create(
-            organization=self.organization, title="Theirs", slug="theirs"
-        )
+        collection = Collection.objects.create(organization=self.organization, title="Theirs", slug="theirs")
         CollectionItem.objects.create(
             collection=collection,
             content_type=ContentType.objects.get_for_model(Sop),
@@ -4276,6 +4506,7 @@ class CollectionTests(KnowledgeTestCase):
             reverse("knowledge-collection-detail", args=[collection.id]), **self._auth(other_access)
         )
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
 
 class MalformedIdFilterTests(KnowledgeTestCase):
     """?category=<not a uuid> used to reach the UUID column lookup and 500."""
@@ -4481,7 +4712,9 @@ class EngineeringTrashTests(KnowledgeTestCase):
         response = self.client.delete(reverse("knowledge-project-detail", args=[project.pk]), **self._auth(head_access))
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertEqual(
-            self.client.get(reverse("knowledge-project-detail", args=[project.pk]), **self._auth(head_access)).status_code,
+            self.client.get(
+                reverse("knowledge-project-detail", args=[project.pk]), **self._auth(head_access)
+            ).status_code,
             status.HTTP_404_NOT_FOUND,
         )
         # The test keeps its link (project_id) but shows no project while it's in the trash.
@@ -4508,7 +4741,9 @@ class EngineeringTrashTests(KnowledgeTestCase):
             "document": Document.objects.create(organization=org, title="Rules"),
         }
         for name, instance in items.items():
-            response = self.client.delete(reverse(f"knowledge-{name}-detail", args=[instance.pk]), **self._auth(admin_access))
+            response = self.client.delete(
+                reverse(f"knowledge-{name}-detail", args=[instance.pk]), **self._auth(admin_access)
+            )
             self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT, name)
             self.assertFalse(type(instance).objects.filter(pk=instance.pk).exists(), name)
             self.assertTrue(type(instance).all_objects.filter(pk=instance.pk).exists(), name)
@@ -4571,9 +4806,7 @@ class ShareLinkTests(KnowledgeTestCase):
         draft = self._published_article(head, status=Article.Status.DRAFT)
         self.assertEqual(self._create(head_access, draft).status_code, status.HTTP_400_BAD_REQUEST)
         # Only the listed expiry choices.
-        self.assertEqual(
-            self._create(head_access, article, expires_in_days=5).status_code, status.HTTP_400_BAD_REQUEST
-        )
+        self.assertEqual(self._create(head_access, article, expires_in_days=5).status_code, status.HTTP_400_BAD_REQUEST)
         never = self._create(head_access, article, expires_in_days=None)
         self.assertEqual(never.status_code, status.HTTP_201_CREATED)
         self.assertIsNone(never.data["expires_at"])
@@ -4585,9 +4818,7 @@ class ShareLinkTests(KnowledgeTestCase):
         token = self._create(access, self._published_article(head)).data["token"]
         OrganizationSettings.objects.filter(organization=self.organization).update(share_links_enabled=False)
         self.assertEqual(self._open(token).status_code, status.HTTP_404_NOT_FOUND)
-        self.assertEqual(
-            self._create(access, self._published_article(head)).status_code, status.HTTP_403_FORBIDDEN
-        )
+        self.assertEqual(self._create(access, self._published_article(head)).status_code, status.HTTP_403_FORBIDDEN)
 
     def test_restricted_article_needs_article_update_to_share(self):
         head, head_access = self._login_with_role("sharerestricted@example.com", "Subteam Head")
@@ -4695,7 +4926,10 @@ class ShareLinkTests(KnowledgeTestCase):
     def test_sop_can_be_shared(self):
         head, access = self._login_with_role("sharesop@example.com", "Subteam Head")
         sop = Sop.objects.create(
-            organization=self.organization, title="Battery charging", content="Steps", safety_notes="Gloves",
+            organization=self.organization,
+            title="Battery charging",
+            content="Steps",
+            safety_notes="Gloves",
             created_by=head,
         )
         token = self._create(access, sop, model_name="sop").data["token"]

@@ -5,10 +5,9 @@ import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { INPUT_CLASS } from "@/components/ui/inputStyles";
 import { LoadError } from "@/components/ui/LoadError";
 import { MarkdownEditor } from "@/components/ui/MarkdownEditor";
-import { PoliciesSettingsSkeleton } from "./SettingsSkeletons";
-import { INPUT_CLASS } from "@/components/ui/inputStyles";
 import {
   getPolicyOverview,
   POLICY_KINDS,
@@ -19,6 +18,8 @@ import {
 } from "@/lib/api/policies";
 import { formatDateTime } from "@/lib/datetime";
 import { errorMessage } from "@/lib/errors";
+
+import { PoliciesSettingsSkeleton } from "./SettingsSkeletons";
 
 // Rendered only with organization.manage (see settings/page.tsx). One card
 // per policy kind: edit a draft (invisible to members), then publish it as a
@@ -81,9 +82,7 @@ function PolicyCard({ row, onChanged }: { row: PolicyOverview; onChanged: () => 
     try {
       const draft = await savePolicyDraft(kind, { title, content });
       setBaseline({ title: draft.title, content: draft.content });
-      setHasUnpublished(
-        !row.current || draft.title !== row.current.title || draft.content !== row.current.content,
-      );
+      setHasUnpublished(!row.current || draft.title !== row.current.title || draft.content !== row.current.content);
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -148,7 +147,9 @@ function PolicyCard({ row, onChanged }: { row: PolicyOverview; onChanged: () => 
           {t("publish")}
         </Button>
       </div>
-      {isDirty && <p className="font-body-sm text-body-sm text-on-surface-variant text-end">{t("saveBeforePublish")}</p>}
+      {isDirty && (
+        <p className="font-body-sm text-body-sm text-on-surface-variant text-end">{t("saveBeforePublish")}</p>
+      )}
 
       <ConfirmModal
         open={confirmPublishOpen}

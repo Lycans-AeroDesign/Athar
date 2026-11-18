@@ -3,9 +3,10 @@
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 
-import { Icon } from "./Icon";
 import { createBookmark, deleteBookmark } from "@/lib/api/bookmarks";
 import type { RelatableType } from "@/lib/api/types";
+
+import { Icon } from "./Icon";
 
 interface BookmarkButtonProps {
   type: RelatableType;

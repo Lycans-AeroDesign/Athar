@@ -24,7 +24,8 @@ const STOCK_STATUS_CLASSES: Record<StockStatus, string> = {
   RETIRED: "bg-surface-container-high text-on-surface-variant",
 };
 
-const PILL = "inline-flex items-center gap-1 font-label-caps text-label-caps uppercase rounded-full px-2.5 py-1 shrink-0";
+const PILL =
+  "inline-flex items-center gap-1 font-label-caps text-label-caps uppercase rounded-full px-2.5 py-1 shrink-0";
 
 /** Renders nothing for "" - a component with no engineering status (e.g. a workshop tool). */
 export function EngineeringStatusPill({ status }: { status: ComponentStatus | "" }) {

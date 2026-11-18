@@ -78,9 +78,7 @@ export function Combobox({
   const resolvedEmptyText = emptyText ?? t("noResultsFound");
   const trimmedQuery = query.trim();
   // Hide the create row when it would duplicate an existing option's label.
-  const queryMatchesAnOption = options.some(
-    (option) => option.label.toLowerCase() === trimmedQuery.toLowerCase(),
-  );
+  const queryMatchesAnOption = options.some((option) => option.label.toLowerCase() === trimmedQuery.toLowerCase());
 
   function handleCreate() {
     onCreate?.(trimmedQuery);
@@ -91,9 +89,7 @@ export function Combobox({
   return (
     <div className="space-y-2">
       {label && (
-        <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase">
-          {label}
-        </label>
+        <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase">{label}</label>
       )}
       <Popover.Root
         open={open}
@@ -142,9 +138,7 @@ export function Combobox({
                     className="flex items-center justify-between px-4 py-2 rounded-lg font-body-md text-body-md text-on-surface cursor-pointer data-[selected=true]:bg-surface-variant"
                   >
                     <OptionLabel option={option} />
-                    {option.value === value && (
-                      <Icon name="check" size={16} className="text-primary" />
-                    )}
+                    {option.value === value && <Icon name="check" size={16} className="text-primary" />}
                   </Command.Item>
                 ))}
               </Command.List>

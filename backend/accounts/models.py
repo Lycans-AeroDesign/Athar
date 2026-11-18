@@ -3,9 +3,9 @@ import uuid
 from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 from django.core.validators import RegexValidator
 from django.db import models
+from django.db.models.functions import Lower
 from django.db.models.signals import m2m_changed
 from django.dispatch import receiver
-from django.db.models.functions import Lower
 from django.utils import timezone
 from django.utils.crypto import get_random_string
 
@@ -54,9 +54,7 @@ class User(AbstractBaseUser):
     email = models.EmailField(unique=True)
     # Required at signup and edit profile; login still uses email (USERNAME_FIELD).
     # null=True for legacy/seed data compatibility without colliding on unique constraint.
-    username = models.CharField(
-        max_length=30, unique=True, null=True, blank=True, validators=[username_validator]
-    )
+    username = models.CharField(max_length=30, unique=True, null=True, blank=True, validators=[username_validator])
     first_name = models.CharField(max_length=150, blank=True)
     last_name = models.CharField(max_length=150, blank=True)
     # Free text, e.g. "Lead Systems Integration" or "Avionics Team Lead" -

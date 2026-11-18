@@ -11,8 +11,8 @@ import { Icon } from "@/components/ui/Icon";
 import { EditorPageSkeleton } from "@/components/ui/Skeleton";
 import { Link, useRouter } from "@/i18n/navigation";
 import { getSop } from "@/lib/api/engineering";
-import { useHasPermission } from "@/lib/auth/permissions";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { useHasPermission } from "@/lib/auth/permissions";
 import { useResource } from "@/lib/useResource";
 
 export default function EditSopPage() {
@@ -34,7 +34,9 @@ export default function EditSopPage() {
   if (!sop) {
     return <EditorPageSkeleton />;
   }
-  const canEdit = canUpdate || Boolean(user && (user.id === sop.created_by?.id || (sop.co_authors ?? []).some((c) => c.id === user.id)));
+  const canEdit =
+    canUpdate ||
+    Boolean(user && (user.id === sop.created_by?.id || (sop.co_authors ?? []).some((c) => c.id === user.id)));
   if (!canEdit) {
     return <p className="font-body-md text-body-md text-on-surface-variant">{t("editPermissionRequired")}</p>;
   }

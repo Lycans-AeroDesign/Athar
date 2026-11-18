@@ -6,15 +6,15 @@ import { useEffect, useState } from "react";
 
 import { LessonContent } from "@/components/training/LessonContent";
 import { RelatedKnowledgePanel } from "@/components/training/RelatedKnowledgePanel";
+import { LessonEditorSkeleton } from "@/components/training/TrainingSkeletons";
 import { Button } from "@/components/ui/Button";
-import { Switch } from "@/components/ui/Switch";
 import { Combobox } from "@/components/ui/Combobox";
 import { FileDropzone } from "@/components/ui/FileDropzone";
 import { Icon } from "@/components/ui/Icon";
 import { IconButton } from "@/components/ui/IconButton";
 import { MarkdownEditor } from "@/components/ui/MarkdownEditor";
+import { Switch } from "@/components/ui/Switch";
 import { TitleInput } from "@/components/ui/TitleInput";
-import { LessonEditorSkeleton } from "@/components/training/TrainingSkeletons";
 import { Link } from "@/i18n/navigation";
 import { uploadFile } from "@/lib/api/files";
 import {
@@ -460,259 +460,343 @@ export default function LessonEditorPage() {
         </div>
       ) : (
         <>
-        <div className="space-y-4 bg-surface-container-low border border-outline-variant rounded-xl p-6">
-          <TitleInput value={title} onChange={setTitle} placeholder={t("titlePlaceholder")} />
-          <input
-            className="w-full bg-transparent border-none font-body-md text-body-md text-on-surface-variant placeholder:text-on-surface-variant/50 focus:ring-0 p-0 outline-none"
-            placeholder={t("shortDescriptionPlaceholder")}
-            value={shortDescription}
-            onChange={(e) => setShortDescription(e.target.value)}
-          />
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="w-48">
-              <Combobox
-                label={t("typeLabel")}
-                options={LESSON_TYPES.map((value) => ({ value, label: lessonTypeT(value), ...LESSON_TYPE_ICONS[value] }))}
-                value={lessonType}
-                onChange={(value) => setLessonType(value as LessonType)}
-              />
+          <div className="space-y-4 bg-surface-container-low border border-outline-variant rounded-xl p-6">
+            <TitleInput value={title} onChange={setTitle} placeholder={t("titlePlaceholder")} />
+            <input
+              className="w-full bg-transparent border-none font-body-md text-body-md text-on-surface-variant placeholder:text-on-surface-variant/50 focus:ring-0 p-0 outline-none"
+              placeholder={t("shortDescriptionPlaceholder")}
+              value={shortDescription}
+              onChange={(e) => setShortDescription(e.target.value)}
+            />
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="w-48">
+                <Combobox
+                  label={t("typeLabel")}
+                  options={LESSON_TYPES.map((value) => ({
+                    value,
+                    label: lessonTypeT(value),
+                    ...LESSON_TYPE_ICONS[value],
+                  }))}
+                  value={lessonType}
+                  onChange={(value) => setLessonType(value as LessonType)}
+                />
+              </div>
+              <div className="w-40">
+                <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase mb-2">
+                  {t("estimatedMinutesLabel")}
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  className="block w-full px-4 py-2 font-body-md text-body-md text-on-surface bg-surface border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
+                  value={estimatedMinutes}
+                  onChange={(e) => setEstimatedMinutes(Number(e.target.value) || 0)}
+                />
+              </div>
+              <div className="pt-6">
+                <Switch checked={isRequired} onChange={setIsRequired} label={t("requiredToggleLabel")} />
+              </div>
             </div>
-            <div className="w-40">
-              <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase mb-2">
-                {t("estimatedMinutesLabel")}
-              </label>
+
+            {showMainContentEditor && (
+              <div className="space-y-3 p-4 rounded-xl border border-primary bg-surface">
+                <div>
+                  <label className="block font-label-caps text-label-caps text-primary uppercase">
+                    {t("mainContentLabel")}
+                  </label>
+                  <p className="font-body-md text-body-md text-on-surface-variant">{t("mainContentHint")}</p>
+                </div>
+                <div className="flex flex-wrap items-end gap-3">
+                  <div className="w-40">
+                    <Combobox
+                      label={resourceT("providerLabel")}
+                      options={PROVIDERS.map((value) => ({
+                        value,
+                        label: resourceT(`provider_${value}` as never),
+                        ...RESOURCE_PROVIDER_ICONS[value],
+                      }))}
+                      value={mainResourceProvider}
+                      onChange={(value) => setMainResourceProvider(value as CourseResourceProvider)}
+                    />
+                  </div>
+                  <input
+                    className="flex-1 min-w-[220px] px-3 py-2 font-body-md text-body-md text-on-surface bg-surface-container border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
+                    placeholder={resourceT("urlPlaceholder")}
+                    value={mainResourceUrl}
+                    onChange={(e) => setMainResourceUrl(e.target.value)}
+                  />
+                  <Button
+                    onClick={handleSaveMainResource}
+                    disabled={isSavingMainResource || !mainResourceUrl.trim() || !isMainResourceDirty}
+                  >
+                    {commonT("save")}
+                  </Button>
+                </div>
+                {isDocumentLessonType && (
+                  <div className="flex items-center gap-2 pt-1">
+                    <span className="font-body-md text-body-md text-on-surface-variant">or</span>
+                    <FileDropzone
+                      onFileSelected={handleUploadMainResourceFile}
+                      progress={mainResourceFileUploadProgress}
+                      fileName={
+                        primaryResource?.resource_type === "STORED_FILE"
+                          ? primaryResource.stored_file?.original_filename
+                          : null
+                      }
+                      label={resourceT("uploadButton")}
+                      error={mainResourceUploadError}
+                      className="flex-1 max-w-sm"
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
+            <MarkdownEditor
+              value={content}
+              onChange={setContent}
+              placeholder={showMainContentEditor ? t("additionalNotesPlaceholder") : t("contentPlaceholder")}
+            />
+
+            <Button onClick={handleSave} disabled={isSaving || !isDirty || !title.trim()}>
+              {t("saveButton")}
+            </Button>
+          </div>
+
+          <div className="space-y-3">
+            <h2 className="font-headline-md text-headline-md text-on-surface">{t("objectivesTitle")}</h2>
+            <ul className="space-y-1">
+              {lesson.objectives.map((objective, index) =>
+                editingObjectiveId === objective.id ? (
+                  <li
+                    key={objective.id}
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg bg-surface-container-low border border-primary"
+                  >
+                    <input
+                      autoFocus
+                      className="flex-1 px-3 py-1.5 font-body-md text-body-md text-on-surface bg-surface border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
+                      value={editObjectiveText}
+                      onChange={(e) => setEditObjectiveText(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && handleSaveObjectiveEdit(objective.id)}
+                    />
+                    <Button variant="secondary" onClick={cancelEditObjective}>
+                      {commonT("cancel")}
+                    </Button>
+                    <Button onClick={() => handleSaveObjectiveEdit(objective.id)} disabled={!editObjectiveText.trim()}>
+                      {commonT("save")}
+                    </Button>
+                  </li>
+                ) : (
+                  <li
+                    key={objective.id}
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg bg-surface-container-low border border-outline-variant"
+                  >
+                    <span className="flex-1 font-body-md text-body-md text-on-surface">{objective.text}</span>
+                    <IconButton
+                      icon="edit"
+                      size={16}
+                      aria-label={t("editObjective")}
+                      onClick={() => startEditObjective(objective.id, objective.text)}
+                    />
+                    <IconButton
+                      icon="arrow_upward"
+                      size={16}
+                      aria-label={t("moveUp")}
+                      disabled={index === 0}
+                      onClick={() => handleMoveObjective(objective.id, -1)}
+                    />
+                    <IconButton
+                      icon="arrow_downward"
+                      size={16}
+                      aria-label={t("moveDown")}
+                      disabled={index === lesson.objectives.length - 1}
+                      onClick={() => handleMoveObjective(objective.id, 1)}
+                    />
+                    <IconButton
+                      icon="close"
+                      size={16}
+                      variant="danger"
+                      aria-label={t("removeObjective")}
+                      onClick={() => runAction(() => deleteObjective(objective.id))}
+                    />
+                  </li>
+                ),
+              )}
+            </ul>
+            <div className="flex items-center gap-2">
               <input
-                type="number"
-                min={0}
-                className="block w-full px-4 py-2 font-body-md text-body-md text-on-surface bg-surface border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
-                value={estimatedMinutes}
-                onChange={(e) => setEstimatedMinutes(Number(e.target.value) || 0)}
+                className="flex-1 px-4 py-2 font-body-md text-body-md text-on-surface bg-surface border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
+                placeholder={t("objectivePlaceholder")}
+                value={newObjectiveText}
+                onChange={(e) => setNewObjectiveText(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleAddObjective()}
               />
-            </div>
-            <div className="pt-6">
-              <Switch checked={isRequired} onChange={setIsRequired} label={t("requiredToggleLabel")} />
+              <Button variant="secondary" onClick={handleAddObjective} disabled={!newObjectiveText.trim()}>
+                {t("addObjectiveButton")}
+              </Button>
             </div>
           </div>
 
-          {showMainContentEditor && (
-            <div className="space-y-3 p-4 rounded-xl border border-primary bg-surface">
-              <div>
-                <label className="block font-label-caps text-label-caps text-primary uppercase">
-                  {t("mainContentLabel")}
-                </label>
-                <p className="font-body-md text-body-md text-on-surface-variant">{t("mainContentHint")}</p>
+          <div className="space-y-3">
+            <h2 className="font-headline-md text-headline-md text-on-surface">{t("resourcesTitle")}</h2>
+            <ul className="space-y-1">
+              {listedResources.map((resource, index) =>
+                editingResourceId === resource.id ? (
+                  <li
+                    key={resource.id}
+                    className="space-y-2 px-3 py-3 rounded-lg bg-surface-container-low border border-primary"
+                  >
+                    <input
+                      className="w-full px-3 py-2 font-body-md text-body-md text-on-surface bg-surface border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
+                      placeholder={resourceT("titlePlaceholder")}
+                      value={editResourceTitle}
+                      onChange={(e) => setEditResourceTitle(e.target.value)}
+                    />
+                    {resource.resource_type === "EXTERNAL_LINK" && (
+                      <div className="flex flex-wrap items-end gap-3">
+                        <div className="w-40">
+                          <Combobox
+                            label={resourceT("providerLabel")}
+                            options={PROVIDERS.map((value) => ({
+                              value,
+                              label: resourceT(`provider_${value}` as never),
+                              ...RESOURCE_PROVIDER_ICONS[value],
+                            }))}
+                            value={editResourceProvider}
+                            onChange={(value) => setEditResourceProvider(value as CourseResourceProvider)}
+                          />
+                        </div>
+                        <input
+                          className="flex-1 min-w-[200px] px-3 py-2 font-body-md text-body-md text-on-surface bg-surface border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
+                          placeholder={resourceT("urlPlaceholder")}
+                          value={editResourceUrl}
+                          onChange={(e) => setEditResourceUrl(e.target.value)}
+                        />
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between">
+                      <Switch
+                        checked={editResourceIsPrimary}
+                        onChange={setEditResourceIsPrimary}
+                        label={resourceT("primaryLabel")}
+                      />
+                      <div className="flex items-center gap-2">
+                        <Button variant="secondary" onClick={cancelEditResource}>
+                          {commonT("cancel")}
+                        </Button>
+                        <Button onClick={() => handleSaveResourceEdit(resource)} disabled={!editResourceTitle.trim()}>
+                          {commonT("save")}
+                        </Button>
+                      </div>
+                    </div>
+                  </li>
+                ) : (
+                  <li
+                    key={resource.id}
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg bg-surface-container-low border border-outline-variant"
+                  >
+                    <Icon
+                      name={resource.resource_type === "STORED_FILE" ? "description" : "link"}
+                      size={16}
+                      className="text-on-surface-variant shrink-0"
+                    />
+                    <span className="flex-1 min-w-0 truncate font-body-md text-body-md text-on-surface">
+                      {resource.title}
+                    </span>
+                    {resource.is_primary && (
+                      <span className="font-label-caps text-label-caps text-primary uppercase shrink-0">
+                        {resourceT("primaryLabel")}
+                      </span>
+                    )}
+                    <IconButton
+                      icon="edit"
+                      size={16}
+                      aria-label={t("editResource")}
+                      onClick={() => startEditResource(resource)}
+                    />
+                    <IconButton
+                      icon="arrow_upward"
+                      size={16}
+                      aria-label={t("moveUp")}
+                      disabled={index === 0}
+                      onClick={() => handleMoveResource(resource.id, -1)}
+                    />
+                    <IconButton
+                      icon="arrow_downward"
+                      size={16}
+                      aria-label={t("moveDown")}
+                      disabled={index === listedResources.length - 1}
+                      onClick={() => handleMoveResource(resource.id, 1)}
+                    />
+                    <IconButton
+                      icon="close"
+                      size={16}
+                      variant="danger"
+                      aria-label={t("removeResource")}
+                      onClick={() => runAction(() => deleteResource(resource.id))}
+                    />
+                  </li>
+                ),
+              )}
+            </ul>
+
+            <div className="space-y-2 bg-surface-container-low border border-outline-variant rounded-xl p-4">
+              <div className="flex flex-wrap items-center gap-3">
+                <input
+                  className="flex-1 min-w-[160px] px-3 py-2 font-body-md text-body-md text-on-surface bg-surface border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
+                  placeholder={resourceT("titlePlaceholder")}
+                  value={newResourceTitle}
+                  onChange={(e) => setNewResourceTitle(e.target.value)}
+                />
+                {!showMainContentEditor && (
+                  <Switch
+                    checked={newResourceIsPrimary}
+                    onChange={setNewResourceIsPrimary}
+                    label={resourceT("primaryLabel")}
+                  />
+                )}
               </div>
               <div className="flex flex-wrap items-end gap-3">
                 <div className="w-40">
                   <Combobox
                     label={resourceT("providerLabel")}
-                    options={PROVIDERS.map((value) => ({ value, label: resourceT(`provider_${value}` as never), ...RESOURCE_PROVIDER_ICONS[value] }))}
-                    value={mainResourceProvider}
-                    onChange={(value) => setMainResourceProvider(value as CourseResourceProvider)}
+                    options={PROVIDERS.map((value) => ({
+                      value,
+                      label: resourceT(`provider_${value}` as never),
+                      ...RESOURCE_PROVIDER_ICONS[value],
+                    }))}
+                    value={newResourceProvider}
+                    onChange={(value) => setNewResourceProvider(value as CourseResourceProvider)}
                   />
                 </div>
                 <input
-                  className="flex-1 min-w-[220px] px-3 py-2 font-body-md text-body-md text-on-surface bg-surface-container border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
+                  className="flex-1 min-w-[200px] px-3 py-2 font-body-md text-body-md text-on-surface bg-surface border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
                   placeholder={resourceT("urlPlaceholder")}
-                  value={mainResourceUrl}
-                  onChange={(e) => setMainResourceUrl(e.target.value)}
+                  value={newResourceUrl}
+                  onChange={(e) => setNewResourceUrl(e.target.value)}
                 />
                 <Button
-                  onClick={handleSaveMainResource}
-                  disabled={isSavingMainResource || !mainResourceUrl.trim() || !isMainResourceDirty}
+                  variant="secondary"
+                  onClick={handleAddResource}
+                  disabled={!newResourceTitle.trim() || !newResourceUrl.trim()}
                 >
-                  {commonT("save")}
+                  {resourceT("addButton")}
                 </Button>
               </div>
-              {isDocumentLessonType && (
-                <div className="flex items-center gap-2 pt-1">
-                  <span className="font-body-md text-body-md text-on-surface-variant">or</span>
-                  <FileDropzone
-                    onFileSelected={handleUploadMainResourceFile}
-                    progress={mainResourceFileUploadProgress}
-                    fileName={primaryResource?.resource_type === "STORED_FILE" ? primaryResource.stored_file?.original_filename : null}
-                    label={resourceT("uploadButton")}
-                    error={mainResourceUploadError}
-                    className="flex-1 max-w-sm"
-                  />
-                </div>
-              )}
-            </div>
-          )}
-
-          <MarkdownEditor
-            value={content}
-            onChange={setContent}
-            placeholder={showMainContentEditor ? t("additionalNotesPlaceholder") : t("contentPlaceholder")}
-          />
-
-          <Button onClick={handleSave} disabled={isSaving || !isDirty || !title.trim()}>
-            {t("saveButton")}
-          </Button>
-        </div>
-
-        <div className="space-y-3">
-          <h2 className="font-headline-md text-headline-md text-on-surface">{t("objectivesTitle")}</h2>
-          <ul className="space-y-1">
-            {lesson.objectives.map((objective, index) =>
-              editingObjectiveId === objective.id ? (
-                <li
-                  key={objective.id}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg bg-surface-container-low border border-primary"
-                >
-                  <input
-                    autoFocus
-                    className="flex-1 px-3 py-1.5 font-body-md text-body-md text-on-surface bg-surface border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
-                    value={editObjectiveText}
-                    onChange={(e) => setEditObjectiveText(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleSaveObjectiveEdit(objective.id)}
-                  />
-                  <Button variant="secondary" onClick={cancelEditObjective}>
-                    {commonT("cancel")}
-                  </Button>
-                  <Button onClick={() => handleSaveObjectiveEdit(objective.id)} disabled={!editObjectiveText.trim()}>
-                    {commonT("save")}
-                  </Button>
-                </li>
-              ) : (
-                <li key={objective.id} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-surface-container-low border border-outline-variant">
-                  <span className="flex-1 font-body-md text-body-md text-on-surface">{objective.text}</span>
-                  <IconButton icon="edit" size={16} aria-label={t("editObjective")} onClick={() => startEditObjective(objective.id, objective.text)} />
-                  <IconButton icon="arrow_upward" size={16} aria-label={t("moveUp")} disabled={index === 0} onClick={() => handleMoveObjective(objective.id, -1)} />
-                  <IconButton icon="arrow_downward" size={16} aria-label={t("moveDown")} disabled={index === lesson.objectives.length - 1} onClick={() => handleMoveObjective(objective.id, 1)} />
-                  <IconButton icon="close" size={16} variant="danger" aria-label={t("removeObjective")} onClick={() => runAction(() => deleteObjective(objective.id))} />
-                </li>
-              ),
-            )}
-          </ul>
-          <div className="flex items-center gap-2">
-            <input
-              className="flex-1 px-4 py-2 font-body-md text-body-md text-on-surface bg-surface border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
-              placeholder={t("objectivePlaceholder")}
-              value={newObjectiveText}
-              onChange={(e) => setNewObjectiveText(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleAddObjective()}
-            />
-            <Button variant="secondary" onClick={handleAddObjective} disabled={!newObjectiveText.trim()}>
-              {t("addObjectiveButton")}
-            </Button>
-          </div>
-        </div>
-
-        <div className="space-y-3">
-          <h2 className="font-headline-md text-headline-md text-on-surface">{t("resourcesTitle")}</h2>
-          <ul className="space-y-1">
-            {listedResources.map((resource, index) =>
-              editingResourceId === resource.id ? (
-                <li
-                  key={resource.id}
-                  className="space-y-2 px-3 py-3 rounded-lg bg-surface-container-low border border-primary"
-                >
-                  <input
-                    className="w-full px-3 py-2 font-body-md text-body-md text-on-surface bg-surface border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
-                    placeholder={resourceT("titlePlaceholder")}
-                    value={editResourceTitle}
-                    onChange={(e) => setEditResourceTitle(e.target.value)}
-                  />
-                  {resource.resource_type === "EXTERNAL_LINK" && (
-                    <div className="flex flex-wrap items-end gap-3">
-                      <div className="w-40">
-                        <Combobox
-                          label={resourceT("providerLabel")}
-                          options={PROVIDERS.map((value) => ({ value, label: resourceT(`provider_${value}` as never), ...RESOURCE_PROVIDER_ICONS[value] }))}
-                          value={editResourceProvider}
-                          onChange={(value) => setEditResourceProvider(value as CourseResourceProvider)}
-                        />
-                      </div>
-                      <input
-                        className="flex-1 min-w-[200px] px-3 py-2 font-body-md text-body-md text-on-surface bg-surface border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
-                        placeholder={resourceT("urlPlaceholder")}
-                        value={editResourceUrl}
-                        onChange={(e) => setEditResourceUrl(e.target.value)}
-                      />
-                    </div>
-                  )}
-                  <div className="flex items-center justify-between">
-                    <Switch
-                      checked={editResourceIsPrimary}
-                      onChange={setEditResourceIsPrimary}
-                      label={resourceT("primaryLabel")}
-                    />
-                    <div className="flex items-center gap-2">
-                      <Button variant="secondary" onClick={cancelEditResource}>
-                        {commonT("cancel")}
-                      </Button>
-                      <Button onClick={() => handleSaveResourceEdit(resource)} disabled={!editResourceTitle.trim()}>
-                        {commonT("save")}
-                      </Button>
-                    </div>
-                  </div>
-                </li>
-              ) : (
-                <li key={resource.id} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-surface-container-low border border-outline-variant">
-                  <Icon name={resource.resource_type === "STORED_FILE" ? "description" : "link"} size={16} className="text-on-surface-variant shrink-0" />
-                  <span className="flex-1 min-w-0 truncate font-body-md text-body-md text-on-surface">{resource.title}</span>
-                  {resource.is_primary && (
-                    <span className="font-label-caps text-label-caps text-primary uppercase shrink-0">{resourceT("primaryLabel")}</span>
-                  )}
-                  <IconButton icon="edit" size={16} aria-label={t("editResource")} onClick={() => startEditResource(resource)} />
-                  <IconButton icon="arrow_upward" size={16} aria-label={t("moveUp")} disabled={index === 0} onClick={() => handleMoveResource(resource.id, -1)} />
-                  <IconButton icon="arrow_downward" size={16} aria-label={t("moveDown")} disabled={index === listedResources.length - 1} onClick={() => handleMoveResource(resource.id, 1)} />
-                  <IconButton icon="close" size={16} variant="danger" aria-label={t("removeResource")} onClick={() => runAction(() => deleteResource(resource.id))} />
-                </li>
-              ),
-            )}
-          </ul>
-
-          <div className="space-y-2 bg-surface-container-low border border-outline-variant rounded-xl p-4">
-            <div className="flex flex-wrap items-center gap-3">
-              <input
-                className="flex-1 min-w-[160px] px-3 py-2 font-body-md text-body-md text-on-surface bg-surface border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
-                placeholder={resourceT("titlePlaceholder")}
-                value={newResourceTitle}
-                onChange={(e) => setNewResourceTitle(e.target.value)}
-              />
-              {!showMainContentEditor && (
-                <Switch
-                  checked={newResourceIsPrimary}
-                  onChange={setNewResourceIsPrimary}
-                  label={resourceT("primaryLabel")}
-                />
-              )}
-            </div>
-            <div className="flex flex-wrap items-end gap-3">
-              <div className="w-40">
-                <Combobox
-                  label={resourceT("providerLabel")}
-                  options={PROVIDERS.map((value) => ({ value, label: resourceT(`provider_${value}` as never), ...RESOURCE_PROVIDER_ICONS[value] }))}
-                  value={newResourceProvider}
-                  onChange={(value) => setNewResourceProvider(value as CourseResourceProvider)}
+              <div className="flex items-center gap-2 pt-1">
+                <span className="font-body-md text-body-md text-on-surface-variant">or</span>
+                <FileDropzone
+                  onFileSelected={handleAddFileResource}
+                  progress={resourceFileUploadProgress}
+                  label={resourceT("uploadButton")}
+                  error={resourceUploadError}
+                  className="flex-1 max-w-sm"
                 />
               </div>
-              <input
-                className="flex-1 min-w-[200px] px-3 py-2 font-body-md text-body-md text-on-surface bg-surface border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
-                placeholder={resourceT("urlPlaceholder")}
-                value={newResourceUrl}
-                onChange={(e) => setNewResourceUrl(e.target.value)}
-              />
-              <Button variant="secondary" onClick={handleAddResource} disabled={!newResourceTitle.trim() || !newResourceUrl.trim()}>
-                {resourceT("addButton")}
-              </Button>
-            </div>
-            <div className="flex items-center gap-2 pt-1">
-              <span className="font-body-md text-body-md text-on-surface-variant">or</span>
-              <FileDropzone
-                onFileSelected={handleAddFileResource}
-                progress={resourceFileUploadProgress}
-                label={resourceT("uploadButton")}
-                error={resourceUploadError}
-                className="flex-1 max-w-sm"
-              />
             </div>
           </div>
-        </div>
 
-        <RelatedKnowledgePanel lessonId={lesson.id} canEdit />
+          <RelatedKnowledgePanel lessonId={lesson.id} canEdit />
         </>
       )}
     </div>

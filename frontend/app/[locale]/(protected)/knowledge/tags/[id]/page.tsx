@@ -4,7 +4,12 @@ import { useTranslations } from "next-intl";
 import { useParams, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 
-import { EMPTY_SEARCH_COUNTS, SearchResultsPanel, type SearchCounts, type SearchScope } from "@/components/knowledge/SearchResultsPanel";
+import {
+  EMPTY_SEARCH_COUNTS,
+  SearchResultsPanel,
+  type SearchCounts,
+  type SearchScope,
+} from "@/components/knowledge/SearchResultsPanel";
 import { SkeletonText } from "@/components/ui/Skeleton";
 import { useRouter } from "@/i18n/navigation";
 import { getItemsByTag } from "@/lib/api/knowledge";

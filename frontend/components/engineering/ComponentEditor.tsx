@@ -3,27 +3,25 @@
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
-import { Button } from "@/components/ui/Button";
-import { Combobox } from "@/components/ui/Combobox";
-import { ChangedIndicator } from "@/components/ui/ChangedIndicator";
-import { Icon } from "@/components/ui/Icon";
-import { MarkdownEditor } from "@/components/ui/MarkdownEditor";
-import { PhotoDropzone } from "@/components/ui/PhotoDropzone";
-import { TagInput } from "@/components/ui/TagInput";
+import { PendingRelations, toRelationInputs, type PendingRelation } from "@/components/knowledge/PendingRelations";
+import { ProjectSelect } from "@/components/knowledge/ProjectSelect";
 import {
   EMPTY_RESTRICTED_ACCESS_DRAFT,
   RestrictedAccessPicker,
   type RestrictedAccessDraft,
 } from "@/components/knowledge/RestrictedAccessPicker";
-import { SavingOverlay } from "@/components/ui/SavingOverlay";
-import { PendingRelations, toRelationInputs, type PendingRelation } from "@/components/knowledge/PendingRelations";
 import { effectiveVisibility, VisibilitySelect } from "@/components/knowledge/VisibilitySelect";
-import { ProjectSelect } from "@/components/knowledge/ProjectSelect";
+import { Button } from "@/components/ui/Button";
+import { ChangedIndicator } from "@/components/ui/ChangedIndicator";
+import { Combobox } from "@/components/ui/Combobox";
+import { Icon } from "@/components/ui/Icon";
 import { INPUT_CLASS } from "@/components/ui/inputStyles";
+import { MarkdownEditor } from "@/components/ui/MarkdownEditor";
+import { PhotoDropzone } from "@/components/ui/PhotoDropzone";
+import { SavingOverlay } from "@/components/ui/SavingOverlay";
+import { TagInput } from "@/components/ui/TagInput";
 import { TitleInput } from "@/components/ui/TitleInput";
 import { useRouter } from "@/i18n/navigation";
-import { errorMessage } from "@/lib/errors";
-import { useSaveOnce } from "@/lib/useSaveOnce";
 import { addAccessGrant, removeAccessGrant } from "@/lib/api/accessGrants";
 import {
   createComponent,
@@ -45,8 +43,10 @@ import type {
   StoredFileRef,
   Visibility,
 } from "@/lib/api/types";
+import { errorMessage } from "@/lib/errors";
 import { CONDITION_VALUES, INVENTORY_TYPE_VALUES, STOCK_STATUS_VALUES, UNIT_SUGGESTIONS } from "@/lib/inventory";
 import { COMPONENT_STATUS_ICONS, CONDITION_ICONS, INVENTORY_TYPE_ICONS, STOCK_STATUS_ICONS } from "@/lib/optionIcons";
+import { useSaveOnce } from "@/lib/useSaveOnce";
 import { useUnsavedChangesGuard } from "@/lib/useUnsavedChangesGuard";
 
 const STATUS_VALUES: ComponentStatus[] = ["CERTIFIED", "TESTING", "DEPRECATED"];
@@ -106,9 +106,8 @@ export function ComponentEditor({ component, onDirtyChange, initialProjectId = n
   const [pendingRelations, setPendingRelations] = useState<PendingRelation[]>([]);
   const [linkProjectId, setLinkProjectId] = useState<string | null>(initialProjectId);
   const [projectVisibility, setProjectVisibility] = useState<Visibility | null>(null);
-  const [restrictedAccessDraft, setRestrictedAccessDraft] = useState<RestrictedAccessDraft>(
-    EMPTY_RESTRICTED_ACCESS_DRAFT,
-  );
+  const [restrictedAccessDraft, setRestrictedAccessDraft] =
+    useState<RestrictedAccessDraft>(EMPTY_RESTRICTED_ACCESS_DRAFT);
   const { isSaving, run } = useSaveOnce();
   const [error, setError] = useState<string | null>(null);
 
@@ -473,7 +472,9 @@ export function ComponentEditor({ component, onDirtyChange, initialProjectId = n
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <ChangedIndicator changed={fieldChanged.specs} className="inline-block">
-            <h3 className="font-label-caps text-label-caps text-on-surface-variant uppercase">{t("specificationsTitle")}</h3>
+            <h3 className="font-label-caps text-label-caps text-on-surface-variant uppercase">
+              {t("specificationsTitle")}
+            </h3>
           </ChangedIndicator>
           <Button variant="ghost" onClick={() => setSpecs((prev) => [...prev, { label: "", value: "" }])}>
             <Icon name="add" size={16} />

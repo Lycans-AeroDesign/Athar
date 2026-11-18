@@ -4,8 +4,8 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 import { Icon } from "@/components/ui/Icon";
-import { Modal } from "@/components/ui/Modal";
 import { INPUT_CLASS } from "@/components/ui/inputStyles";
+import { Modal } from "@/components/ui/Modal";
 import { Link } from "@/i18n/navigation";
 import { quickSearch } from "@/lib/api/knowledge";
 import { createKnowledgeReference, deleteKnowledgeReference, listKnowledgeReferences } from "@/lib/api/training";
@@ -35,9 +35,7 @@ export function RelatedKnowledgePanel({ lessonId, canEdit }: RelatedKnowledgePan
   const [isSearching, setIsSearching] = useState(false);
 
   useEffect(() => {
-    listKnowledgeReferences(lessonId).then(setReferences, (err) =>
-      setError(errorMessage(err)),
-    );
+    listKnowledgeReferences(lessonId).then(setReferences, (err) => setError(errorMessage(err)));
   }, [lessonId]);
 
   useEffect(() => {

@@ -2,8 +2,9 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { Markdown } from "./Markdown";
 import messages from "@/i18n/messages/en.json";
+
+import { Markdown } from "./Markdown";
 
 // Mermaid needs a real layout engine (see MermaidDiagram.tsx) - irrelevant to
 // what the renderer decides to hand it.

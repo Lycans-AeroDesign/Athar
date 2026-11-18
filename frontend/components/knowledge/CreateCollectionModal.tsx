@@ -3,9 +3,9 @@
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
-import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { INPUT_CLASS } from "@/components/ui/inputStyles";
+import { Modal } from "@/components/ui/Modal";
 import { createCollection } from "@/lib/api/collections";
 import type { CollectionSummary } from "@/lib/api/types";
 import { errorMessage } from "@/lib/errors";

@@ -71,7 +71,12 @@ const FIELD_LABEL_KEYS: Record<string, string> = {
 // Column set/validation/matching/diffing all live in
 // backend/knowledge/services.py's import_components_csv - this modal is
 // just the upload -> preview -> confirm surface over that two-phase API.
-export function ComponentImportModal({ open, onOpenChange, defaultInventoryType, onImported }: ComponentImportModalProps) {
+export function ComponentImportModal({
+  open,
+  onOpenChange,
+  defaultInventoryType,
+  onImported,
+}: ComponentImportModalProps) {
   const t = useTranslations("engineering.component");
   const inventoryTypeT = useTranslations("engineering.inventoryType");
   const [file, setFile] = useState<File | null>(null);
@@ -129,7 +134,9 @@ export function ComponentImportModal({ open, onOpenChange, defaultInventoryType,
     }
   }
 
-  function currentOptions(overrides?: Partial<{ inventoryType: InventoryType | ""; duplicates: "separate" | "merge" }>) {
+  function currentOptions(
+    overrides?: Partial<{ inventoryType: InventoryType | ""; duplicates: "separate" | "merge" }>,
+  ) {
     const type = overrides?.inventoryType ?? inventoryType;
     return { inventoryType: type || undefined, duplicates: overrides?.duplicates ?? duplicates };
   }
@@ -167,8 +174,9 @@ export function ComponentImportModal({ open, onOpenChange, defaultInventoryType,
   // By default only rows that need a look - changes, errors, warnings - so a
   // re-sync of a 70-row tab doesn't bury the 3 rows that actually changed.
   const visibleRows =
-    preview?.rows.filter((row) => showAllRows || (row.action !== "unchanged" && row.action !== "merged") || row.warnings.length > 0) ??
-    [];
+    preview?.rows.filter(
+      (row) => showAllRows || (row.action !== "unchanged" && row.action !== "merged") || row.warnings.length > 0,
+    ) ?? [];
 
   return (
     <Modal
@@ -291,7 +299,9 @@ function ImportRowCard({ row }: { row: ComponentImportRow }) {
     <li className="rounded-lg border border-outline-variant p-3 space-y-2">
       <div className="flex items-center justify-between gap-2">
         <span className="min-w-0 font-body-md text-body-md text-on-surface truncate">
-          <span className="font-mono-sm text-mono-sm text-on-surface-variant me-2">{t("importRowLabel", { row: row.row })}</span>
+          <span className="font-mono-sm text-mono-sm text-on-surface-variant me-2">
+            {t("importRowLabel", { row: row.row })}
+          </span>
           {row.name}
         </span>
         <span
@@ -302,10 +312,14 @@ function ImportRowCard({ row }: { row: ComponentImportRow }) {
       </div>
 
       {row.action === "error" && row.message && (
-        <p className="font-body-md text-body-md text-error">{t("importRowError", { row: row.row, message: row.message })}</p>
+        <p className="font-body-md text-body-md text-error">
+          {t("importRowError", { row: row.row, message: row.message })}
+        </p>
       )}
       {row.action === "merged" && row.merged_into != null && (
-        <p className="font-body-md text-body-md text-on-surface-variant">{t("importMergedInto", { row: row.merged_into })}</p>
+        <p className="font-body-md text-body-md text-on-surface-variant">
+          {t("importMergedInto", { row: row.merged_into })}
+        </p>
       )}
       {row.warnings.map((warning) => (
         <p key={warning} className="flex items-start gap-1 font-body-md text-body-md text-on-surface-variant">

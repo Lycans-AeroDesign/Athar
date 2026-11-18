@@ -38,12 +38,8 @@ class OrganizationSettings(models.Model):
     name = models.CharField(max_length=200, default="Athar")
 
     # Branding
-    logo = models.ForeignKey(
-        "files.StoredFile", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
-    )
-    favicon = models.ForeignKey(
-        "files.StoredFile", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
-    )
+    logo = models.ForeignKey("files.StoredFile", null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    favicon = models.ForeignKey("files.StoredFile", null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
     primary_color = models.CharField(max_length=7, default="#1D4ED8")
     secondary_color = models.CharField(max_length=7, default="#505F76")
     # Dark-theme counterparts: the frontend applies the pair matching the active theme.

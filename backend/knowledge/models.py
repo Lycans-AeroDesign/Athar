@@ -76,9 +76,7 @@ class Article(SoftDeleteModel):
     content = models.TextField(blank=True)  # markdown source
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT)
     visibility = models.CharField(max_length=20, choices=Visibility.choices, default=Visibility.PUBLIC)
-    category = models.ForeignKey(
-        Category, null=True, blank=True, on_delete=models.SET_NULL, related_name="articles"
-    )
+    category = models.ForeignKey(Category, null=True, blank=True, on_delete=models.SET_NULL, related_name="articles")
     tags = models.ManyToManyField(Tag, blank=True, related_name="articles")
     # SET_NULL, not CASCADE - deleting a user must not delete their content
     # (matches files.StoredFile.uploaded_by's precedent).
@@ -159,9 +157,7 @@ class Question(SoftDeleteModel):
     co_authors = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, related_name="coauthored_questions")
     # A single nullable FK, not a boolean on Answer, so "at most one accepted answer"
     # is structural.
-    accepted_answer = models.ForeignKey(
-        "Answer", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
-    )
+    accepted_answer = models.ForeignKey("Answer", null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
     # Set once services.promote_question_to_article turns this question into an Article.
     promoted_to_article = models.ForeignKey(
         Article, null=True, blank=True, on_delete=models.SET_NULL, related_name="promoted_from_questions"
@@ -352,9 +348,7 @@ class StorageLocation(UUIDPrimaryKeyModel, OrganizationScopedModel, TimeStampedM
     class Meta:
         ordering = ["name"]
         constraints = [
-            models.UniqueConstraint(
-                models.F("organization"), Lower("name"), name="unique_storage_location_name_ci"
-            )
+            models.UniqueConstraint(models.F("organization"), Lower("name"), name="unique_storage_location_name_ci")
         ]
 
     def __str__(self):
@@ -468,9 +462,7 @@ class Failure(SoftDeleteModel):
     id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
     organization = models.ForeignKey("organization.Organization", on_delete=models.CASCADE, related_name="+")
     title = models.CharField(max_length=200)
-    component = models.ForeignKey(
-        Component, null=True, blank=True, on_delete=models.SET_NULL, related_name="failures"
-    )
+    component = models.ForeignKey(Component, null=True, blank=True, on_delete=models.SET_NULL, related_name="failures")
     project = models.ForeignKey(Project, null=True, blank=True, on_delete=models.SET_NULL, related_name="failures")
     aircraft = models.CharField(max_length=150, blank=True)
     date = models.DateField(null=True, blank=True)
@@ -753,9 +745,7 @@ class RestrictedAccessGrant(UUIDPrimaryKeyModel, OrganizationScopedModel, TimeSt
     object_id = models.UUIDField()
     target = GenericForeignKey("content_type", "object_id")
 
-    granted_user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="access_grants"
-    )
+    granted_user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="access_grants")
     granted_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
     )
@@ -838,13 +828,9 @@ class Collection(UUIDPrimaryKeyModel, OrganizationScopedModel, TimeStampedModel)
     # the collection's page.
     description = models.TextField(blank=True)
     mode = models.CharField(max_length=10, choices=Mode.choices, default=Mode.SERIES)
-    content_scope = models.CharField(
-        max_length=10, choices=ContentScope.choices, default=ContentScope.MIXED
-    )
+    content_scope = models.CharField(max_length=10, choices=ContentScope.choices, default=ContentScope.MIXED)
     visibility = models.CharField(max_length=20, choices=Visibility.choices, default=Visibility.PUBLIC)
-    category = models.ForeignKey(
-        Category, null=True, blank=True, on_delete=models.SET_NULL, related_name="collections"
-    )
+    category = models.ForeignKey(Category, null=True, blank=True, on_delete=models.SET_NULL, related_name="collections")
     tags = models.ManyToManyField(Tag, blank=True, related_name="collections")
     # SET_NULL matches every content model's creator FK: deleting a user must
     # not delete their content (files.StoredFile.uploaded_by's precedent).

@@ -81,7 +81,9 @@ export function InventorySummaryPanel({ summary, activeStatus, onStatusSelect }:
                 <Icon
                   name={STOCK_STATUS_ICONS[status].icon}
                   size={16}
-                  className={isActive ? undefined : STOCK_STATUS_ICONS[status].iconClassName ?? "text-on-surface-variant"}
+                  className={
+                    isActive ? undefined : (STOCK_STATUS_ICONS[status].iconClassName ?? "text-on-surface-variant")
+                  }
                 />
               </div>
               <div className="font-display text-display">{summary.by_status[status]}</div>

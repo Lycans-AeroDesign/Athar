@@ -1,8 +1,9 @@
 import { cleanup, render, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { OrganizationProvider } from "./OrganizationProvider";
 import type { OrganizationSettings } from "@/lib/api/types";
+
+import { OrganizationProvider } from "./OrganizationProvider";
 
 const getOrganizationSettings = vi.fn<() => Promise<Partial<OrganizationSettings>>>();
 vi.mock("@/lib/api/organization", () => ({ getOrganizationSettings: () => getOrganizationSettings() }));

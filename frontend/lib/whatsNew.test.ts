@@ -4,7 +4,7 @@ import ar from "@/i18n/messages/ar.json";
 import en from "@/i18n/messages/en.json";
 import type { User } from "@/lib/api/types";
 
-import { WHATS_NEW, entriesForUser, latestEntryId, unseenEntries, type WhatsNewEntry } from "./whatsNew";
+import { entriesForUser, latestEntryId, unseenEntries, WHATS_NEW, type WhatsNewEntry } from "./whatsNew";
 
 function makeUser(overrides: Partial<User> = {}): User {
   return {

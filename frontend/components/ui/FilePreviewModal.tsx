@@ -4,12 +4,13 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
-import { Button } from "./Button";
-import { Icon } from "./Icon";
-import { PdfViewer } from "./PdfViewer";
 import { apiFetch } from "@/lib/api/client";
 import { downloadFile } from "@/lib/api/files";
 import type { StoredFile } from "@/lib/api/types";
+
+import { Button } from "./Button";
+import { Icon } from "./Icon";
+import { PdfViewer } from "./PdfViewer";
 
 interface FilePreviewModalProps {
   open: boolean;
@@ -48,7 +49,7 @@ export function FilePreviewModal({ open, onOpenChange, file }: FilePreviewModalP
   // AuthenticatedImage.tsx, which avoids the react-hooks/set-state-in-effect
   // lint rule flagging a synchronous setState at the start of an effect. A
   // `result` whose `key` doesn't match the current file is stale/loading.
-  const [result, setResult] = useState<{ key: string } & FetchedState | null>(null);
+  const [result, setResult] = useState<({ key: string } & FetchedState) | null>(null);
 
   useEffect(() => {
     if (!open || kind === "unsupported") return;
@@ -112,9 +113,7 @@ export function FilePreviewModal({ open, onOpenChange, file }: FilePreviewModalP
               <p className="font-body-md text-body-md text-on-surface-variant">{t("loading")}</p>
             )}
             {state.status === "failed" && (
-              <p className="font-body-md text-body-md text-on-surface-variant text-center max-w-sm">
-                {t("noPreview")}
-              </p>
+              <p className="font-body-md text-body-md text-on-surface-variant text-center max-w-sm">{t("noPreview")}</p>
             )}
             {state.status === "text" && (
               <pre className="w-full h-full overflow-auto font-mono-sm text-mono-sm text-on-surface whitespace-pre-wrap text-start">
@@ -131,7 +130,9 @@ export function FilePreviewModal({ open, onOpenChange, file }: FilePreviewModalP
             {state.status === "media" && state.kind === "video" && (
               <video controls src={state.url} className="max-w-full max-h-[75vh]" />
             )}
-            {state.status === "media" && state.kind === "audio" && <audio controls src={state.url} className="w-full" />}
+            {state.status === "media" && state.kind === "audio" && (
+              <audio controls src={state.url} className="w-full" />
+            )}
           </div>
         </Dialog.Content>
       </Dialog.Portal>

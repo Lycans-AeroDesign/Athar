@@ -2,15 +2,14 @@ from unittest.mock import patch
 
 from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
-
 from django.test import override_settings
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 from rest_framework.throttling import ScopedRateThrottle
 
-from core.testing import create_test_organization
 from accounts.models import User
+from core.testing import create_test_organization
 from files.models import StoredFile
 from policies.models import PolicyAcceptance, PolicyVersion
 from rbac.models import Role
@@ -30,9 +29,7 @@ class OrganizationSettingsTests(APITestCase):
     def _login_with_role(self, email, role_name):
         user = User.objects.create_user(email=email, password="password123", organization=self.organization)
         Role.objects.get(organization=self.organization, name=role_name).user_roles.create(user=user)
-        response = self.client.post(
-            reverse("auth-login"), {"email": email, "password": "password123"}, format="json"
-        )
+        response = self.client.post(reverse("auth-login"), {"email": email, "password": "password123"}, format="json")
         return response.data["access"]
 
     def _auth(self, access_token):
@@ -301,7 +298,12 @@ class OrganizationCreateTests(APITestCase):
     def test_creates_organization_with_first_admin(self):
         response = self.client.post(
             reverse("organization-create"),
-            {"name": "Brand New Org", "admin_email": "founder@neworg.example", "admin_password": "somepassword123", "admin_username": "founder"},
+            {
+                "name": "Brand New Org",
+                "admin_email": "founder@neworg.example",
+                "admin_password": "somepassword123",
+                "admin_username": "founder",
+            },
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
@@ -316,7 +318,12 @@ class OrganizationCreateTests(APITestCase):
     def test_new_organization_starts_with_the_default_policies(self):
         self.client.post(
             reverse("organization-create"),
-            {"name": "Policy Org", "admin_email": "founder@policyorg.example", "admin_password": "somepassword123", "admin_username": "founder"},
+            {
+                "name": "Policy Org",
+                "admin_email": "founder@policyorg.example",
+                "admin_password": "somepassword123",
+                "admin_username": "founder",
+            },
             format="json",
         )
         organization = Organization.objects.get(name="Policy Org")
@@ -335,7 +342,12 @@ class OrganizationCreateTests(APITestCase):
         with self.settings(ENABLE_ORGANIZATION_REGISTRATION=False):
             response = self.client.post(
                 reverse("organization-create"),
-                {"name": "Blocked Org", "admin_email": "blocked@neworg.example", "admin_password": "somepassword123", "admin_username": "blocked"},
+                {
+                    "name": "Blocked Org",
+                    "admin_email": "blocked@neworg.example",
+                    "admin_password": "somepassword123",
+                    "admin_username": "blocked",
+                },
                 format="json",
             )
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
@@ -382,7 +394,12 @@ class OrganizationCreateTests(APITestCase):
 
         response = self.client.post(
             reverse("organization-create"),
-            {"name": "One Too Many", "admin_email": "onetoomany@neworg.example", "admin_password": "somepassword123", "admin_username": "onetoomany"},
+            {
+                "name": "One Too Many",
+                "admin_email": "onetoomany@neworg.example",
+                "admin_password": "somepassword123",
+                "admin_username": "onetoomany",
+            },
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
@@ -420,7 +437,12 @@ class OrganizationCreateTests(APITestCase):
         for payload in ({}, {"admin_username": ""}):
             response = self.client.post(
                 reverse("organization-create"),
-                {"name": "No Username Org", "admin_email": "nouser@neworg.example", "admin_password": "somepassword123", **payload},
+                {
+                    "name": "No Username Org",
+                    "admin_email": "nouser@neworg.example",
+                    "admin_password": "somepassword123",
+                    **payload,
+                },
                 format="json",
             )
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
@@ -432,7 +454,12 @@ class OrganizationCreateTests(APITestCase):
         User.objects.create_user(email="taken@example.com", password="correctpassword123", organization=other)
         response = self.client.post(
             reverse("organization-create"),
-            {"name": "Squatter Org", "admin_email": "TAKEN@example.com", "admin_password": "somepassword123", "admin_username": "TAKEN"},
+            {
+                "name": "Squatter Org",
+                "admin_email": "TAKEN@example.com",
+                "admin_password": "somepassword123",
+                "admin_username": "TAKEN",
+            },
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
@@ -442,7 +469,12 @@ class OrganizationCreateTests(APITestCase):
     def test_rejects_weak_admin_password(self):
         response = self.client.post(
             reverse("organization-create"),
-            {"name": "Weak Org", "admin_email": "weak@neworg.example", "admin_password": "12345678", "admin_username": "weak"},
+            {
+                "name": "Weak Org",
+                "admin_email": "weak@neworg.example",
+                "admin_password": "12345678",
+                "admin_username": "weak",
+            },
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

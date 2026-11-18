@@ -2,9 +2,9 @@ import { useTranslations } from "next-intl";
 
 import { Icon } from "@/components/ui/Icon";
 import { Link } from "@/i18n/navigation";
+import type { QuestionSummary } from "@/lib/api/types";
 import { formatRelativeTime } from "@/lib/datetime";
 import { formatPersonName } from "@/lib/format";
-import type { QuestionSummary } from "@/lib/api/types";
 
 export function QuestionCard({ question }: { question: QuestionSummary }) {
   const t = useTranslations("knowledge");

@@ -56,7 +56,9 @@ export async function MarkdownGuide() {
               </div>
               {!SYNTAX_ONLY.has(key) && (
                 <div className="p-5 min-w-0 border-t border-outline-variant">
-                  <p className="font-label-caps text-label-caps text-on-surface-variant uppercase mb-2">{t("youGet")}</p>
+                  <p className="font-label-caps text-label-caps text-on-surface-variant uppercase mb-2">
+                    {t("youGet")}
+                  </p>
                   <Markdown content={syntax} />
                 </div>
               )}

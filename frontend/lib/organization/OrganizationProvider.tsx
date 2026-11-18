@@ -1,14 +1,6 @@
 "use client";
 
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useLayoutEffect,
-  useState,
-  type ReactNode,
-} from "react";
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useState, type ReactNode } from "react";
 
 import { apiUrl } from "@/lib/api/client";
 import { getOrganizationSettings } from "@/lib/api/organization";
@@ -74,7 +66,9 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const refetch = useCallback(() => {
-    getOrganizationSettings().then(setSettings).catch(() => {});
+    getOrganizationSettings()
+      .then(setSettings)
+      .catch(() => {});
   }, [setSettings]);
 
   useEffect(() => {

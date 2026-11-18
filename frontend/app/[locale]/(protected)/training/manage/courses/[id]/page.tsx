@@ -5,7 +5,6 @@ import { useParams, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import { CoAuthorPicker } from "@/components/knowledge/CoAuthorPicker";
-import type { KnowledgeAuthor } from "@/lib/api/types";
 import {
   EMPTY_RESTRICTED_ACCESS_DRAFT,
   RestrictedAccessPicker,
@@ -13,6 +12,7 @@ import {
 } from "@/components/knowledge/RestrictedAccessPicker";
 import { CourseStatusPill } from "@/components/training/CourseStatusPill";
 import { ImportCurriculumModal } from "@/components/training/ImportCurriculumModal";
+import { CourseEditorSkeleton } from "@/components/training/TrainingSkeletons";
 import { Button } from "@/components/ui/Button";
 import { Combobox } from "@/components/ui/Combobox";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
@@ -22,7 +22,6 @@ import { Markdown } from "@/components/ui/Markdown";
 import { MarkdownEditor } from "@/components/ui/MarkdownEditor";
 import { Modal } from "@/components/ui/Modal";
 import { PhotoDropzone } from "@/components/ui/PhotoDropzone";
-import { CourseEditorSkeleton } from "@/components/training/TrainingSkeletons";
 import { Switch } from "@/components/ui/Switch";
 import { TitleInput } from "@/components/ui/TitleInput";
 import { Link, useRouter } from "@/i18n/navigation";
@@ -57,6 +56,7 @@ import type {
   CourseDetail,
   CourseDifficulty,
   CourseModule,
+  KnowledgeAuthor,
   LessonDetail,
   LessonType,
   Visibility,
@@ -98,7 +98,7 @@ export default function CourseEditorPage() {
   const [isSaving, setIsSaving] = useState(false);
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<"curriculum" | "settings">(
-    searchParams.get("tab") === "settings" ? "settings" : "curriculum"
+    searchParams.get("tab") === "settings" ? "settings" : "curriculum",
   );
   const [importModalOpen, setImportModalOpen] = useState(false);
   const justCreated = searchParams.get("created") === "true";
@@ -169,10 +169,13 @@ export default function CourseEditorPage() {
   }
 
   function loadCourse() {
-    return getCourse(id).then((data) => {
-      applyCourseToState(data);
-      return data;
-    }, () => setNotFound(true));
+    return getCourse(id).then(
+      (data) => {
+        applyCourseToState(data);
+        return data;
+      },
+      () => setNotFound(true),
+    );
   }
 
   useEffect(() => {
@@ -213,7 +216,8 @@ export default function CourseEditorPage() {
     setIsSaving(true);
     setError(null);
     try {
-      const coAuthorsChanged = coAuthors.map((u) => u.id).join(",") !== (course!.co_authors ?? []).map((u) => u.id).join(",");
+      const coAuthorsChanged =
+        coAuthors.map((u) => u.id).join(",") !== (course!.co_authors ?? []).map((u) => u.id).join(",");
       const updated = await updateCourse(course!.id, {
         title,
         short_description: shortDescription,
@@ -330,7 +334,8 @@ export default function CourseEditorPage() {
 
   async function handleAddLesson(moduleId: string) {
     if (!newLessonTitle.trim()) return;
-    if (!(await runAction(() => createLesson(moduleId, { title: newLessonTitle.trim(), lesson_type: newLessonType })))) return;
+    if (!(await runAction(() => createLesson(moduleId, { title: newLessonTitle.trim(), lesson_type: newLessonType }))))
+      return;
     setNewLessonTitle("");
     setNewLessonType("TEXT");
     setAddingLessonToModuleId(null);
@@ -384,7 +389,8 @@ export default function CourseEditorPage() {
   // (an uploaded file) - the quick editor shows a notice instead of the URL
   // field for it, and saving never touches it.
   const editingPrimary = editingLesson?.resources.find((r) => r.is_primary) ?? null;
-  const primaryFileResource = editingPrimary && editingPrimary.resource_type !== "EXTERNAL_LINK" ? editingPrimary : null;
+  const primaryFileResource =
+    editingPrimary && editingPrimary.resource_type !== "EXTERNAL_LINK" ? editingPrimary : null;
 
   async function handleSaveLessonEdit() {
     if (!editingLessonId || !editLessonTitle.trim()) return;
@@ -407,8 +413,7 @@ export default function CourseEditorPage() {
       // lesson types that hide the field leave resources untouched - otherwise
       // the empty field read as "remove it" and deleted the uploaded file.
       const managesPrimaryUrl =
-        LESSON_TYPES_WITH_URL.includes(editLessonType) &&
-        (!primary || primary.resource_type === "EXTERNAL_LINK");
+        LESSON_TYPES_WITH_URL.includes(editLessonType) && (!primary || primary.resource_type === "EXTERNAL_LINK");
 
       if (!managesPrimaryUrl) {
         // nothing to sync
@@ -456,7 +461,12 @@ export default function CourseEditorPage() {
             <IconButton icon="visibility" variant="secondary" aria-label={t("previewButton")} />
           </Link>
           {canDelete && (
-            <IconButton icon="delete" variant="danger" aria-label={workflowT("deleteButton")} onClick={() => setDeleteOpen(true)} />
+            <IconButton
+              icon="delete"
+              variant="danger"
+              aria-label={workflowT("deleteButton")}
+              onClick={() => setDeleteOpen(true)}
+            />
           )}
         </div>
       </div>
@@ -469,8 +479,12 @@ export default function CourseEditorPage() {
 
       {(canSubmit || canPublishNow || canRejectNow || canArchiveNow || canUnarchiveNow) && (
         <div className="flex flex-wrap items-center gap-3 pb-4 border-b border-outline-variant">
-          {canSubmit && <Button onClick={() => runAction(() => submitCourse(course!.id))}>{workflowT("submitForReview")}</Button>}
-          {canPublishNow && <Button onClick={() => runAction(() => publishCourse(course!.id))}>{workflowT("publish")}</Button>}
+          {canSubmit && (
+            <Button onClick={() => runAction(() => submitCourse(course!.id))}>{workflowT("submitForReview")}</Button>
+          )}
+          {canPublishNow && (
+            <Button onClick={() => runAction(() => publishCourse(course!.id))}>{workflowT("publish")}</Button>
+          )}
           {canRejectNow && (
             <Button variant="secondary" onClick={() => setRejectOpen(true)}>
               {workflowT("rejectButton")}
@@ -481,7 +495,9 @@ export default function CourseEditorPage() {
               {workflowT("archiveButton")}
             </Button>
           )}
-          {canUnarchiveNow && <Button onClick={() => runAction(() => unarchiveCourse(course!.id))}>{workflowT("unarchiveButton")}</Button>}
+          {canUnarchiveNow && (
+            <Button onClick={() => runAction(() => unarchiveCourse(course!.id))}>{workflowT("unarchiveButton")}</Button>
+          )}
         </div>
       )}
 
@@ -512,90 +528,96 @@ export default function CourseEditorPage() {
         >
           <Icon name="settings" size={16} />
           {t("settingsTab")}
-          {isDirty && (
-            <span className="h-2 w-2 rounded-full bg-primary" />
-          )}
+          {isDirty && <span className="h-2 w-2 rounded-full bg-primary" />}
         </button>
       </div>
 
       {activeTab === "settings" && (
         <div className="space-y-4 bg-surface-container-low border border-outline-variant rounded-xl p-4 sm:p-6">
           <h2 className="font-headline-md text-headline-md text-on-surface">{t("courseEditorTitle")}</h2>
-        <TitleInput value={title} onChange={setTitle} placeholder={t("titlePlaceholder")} disabled={!canEdit} />
-        <input
-          className="w-full bg-transparent border-none font-body-md text-body-md text-on-surface-variant placeholder:text-on-surface-variant/50 focus:ring-0 p-0 outline-none"
-          placeholder={t("shortDescriptionPlaceholder")}
-          value={shortDescription}
-          disabled={!canEdit}
-          onChange={(e) => setShortDescription(e.target.value)}
-        />
-        {canEdit ? (
-          <MarkdownEditor value={description} onChange={setDescription} placeholder={t("descriptionPlaceholder")} />
-        ) : (
-          description && <Markdown content={description} />
-        )}
-        <div className="flex flex-wrap gap-3">
-          <div className="w-full sm:w-56">
-            <Combobox
-              label={t("difficultyLabel")}
-              options={DIFFICULTIES.map((value) => ({ value, label: difficultyT(value), ...DIFFICULTY_ICONS[value] }))}
-              value={difficulty}
-              onChange={(value) => setDifficulty(value as CourseDifficulty)}
-            />
-          </div>
-          <div className="w-full sm:w-56">
-            <Combobox
-              label={t("categoryLabel")}
-              placeholder={t("categoryPlaceholder")}
-              options={categories.map((category) => ({ value: category.id, label: category.name }))}
-              value={categoryId}
-              onChange={setCategoryId}
-            />
-          </div>
-          <div className="w-full sm:w-56">
-            <Combobox
-              label={t("visibilityLabel")}
-              options={VISIBILITY_VALUES.map((value) => ({ value, label: t(`visibility${value}`), ...VISIBILITY_ICONS[value] }))}
-              value={visibility}
-              onChange={(value) => setVisibility(value as Visibility)}
-            />
-          </div>
-        </div>
-
-        {visibility === "RESTRICTED" && (
-          <RestrictedAccessPicker
-            initialGrants={course.restricted_to}
-            value={restrictedAccessDraft}
-            onChange={setRestrictedAccessDraft}
+          <TitleInput value={title} onChange={setTitle} placeholder={t("titlePlaceholder")} disabled={!canEdit} />
+          <input
+            className="w-full bg-transparent border-none font-body-md text-body-md text-on-surface-variant placeholder:text-on-surface-variant/50 focus:ring-0 p-0 outline-none"
+            placeholder={t("shortDescriptionPlaceholder")}
+            value={shortDescription}
+            disabled={!canEdit}
+            onChange={(e) => setShortDescription(e.target.value)}
           />
-        )}
-
-        <CoAuthorPicker
-          value={coAuthors}
-          onChange={setCoAuthors}
-          authorId={course.author?.id}
-          canEdit={isAuthor || canUpdateAny}
-        />
-
-        {/* Its own block row (not a bare inline-flex Button sibling) so it
-            never ends up sharing a line with the Save button below. */}
-        <PhotoDropzone
-          value={course.cover_image}
-          onFileSelected={handleCoverUpload}
-          onUnsupportedFile={() => setError(commonT("unsupportedImageType"))}
-          progress={coverUploadProgress}
-          alt={course.cover_image ? t("changeCoverButton") : t("addCoverButton")}
-          shape="wide"
-          className="h-36 w-full sm:w-72"
-        />
-
-        {canEdit && (
-          <div className="pt-2 border-t border-outline-variant">
-            <Button onClick={handleSaveInfo} disabled={isSaving || !isDirty || !title.trim()}>
-              {t("saveButton")}
-            </Button>
+          {canEdit ? (
+            <MarkdownEditor value={description} onChange={setDescription} placeholder={t("descriptionPlaceholder")} />
+          ) : (
+            description && <Markdown content={description} />
+          )}
+          <div className="flex flex-wrap gap-3">
+            <div className="w-full sm:w-56">
+              <Combobox
+                label={t("difficultyLabel")}
+                options={DIFFICULTIES.map((value) => ({
+                  value,
+                  label: difficultyT(value),
+                  ...DIFFICULTY_ICONS[value],
+                }))}
+                value={difficulty}
+                onChange={(value) => setDifficulty(value as CourseDifficulty)}
+              />
+            </div>
+            <div className="w-full sm:w-56">
+              <Combobox
+                label={t("categoryLabel")}
+                placeholder={t("categoryPlaceholder")}
+                options={categories.map((category) => ({ value: category.id, label: category.name }))}
+                value={categoryId}
+                onChange={setCategoryId}
+              />
+            </div>
+            <div className="w-full sm:w-56">
+              <Combobox
+                label={t("visibilityLabel")}
+                options={VISIBILITY_VALUES.map((value) => ({
+                  value,
+                  label: t(`visibility${value}`),
+                  ...VISIBILITY_ICONS[value],
+                }))}
+                value={visibility}
+                onChange={(value) => setVisibility(value as Visibility)}
+              />
+            </div>
           </div>
-        )}
+
+          {visibility === "RESTRICTED" && (
+            <RestrictedAccessPicker
+              initialGrants={course.restricted_to}
+              value={restrictedAccessDraft}
+              onChange={setRestrictedAccessDraft}
+            />
+          )}
+
+          <CoAuthorPicker
+            value={coAuthors}
+            onChange={setCoAuthors}
+            authorId={course.author?.id}
+            canEdit={isAuthor || canUpdateAny}
+          />
+
+          {/* Its own block row (not a bare inline-flex Button sibling) so it
+            never ends up sharing a line with the Save button below. */}
+          <PhotoDropzone
+            value={course.cover_image}
+            onFileSelected={handleCoverUpload}
+            onUnsupportedFile={() => setError(commonT("unsupportedImageType"))}
+            progress={coverUploadProgress}
+            alt={course.cover_image ? t("changeCoverButton") : t("addCoverButton")}
+            shape="wide"
+            className="h-36 w-full sm:w-72"
+          />
+
+          {canEdit && (
+            <div className="pt-2 border-t border-outline-variant">
+              <Button onClick={handleSaveInfo} disabled={isSaving || !isDirty || !title.trim()}>
+                {t("saveButton")}
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
@@ -625,143 +647,204 @@ export default function CourseEditorPage() {
               </Button>
             )}
           </div>
-        {course.modules.map((module, moduleIndex) =>
-          editingModuleId === module.id ? (
-            <div key={module.id} className="bg-surface-container-low border border-primary rounded-xl p-4 space-y-3">
-              <input
-                className="w-full font-headline-md text-headline-md font-bold bg-transparent border-none focus:ring-0 p-0 text-on-surface outline-none"
-                value={editModuleTitle}
-                onChange={(e) => setEditModuleTitle(e.target.value)}
-              />
-              <textarea
-                className="block w-full min-h-[80px] px-4 py-2 font-body-md text-body-md text-on-surface bg-surface border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
-                placeholder={t("moduleDescriptionPlaceholder")}
-                value={editModuleDescription}
-                onChange={(e) => setEditModuleDescription(e.target.value)}
-              />
-              <div className="w-40">
-                <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase mb-2">
-                  {t("estimatedMinutesLabel")}
-                </label>
+          {course.modules.map((module, moduleIndex) =>
+            editingModuleId === module.id ? (
+              <div key={module.id} className="bg-surface-container-low border border-primary rounded-xl p-4 space-y-3">
                 <input
-                  type="number"
-                  min={0}
-                  className="block w-full px-4 py-2 font-body-md text-body-md text-on-surface bg-surface border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
-                  value={editModuleEstimatedMinutes}
-                  onChange={(e) => setEditModuleEstimatedMinutes(Number(e.target.value) || 0)}
+                  className="w-full font-headline-md text-headline-md font-bold bg-transparent border-none focus:ring-0 p-0 text-on-surface outline-none"
+                  value={editModuleTitle}
+                  onChange={(e) => setEditModuleTitle(e.target.value)}
                 />
-              </div>
-              <div className="flex items-center gap-2">
-                <Button variant="secondary" onClick={cancelEditModule}>
-                  {commonT("cancel")}
-                </Button>
-                <Button onClick={() => handleSaveModuleEdit(module.id)} disabled={!editModuleTitle.trim()}>
-                  {commonT("save")}
-                </Button>
-              </div>
-            </div>
-          ) : (
-          <div key={module.id} className="bg-surface-container-low border border-outline-variant rounded-xl p-4 space-y-3">
-            {/* Title above the icon buttons below sm - side by side, four buttons leave the title almost no room. */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-              <div className="flex-1 min-w-0">
-                <h3 className="font-headline-md text-headline-md font-bold text-on-surface truncate">{module.title}</h3>
-                {module.description && (
-                  <p className="font-body-md text-body-md text-on-surface-variant">{module.description}</p>
-                )}
-                {module.estimated_minutes > 0 && (
-                  <span className="font-label-caps text-label-caps text-on-surface-variant">
-                    {t("estimatedMinutesLabel")}: {module.estimated_minutes}
-                  </span>
-                )}
-              </div>
-              {canEdit && (
-                <div className="flex items-center gap-1 shrink-0 self-end sm:self-auto">
-                  <IconButton icon="edit" aria-label={t("editModuleButton")} onClick={() => startEditModule(module)} />
-                  <IconButton icon="arrow_upward" aria-label={t("moveUp")} disabled={moduleIndex === 0} onClick={() => handleMoveModule(module.id, -1)} />
-                  <IconButton icon="arrow_downward" aria-label={t("moveDown")} disabled={moduleIndex === course.modules.length - 1} onClick={() => handleMoveModule(module.id, 1)} />
-                  <IconButton icon="delete" variant="danger" aria-label={t("deleteModuleButton")} onClick={() => setDeleteModuleId(module.id)} />
-                </div>
-              )}
-            </div>
-
-            <ul className="space-y-1">
-              {module.lessons.map((lesson, lessonIndex) => (
-                <li key={lesson.id} className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-surface">
-                  <Link
-                    href={`/training/manage/courses/${course.id}/lessons/${lesson.id}`}
-                    className="flex-1 min-w-0 flex flex-wrap items-center gap-x-2 font-body-md text-body-md text-on-surface hover:text-primary transition-colors"
-                  >
-                    <span className="truncate max-w-full">{lesson.title}</span>
-                    <span className="font-label-caps text-label-caps text-on-surface-variant uppercase shrink-0">
-                      {lessonTypeT(lesson.lesson_type)}
-                    </span>
-                    {!lesson.is_required && (
-                      <span className="font-label-caps text-label-caps text-on-surface-variant shrink-0">{t("optionalLabel")}</span>
-                    )}
-                  </Link>
-                  {canEdit && (
-                    <div className="flex items-center gap-1 shrink-0">
-                      <IconButton icon="edit" size={16} aria-label={t("editLessonButton")} onClick={() => handleOpenEditLesson(lesson.id)} />
-                      <IconButton icon="arrow_upward" size={16} aria-label={t("moveUp")} disabled={lessonIndex === 0} onClick={() => handleMoveLesson(module.id, lesson.id, -1)} />
-                      <IconButton icon="arrow_downward" size={16} aria-label={t("moveDown")} disabled={lessonIndex === module.lessons.length - 1} onClick={() => handleMoveLesson(module.id, lesson.id, 1)} />
-                      <IconButton icon="delete" size={16} variant="danger" aria-label={t("deleteLessonButton")} onClick={() => setDeleteLessonId(lesson.id)} />
-                    </div>
-                  )}
-                </li>
-              ))}
-              {module.lessons.length === 0 && (
-                <li className="font-body-md text-body-md text-on-surface-variant px-3 py-2">{t("noLessons")}</li>
-              )}
-            </ul>
-
-            {canEdit &&
-              (addingLessonToModuleId === module.id ? (
-                <div className="flex flex-wrap items-center gap-2">
+                <textarea
+                  className="block w-full min-h-[80px] px-4 py-2 font-body-md text-body-md text-on-surface bg-surface border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
+                  placeholder={t("moduleDescriptionPlaceholder")}
+                  value={editModuleDescription}
+                  onChange={(e) => setEditModuleDescription(e.target.value)}
+                />
+                <div className="w-40">
+                  <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase mb-2">
+                    {t("estimatedMinutesLabel")}
+                  </label>
                   <input
-                    autoFocus
-                    className="flex-1 min-w-[160px] px-3 py-2 font-body-md text-body-md text-on-surface bg-surface border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
-                    placeholder={t("lessonTitlePlaceholder")}
-                    value={newLessonTitle}
-                    onChange={(e) => setNewLessonTitle(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleAddLesson(module.id)}
+                    type="number"
+                    min={0}
+                    className="block w-full px-4 py-2 font-body-md text-body-md text-on-surface bg-surface border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
+                    value={editModuleEstimatedMinutes}
+                    onChange={(e) => setEditModuleEstimatedMinutes(Number(e.target.value) || 0)}
                   />
-                  <div className="w-40">
-                    <Combobox
-                      options={LESSON_TYPES.map((value) => ({ value, label: lessonTypeT(value), ...LESSON_TYPE_ICONS[value] }))}
-                      value={newLessonType}
-                      onChange={(value) => setNewLessonType(value as LessonType)}
-                    />
-                  </div>
-                  <Button variant="secondary" onClick={() => handleAddLesson(module.id)} disabled={!newLessonTitle.trim()} loading={isActing}>
-                    {t("addLessonButton")}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button variant="secondary" onClick={cancelEditModule}>
+                    {commonT("cancel")}
+                  </Button>
+                  <Button onClick={() => handleSaveModuleEdit(module.id)} disabled={!editModuleTitle.trim()}>
+                    {commonT("save")}
                   </Button>
                 </div>
-              ) : (
-                <Button variant="ghost" onClick={() => setAddingLessonToModuleId(module.id)}>
-                  <Icon name="add" size={16} />
-                  {t("addLessonButton")}
-                </Button>
-              ))}
-          </div>
-          ),
-        )}
+              </div>
+            ) : (
+              <div
+                key={module.id}
+                className="bg-surface-container-low border border-outline-variant rounded-xl p-4 space-y-3"
+              >
+                {/* Title above the icon buttons below sm - side by side, four buttons leave the title almost no room. */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-headline-md text-headline-md font-bold text-on-surface truncate">
+                      {module.title}
+                    </h3>
+                    {module.description && (
+                      <p className="font-body-md text-body-md text-on-surface-variant">{module.description}</p>
+                    )}
+                    {module.estimated_minutes > 0 && (
+                      <span className="font-label-caps text-label-caps text-on-surface-variant">
+                        {t("estimatedMinutesLabel")}: {module.estimated_minutes}
+                      </span>
+                    )}
+                  </div>
+                  {canEdit && (
+                    <div className="flex items-center gap-1 shrink-0 self-end sm:self-auto">
+                      <IconButton
+                        icon="edit"
+                        aria-label={t("editModuleButton")}
+                        onClick={() => startEditModule(module)}
+                      />
+                      <IconButton
+                        icon="arrow_upward"
+                        aria-label={t("moveUp")}
+                        disabled={moduleIndex === 0}
+                        onClick={() => handleMoveModule(module.id, -1)}
+                      />
+                      <IconButton
+                        icon="arrow_downward"
+                        aria-label={t("moveDown")}
+                        disabled={moduleIndex === course.modules.length - 1}
+                        onClick={() => handleMoveModule(module.id, 1)}
+                      />
+                      <IconButton
+                        icon="delete"
+                        variant="danger"
+                        aria-label={t("deleteModuleButton")}
+                        onClick={() => setDeleteModuleId(module.id)}
+                      />
+                    </div>
+                  )}
+                </div>
 
-        {canEdit && (
-          <div className="flex items-center gap-2 max-w-md">
-            <input
-              className="flex-1 px-4 py-2 font-body-md text-body-md text-on-surface bg-surface border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
-              placeholder={t("moduleTitlePlaceholder")}
-              value={newModuleTitle}
-              onChange={(e) => setNewModuleTitle(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleAddModule()}
-            />
-            <Button onClick={handleAddModule} disabled={!newModuleTitle.trim()} loading={isActing}>
-              <Icon name="add" size={18} />
-              {t("addModuleButton")}
-            </Button>
-          </div>
-        )}
+                <ul className="space-y-1">
+                  {module.lessons.map((lesson, lessonIndex) => (
+                    <li
+                      key={lesson.id}
+                      className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-surface"
+                    >
+                      <Link
+                        href={`/training/manage/courses/${course.id}/lessons/${lesson.id}`}
+                        className="flex-1 min-w-0 flex flex-wrap items-center gap-x-2 font-body-md text-body-md text-on-surface hover:text-primary transition-colors"
+                      >
+                        <span className="truncate max-w-full">{lesson.title}</span>
+                        <span className="font-label-caps text-label-caps text-on-surface-variant uppercase shrink-0">
+                          {lessonTypeT(lesson.lesson_type)}
+                        </span>
+                        {!lesson.is_required && (
+                          <span className="font-label-caps text-label-caps text-on-surface-variant shrink-0">
+                            {t("optionalLabel")}
+                          </span>
+                        )}
+                      </Link>
+                      {canEdit && (
+                        <div className="flex items-center gap-1 shrink-0">
+                          <IconButton
+                            icon="edit"
+                            size={16}
+                            aria-label={t("editLessonButton")}
+                            onClick={() => handleOpenEditLesson(lesson.id)}
+                          />
+                          <IconButton
+                            icon="arrow_upward"
+                            size={16}
+                            aria-label={t("moveUp")}
+                            disabled={lessonIndex === 0}
+                            onClick={() => handleMoveLesson(module.id, lesson.id, -1)}
+                          />
+                          <IconButton
+                            icon="arrow_downward"
+                            size={16}
+                            aria-label={t("moveDown")}
+                            disabled={lessonIndex === module.lessons.length - 1}
+                            onClick={() => handleMoveLesson(module.id, lesson.id, 1)}
+                          />
+                          <IconButton
+                            icon="delete"
+                            size={16}
+                            variant="danger"
+                            aria-label={t("deleteLessonButton")}
+                            onClick={() => setDeleteLessonId(lesson.id)}
+                          />
+                        </div>
+                      )}
+                    </li>
+                  ))}
+                  {module.lessons.length === 0 && (
+                    <li className="font-body-md text-body-md text-on-surface-variant px-3 py-2">{t("noLessons")}</li>
+                  )}
+                </ul>
+
+                {canEdit &&
+                  (addingLessonToModuleId === module.id ? (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <input
+                        autoFocus
+                        className="flex-1 min-w-[160px] px-3 py-2 font-body-md text-body-md text-on-surface bg-surface border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
+                        placeholder={t("lessonTitlePlaceholder")}
+                        value={newLessonTitle}
+                        onChange={(e) => setNewLessonTitle(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && handleAddLesson(module.id)}
+                      />
+                      <div className="w-40">
+                        <Combobox
+                          options={LESSON_TYPES.map((value) => ({
+                            value,
+                            label: lessonTypeT(value),
+                            ...LESSON_TYPE_ICONS[value],
+                          }))}
+                          value={newLessonType}
+                          onChange={(value) => setNewLessonType(value as LessonType)}
+                        />
+                      </div>
+                      <Button
+                        variant="secondary"
+                        onClick={() => handleAddLesson(module.id)}
+                        disabled={!newLessonTitle.trim()}
+                        loading={isActing}
+                      >
+                        {t("addLessonButton")}
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button variant="ghost" onClick={() => setAddingLessonToModuleId(module.id)}>
+                      <Icon name="add" size={16} />
+                      {t("addLessonButton")}
+                    </Button>
+                  ))}
+              </div>
+            ),
+          )}
+
+          {canEdit && (
+            <div className="flex items-center gap-2 max-w-md">
+              <input
+                className="flex-1 px-4 py-2 font-body-md text-body-md text-on-surface bg-surface border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
+                placeholder={t("moduleTitlePlaceholder")}
+                value={newModuleTitle}
+                onChange={(e) => setNewModuleTitle(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleAddModule()}
+              />
+              <Button onClick={handleAddModule} disabled={!newModuleTitle.trim()} loading={isActing}>
+                <Icon name="add" size={18} />
+                {t("addModuleButton")}
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
@@ -788,9 +871,7 @@ export default function CourseEditorPage() {
         }
       >
         <div className="space-y-4">
-          <p className="font-body-md text-body-md text-on-surface-variant">
-            {workflowT("deleteConfirmBody")}
-          </p>
+          <p className="font-body-md text-body-md text-on-surface-variant">{workflowT("deleteConfirmBody")}</p>
           {course.enrollment_count > 0 && (
             <div className="p-3 rounded-lg border border-error/30 bg-error/10 space-y-3">
               <div className="flex items-start gap-2 text-error">
@@ -844,7 +925,9 @@ export default function CourseEditorPage() {
         }
       >
         <div className="space-y-2">
-          <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase">{workflowT("rejectReasonLabel")}</label>
+          <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase">
+            {workflowT("rejectReasonLabel")}
+          </label>
           <textarea
             className="block w-full min-h-[100px] px-4 py-2 font-body-md text-body-md text-on-surface bg-surface-container border border-outline-variant rounded-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors"
             placeholder={workflowT("rejectReasonPlaceholder")}
@@ -902,9 +985,7 @@ export default function CourseEditorPage() {
         ) : (
           <div className="space-y-4">
             {editLessonError && (
-              <div className="p-3 text-sm rounded-lg bg-error-container text-on-error-container">
-                {editLessonError}
-              </div>
+              <div className="p-3 text-sm rounded-lg bg-error-container text-on-error-container">{editLessonError}</div>
             )}
             <div>
               <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase mb-1">
@@ -1007,11 +1088,7 @@ export default function CourseEditorPage() {
             </div>
 
             <div className="pt-2">
-              <Switch
-                checked={editLessonIsRequired}
-                onChange={setEditLessonIsRequired}
-                label={t("requiredLabel")}
-              />
+              <Switch checked={editLessonIsRequired} onChange={setEditLessonIsRequired} label={t("requiredLabel")} />
             </div>
           </div>
         )}

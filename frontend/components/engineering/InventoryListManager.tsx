@@ -7,10 +7,10 @@ import { Button } from "@/components/ui/Button";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
+import { INPUT_CLASS } from "@/components/ui/inputStyles";
 import { LoadError } from "@/components/ui/LoadError";
 import { Modal } from "@/components/ui/Modal";
 import { SettingsListSkeleton } from "@/components/ui/Skeleton";
-import { INPUT_CLASS } from "@/components/ui/inputStyles";
 import {
   createComponentCategory,
   createStorageLocation,
@@ -157,7 +157,10 @@ export function InventoryListManager({ kind }: { kind: "categories" | "locations
         ) : (
           <ul className="space-y-1 max-h-96 overflow-y-auto">
             {entries.map((entry) => (
-              <li key={entry.id} className="flex items-center justify-between gap-4 px-3 py-2 rounded-lg bg-surface-container">
+              <li
+                key={entry.id}
+                className="flex items-center justify-between gap-4 px-3 py-2 rounded-lg bg-surface-container"
+              >
                 <button type="button" onClick={() => openRename(entry)} className="min-w-0 text-start flex-1">
                   <p className="font-body-md text-body-md text-on-surface truncate">{entry.name}</p>
                   {entry.description && (
@@ -200,12 +203,10 @@ export function InventoryListManager({ kind }: { kind: "categories" | "locations
       >
         <div className="space-y-4">
           <div className="space-y-2">
-            <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase">{t("nameLabel")}</label>
-            <input
-              className={INPUT_CLASS}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
+            <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase">
+              {t("nameLabel")}
+            </label>
+            <input className={INPUT_CLASS} value={name} onChange={(e) => setName(e.target.value)} />
             {kind === "locations" && editTarget !== "new" && (
               <p className="font-body-md text-body-md text-on-surface-variant">{t("mergeHint")}</p>
             )}
@@ -214,11 +215,7 @@ export function InventoryListManager({ kind }: { kind: "categories" | "locations
             <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase">
               {t("descriptionLabel")}
             </label>
-            <input
-              className={INPUT_CLASS}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
+            <input className={INPUT_CLASS} value={description} onChange={(e) => setDescription(e.target.value)} />
           </div>
           {saveError && (
             <p className="font-body-md text-body-md text-error" role="alert">

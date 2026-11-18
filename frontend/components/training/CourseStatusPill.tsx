@@ -12,7 +12,10 @@ const STATUS_CLASSES: Record<CourseStatus, string> = {
   ARCHIVED: "bg-surface-variant text-on-surface-variant",
 };
 
-export const COURSE_STATUS_LABEL_KEYS: Record<CourseStatus, "draft" | "inReview" | "published" | "rejected" | "archived"> = {
+export const COURSE_STATUS_LABEL_KEYS: Record<
+  CourseStatus,
+  "draft" | "inReview" | "published" | "rejected" | "archived"
+> = {
   DRAFT: "draft",
   IN_REVIEW: "inReview",
   PUBLISHED: "published",

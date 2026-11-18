@@ -36,7 +36,13 @@ interface DataTableProps<T extends { id: string }> {
 // tags, a component-specific status enum), and the equivalent Failures/
 // Tests/Documents table components, for how differently-shaped entities
 // each plug their own column set into this same shell.
-export function DataTable<T extends { id: string }>({ columns, rows, t, ordering, onOrderingChange }: DataTableProps<T>) {
+export function DataTable<T extends { id: string }>({
+  columns,
+  rows,
+  t,
+  ordering,
+  onOrderingChange,
+}: DataTableProps<T>) {
   function toggleOrdering(field: string): string {
     // First click on a column sorts ascending; clicking the already-active
     // column flips direction. Clicking a different column always starts

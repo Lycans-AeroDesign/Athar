@@ -94,9 +94,7 @@ def update_own_profile(*, actor: User, request=None, **fields) -> User:
     return actor
 
 
-def create_invitation_code(
-    *, created_by: User, max_uses: int = 1, expires_at=None, request=None
-) -> InvitationCode:
+def create_invitation_code(*, created_by: User, max_uses: int = 1, expires_at=None, request=None) -> InvitationCode:
     invitation = InvitationCode.objects.create(
         organization=created_by.organization, created_by=created_by, max_uses=max_uses, expires_at=expires_at
     )
@@ -322,11 +320,7 @@ def get_valid_password_reset_link(token: str) -> PasswordResetLink | None:
     expired, and its user not blocked) - else None. Callers must give every
     None the same response, so a guessed/expired/used token is
     indistinguishable from one that never existed."""
-    link = (
-        PasswordResetLink.objects.select_related("user")
-        .filter(token_hash=_hash_reset_token(token))
-        .first()
-    )
+    link = PasswordResetLink.objects.select_related("user").filter(token_hash=_hash_reset_token(token)).first()
     if link is None or not link.is_valid() or not link.user.is_active:
         return None
     return link
@@ -384,9 +378,7 @@ def handle_refresh_token_reuse(probe: RotationProbeToken, *, request=None) -> bo
     out, the cookie was copied somewhere: revoke all of the user's sessions and audit it. A replay
     within JWT_REFRESH_REUSE_GRACE_SECONDS of the rotation is a benign race (e.g. two tabs) and
     only fails that request. Returns True when sessions were revoked."""
-    blacklisted = (
-        BlacklistedToken.objects.filter(token__jti=probe.payload["jti"]).select_related("token__user").first()
-    )
+    blacklisted = BlacklistedToken.objects.filter(token__jti=probe.payload["jti"]).select_related("token__user").first()
     if blacklisted is None:
         return False
     age = (timezone.now() - blacklisted.blacklisted_at).total_seconds()

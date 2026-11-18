@@ -25,6 +25,7 @@ uv run manage.py test --parallel auto  # run the test suite (one DB clone per co
 uv run manage.py test <app>            # run one app's tests
 uv run manage.py seed_rbac       # (re)seed the permission/role catalogue
 uv run manage.py seed_test_users # create one login per role (see rbac/management/commands/seed_test_users.py)
+uvx ruff@0.14.0 check --fix . && uvx ruff@0.14.0 format .  # lint + import order + formatting (CI checks both)
 ```
 
 - Settings: `backend/config/settings.py`, loaded via `django-environ` from `backend/.env` (copy from `backend/.env.example`; `docker compose`/CI inject real env vars directly). `SECRET_KEY` is a placeholder dev key — must be replaced via env var before any production use.
@@ -43,6 +44,7 @@ npm run build   # production build (also the real type-check - run before mergin
 npm run start   # serve production build
 npm run lint    # eslint
 npm test        # vitest unit tests (*.test.ts / *.test.tsx next to the code)
+npm run format  # prettier, incl. import order (CI runs format:check)
 ```
 
 - Root layout: `frontend/app/[locale]/layout.tsx`; global styles: `frontend/app/[locale]/globals.css`.

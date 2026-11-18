@@ -57,9 +57,7 @@ function displayMentionRegex(mentions: MentionMap): RegExp {
 
 export function toStorage(display: string, mentions: MentionMap): string {
   if (mentions.size === 0) return display;
-  return display.replace(displayMentionRegex(mentions), (_, title: string) =>
-    mentionLink(title, mentions.get(title)!),
-  );
+  return display.replace(displayMentionRegex(mentions), (_, title: string) => mentionLink(title, mentions.get(title)!));
 }
 
 /** Where each `@title` sits in the display text - the exact spans toStorage

@@ -139,6 +139,7 @@ Follow the [Angular commit message conventions](https://github.com/angular/angul
 - **npm** with `package-lock.json` — avoid introducing yarn/pnpm lockfiles.
 - New code must type-check: run `npm run build` before merging.
 - Run `npm run lint` and fix new violations in files you touch.
+- Run `npm run format` before committing: Prettier formats everything, including import order (third-party, then `@/...`, then relative, one group each - `@ianvs/prettier-plugin-sort-imports`, see `.prettierrc.json`). CI fails on unformatted files (`npm run format:check`).
 - Run `npm test` (Vitest) and fix/add tests for files you touch — see §4.9.
 
 ### 4.2 Project structure and routing
@@ -256,6 +257,7 @@ The frontend's test suite is still small (see `docs/VISION.md` §32 "Testing") �
 - [ ] **Reuse**: existing utils/services/serializers/components used instead of parallel implementations.
 - [ ] **Comments** (§3.6): brief, explain *why*, no references to planning documents.
 - [ ] **Backend**: `uv run manage.py test --parallel auto` passes (what `ci.yml` runs), plus `manage.py check` and `makemigrations --check --dry-run`.
+- [ ] **Formatting**: `uvx ruff@0.14.0 check --fix . && uvx ruff@0.14.0 format .` (backend, from `backend/`) and `npm run format` (frontend) - CI checks both, import order included.
 - [ ] **Frontend**: `npm run lint`, `npm run build`, and `npm test` pass; dark mode works; no secrets in `NEXT_PUBLIC_*`.
 - [ ] **i18n**: no hardcoded UI text — every string goes through `useTranslations`/`getTranslations`; new keys added to `en.json` (and kept in sync, even if untranslated, in every other locale file).
 - [ ] **Security** (§6): no new endpoint relies on frontend-only access control; new id-bearing routes are in the tenant-isolation matrix; no secrets committed or logged.

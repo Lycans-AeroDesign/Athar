@@ -10,10 +10,9 @@ from rest_framework.views import APIView
 from config.openapi import BAD_REQUEST, COMMON_ERRORS, NOT_FOUND
 from config.pagination import paginated_response
 from core.shortcuts import org_object_or_404, uuid_query_param
-from rbac.permissions import require_permission
-
 from knowledge.models import RestrictedAccessGrant
 from knowledge.serializers import AccessGrantSerializer
+from rbac.permissions import require_permission
 
 from . import search, services
 from . import visibility as course_visibility
@@ -23,8 +22,8 @@ from .models import (
     CourseEnrollment,
     CourseModule,
     CourseResource,
-    Lesson,
     LearningObjective,
+    Lesson,
     LessonKnowledgeReference,
 )
 from .serializers import (
@@ -50,7 +49,6 @@ from .serializers import (
     ReorderSerializer,
 )
 
-
 # --- Visibility helpers -------------------------------------------------------
 #
 # Course gating combines `visibility` (training/visibility.py) with status rules, mirroring
@@ -63,9 +61,10 @@ def _ensure_course_visible(request, course: Course) -> None:
         raise PermissionDenied("This course isn't accessible to you.")
     if course.status == Course.Status.PUBLISHED:
         return
-    if course.status == Course.Status.ARCHIVED and CourseEnrollment.objects.filter(
-        course=course, user=request.user
-    ).exists():
+    if (
+        course.status == Course.Status.ARCHIVED
+        and CourseEnrollment.objects.filter(course=course, user=request.user).exists()
+    ):
         return
     is_privileged = (
         request.user == course.author
@@ -103,7 +102,8 @@ def _visible_lesson_or_404(request, pk):
     lesson = get_object_or_404(
         Lesson.objects.select_related("module__course__category", "module__course__author"),
         pk=pk,
-        module__course__organization=request.user.organization, module__course__deleted_at__isnull=True,
+        module__course__organization=request.user.organization,
+        module__course__deleted_at__isnull=True,
     )
     _ensure_course_visible(request, lesson.module.course)
     return lesson
@@ -119,7 +119,8 @@ class CourseCategoryListView(APIView):
         return [require_permission("training.read")()]
 
     @extend_schema(
-        tags=["Training"], summary="List course categories",
+        tags=["Training"],
+        summary="List course categories",
         responses={200: CourseCategorySerializer(many=True), **COMMON_ERRORS},
     )
     def get(self, request):
@@ -127,7 +128,8 @@ class CourseCategoryListView(APIView):
         return paginated_response(request, queryset, CourseCategorySerializer)
 
     @extend_schema(
-        tags=["Training"], summary="Create a course category (requires training.manage)",
+        tags=["Training"],
+        summary="Create a course category (requires training.manage)",
         request=CourseCategoryWriteSerializer,
         responses={201: CourseCategorySerializer, 400: BAD_REQUEST, **COMMON_ERRORS},
     )
@@ -142,7 +144,8 @@ class CourseCategoryDetailView(APIView):
     permission_classes = [require_permission("training.manage")]
 
     @extend_schema(
-        tags=["Training"], summary="Update a course category (requires training.manage)",
+        tags=["Training"],
+        summary="Update a course category (requires training.manage)",
         request=CourseCategoryWriteSerializer,
         responses={200: CourseCategorySerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
@@ -156,7 +159,8 @@ class CourseCategoryDetailView(APIView):
         return Response(CourseCategorySerializer(category).data)
 
     @extend_schema(
-        tags=["Training"], summary="Delete a course category (requires training.manage; courses in it become uncategorized)",
+        tags=["Training"],
+        summary="Delete a course category (requires training.manage; courses in it become uncategorized)",
         responses={204: OpenApiResponse(description="Deleted."), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def delete(self, request, pk):
@@ -207,7 +211,8 @@ class CourseListCreateView(APIView):
         return paginated_response(request, queryset, CourseListSerializer)
 
     @extend_schema(
-        tags=["Training"], summary="Create a course (starts as a draft)",
+        tags=["Training"],
+        summary="Create a course (starts as a draft)",
         request=CourseWriteSerializer,
         responses={201: CourseDetailSerializer, 400: BAD_REQUEST, **COMMON_ERRORS},
     )
@@ -215,7 +220,9 @@ class CourseListCreateView(APIView):
         serializer = CourseWriteSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         course = services.create_course(actor=request.user, request=request, **serializer.validated_data)
-        return Response(CourseDetailSerializer(course, context={"request": request}).data, status=status.HTTP_201_CREATED)
+        return Response(
+            CourseDetailSerializer(course, context={"request": request}).data, status=status.HTTP_201_CREATED
+        )
 
 
 class CourseDetailView(APIView):
@@ -227,7 +234,8 @@ class CourseDetailView(APIView):
         return super().get_permissions()
 
     @extend_schema(
-        tags=["Training"], summary="Get a course (must be published, or you must be the author/a manager)",
+        tags=["Training"],
+        summary="Get a course (must be published, or you must be the author/a manager)",
         responses={200: CourseDetailSerializer, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def get(self, request, pk):
@@ -235,7 +243,8 @@ class CourseDetailView(APIView):
         return Response(CourseDetailSerializer(course, context={"request": request}).data)
 
     @extend_schema(
-        tags=["Training"], summary="Update a course (own draft/in-review/rejected, or requires training.update)",
+        tags=["Training"],
+        summary="Update a course (own draft/in-review/rejected, or requires training.update)",
         request=CourseWriteSerializer,
         responses={200: CourseDetailSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
@@ -247,7 +256,8 @@ class CourseDetailView(APIView):
         return Response(CourseDetailSerializer(course, context={"request": request}).data)
 
     @extend_schema(
-        tags=["Training"], summary="Delete a course (own draft, or requires training.delete; blocked while enrollments exist)",
+        tags=["Training"],
+        summary="Delete a course (own draft, or requires training.delete; blocked while enrollments exist)",
         responses={204: OpenApiResponse(description="Deleted."), 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def delete(self, request, pk):
@@ -263,7 +273,8 @@ class CourseSubmitView(APIView):
     permission_classes = [require_permission("training.create")]
 
     @extend_schema(
-        tags=["Training"], summary="Submit a draft/rejected course for review (author only)",
+        tags=["Training"],
+        summary="Submit a draft/rejected course for review (author only)",
         responses={200: CourseDetailSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def post(self, request, pk):
@@ -276,7 +287,8 @@ class CoursePublishView(APIView):
     permission_classes = [require_permission("training.publish")]
 
     @extend_schema(
-        tags=["Training"], summary="Publish a draft or in-review course",
+        tags=["Training"],
+        summary="Publish a draft or in-review course",
         responses={200: CourseDetailSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def post(self, request, pk):
@@ -289,7 +301,8 @@ class CourseRejectView(APIView):
     permission_classes = [require_permission("training.review")]
 
     @extend_schema(
-        tags=["Training"], summary="Reject an in-review course, sending it back to the author",
+        tags=["Training"],
+        summary="Reject an in-review course, sending it back to the author",
         responses={200: CourseDetailSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def post(self, request, pk):
@@ -304,7 +317,8 @@ class CourseArchiveView(APIView):
     permission_classes = [require_permission("training.archive")]
 
     @extend_schema(
-        tags=["Training"], summary="Archive a published course",
+        tags=["Training"],
+        summary="Archive a published course",
         responses={200: CourseDetailSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def post(self, request, pk):
@@ -317,7 +331,8 @@ class CourseUnarchiveView(APIView):
     permission_classes = [require_permission("training.archive")]
 
     @extend_schema(
-        tags=["Training"], summary="Restore an archived course to published",
+        tags=["Training"],
+        summary="Restore an archived course to published",
         responses={200: CourseDetailSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def post(self, request, pk):
@@ -337,7 +352,8 @@ class CourseAccessGrantListCreateView(APIView):
     permission_classes = [require_permission("training.create")]
 
     @extend_schema(
-        tags=["Training"], summary="Grant a user access to a restricted course (own course, or requires training.update)",
+        tags=["Training"],
+        summary="Grant a user access to a restricted course (own course, or requires training.update)",
         request=CourseAccessGrantCreateSerializer,
         responses={201: AccessGrantSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
@@ -355,7 +371,8 @@ class CourseAccessGrantDetailView(APIView):
     permission_classes = [require_permission("training.create")]
 
     @extend_schema(
-        tags=["Training"], summary="Revoke a user's access to a restricted course (own course, or requires training.update)",
+        tags=["Training"],
+        summary="Revoke a user's access to a restricted course (own course, or requires training.update)",
         responses={204: OpenApiResponse(description="Revoked."), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def delete(self, request, pk, grant_pk):
@@ -375,7 +392,8 @@ class CourseEnrollView(APIView):
     permission_classes = [require_permission("training.read")]
 
     @extend_schema(
-        tags=["Training"], summary="Enroll in a published course",
+        tags=["Training"],
+        summary="Enroll in a published course",
         responses={201: CourseEnrollmentSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def post(self, request, pk):
@@ -402,8 +420,13 @@ class CourseStatsView(APIView):
     permission_classes = [require_permission("training.manage")]
 
     @extend_schema(
-        tags=["Training"], summary="Aggregate enrollment/completion statistics for a course (requires training.manage)",
-        responses={200: OpenApiResponse(description="{total_enrolled, active, completed, completion_rate}"), 404: NOT_FOUND, **COMMON_ERRORS},
+        tags=["Training"],
+        summary="Aggregate enrollment/completion statistics for a course (requires training.manage)",
+        responses={
+            200: OpenApiResponse(description="{total_enrolled, active, completed, completion_rate}"),
+            404: NOT_FOUND,
+            **COMMON_ERRORS,
+        },
     )
     def get(self, request, pk):
         course = org_object_or_404(request, Course, pk)
@@ -414,7 +437,8 @@ class TrainingStatsView(APIView):
     permission_classes = [require_permission("training.manage")]
 
     @extend_schema(
-        tags=["Training"], summary="Org-wide training admin dashboard statistics (requires training.manage)",
+        tags=["Training"],
+        summary="Org-wide training admin dashboard statistics (requires training.manage)",
         responses={
             200: OpenApiResponse(
                 description="{courses_by_status, total_learners, active_learners, completed_learners, most_popular_courses}"
@@ -430,7 +454,8 @@ class MyCoursesView(APIView):
     permission_classes = [require_permission("training.read")]
 
     @extend_schema(
-        tags=["Training"], summary="The caller's own enrollments (optional ?status=in_progress|completed)",
+        tags=["Training"],
+        summary="The caller's own enrollments (optional ?status=in_progress|completed)",
         responses={200: CourseEnrollmentSerializer(many=True), 400: BAD_REQUEST, **COMMON_ERRORS},
     )
     def get(self, request):
@@ -459,7 +484,8 @@ class TrainingSearchView(APIView):
     permission_classes = [require_permission("training.read")]
 
     @extend_schema(
-        tags=["Training"], summary="Search published courses (?q=; optional ?category=<id>, ?difficulty=)",
+        tags=["Training"],
+        summary="Search published courses (?q=; optional ?category=<id>, ?difficulty=)",
         responses={200: CourseListSerializer(many=True), **COMMON_ERRORS},
     )
     def get(self, request):
@@ -488,7 +514,8 @@ class CourseModuleListCreateView(APIView):
     permission_classes = [require_permission("training.create")]
 
     @extend_schema(
-        tags=["Training"], summary="Add a module to a course (own course, or requires training.update)",
+        tags=["Training"],
+        summary="Add a module to a course (own course, or requires training.update)",
         request=CourseModuleWriteSerializer,
         responses={201: CourseModuleSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
@@ -504,7 +531,8 @@ class CourseModuleReorderView(APIView):
     permission_classes = [require_permission("training.create")]
 
     @extend_schema(
-        tags=["Training"], summary="Reorder a course's modules (full ordered list of module ids)",
+        tags=["Training"],
+        summary="Reorder a course's modules (full ordered list of module ids)",
         request=ReorderSerializer,
         responses={200: CourseModuleSerializer(many=True), 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
@@ -522,10 +550,11 @@ class CourseImportCurriculumView(APIView):
     permission_classes = [require_permission("training.create")]
 
     @extend_schema(
-        tags=["Training"], summary="Bulk import modules and lessons into a course",
-        request=inline_serializer("ImportCurriculumRequest", fields={
-            "modules": serializers.ListField(child=serializers.DictField())
-        }),
+        tags=["Training"],
+        summary="Bulk import modules and lessons into a course",
+        request=inline_serializer(
+            "ImportCurriculumRequest", fields={"modules": serializers.ListField(child=serializers.DictField())}
+        ),
         responses={200: CourseDetailSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def post(self, request, pk):
@@ -533,7 +562,9 @@ class CourseImportCurriculumView(APIView):
         modules_data = request.data.get("modules", [])
         if not isinstance(modules_data, list):
             raise ValidationError({"modules": "Must be a list of modules."})
-        course = services.import_curriculum(course=course, actor=request.user, request=request, modules_data=modules_data)
+        course = services.import_curriculum(
+            course=course, actor=request.user, request=request, modules_data=modules_data
+        )
         return Response(CourseDetailSerializer(course, context={"request": request}).data)
 
 
@@ -541,23 +572,29 @@ class CourseModuleDetailView(APIView):
     permission_classes = [require_permission("training.create")]
 
     @extend_schema(
-        tags=["Training"], summary="Update a module (own course, or requires training.update)",
+        tags=["Training"],
+        summary="Update a module (own course, or requires training.update)",
         request=CourseModuleWriteSerializer,
         responses={200: CourseModuleSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def patch(self, request, pk):
-        module = get_object_or_404(CourseModule, pk=pk, course__organization=request.user.organization, course__deleted_at__isnull=True)
+        module = get_object_or_404(
+            CourseModule, pk=pk, course__organization=request.user.organization, course__deleted_at__isnull=True
+        )
         serializer = CourseModuleWriteSerializer(module, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         module = services.update_module(module=module, actor=request.user, request=request, **serializer.validated_data)
         return Response(CourseModuleSerializer(module).data)
 
     @extend_schema(
-        tags=["Training"], summary="Delete a module (own course, or requires training.update)",
+        tags=["Training"],
+        summary="Delete a module (own course, or requires training.update)",
         responses={204: OpenApiResponse(description="Deleted."), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def delete(self, request, pk):
-        module = get_object_or_404(CourseModule, pk=pk, course__organization=request.user.organization, course__deleted_at__isnull=True)
+        module = get_object_or_404(
+            CourseModule, pk=pk, course__organization=request.user.organization, course__deleted_at__isnull=True
+        )
         services.delete_module(module=module, actor=request.user, request=request)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -569,28 +606,36 @@ class ModuleLessonListCreateView(APIView):
     permission_classes = [require_permission("training.create")]
 
     @extend_schema(
-        tags=["Training"], summary="Add a lesson to a module (own course, or requires training.update)",
+        tags=["Training"],
+        summary="Add a lesson to a module (own course, or requires training.update)",
         request=LessonWriteSerializer,
         responses={201: LessonDetailSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def post(self, request, pk):
-        module = get_object_or_404(CourseModule, pk=pk, course__organization=request.user.organization, course__deleted_at__isnull=True)
+        module = get_object_or_404(
+            CourseModule, pk=pk, course__organization=request.user.organization, course__deleted_at__isnull=True
+        )
         serializer = LessonWriteSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         lesson = services.create_lesson(module=module, actor=request.user, request=request, **serializer.validated_data)
-        return Response(LessonDetailSerializer(lesson, context={"request": request}).data, status=status.HTTP_201_CREATED)
+        return Response(
+            LessonDetailSerializer(lesson, context={"request": request}).data, status=status.HTTP_201_CREATED
+        )
 
 
 class ModuleLessonReorderView(APIView):
     permission_classes = [require_permission("training.create")]
 
     @extend_schema(
-        tags=["Training"], summary="Reorder a module's lessons (full ordered list of lesson ids)",
+        tags=["Training"],
+        summary="Reorder a module's lessons (full ordered list of lesson ids)",
         request=ReorderSerializer,
         responses={200: LessonSummarySerializer(many=True), 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def post(self, request, pk):
-        module = get_object_or_404(CourseModule, pk=pk, course__organization=request.user.organization, course__deleted_at__isnull=True)
+        module = get_object_or_404(
+            CourseModule, pk=pk, course__organization=request.user.organization, course__deleted_at__isnull=True
+        )
         serializer = ReorderSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         lessons = services.reorder_lessons(
@@ -608,7 +653,8 @@ class LessonDetailView(APIView):
         return super().get_permissions()
 
     @extend_schema(
-        tags=["Training"], summary="Get a lesson (must belong to a course you can access)",
+        tags=["Training"],
+        summary="Get a lesson (must belong to a course you can access)",
         responses={200: LessonDetailSerializer, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def get(self, request, pk):
@@ -616,23 +662,35 @@ class LessonDetailView(APIView):
         return Response(LessonDetailSerializer(lesson, context={"request": request}).data)
 
     @extend_schema(
-        tags=["Training"], summary="Update a lesson (own course, or requires training.update)",
+        tags=["Training"],
+        summary="Update a lesson (own course, or requires training.update)",
         request=LessonWriteSerializer,
         responses={200: LessonDetailSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def patch(self, request, pk):
-        lesson = get_object_or_404(Lesson, pk=pk, module__course__organization=request.user.organization, module__course__deleted_at__isnull=True)
+        lesson = get_object_or_404(
+            Lesson,
+            pk=pk,
+            module__course__organization=request.user.organization,
+            module__course__deleted_at__isnull=True,
+        )
         serializer = LessonWriteSerializer(lesson, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         lesson = services.update_lesson(lesson=lesson, actor=request.user, request=request, **serializer.validated_data)
         return Response(LessonDetailSerializer(lesson, context={"request": request}).data)
 
     @extend_schema(
-        tags=["Training"], summary="Delete a lesson (own course, or requires training.update)",
+        tags=["Training"],
+        summary="Delete a lesson (own course, or requires training.update)",
         responses={204: OpenApiResponse(description="Deleted."), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def delete(self, request, pk):
-        lesson = get_object_or_404(Lesson, pk=pk, module__course__organization=request.user.organization, module__course__deleted_at__isnull=True)
+        lesson = get_object_or_404(
+            Lesson,
+            pk=pk,
+            module__course__organization=request.user.organization,
+            module__course__deleted_at__isnull=True,
+        )
         services.delete_lesson(lesson=lesson, actor=request.user, request=request)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -641,8 +699,14 @@ class LessonCompleteView(APIView):
     permission_classes = [require_permission("training.read")]
 
     @extend_schema(
-        tags=["Training"], summary="Mark a lesson complete for the caller's own enrollment (idempotent)",
-        responses={200: OpenApiResponse(description="{lesson_id, completed_at}"), 403: OpenApiResponse(description="Not enrolled in this lesson's course."), 404: NOT_FOUND, **COMMON_ERRORS},
+        tags=["Training"],
+        summary="Mark a lesson complete for the caller's own enrollment (idempotent)",
+        responses={
+            200: OpenApiResponse(description="{lesson_id, completed_at}"),
+            403: OpenApiResponse(description="Not enrolled in this lesson's course."),
+            404: NOT_FOUND,
+            **COMMON_ERRORS,
+        },
     )
     def post(self, request, pk):
         lesson = _visible_lesson_or_404(request, pk)
@@ -660,7 +724,8 @@ class LessonObjectiveListCreateView(APIView):
         return [require_permission("training.read")()]
 
     @extend_schema(
-        tags=["Training"], summary="List a lesson's learning objectives",
+        tags=["Training"],
+        summary="List a lesson's learning objectives",
         responses={200: LearningObjectiveSerializer(many=True), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def get(self, request, pk):
@@ -668,12 +733,18 @@ class LessonObjectiveListCreateView(APIView):
         return Response(LearningObjectiveSerializer(lesson.objectives.all(), many=True).data)
 
     @extend_schema(
-        tags=["Training"], summary="Add a learning objective to a lesson (own course, or requires training.update)",
+        tags=["Training"],
+        summary="Add a learning objective to a lesson (own course, or requires training.update)",
         request=LearningObjectiveWriteSerializer,
         responses={201: LearningObjectiveSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def post(self, request, pk):
-        lesson = get_object_or_404(Lesson, pk=pk, module__course__organization=request.user.organization, module__course__deleted_at__isnull=True)
+        lesson = get_object_or_404(
+            Lesson,
+            pk=pk,
+            module__course__organization=request.user.organization,
+            module__course__deleted_at__isnull=True,
+        )
         serializer = LearningObjectiveWriteSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         objective = services.create_objective(
@@ -686,12 +757,18 @@ class LessonObjectiveReorderView(APIView):
     permission_classes = [require_permission("training.create")]
 
     @extend_schema(
-        tags=["Training"], summary="Reorder a lesson's learning objectives",
+        tags=["Training"],
+        summary="Reorder a lesson's learning objectives",
         request=ReorderSerializer,
         responses={200: LearningObjectiveSerializer(many=True), 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def post(self, request, pk):
-        lesson = get_object_or_404(Lesson, pk=pk, module__course__organization=request.user.organization, module__course__deleted_at__isnull=True)
+        lesson = get_object_or_404(
+            Lesson,
+            pk=pk,
+            module__course__organization=request.user.organization,
+            module__course__deleted_at__isnull=True,
+        )
         serializer = ReorderSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         objectives = services.reorder_objectives(
@@ -704,13 +781,17 @@ class ObjectiveDetailView(APIView):
     permission_classes = [require_permission("training.create")]
 
     @extend_schema(
-        tags=["Training"], summary="Update a learning objective (own course, or requires training.update)",
+        tags=["Training"],
+        summary="Update a learning objective (own course, or requires training.update)",
         request=LearningObjectiveWriteSerializer,
         responses={200: LearningObjectiveSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def patch(self, request, pk):
         objective = get_object_or_404(
-            LearningObjective, pk=pk, lesson__module__course__organization=request.user.organization, lesson__module__course__deleted_at__isnull=True
+            LearningObjective,
+            pk=pk,
+            lesson__module__course__organization=request.user.organization,
+            lesson__module__course__deleted_at__isnull=True,
         )
         serializer = LearningObjectiveWriteSerializer(objective, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
@@ -720,12 +801,16 @@ class ObjectiveDetailView(APIView):
         return Response(LearningObjectiveSerializer(objective).data)
 
     @extend_schema(
-        tags=["Training"], summary="Delete a learning objective (own course, or requires training.update)",
+        tags=["Training"],
+        summary="Delete a learning objective (own course, or requires training.update)",
         responses={204: OpenApiResponse(description="Deleted."), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def delete(self, request, pk):
         objective = get_object_or_404(
-            LearningObjective, pk=pk, lesson__module__course__organization=request.user.organization, lesson__module__course__deleted_at__isnull=True
+            LearningObjective,
+            pk=pk,
+            lesson__module__course__organization=request.user.organization,
+            lesson__module__course__deleted_at__isnull=True,
         )
         services.delete_objective(objective=objective, actor=request.user, request=request)
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -741,7 +826,8 @@ class LessonResourceListCreateView(APIView):
         return [require_permission("training.read")()]
 
     @extend_schema(
-        tags=["Training"], summary="List a lesson's resources",
+        tags=["Training"],
+        summary="List a lesson's resources",
         responses={200: CourseResourceSerializer(many=True), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def get(self, request, pk):
@@ -750,12 +836,18 @@ class LessonResourceListCreateView(APIView):
         return Response(CourseResourceSerializer(resources, many=True).data)
 
     @extend_schema(
-        tags=["Training"], summary="Add a resource to a lesson (own course, or requires training.update)",
+        tags=["Training"],
+        summary="Add a resource to a lesson (own course, or requires training.update)",
         request=CourseResourceWriteSerializer,
         responses={201: CourseResourceSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def post(self, request, pk):
-        lesson = get_object_or_404(Lesson, pk=pk, module__course__organization=request.user.organization, module__course__deleted_at__isnull=True)
+        lesson = get_object_or_404(
+            Lesson,
+            pk=pk,
+            module__course__organization=request.user.organization,
+            module__course__deleted_at__isnull=True,
+        )
         serializer = CourseResourceWriteSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         resource = services.create_resource(
@@ -768,12 +860,18 @@ class LessonResourceReorderView(APIView):
     permission_classes = [require_permission("training.create")]
 
     @extend_schema(
-        tags=["Training"], summary="Reorder a lesson's resources",
+        tags=["Training"],
+        summary="Reorder a lesson's resources",
         request=ReorderSerializer,
         responses={200: CourseResourceSerializer(many=True), 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def post(self, request, pk):
-        lesson = get_object_or_404(Lesson, pk=pk, module__course__organization=request.user.organization, module__course__deleted_at__isnull=True)
+        lesson = get_object_or_404(
+            Lesson,
+            pk=pk,
+            module__course__organization=request.user.organization,
+            module__course__deleted_at__isnull=True,
+        )
         serializer = ReorderSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         resources = services.reorder_resources(
@@ -786,13 +884,21 @@ class ResourceDetailView(APIView):
     permission_classes = [require_permission("training.create")]
 
     @extend_schema(
-        tags=["Training"], summary="Update a resource (own course, or requires training.update)",
+        tags=["Training"],
+        summary="Update a resource (own course, or requires training.update)",
         request=CourseResourceWriteSerializer,
         responses={200: CourseResourceSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def patch(self, request, pk):
-        resource = get_object_or_404(CourseResource, pk=pk, lesson__module__course__organization=request.user.organization, lesson__module__course__deleted_at__isnull=True)
-        serializer = CourseResourceWriteSerializer(resource, data=request.data, partial=True, context={"request": request})
+        resource = get_object_or_404(
+            CourseResource,
+            pk=pk,
+            lesson__module__course__organization=request.user.organization,
+            lesson__module__course__deleted_at__isnull=True,
+        )
+        serializer = CourseResourceWriteSerializer(
+            resource, data=request.data, partial=True, context={"request": request}
+        )
         serializer.is_valid(raise_exception=True)
         resource = services.update_resource(
             resource=resource, actor=request.user, request=request, **serializer.validated_data
@@ -800,11 +906,17 @@ class ResourceDetailView(APIView):
         return Response(CourseResourceSerializer(resource).data)
 
     @extend_schema(
-        tags=["Training"], summary="Delete a resource (own course, or requires training.update)",
+        tags=["Training"],
+        summary="Delete a resource (own course, or requires training.update)",
         responses={204: OpenApiResponse(description="Deleted."), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def delete(self, request, pk):
-        resource = get_object_or_404(CourseResource, pk=pk, lesson__module__course__organization=request.user.organization, lesson__module__course__deleted_at__isnull=True)
+        resource = get_object_or_404(
+            CourseResource,
+            pk=pk,
+            lesson__module__course__organization=request.user.organization,
+            lesson__module__course__deleted_at__isnull=True,
+        )
         services.delete_resource(resource=resource, actor=request.user, request=request)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -819,7 +931,8 @@ class LessonKnowledgeReferenceListCreateView(APIView):
         return [require_permission("training.read")()]
 
     @extend_schema(
-        tags=["Training"], summary="List a lesson's related Knowledge references (inaccessible/deleted targets omitted)",
+        tags=["Training"],
+        summary="List a lesson's related Knowledge references (inaccessible/deleted targets omitted)",
         responses={200: LessonKnowledgeReferenceSerializer(many=True), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def get(self, request, pk):
@@ -834,7 +947,12 @@ class LessonKnowledgeReferenceListCreateView(APIView):
         responses={201: LessonKnowledgeReferenceSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def post(self, request, pk):
-        lesson = get_object_or_404(Lesson, pk=pk, module__course__organization=request.user.organization, module__course__deleted_at__isnull=True)
+        lesson = get_object_or_404(
+            Lesson,
+            pk=pk,
+            module__course__organization=request.user.organization,
+            module__course__deleted_at__isnull=True,
+        )
         serializer = CreateKnowledgeReferenceSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         reference = services.create_knowledge_reference(
@@ -847,12 +965,16 @@ class KnowledgeReferenceDetailView(APIView):
     permission_classes = [require_permission("training.create")]
 
     @extend_schema(
-        tags=["Training"], summary="Remove a Knowledge reference from a lesson (own course, or requires training.update)",
+        tags=["Training"],
+        summary="Remove a Knowledge reference from a lesson (own course, or requires training.update)",
         responses={204: OpenApiResponse(description="Deleted."), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def delete(self, request, pk):
         reference = get_object_or_404(
-            LessonKnowledgeReference, pk=pk, lesson__module__course__organization=request.user.organization, lesson__module__course__deleted_at__isnull=True
+            LessonKnowledgeReference,
+            pk=pk,
+            lesson__module__course__organization=request.user.organization,
+            lesson__module__course__deleted_at__isnull=True,
         )
         services.delete_knowledge_reference(reference=reference, actor=request.user, request=request)
         return Response(status=status.HTTP_204_NO_CONTENT)

@@ -13,8 +13,8 @@ from .views import (
     CourseModuleDetailView,
     CourseModuleListCreateView,
     CourseModuleReorderView,
-    CoursePublishView,
     CourseProgressView,
+    CoursePublishView,
     CourseRejectView,
     CourseStatsView,
     CourseSubmitView,
@@ -23,8 +23,8 @@ from .views import (
     LessonCompleteView,
     LessonDetailView,
     LessonKnowledgeReferenceListCreateView,
-    LessonObjectiveReorderView,
     LessonObjectiveListCreateView,
+    LessonObjectiveReorderView,
     LessonResourceListCreateView,
     LessonResourceReorderView,
     ModuleLessonListCreateView,
@@ -64,13 +64,19 @@ urlpatterns = [
     path("courses/<uuid:pk>/stats/", CourseStatsView.as_view(), name="training-course-stats"),
     path("courses/<uuid:pk>/modules/", CourseModuleListCreateView.as_view(), name="training-module-list-create"),
     path("courses/<uuid:pk>/modules/reorder/", CourseModuleReorderView.as_view(), name="training-module-reorder"),
-    path("courses/<uuid:pk>/import-curriculum/", CourseImportCurriculumView.as_view(), name="training-course-import-curriculum"),
+    path(
+        "courses/<uuid:pk>/import-curriculum/",
+        CourseImportCurriculumView.as_view(),
+        name="training-course-import-curriculum",
+    ),
     path("modules/<uuid:pk>/", CourseModuleDetailView.as_view(), name="training-module-detail"),
     path("modules/<uuid:pk>/lessons/", ModuleLessonListCreateView.as_view(), name="training-lesson-list-create"),
     path("modules/<uuid:pk>/lessons/reorder/", ModuleLessonReorderView.as_view(), name="training-lesson-reorder"),
     path("lessons/<uuid:pk>/", LessonDetailView.as_view(), name="training-lesson-detail"),
     path("lessons/<uuid:pk>/complete/", LessonCompleteView.as_view(), name="training-lesson-complete"),
-    path("lessons/<uuid:pk>/objectives/", LessonObjectiveListCreateView.as_view(), name="training-objective-list-create"),
+    path(
+        "lessons/<uuid:pk>/objectives/", LessonObjectiveListCreateView.as_view(), name="training-objective-list-create"
+    ),
     path(
         "lessons/<uuid:pk>/objectives/reorder/", LessonObjectiveReorderView.as_view(), name="training-objective-reorder"
     ),

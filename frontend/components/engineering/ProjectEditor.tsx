@@ -3,27 +3,27 @@
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
-import { Button } from "@/components/ui/Button";
-import { ChangedIndicator } from "@/components/ui/ChangedIndicator";
-import { Combobox } from "@/components/ui/Combobox";
-import { MarkdownEditor } from "@/components/ui/MarkdownEditor";
-import { TagInput } from "@/components/ui/TagInput";
+import { PendingRelations, toRelationInputs, type PendingRelation } from "@/components/knowledge/PendingRelations";
 import {
   EMPTY_RESTRICTED_ACCESS_DRAFT,
   RestrictedAccessPicker,
   type RestrictedAccessDraft,
 } from "@/components/knowledge/RestrictedAccessPicker";
-import { SavingOverlay } from "@/components/ui/SavingOverlay";
-import { TitleInput } from "@/components/ui/TitleInput";
-import { PendingRelations, toRelationInputs, type PendingRelation } from "@/components/knowledge/PendingRelations";
 import { effectiveVisibility, VisibilitySelect } from "@/components/knowledge/VisibilitySelect";
+import { Button } from "@/components/ui/Button";
+import { ChangedIndicator } from "@/components/ui/ChangedIndicator";
+import { Combobox } from "@/components/ui/Combobox";
+import { MarkdownEditor } from "@/components/ui/MarkdownEditor";
+import { SavingOverlay } from "@/components/ui/SavingOverlay";
+import { TagInput } from "@/components/ui/TagInput";
+import { TitleInput } from "@/components/ui/TitleInput";
 import { useRouter } from "@/i18n/navigation";
-import { errorMessage } from "@/lib/errors";
-import { useSaveOnce } from "@/lib/useSaveOnce";
 import { addAccessGrant, removeAccessGrant } from "@/lib/api/accessGrants";
 import { createProject, updateProject, type ProjectWritePayload } from "@/lib/api/engineering";
 import type { ProjectDetail, ProjectStatus, Visibility } from "@/lib/api/types";
+import { errorMessage } from "@/lib/errors";
 import { PROJECT_STATUS_ICONS } from "@/lib/optionIcons";
+import { useSaveOnce } from "@/lib/useSaveOnce";
 import { useUnsavedChangesGuard } from "@/lib/useUnsavedChangesGuard";
 
 const STATUS_VALUES: ProjectStatus[] = ["ACTIVE", "ON_HOLD", "COMPLETED"];
@@ -50,9 +50,8 @@ export function ProjectEditor({ project, onDirtyChange }: ProjectEditorProps) {
   // null = not explicitly chosen (new item only): inherits the project's visibility if one is picked.
   const [visibility, setVisibility] = useState<Visibility | null>(project?.visibility ?? null);
   const [pendingRelations, setPendingRelations] = useState<PendingRelation[]>([]);
-  const [restrictedAccessDraft, setRestrictedAccessDraft] = useState<RestrictedAccessDraft>(
-    EMPTY_RESTRICTED_ACCESS_DRAFT,
-  );
+  const [restrictedAccessDraft, setRestrictedAccessDraft] =
+    useState<RestrictedAccessDraft>(EMPTY_RESTRICTED_ACCESS_DRAFT);
   const { isSaving, run } = useSaveOnce();
   const [error, setError] = useState<string | null>(null);
 

@@ -3,7 +3,9 @@
 import cmake from "highlight.js/lib/languages/cmake";
 import dockerfile from "highlight.js/lib/languages/dockerfile";
 import matlab from "highlight.js/lib/languages/matlab";
+
 import "katex/dist/katex.min.css";
+
 import { common } from "lowlight";
 import { useTranslations } from "next-intl";
 import { createContext, isValidElement, useContext, useState, type MouseEvent, type ReactNode } from "react";
@@ -13,16 +15,17 @@ import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 
+import { Link } from "@/i18n/navigation";
+import { downloadFile } from "@/lib/api/files";
+import { RELATABLE_ICON } from "@/lib/knowledgeTypes";
+import { CALLOUT_TYPES, remarkCallouts, type CalloutType } from "@/lib/markdownCallouts";
+import { parseMentionHref } from "@/lib/mentions";
+import { slugify } from "@/lib/slug";
+
 import { AuthenticatedImage } from "./AuthenticatedImage";
 import { Icon } from "./Icon";
 import { ImageLightbox } from "./ImageLightbox";
 import { MermaidDiagram } from "./MermaidDiagram";
-import { Link } from "@/i18n/navigation";
-import { downloadFile } from "@/lib/api/files";
-import { RELATABLE_ICON } from "@/lib/knowledgeTypes";
-import { parseMentionHref } from "@/lib/mentions";
-import { CALLOUT_TYPES, remarkCallouts, type CalloutType } from "@/lib/markdownCallouts";
-import { slugify } from "@/lib/slug";
 
 // Matches ImageRenderer's /api/v1/files/ check below: a non-image file uploaded through the editor
 // embeds as [filename](/api/v1/files/<id>/download/), the same Bearer-only endpoint
@@ -333,7 +336,11 @@ const CALLOUT_STYLES: Record<CalloutType, { icon: string; box: string; title: st
     box: "border-callout-important bg-callout-important/10",
     title: "text-callout-important",
   },
-  warning: { icon: "report_problem", box: "border-callout-warning bg-callout-warning/10", title: "text-callout-warning" },
+  warning: {
+    icon: "report_problem",
+    box: "border-callout-warning bg-callout-warning/10",
+    title: "text-callout-warning",
+  },
   caution: { icon: "report", box: "border-callout-caution bg-callout-caution/10", title: "text-callout-caution" },
 };
 

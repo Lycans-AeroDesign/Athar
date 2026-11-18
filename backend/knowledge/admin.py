@@ -73,7 +73,14 @@ class StorageLocationAdmin(admin.ModelAdmin):
 @admin.register(Component)
 class ComponentAdmin(admin.ModelAdmin):
     list_display = [
-        "name", "category", "inventory_type", "location", "quantity_available", "stock_status", "status", "updated_at",
+        "name",
+        "category",
+        "inventory_type",
+        "location",
+        "quantity_available",
+        "stock_status",
+        "status",
+        "updated_at",
     ]
     list_filter = ["inventory_type", "stock_status", "condition", "status", "visibility", "category"]
 

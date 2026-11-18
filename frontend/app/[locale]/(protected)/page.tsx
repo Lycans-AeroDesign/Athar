@@ -3,26 +3,31 @@
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 
-import { ArticleCard } from "@/components/knowledge/ArticleCard";
-import { QuestionCard } from "@/components/knowledge/QuestionCard";
 import { Can } from "@/components/auth/Can";
+import { ArticleCard, KnowledgeCardGridSkeleton } from "@/components/knowledge/ArticleCard";
+import { ActivityLineSkeleton } from "@/components/knowledge/KnowledgeSkeletons";
+import { QuestionCard } from "@/components/knowledge/QuestionCard";
 import { Avatar } from "@/components/ui/Avatar";
-import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
-import { KnowledgeCardGridSkeleton } from "@/components/knowledge/ArticleCard";
-import { ActivityLineSkeleton } from "@/components/knowledge/KnowledgeSkeletons";
+import { Modal } from "@/components/ui/Modal";
 import { Skeleton, SkeletonText } from "@/components/ui/Skeleton";
 import { StatCard } from "@/components/ui/StatCard";
 import { Link } from "@/i18n/navigation";
 import { getKnowledgeActivity } from "@/lib/api/audit";
 import { getArticleCount, getArticles, getLeaderboard, getOpenQuestionCount, getQuestions } from "@/lib/api/knowledge";
-import type { ActivityEntry, ArticleSummary, ContributionPeriod, LeaderboardEntry, QuestionSummary } from "@/lib/api/types";
+import type {
+  ActivityEntry,
+  ArticleSummary,
+  ContributionPeriod,
+  LeaderboardEntry,
+  QuestionSummary,
+} from "@/lib/api/types";
+import { useAuth } from "@/lib/auth/AuthProvider";
 import { formatRelativeTime } from "@/lib/datetime";
 import { errorMessage } from "@/lib/errors";
 import { formatPersonName } from "@/lib/format";
 import { RELATABLE_ROUTE_PREFIX } from "@/lib/knowledgeTypes";
-import { useAuth } from "@/lib/auth/AuthProvider";
 
 // Maps an audit action string (see backend/audit/views.py's
 // KNOWLEDGE_ACTIVITY_ACTIONS) to the "activityActions" translation key -
@@ -244,7 +249,11 @@ export default function DashboardPage() {
         <h2 className="font-headline-md text-headline-md text-on-surface">{t("activityTitle")}</h2>
 
         {activity === null ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-x-6 gap-y-4" role="status" aria-busy="true">
+          <div
+            className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-x-6 gap-y-4"
+            role="status"
+            aria-busy="true"
+          >
             {Array.from({ length: 6 }).map((_, index) => (
               <ActivityLineSkeleton key={index} />
             ))}
@@ -262,7 +271,10 @@ export default function DashboardPage() {
                   <div className="min-w-0">
                     <p className="font-body-md text-body-md text-on-surface">
                       {entry.actor ? (
-                        <Link href={`/users/${entry.actor.id}`} className="font-medium hover:text-primary hover:underline">
+                        <Link
+                          href={`/users/${entry.actor.id}`}
+                          className="font-medium hover:text-primary hover:underline"
+                        >
                           {formatPersonName(entry.actor)}
                         </Link>
                       ) : (
@@ -329,7 +341,11 @@ export default function DashboardPage() {
                   <div className="w-7 text-center font-mono-sm text-mono-sm text-on-surface-variant shrink-0 font-bold">
                     {index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : `#${index + 1}`}
                   </div>
-                  <Link href={`/users/${entry.user.id}`} className="shrink-0" onClick={() => setIsAllContributorsOpen(false)}>
+                  <Link
+                    href={`/users/${entry.user.id}`}
+                    className="shrink-0"
+                    onClick={() => setIsAllContributorsOpen(false)}
+                  >
                     <Avatar person={entry.user} size="md" />
                   </Link>
                   <div className="flex-1 min-w-0">
@@ -341,9 +357,7 @@ export default function DashboardPage() {
                       {formatPersonName(entry.user)}
                     </Link>
                     {entry.user.email && (
-                      <p className="font-mono-sm text-mono-sm text-on-surface-variant truncate">
-                        {entry.user.email}
-                      </p>
+                      <p className="font-mono-sm text-mono-sm text-on-surface-variant truncate">{entry.user.email}</p>
                     )}
                   </div>
                   <div className="text-end shrink-0">

@@ -59,6 +59,7 @@ def is_owner_of(viewer, model_name: str, instance) -> bool:
         return getattr(instance, co_owner_field).filter(pk=viewer.pk).exists()
     return False
 
+
 # model_name -> permission codename(s) that let a non-owner see a RESTRICTED instance
 # regardless of grants: the pre-existing moderation/publishing permissions (Article:
 # reviewer/publisher; Question: moderator; others: their own `<type>.update` holder).

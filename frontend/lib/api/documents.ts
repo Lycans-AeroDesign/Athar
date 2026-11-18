@@ -17,13 +17,20 @@ import type {
 
 /** See backend/knowledge/views.py's DOCUMENT_ORDERING_FIELDS, the allowlist this must stay in sync with. */
 export type DocumentOrdering =
-  | "title" | "-title"
-  | "doc_type" | "-doc_type"
-  | "source" | "-source"
-  | "category" | "-category"
-  | "publication_date" | "-publication_date"
-  | "created_at" | "-created_at"
-  | "updated_at" | "-updated_at";
+  | "title"
+  | "-title"
+  | "doc_type"
+  | "-doc_type"
+  | "source"
+  | "-source"
+  | "category"
+  | "-category"
+  | "publication_date"
+  | "-publication_date"
+  | "created_at"
+  | "-created_at"
+  | "updated_at"
+  | "-updated_at";
 
 export function getDocuments(filters?: {
   doc_type?: DocType;

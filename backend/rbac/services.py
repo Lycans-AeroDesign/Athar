@@ -14,9 +14,7 @@ def seed_permissions() -> dict[str, Permission]:
     created even before the management command has ever run."""
     permissions_by_codename = {}
     for codename, description in PERMISSION_CATALOGUE:
-        permission, _ = Permission.objects.get_or_create(
-            codename=codename, defaults={"description": description}
-        )
+        permission, _ = Permission.objects.get_or_create(codename=codename, defaults={"description": description})
         permissions_by_codename[codename] = permission
     return permissions_by_codename
 
@@ -68,9 +66,7 @@ def delete_role(*, role: Role, actor, request=None) -> None:
 
 def grant_permission(*, role: Role, permission: Permission, actor, request=None) -> bool:
     """Returns True if a new grant was created (idempotent otherwise)."""
-    _, created = RolePermission.objects.get_or_create(
-        role=role, permission=permission, defaults={"granted_by": actor}
-    )
+    _, created = RolePermission.objects.get_or_create(role=role, permission=permission, defaults={"granted_by": actor})
     if created:
         log_action(
             actor=actor,
@@ -98,9 +94,7 @@ def revoke_permission(*, role: Role, permission: Permission, actor, request=None
 def assign_role(*, user, role: Role, actor, request=None) -> bool:
     _, created = UserRole.objects.get_or_create(user=user, role=role, defaults={"granted_by": actor})
     if created:
-        log_action(
-            actor=actor, action="role.assign", target=user, metadata={"role": role.name}, request=request
-        )
+        log_action(actor=actor, action="role.assign", target=user, metadata={"role": role.name}, request=request)
     return created
 
 

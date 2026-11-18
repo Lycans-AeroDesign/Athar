@@ -151,7 +151,10 @@ function PolicyWalkthrough({ policies, onAccepted }: { policies: CurrentPolicy[]
           </h1>
           <p className="font-body-md text-body-md text-on-surface-variant mt-1">{t("gateDescription")}</p>
           {policies.length > 1 && (
-            <ol className="mt-4 flex flex-wrap items-center gap-2" aria-label={t("stepLabel", { current: step + 1, total: policies.length })}>
+            <ol
+              className="mt-4 flex flex-wrap items-center gap-2"
+              aria-label={t("stepLabel", { current: step + 1, total: policies.length })}
+            >
               {policies.map((item, index) => {
                 const done = checked.has(item.id);
                 const current = index === step;
@@ -194,7 +197,11 @@ function PolicyWalkthrough({ policies, onAccepted }: { policies: CurrentPolicy[]
                 {t("stepLabel", { current: step + 1, total: policies.length })}
               </p>
             )}
-            <h2 ref={headingRef} tabIndex={-1} className="font-headline-md text-headline-md text-on-surface outline-none">
+            <h2
+              ref={headingRef}
+              tabIndex={-1}
+              className="font-headline-md text-headline-md text-on-surface outline-none"
+            >
               {policy.title}
             </h2>
             <p className="font-label-caps text-label-caps uppercase text-on-surface-variant">
@@ -233,7 +240,10 @@ function PolicyWalkthrough({ policies, onAccepted }: { policies: CurrentPolicy[]
             </span>
           </label>
           {!hasRead && (
-            <p id="policy-scroll-hint" className="flex items-center gap-1.5 font-body-md text-body-md text-on-surface-variant">
+            <p
+              id="policy-scroll-hint"
+              className="flex items-center gap-1.5 font-body-md text-body-md text-on-surface-variant"
+            >
               <Icon name="arrow_downward" size={16} className="shrink-0" />
               {t("scrollToAccept", { title: policy.title })}
             </p>

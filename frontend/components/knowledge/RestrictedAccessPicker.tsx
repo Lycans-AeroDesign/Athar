@@ -77,9 +77,7 @@ export function RestrictedAccessPicker({ initialGrants, value, onChange }: Restr
 
   return (
     <div className="space-y-3">
-      <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase">
-        {t("label")}
-      </label>
+      <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase">{t("label")}</label>
 
       {effective.length === 0 ? (
         <p className="font-body-sm text-body-sm text-on-surface-variant">{t("emptyState")}</p>

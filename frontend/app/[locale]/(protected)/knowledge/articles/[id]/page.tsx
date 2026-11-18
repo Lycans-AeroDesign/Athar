@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { Attachments } from "@/components/knowledge/Attachments";
+import { CoAuthorsByline } from "@/components/knowledge/CoAuthorsByline";
 import { ContributorsRow } from "@/components/knowledge/Contributors";
 import { RelatedContent } from "@/components/knowledge/RelatedContent";
 import { RevisionCompareModal } from "@/components/knowledge/RevisionCompareModal";
@@ -24,11 +25,7 @@ import { ShareButton } from "@/components/ui/ShareButton";
 import { DetailPageSkeleton } from "@/components/ui/Skeleton";
 import { TagChip } from "@/components/ui/TagChip";
 import { UpdatedBadge } from "@/components/ui/UpdatedBadge";
-import { CoAuthorsByline } from "@/components/knowledge/CoAuthorsByline";
 import { Link, useRouter } from "@/i18n/navigation";
-import { formatDateTime } from "@/lib/datetime";
-import { errorMessage } from "@/lib/errors";
-import { formatPersonName } from "@/lib/format";
 import {
   archiveArticle,
   deleteArticle,
@@ -42,6 +39,9 @@ import {
 import type { ArticleDetail, ArticleRevision } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { useHasPermission } from "@/lib/auth/permissions";
+import { formatDateTime } from "@/lib/datetime";
+import { errorMessage } from "@/lib/errors";
+import { formatPersonName } from "@/lib/format";
 import { extractHeadings } from "@/lib/toc";
 import { useResource } from "@/lib/useResource";
 
@@ -87,8 +87,7 @@ export default function ArticleDetailPage() {
   }
 
   // Co-authors share the author's edit/submit rights (backend visibility.is_owner_of).
-  const isAuthor =
-    user?.id === article.author?.id || article.co_authors.some((coAuthor) => coAuthor.id === user?.id);
+  const isAuthor = user?.id === article.author?.id || article.co_authors.some((coAuthor) => coAuthor.id === user?.id);
   const canEdit = isAuthor || canUpdateAny;
   // Archived is frozen even for someone who otherwise holds a blanket
   // article.update override - see update_article()'s own matching check in
@@ -99,8 +98,7 @@ export default function ArticleDetailPage() {
   // Restoring is an edit (services.restore_article_revision goes through
   // update_article), so it follows the same rule: owners only before
   // publishing, article.update holders at any time, nobody while archived.
-  const canRestore =
-    canEditContent && (canUpdateAny || ["DRAFT", "IN_REVIEW", "REJECTED"].includes(article.status));
+  const canRestore = canEditContent && (canUpdateAny || ["DRAFT", "IN_REVIEW", "REJECTED"].includes(article.status));
   const canDelete = (isAuthor && article.status === "DRAFT") || canDeleteAny;
   const canSubmit = isAuthor && (article.status === "DRAFT" || article.status === "REJECTED");
   const canPublishNow = canPublish && (article.status === "DRAFT" || article.status === "IN_REVIEW");
@@ -271,7 +269,10 @@ export default function ArticleDetailPage() {
               </span>
             )}
             {authorName && article.author && (
-              <Link href={`/users/${article.author.id}`} className="hover:text-primary hover:underline transition-colors">
+              <Link
+                href={`/users/${article.author.id}`}
+                className="hover:text-primary hover:underline transition-colors"
+              >
                 {t("byAuthor", { name: authorName })}
               </Link>
             )}
@@ -333,10 +334,7 @@ export default function ArticleDetailPage() {
             <h3 className="font-headline-md text-headline-md text-on-surface">{t("historyModalTitle")}</h3>
             <div className="flex flex-col gap-3">
               {revisions.map((revision, index) => (
-                <div
-                  key={revision.id}
-                  className="flex gap-3 bg-surface p-4 rounded-xl border border-outline-variant"
-                >
+                <div key={revision.id} className="flex gap-3 bg-surface p-4 rounded-xl border border-outline-variant">
                   {revision.edited_by ? (
                     <Link href={`/users/${revision.edited_by.id}`} className="shrink-0">
                       <Avatar person={revision.edited_by} />

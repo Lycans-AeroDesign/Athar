@@ -33,8 +33,8 @@ from .models import (
     CourseEnrollment,
     CourseModule,
     CourseResource,
-    Lesson,
     LearningObjective,
+    Lesson,
     LessonKnowledgeReference,
     LessonProgress,
 )
@@ -138,8 +138,11 @@ def create_course_category(*, actor, request=None, name, description="") -> Cour
 def update_course_category(*, category: CourseCategory, actor, request=None, **fields) -> CourseCategory:
     if "name" in fields:
         _ensure_unique_name(
-            CourseCategory, organization=category.organization, name=fields["name"],
-            label="course category", exclude_pk=category.pk,
+            CourseCategory,
+            organization=category.organization,
+            name=fields["name"],
+            label="course category",
+            exclude_pk=category.pk,
         )
     for field, value in fields.items():
         setattr(category, field, value)
@@ -165,8 +168,16 @@ def delete_course_category(*, category: CourseCategory, actor, request=None) -> 
 
 
 def create_course(
-    *, actor, request=None, title, short_description="", description="", category=None,
-    difficulty=Course.Difficulty.BEGINNER, cover_image=None, visibility=Visibility.PUBLIC,
+    *,
+    actor,
+    request=None,
+    title,
+    short_description="",
+    description="",
+    category=None,
+    difficulty=Course.Difficulty.BEGINNER,
+    cover_image=None,
+    visibility=Visibility.PUBLIC,
     co_authors=None,
 ) -> Course:
     course = Course.objects.create(
@@ -265,7 +276,9 @@ def unarchive_course(*, course: Course, actor, request=None) -> Course:
 
 
 def delete_course(*, course: Course, actor, request=None, force: bool = False) -> None:
-    is_own_draft = (actor == course.author or course.co_authors.filter(id=actor.id).exists()) and course.status == Course.Status.DRAFT
+    is_own_draft = (
+        actor == course.author or course.co_authors.filter(id=actor.id).exists()
+    ) and course.status == Course.Status.DRAFT
     if not (is_own_draft or actor.has_permission("training.delete")):
         raise PermissionDenied("You can only delete your own draft, or need training.delete.")
     if course.enrollments.exists() and not force:
@@ -312,8 +325,11 @@ def _next_order(queryset: QuerySet) -> int:
 def create_module(*, course: Course, actor, request=None, title, description="", estimated_minutes=0) -> CourseModule:
     _require_can_manage_course(actor, course)
     module = CourseModule.objects.create(
-        course=course, title=title, description=description,
-        order=_next_order(course.modules.all()), estimated_minutes=estimated_minutes,
+        course=course,
+        title=title,
+        description=description,
+        order=_next_order(course.modules.all()),
+        estimated_minutes=estimated_minutes,
     )
     log_action(actor=actor, action="module.create", target=module, request=request)
     return module
@@ -332,7 +348,10 @@ def delete_module(*, module: CourseModule, actor, request=None) -> None:
     _require_can_manage_course(actor, module.course)
     course = module.course
     log_action(
-        actor=actor, action="module.delete", metadata={"module_id": str(module.pk), "title": module.title}, request=request
+        actor=actor,
+        action="module.delete",
+        metadata={"module_id": str(module.pk), "title": module.title},
+        request=request,
     )
     module.delete()
     _recompute_course_duration(course)
@@ -418,7 +437,9 @@ def import_curriculum(*, course: Course, actor, request=None, modules_data: list
             if not isinstance(lessons_data, list):
                 raise ValidationError({f"{where}.lessons": "Must be a list of lessons."})
             if len(lessons_data) > _IMPORT_MAX_LESSONS_PER_MODULE:
-                raise ValidationError({f"{where}.lessons": f"At most {_IMPORT_MAX_LESSONS_PER_MODULE} lessons per module."})
+                raise ValidationError(
+                    {f"{where}.lessons": f"At most {_IMPORT_MAX_LESSONS_PER_MODULE} lessons per module."}
+                )
             for l_idx, l_dict in enumerate(lessons_data):
                 l_where = f"{where}.lessons[{l_idx}]"
                 if not isinstance(l_dict, dict):
@@ -449,9 +470,15 @@ def import_curriculum(*, course: Course, actor, request=None, modules_data: list
                     l_content = l_content.replace(primary_url, "").strip()
                     if l_type == Lesson.LessonType.TEXT:
                         lower_url = primary_url.lower()
-                        if any(ext in lower_url for ext in [".mp4", ".mov", ".webm", ".mkv", "youtu", "vimeo", "/:v:/", "embed.aspx"]):
+                        if any(
+                            ext in lower_url
+                            for ext in [".mp4", ".mov", ".webm", ".mkv", "youtu", "vimeo", "/:v:/", "embed.aspx"]
+                        ):
                             l_type = Lesson.LessonType.VIDEO
-                        elif any(ext in lower_url for ext in [".pdf", ".docx", ".xlsx", "drive.google.com", "action=embedview", "doc.aspx"]):
+                        elif any(
+                            ext in lower_url
+                            for ext in [".pdf", ".docx", ".xlsx", "drive.google.com", "action=embedview", "doc.aspx"]
+                        ):
                             l_type = Lesson.LessonType.DOCUMENT
                         else:
                             l_type = Lesson.LessonType.EXTERNAL
@@ -499,13 +526,27 @@ def import_curriculum(*, course: Course, actor, request=None, modules_data: list
 
 
 def create_lesson(
-    *, module: CourseModule, actor, request=None, title, short_description="",
-    lesson_type=Lesson.LessonType.TEXT, content="", estimated_minutes=0, is_required=True,
+    *,
+    module: CourseModule,
+    actor,
+    request=None,
+    title,
+    short_description="",
+    lesson_type=Lesson.LessonType.TEXT,
+    content="",
+    estimated_minutes=0,
+    is_required=True,
 ) -> Lesson:
     _require_can_manage_course(actor, module.course)
     lesson = Lesson.objects.create(
-        module=module, title=title, short_description=short_description, lesson_type=lesson_type,
-        content=content, order=_next_order(module.lessons.all()), estimated_minutes=estimated_minutes, is_required=is_required,
+        module=module,
+        title=title,
+        short_description=short_description,
+        lesson_type=lesson_type,
+        content=content,
+        order=_next_order(module.lessons.all()),
+        estimated_minutes=estimated_minutes,
+        is_required=is_required,
     )
     confirm_stored_files_in_text(content, organization=module.course.organization)
     log_action(actor=actor, action="lesson.create", target=lesson, request=request)
@@ -529,7 +570,10 @@ def delete_lesson(*, lesson: Lesson, actor, request=None) -> None:
     _require_can_manage_course(actor, lesson.module.course)
     course = lesson.module.course
     log_action(
-        actor=actor, action="lesson.delete", metadata={"lesson_id": str(lesson.pk), "title": lesson.title}, request=request
+        actor=actor,
+        action="lesson.delete",
+        metadata={"lesson_id": str(lesson.pk), "title": lesson.title},
+        request=request,
     )
     lesson.delete()
     _recompute_course_duration(course)
@@ -589,21 +633,41 @@ def _validate_resource_fields(*, resource_type, provider, url, stored_file) -> N
 
 
 def create_resource(
-    *, lesson: Lesson, actor, request=None, title, description="", resource_type,
-    provider="", url="", stored_file=None, is_primary=False,
+    *,
+    lesson: Lesson,
+    actor,
+    request=None,
+    title,
+    description="",
+    resource_type,
+    provider="",
+    url="",
+    stored_file=None,
+    is_primary=False,
 ) -> CourseResource:
     _require_can_manage_course(actor, lesson.module.course)
     _validate_resource_fields(resource_type=resource_type, provider=provider, url=url, stored_file=stored_file)
     if is_primary:
         CourseResource.objects.filter(lesson=lesson, is_primary=True).update(is_primary=False)
     resource = CourseResource.objects.create(
-        lesson=lesson, title=title, description=description, resource_type=resource_type,
-        provider=provider, url=url, stored_file=stored_file, is_primary=is_primary,
-        order=_next_order(lesson.resources.all()), created_by=actor,
+        lesson=lesson,
+        title=title,
+        description=description,
+        resource_type=resource_type,
+        provider=provider,
+        url=url,
+        stored_file=stored_file,
+        is_primary=is_primary,
+        order=_next_order(lesson.resources.all()),
+        created_by=actor,
     )
     confirm_stored_files(stored_file)
     log_action(
-        actor=actor, action="resource.create", target=lesson, metadata={"resource_id": str(resource.pk)}, request=request
+        actor=actor,
+        action="resource.create",
+        target=lesson,
+        metadata={"resource_id": str(resource.pk)},
+        request=request,
     )
     return resource
 
@@ -624,7 +688,11 @@ def update_resource(*, resource: CourseResource, actor, request=None, **fields) 
     resource.save(update_fields=[*fields.keys()])
     confirm_stored_files(*fields.values())
     log_action(
-        actor=actor, action="resource.update", target=resource.lesson, metadata={"resource_id": str(resource.pk)}, request=request
+        actor=actor,
+        action="resource.update",
+        target=resource.lesson,
+        metadata={"resource_id": str(resource.pk)},
+        request=request,
     )
     return resource
 
@@ -695,7 +763,10 @@ def create_knowledge_reference(
 def delete_knowledge_reference(*, reference: LessonKnowledgeReference, actor, request=None) -> None:
     _require_can_manage_course(actor, reference.lesson.module.course)
     log_action(
-        actor=actor, action="lesson.knowledge_reference.remove", metadata={"reference_id": str(reference.pk)}, request=request
+        actor=actor,
+        action="lesson.knowledge_reference.remove",
+        metadata={"reference_id": str(reference.pk)},
+        request=request,
     )
     reference.delete()
 

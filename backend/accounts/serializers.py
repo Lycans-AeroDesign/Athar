@@ -27,7 +27,7 @@ def normalize_unique_email(value: str) -> str:
 
 
 def check_unique_username(value: str | None, *, exclude_pk=None) -> str | None:
-    """"" -> None (see models.py's username field comment), then the same
+    """ "" -> None (see models.py's username field comment), then the same
     case-insensitive uniqueness rule as normalize_unique_email - usernames
     log in through the same iexact lookup."""
     value = value.strip() if value else None
@@ -113,8 +113,6 @@ class MeUpdateSerializer(serializers.ModelSerializer):
     def validate_username(self, value):
         if not value or not value.strip():
             raise serializers.ValidationError("Username cannot be empty.")
-
-
 
         return check_unique_username(value, exclude_pk=self.instance.pk if self.instance else None)
 

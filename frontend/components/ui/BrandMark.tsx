@@ -5,9 +5,7 @@ import { Icon } from "./Icon";
 // for real product code, so this renders an equivalent mark inline instead.
 export function BrandMark({ className }: { className?: string }) {
   return (
-    <div
-      className={`flex items-center justify-center rounded-lg bg-primary text-on-primary ${className ?? ""}`}
-    >
+    <div className={`flex items-center justify-center rounded-lg bg-primary text-on-primary ${className ?? ""}`}>
       <Icon name="hub" filled />
     </div>
   );

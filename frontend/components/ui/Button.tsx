@@ -5,8 +5,7 @@ type Size = "sm" | "md" | "lg";
 
 const VARIANT_CLASSES: Record<Variant, string> = {
   primary: "bg-primary text-on-primary hover:bg-primary-hover focus:ring-primary",
-  secondary:
-    "bg-surface text-on-surface border border-outline-variant hover:bg-surface-variant focus:ring-primary",
+  secondary: "bg-surface text-on-surface border border-outline-variant hover:bg-surface-variant focus:ring-primary",
   danger: "bg-error text-on-error hover:opacity-90 focus:ring-error",
   ghost: "text-on-surface-variant hover:bg-surface-variant focus:ring-primary",
 };

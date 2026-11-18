@@ -18,9 +18,7 @@ export function Switch({ checked, onChange, label, description, disabled = false
     <div className="flex items-start justify-between gap-4">
       <span className="min-w-0">
         <span className="block font-body-md text-body-md text-on-surface">{label}</span>
-        {description && (
-          <span className="block font-body-md text-body-md text-on-surface-variant">{description}</span>
-        )}
+        {description && <span className="block font-body-md text-body-md text-on-surface-variant">{description}</span>}
       </span>
       <button
         type="button"

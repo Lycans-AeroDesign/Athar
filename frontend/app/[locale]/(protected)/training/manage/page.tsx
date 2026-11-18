@@ -52,9 +52,7 @@ export default function TrainingManageDashboardPage() {
     // their own submissions here and reviewers see the whole queue.
     Promise.all(FETCHED_STATUSES.map((status) => listCourses({ status, pageSize: 100 }))).then(
       (results) =>
-        setCourses(
-          Object.fromEntries(FETCHED_STATUSES.map((status, i) => [status, results[i]])) as CoursesByStatus,
-        ),
+        setCourses(Object.fromEntries(FETCHED_STATUSES.map((status, i) => [status, results[i]])) as CoursesByStatus),
       (err) => setError(errorMessage(err)),
     );
   }, []);
@@ -163,7 +161,9 @@ export default function TrainingManageDashboardPage() {
                 {count !== undefined && (
                   <span
                     className={`font-mono-sm text-mono-sm rounded-full px-2 ${
-                      active ? "bg-primary-container text-on-primary-container" : "bg-surface-variant text-on-surface-variant"
+                      active
+                        ? "bg-primary-container text-on-primary-container"
+                        : "bg-surface-variant text-on-surface-variant"
                     }`}
                   >
                     {count}
@@ -263,9 +263,7 @@ function PendingCourseCard({ course, isReviewer }: { course: CourseSummary; isRe
         <div className="flex items-center gap-2 min-w-0">
           <Avatar person={course.author} size="sm" />
           <div className="min-w-0">
-            {authorName && (
-              <div className="font-body-md text-body-md text-on-surface truncate">{authorName}</div>
-            )}
+            {authorName && <div className="font-body-md text-body-md text-on-surface truncate">{authorName}</div>}
             <div className="font-mono-sm text-mono-sm text-on-surface-variant">
               {t("submittedAgo", { time: formatRelativeTime(course.updated_at) })}
             </div>

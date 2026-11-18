@@ -1,6 +1,7 @@
-import { AuthenticatedImage } from "./AuthenticatedImage";
-import { getInitials } from "@/lib/format";
 import type { KnowledgeAuthor } from "@/lib/api/types";
+import { getInitials } from "@/lib/format";
+
+import { AuthenticatedImage } from "./AuthenticatedImage";
 
 interface AvatarProps {
   person: KnowledgeAuthor | null | undefined;

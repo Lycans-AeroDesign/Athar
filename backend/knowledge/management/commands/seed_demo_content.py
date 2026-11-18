@@ -3,9 +3,6 @@ import datetime
 from django.core.management.base import BaseCommand, CommandError
 
 from accounts.models import User
-from organization.models import Organization
-from rbac.models import Role
-
 from knowledge import services
 from knowledge.models import (
     Answer,
@@ -23,6 +20,8 @@ from knowledge.models import (
     Test,
     Visibility,
 )
+from organization.models import Organization
+from rbac.models import Role
 
 # Mirrors frontend/lib/knowledgeTypes.ts's RELATABLE_ROUTE_PREFIX - kept in
 # sync by hand, same precedent as that file's own comment about
@@ -114,9 +113,7 @@ class Command(BaseCommand):
     def _reset(self, organization) -> None:
         demo_emails = list(DEMO_USERS.keys())
         for model, owner_field, org_lookup in _RESET_SPECS:
-            model.objects.filter(
-                **{org_lookup: organization, f"{owner_field}__email__in": demo_emails}
-            ).delete()
+            model.objects.filter(**{org_lookup: organization, f"{owner_field}__email__in": demo_emails}).delete()
         self.stdout.write("Cleared previously-seeded demo content.")
 
     def _seed_users(self, organization) -> dict[str, User]:
@@ -440,8 +437,12 @@ class Command(BaseCommand):
             category=testing_cat,
         )
         services.publish_article(actor=head, article=flight_test_article)
-        self._link(actor=head, source_type="article", source=flight_test_article, target_type="sop", target=preflight_sop)
-        self._link(actor=head, source_type="article", source=flight_test_article, target_type="test", target=flight_test)
+        self._link(
+            actor=head, source_type="article", source=flight_test_article, target_type="sop", target=preflight_sop
+        )
+        self._link(
+            actor=head, source_type="article", source=flight_test_article, target_type="test", target=flight_test
+        )
         self._link(actor=head, source_type="article", source=flight_test_article, target_type="project", target=falcon)
 
         restricted_article = services.create_article(
@@ -477,9 +478,7 @@ class Command(BaseCommand):
                 "a pack charging unattended, and always charge in a fireproof bag."
             ),
         )
-        self._link(
-            actor=mentor, source_type="question", source=battery_question, target_type="sop", target=battery_sop
-        )
+        self._link(actor=mentor, source_type="question", source=battery_question, target_type="sop", target=battery_sop)
 
         motor_question = services.create_question(
             actor=member,
@@ -489,9 +488,7 @@ class Command(BaseCommand):
                 "mind when comparing alternatives?"
             ),
         )
-        self._link(
-            actor=member, source_type="question", source=motor_question, target_type="component", target=motor
-        )
+        self._link(actor=member, source_type="question", source=motor_question, target_type="component", target=motor)
         services.create_answer(
             question=motor_question,
             actor=mentor,
@@ -500,9 +497,7 @@ class Command(BaseCommand):
                 f"{self._mention('test', thrust_test.pk, thrust_test.title)} for how we validated the current one."
             ),
         )
-        self._link(
-            actor=mentor, source_type="question", source=motor_question, target_type="test", target=thrust_test
-        )
+        self._link(actor=mentor, source_type="question", source=motor_question, target_type="test", target=thrust_test)
 
         # --- A few bookmarks, so /bookmarks isn't empty either. ---
         services.create_bookmark(actor=member, content_type="component", object_id=flight_controller.pk)

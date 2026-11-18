@@ -4,7 +4,6 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 import { CoAuthorPicker } from "@/components/knowledge/CoAuthorPicker";
-import { useAuth } from "@/lib/auth/AuthProvider";
 import {
   EMPTY_RESTRICTED_ACCESS_DRAFT,
   RestrictedAccessPicker,
@@ -20,6 +19,7 @@ import { Link, useRouter } from "@/i18n/navigation";
 import { uploadFile } from "@/lib/api/files";
 import { addCourseAccessGrant, createCourse, listCourseCategories } from "@/lib/api/training";
 import type { CourseCategory, CourseDifficulty, KnowledgeAuthor, StoredFileRef, Visibility } from "@/lib/api/types";
+import { useAuth } from "@/lib/auth/AuthProvider";
 import { errorMessage } from "@/lib/errors";
 import { DIFFICULTY_ICONS, VISIBILITY_ICONS } from "@/lib/optionIcons";
 
@@ -133,7 +133,11 @@ export default function NewCoursePage() {
           <div className="w-56">
             <Combobox
               label={t("visibilityLabel")}
-              options={VISIBILITY_VALUES.map((value) => ({ value, label: t(`visibility${value}`), ...VISIBILITY_ICONS[value] }))}
+              options={VISIBILITY_VALUES.map((value) => ({
+                value,
+                label: t(`visibility${value}`),
+                ...VISIBILITY_ICONS[value],
+              }))}
               value={visibility}
               onChange={(value) => setVisibility(value as Visibility)}
             />
@@ -148,12 +152,7 @@ export default function NewCoursePage() {
           />
         )}
 
-        <CoAuthorPicker
-          value={coAuthors}
-          onChange={setCoAuthors}
-          authorId={user?.id}
-          canEdit={true}
-        />
+        <CoAuthorPicker value={coAuthors} onChange={setCoAuthors} authorId={user?.id} canEdit={true} />
 
         {/* Its own block row (not a bare inline-flex Button sibling) so it
             never ends up sharing a line with the Create button below - same

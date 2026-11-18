@@ -54,80 +54,85 @@ export default function ProjectDetailPage() {
 
   return (
     <div className="flex flex-col lg:flex-row gap-8 items-start">
-    <div className="flex-1 w-full min-w-0 max-w-[800px] space-y-6">
-      <Link
-        href="/projects"
-        className="inline-flex items-center gap-1 font-label-caps text-label-caps uppercase text-on-surface-variant hover:text-on-surface transition-colors"
-      >
-        <Icon name="arrow_back" size={16} />
-        {t("backToList")}
-      </Link>
+      <div className="flex-1 w-full min-w-0 max-w-[800px] space-y-6">
+        <Link
+          href="/projects"
+          className="inline-flex items-center gap-1 font-label-caps text-label-caps uppercase text-on-surface-variant hover:text-on-surface transition-colors"
+        >
+          <Icon name="arrow_back" size={16} />
+          {t("backToList")}
+        </Link>
 
-      <div className="border-t-4 border-primary rounded-t-xl bg-surface pt-6 space-y-3">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <span
-            className={`font-label-caps text-label-caps uppercase rounded-full px-2.5 py-1 ${PROJECT_STATUS_CLASSES[project.status]}`}
-          >
-            {statusT(project.status)}
-          </span>
-          <div className="flex items-center gap-2">
-            <BookmarkButton key={project.id} type="project" objectId={project.id} bookmarkId={project.bookmark_id} />
-            {canUpdate && (
-              <Link href={`/projects/${project.id}/edit`}>
-                <IconButton icon="edit" variant="secondary" aria-label={t("editButton")} />
-              </Link>
-            )}
-            {canDelete && (
-              <IconButton icon="delete" variant="danger" aria-label={t("deleteButton")} onClick={() => setDeleteOpen(true)} />
-            )}
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <h1 className="font-display text-display text-on-surface">{project.name}</h1>
-          {project.visibility === "RESTRICTED" && (
-            <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-error-container text-on-error-container font-label-caps text-label-caps uppercase">
-              <Icon name="lock" size={12} />
-              {t("visibilityRESTRICTED")}
+        <div className="border-t-4 border-primary rounded-t-xl bg-surface pt-6 space-y-3">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <span
+              className={`font-label-caps text-label-caps uppercase rounded-full px-2.5 py-1 ${PROJECT_STATUS_CLASSES[project.status]}`}
+            >
+              {statusT(project.status)}
             </span>
-          )}
-        </div>
-        {project.tags.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {project.tags.map((tag) => (
-              <TagChip key={tag.id} tag={tag} />
-            ))}
+            <div className="flex items-center gap-2">
+              <BookmarkButton key={project.id} type="project" objectId={project.id} bookmarkId={project.bookmark_id} />
+              {canUpdate && (
+                <Link href={`/projects/${project.id}/edit`}>
+                  <IconButton icon="edit" variant="secondary" aria-label={t("editButton")} />
+                </Link>
+              )}
+              {canDelete && (
+                <IconButton
+                  icon="delete"
+                  variant="danger"
+                  aria-label={t("deleteButton")}
+                  onClick={() => setDeleteOpen(true)}
+                />
+              )}
+            </div>
           </div>
+          <div className="flex items-center gap-3">
+            <h1 className="font-display text-display text-on-surface">{project.name}</h1>
+            {project.visibility === "RESTRICTED" && (
+              <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-error-container text-on-error-container font-label-caps text-label-caps uppercase">
+                <Icon name="lock" size={12} />
+                {t("visibilityRESTRICTED")}
+              </span>
+            )}
+          </div>
+          {project.tags.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {project.tags.map((tag) => (
+                <TagChip key={tag.id} tag={tag} />
+              ))}
+            </div>
+          )}
+          <UpdatedBadge updatedAt={project.updated_at} createdAt={project.created_at} />
+          <ContributorsRow contributors={project.contributors} />
+        </div>
+
+        {actionError && (
+          <p className="font-body-md text-body-md text-error" role="alert">
+            {actionError}
+          </p>
         )}
-        <UpdatedBadge updatedAt={project.updated_at} createdAt={project.created_at} />
-        <ContributorsRow contributors={project.contributors} />
+
+        {project.description ? (
+          <Markdown content={project.description} />
+        ) : (
+          <p className="font-body-md text-body-md text-on-surface-variant">{t("noDescription")}</p>
+        )}
+
+        <Attachments type="project" id={project.id} canEdit={canUpdate} />
+
+        <ConfirmModal
+          open={deleteOpen}
+          onOpenChange={setDeleteOpen}
+          title={t("deleteConfirmTitle")}
+          description={t("deleteConfirmBody")}
+          confirmLabel={t("deleteButton")}
+          danger
+          onConfirm={handleDelete}
+        />
       </div>
 
-      {actionError && (
-        <p className="font-body-md text-body-md text-error" role="alert">
-          {actionError}
-        </p>
-      )}
-
-      {project.description ? (
-        <Markdown content={project.description} />
-      ) : (
-        <p className="font-body-md text-body-md text-on-surface-variant">{t("noDescription")}</p>
-      )}
-
-      <Attachments type="project" id={project.id} canEdit={canUpdate} />
-
-      <ConfirmModal
-        open={deleteOpen}
-        onOpenChange={setDeleteOpen}
-        title={t("deleteConfirmTitle")}
-        description={t("deleteConfirmBody")}
-        confirmLabel={t("deleteButton")}
-        danger
-        onConfirm={handleDelete}
-      />
-    </div>
-
-    <RelatedContent type="project" id={project.id} canEdit={canUpdate} />
+      <RelatedContent type="project" id={project.id} canEdit={canUpdate} />
     </div>
   );
 }

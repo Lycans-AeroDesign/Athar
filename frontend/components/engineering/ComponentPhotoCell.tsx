@@ -95,7 +95,11 @@ export function ComponentPhotoCell({ photo, alt, thumbClassName = "h-9 w-9" }: C
             onMouseLeave={() => setIsHovering(false)}
           >
             {/* eslint-disable-next-line @next/next/no-img-element -- blob: URLs aren't supported by next/image's optimizer. */}
-            <img src={url} alt={alt} className={`block ${thumbClassName} rounded-lg object-cover border border-outline-variant`} />
+            <img
+              src={url}
+              alt={alt}
+              className={`block ${thumbClassName} rounded-lg object-cover border border-outline-variant`}
+            />
           </span>
         </Popover.Anchor>
         <Popover.Portal>

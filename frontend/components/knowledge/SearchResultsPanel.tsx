@@ -3,10 +3,11 @@ import type { ReactNode } from "react";
 
 import { Icon } from "@/components/ui/Icon";
 import { Pagination } from "@/components/ui/Pagination";
-import { SearchResultsSkeleton } from "./KnowledgeSkeletons";
 import { Link } from "@/i18n/navigation";
 import type { RelatableType, SearchResult } from "@/lib/api/types";
 import { RELATABLE_ICON, RELATABLE_ROUTE_PREFIX } from "@/lib/knowledgeTypes";
+
+import { SearchResultsSkeleton } from "./KnowledgeSkeletons";
 
 export type SearchScope = "all" | RelatableType;
 
@@ -177,7 +178,9 @@ export function SearchResultsPanel({
                     <Icon name={RELATABLE_ICON[result.type]} size={14} />
                     {t(BADGE_LABEL_KEYS[result.type])}
                   </span>
-                  <h3 className="font-headline-md text-headline-md text-primary mb-1">{highlight(result.title, query)}</h3>
+                  <h3 className="font-headline-md text-headline-md text-primary mb-1">
+                    {highlight(result.title, query)}
+                  </h3>
                   {result.excerpt && (
                     <p className="font-body-md text-body-md text-on-surface-variant line-clamp-2">
                       {highlight(result.excerpt, query)}
@@ -190,7 +193,13 @@ export function SearchResultsPanel({
         )}
 
         {results && results.length > 0 && (
-          <Pagination page={page} hasNext={hasMore} hasPrevious={page > 1} onPageChange={onPageChange} totalCount={scopedCount} />
+          <Pagination
+            page={page}
+            hasNext={hasMore}
+            hasPrevious={page > 1}
+            onPageChange={onPageChange}
+            totalCount={scopedCount}
+          />
         )}
       </div>
     </div>

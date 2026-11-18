@@ -6,11 +6,10 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Combobox } from "@/components/ui/Combobox";
 import { Icon } from "@/components/ui/Icon";
+import { INPUT_CLASS } from "@/components/ui/inputStyles";
 import { LoadError } from "@/components/ui/LoadError";
 import { Modal } from "@/components/ui/Modal";
 import { MenuListSkeleton } from "@/components/ui/Skeleton";
-import { INPUT_CLASS } from "@/components/ui/inputStyles";
-import { useHasPermission } from "@/lib/auth/permissions";
 import {
   assignRole,
   createRole,
@@ -23,6 +22,7 @@ import {
   unassignRole,
 } from "@/lib/api/rbac";
 import type { Permission, Role, User } from "@/lib/api/types";
+import { useHasPermission } from "@/lib/auth/permissions";
 import { errorMessage } from "@/lib/errors";
 
 // A role plus whatever local edits haven't been committed to the backend yet
@@ -155,9 +155,7 @@ export function RolesSettingsForm() {
       if (selectedRoleId === role.id) setSelectedRoleId(null);
       return;
     }
-    setDraftRoles((prev) =>
-      prev.map((r) => (r.id === role.id ? { ...r, isDeleted: !r.isDeleted } : r)),
-    );
+    setDraftRoles((prev) => prev.map((r) => (r.id === role.id ? { ...r, isDeleted: !r.isDeleted } : r)));
   }
 
   function handleGrantPermission(permissionId: string) {
@@ -271,9 +269,8 @@ export function RolesSettingsForm() {
       ]
     : [];
   const grantablePermissions =
-    permissionCatalogue?.filter(
-      (p) => !grantedPermissions.some((g) => g.id === p.id) && !pendingGrantIds.has(p.id),
-    ) ?? [];
+    permissionCatalogue?.filter((p) => !grantedPermissions.some((g) => g.id === p.id) && !pendingGrantIds.has(p.id)) ??
+    [];
 
   const committedUserIds = new Set(
     (users ?? []).filter((u) => selectedRole && u.roles.includes(selectedRole.name)).map((u) => u.id),
@@ -292,9 +289,7 @@ export function RolesSettingsForm() {
       ]
     : [];
   const assignableUsers =
-    users?.filter(
-      (u) => !committedUserIds.has(u.id) && !selectedRole?.pendingAssignUserIds.includes(u.id),
-    ) ?? [];
+    users?.filter((u) => !committedUserIds.has(u.id) && !selectedRole?.pendingAssignUserIds.includes(u.id)) ?? [];
 
   return (
     <div className="space-y-6">
@@ -365,9 +360,7 @@ export function RolesSettingsForm() {
               <div className="bg-surface rounded-xl border border-outline-variant p-6 flex items-start justify-between gap-4">
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="font-headline-md text-headline-md text-on-surface">
-                      {selectedRole.name}
-                    </h3>
+                    <h3 className="font-headline-md text-headline-md text-on-surface">{selectedRole.name}</h3>
                     {selectedRole.isNew && (
                       <span className="font-label-caps text-label-caps uppercase bg-primary-container text-on-primary-container rounded-full px-2 py-0.5">
                         {t("unsavedNew")}
@@ -375,9 +368,7 @@ export function RolesSettingsForm() {
                     )}
                   </div>
                   {selectedRole.description && (
-                    <p className="font-body-md text-body-md text-on-surface-variant mt-1">
-                      {selectedRole.description}
-                    </p>
+                    <p className="font-body-md text-body-md text-on-surface-variant mt-1">{selectedRole.description}</p>
                   )}
                 </div>
                 {!selectedRole.is_system &&
@@ -401,14 +392,10 @@ export function RolesSettingsForm() {
 
               {!selectedRole.isDeleted && canManagePermissions && (
                 <div className="bg-surface rounded-xl border border-outline-variant p-6 space-y-4">
-                  <h3 className="font-headline-md text-headline-md text-on-surface">
-                    {t("permissionsHeading")}
-                  </h3>
+                  <h3 className="font-headline-md text-headline-md text-on-surface">{t("permissionsHeading")}</h3>
 
                   {effectivePermissions.length === 0 ? (
-                    <p className="font-body-md text-body-md text-on-surface-variant">
-                      {t("noPermissions")}
-                    </p>
+                    <p className="font-body-md text-body-md text-on-surface-variant">{t("noPermissions")}</p>
                   ) : (
                     <div className="flex flex-wrap gap-2">
                       {effectivePermissions.map(({ permission, pending }) => (
@@ -467,9 +454,7 @@ export function RolesSettingsForm() {
 
               {!selectedRole.isDeleted && canManageUserRoles && (
                 <div className="bg-surface rounded-xl border border-outline-variant p-6 space-y-4">
-                  <h3 className="font-headline-md text-headline-md text-on-surface">
-                    {t("usersHeading")}
-                  </h3>
+                  <h3 className="font-headline-md text-headline-md text-on-surface">{t("usersHeading")}</h3>
 
                   {effectiveUsers.length === 0 ? (
                     <p className="font-body-md text-body-md text-on-surface-variant">{t("noUsers")}</p>
@@ -558,11 +543,7 @@ export function RolesSettingsForm() {
             <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase">
               {t("roleNameLabel")}
             </label>
-            <input
-              className={INPUT_CLASS}
-              value={newRoleName}
-              onChange={(e) => setNewRoleName(e.target.value)}
-            />
+            <input className={INPUT_CLASS} value={newRoleName} onChange={(e) => setNewRoleName(e.target.value)} />
           </div>
           <div className="space-y-2">
             <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase">

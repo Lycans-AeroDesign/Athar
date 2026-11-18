@@ -31,7 +31,6 @@ from datetime import timedelta
 from pathlib import Path
 
 import zstandard
-
 from django.conf import settings
 from django.core.files import File
 from django.utils import timezone
@@ -255,9 +254,7 @@ def _export_specs(organization):
             ],
         ),
         (
-            ArticleRevision.objects.filter(article__organization=organization).select_related(
-                "article", "edited_by"
-            ),
+            ArticleRevision.objects.filter(article__organization=organization).select_related("article", "edited_by"),
             "article_revisions.csv",
             [
                 ("id", lambda o: _s(o.id)),
@@ -406,9 +403,9 @@ def _export_specs(organization):
             ],
         ),
         (
-            Sop.all_objects.filter(organization=organization).select_related("category", "created_by").prefetch_related(
-                "tags"
-            ),
+            Sop.all_objects.filter(organization=organization)
+            .select_related("category", "created_by")
+            .prefetch_related("tags"),
             "sops.csv",
             [
                 ("id", lambda o: _s(o.id)),
@@ -428,9 +425,9 @@ def _export_specs(organization):
             ],
         ),
         (
-            Test.all_objects.filter(organization=organization).select_related("project", "created_by").prefetch_related(
-                "tags"
-            ),
+            Test.all_objects.filter(organization=organization)
+            .select_related("project", "created_by")
+            .prefetch_related("tags"),
             "tests.csv",
             [
                 ("id", lambda o: _s(o.id)),
@@ -627,7 +624,9 @@ def _export_specs(organization):
             ],
         ),
         (
-            Course.all_objects.filter(organization=organization).select_related("category", "author", "cover_image").prefetch_related("co_authors"),
+            Course.all_objects.filter(organization=organization)
+            .select_related("category", "author", "cover_image")
+            .prefetch_related("co_authors"),
             "courses.csv",
             [
                 ("id", lambda o: _s(o.id)),
@@ -718,9 +717,9 @@ def _export_specs(organization):
             ],
         ),
         (
-            LessonKnowledgeReference.objects.filter(
-                lesson__module__course__organization=organization
-            ).select_related("lesson", "content_type", "created_by"),
+            LessonKnowledgeReference.objects.filter(lesson__module__course__organization=organization).select_related(
+                "lesson", "content_type", "created_by"
+            ),
             "lesson_knowledge_references.csv",
             [
                 ("id", lambda o: _s(o.id)),
@@ -751,9 +750,7 @@ def _export_specs(organization):
             ],
         ),
         (
-            LessonProgress.objects.filter(enrollment__organization=organization).select_related(
-                "enrollment", "lesson"
-            ),
+            LessonProgress.objects.filter(enrollment__organization=organization).select_related("enrollment", "lesson"),
             "lesson_progress.csv",
             [
                 ("id", lambda o: _s(o.id)),

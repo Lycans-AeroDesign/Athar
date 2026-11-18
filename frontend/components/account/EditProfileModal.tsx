@@ -5,11 +5,11 @@ import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { ImageCropModal } from "@/components/ui/ImageCropModal";
+import { INPUT_CLASS } from "@/components/ui/inputStyles";
 import { Modal } from "@/components/ui/Modal";
 import { PhotoDropzone } from "@/components/ui/PhotoDropzone";
-import { INPUT_CLASS } from "@/components/ui/inputStyles";
-import { ApiError, apiFetch } from "@/lib/api/client";
 import { updateMe } from "@/lib/api/accounts";
+import { ApiError, apiFetch } from "@/lib/api/client";
 import { DEFAULT_UPLOAD_LIMIT_MB, getUploadLimitMb, uploadFile } from "@/lib/api/files";
 import type { StoredFileRef, User } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth/AuthProvider";
@@ -25,7 +25,6 @@ const MAX_UPLOAD_SIZE_MB = DEFAULT_UPLOAD_LIMIT_MB;
 const USERNAME_PATTERN = /^[a-zA-Z0-9_.-]{3,30}$/;
 const MIN_USERNAME_LENGTH = 3;
 const MAX_USERNAME_LENGTH = 30;
-
 
 interface EditProfileModalProps {
   user: User;
@@ -175,110 +174,110 @@ export function EditProfileModal({ user, onClose }: EditProfileModalProps) {
 
   return (
     <>
-    <Modal
-      open
-      onOpenChange={(open) => {
-        if (!open) onClose();
-      }}
-      title={t("editProfileTitle")}
-      isDirty={isDirty}
-      footer={
-        <>
-          <Button variant="secondary" onClick={onClose} disabled={isSaving}>
-            {commonT("cancel")}
-          </Button>
-          <Button onClick={handleSave} disabled={!isDirty} loading={isSaving}>
-            {isSaving ? commonT("saving") : commonT("save")}
-          </Button>
-        </>
-      }
-    >
-      <div className="space-y-5">
-        <div className="flex items-center gap-4">
-          <PhotoDropzone
-            value={displayedPicture}
-            onFileSelected={handlePictureSelected}
-            onUnsupportedFile={() => setPictureError(commonT("unsupportedImageType"))}
-            onRemove={() => setPendingPicture(null)}
-            removeLabel={t("removePictureButton")}
-            onCrop={displayedPicture ? handleCropExisting : undefined}
-            cropLabel={t("cropPictureButton")}
-            progress={pictureUploadProgress}
-            alt={t("profilePictureLabel")}
-            fallback={
-              <span className="flex h-full w-full items-center justify-center font-label-caps text-label-caps text-on-surface-variant">
-                {getInitials(user)}
-              </span>
-            }
-            shape="circle"
-            className="h-24 w-24 shrink-0"
-          />
-          <div className="min-w-0">
-            <p className="font-label-caps text-label-caps text-on-surface-variant uppercase">
-              {t("profilePictureLabel")}
-            </p>
-            <p className="font-body-md text-body-md text-on-surface-variant mt-1">
-              {t("profilePictureHint", { maxSize: uploadLimitMb })}
-            </p>
+      <Modal
+        open
+        onOpenChange={(open) => {
+          if (!open) onClose();
+        }}
+        title={t("editProfileTitle")}
+        isDirty={isDirty}
+        footer={
+          <>
+            <Button variant="secondary" onClick={onClose} disabled={isSaving}>
+              {commonT("cancel")}
+            </Button>
+            <Button onClick={handleSave} disabled={!isDirty} loading={isSaving}>
+              {isSaving ? commonT("saving") : commonT("save")}
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-5">
+          <div className="flex items-center gap-4">
+            <PhotoDropzone
+              value={displayedPicture}
+              onFileSelected={handlePictureSelected}
+              onUnsupportedFile={() => setPictureError(commonT("unsupportedImageType"))}
+              onRemove={() => setPendingPicture(null)}
+              removeLabel={t("removePictureButton")}
+              onCrop={displayedPicture ? handleCropExisting : undefined}
+              cropLabel={t("cropPictureButton")}
+              progress={pictureUploadProgress}
+              alt={t("profilePictureLabel")}
+              fallback={
+                <span className="flex h-full w-full items-center justify-center font-label-caps text-label-caps text-on-surface-variant">
+                  {getInitials(user)}
+                </span>
+              }
+              shape="circle"
+              className="h-24 w-24 shrink-0"
+            />
+            <div className="min-w-0">
+              <p className="font-label-caps text-label-caps text-on-surface-variant uppercase">
+                {t("profilePictureLabel")}
+              </p>
+              <p className="font-body-md text-body-md text-on-surface-variant mt-1">
+                {t("profilePictureHint", { maxSize: uploadLimitMb })}
+              </p>
+            </div>
           </div>
-        </div>
-        {pictureError && (
-          <p className="font-body-md text-body-md text-error" role="alert">
-            {pictureError}
-          </p>
-        )}
+          {pictureError && (
+            <p className="font-body-md text-body-md text-error" role="alert">
+              {pictureError}
+            </p>
+          )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Field label={t("firstNameLabel")}>
-            <input className={INPUT_CLASS} value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label={t("firstNameLabel")}>
+              <input className={INPUT_CLASS} value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+            </Field>
+            <Field label={t("lastNameLabel")}>
+              <input className={INPUT_CLASS} value={lastName} onChange={(e) => setLastName(e.target.value)} />
+            </Field>
+          </div>
+
+          <Field label={t("titleLabel")}>
+            <input
+              className={INPUT_CLASS}
+              placeholder={t("titlePlaceholder")}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+            />
           </Field>
-          <Field label={t("lastNameLabel")}>
-            <input className={INPUT_CLASS} value={lastName} onChange={(e) => setLastName(e.target.value)} />
+
+          <Field label={t("usernameLabel")}>
+            <input
+              className={`${INPUT_CLASS} ${usernameError ? "!border-error focus:!border-error" : ""}`}
+              placeholder={t("usernamePlaceholder")}
+              value={username}
+              minLength={MIN_USERNAME_LENGTH}
+              maxLength={MAX_USERNAME_LENGTH}
+              autoComplete="username"
+              required
+              onChange={(e) => {
+                setUsername(e.target.value);
+                setUsernameError(null);
+              }}
+            />
+            <p className={`font-body-md text-body-md ${usernameError ? "text-error" : "text-on-surface-variant"}`}>
+              {usernameError ?? t("usernameHint")}
+            </p>
           </Field>
+
+          {error && (
+            <p className="font-body-md text-body-md text-error" role="alert">
+              {error}
+            </p>
+          )}
         </div>
-
-        <Field label={t("titleLabel")}>
-          <input
-            className={INPUT_CLASS}
-            placeholder={t("titlePlaceholder")}
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
-        </Field>
-
-        <Field label={t("usernameLabel")}>
-          <input
-            className={`${INPUT_CLASS} ${usernameError ? "!border-error focus:!border-error" : ""}`}
-            placeholder={t("usernamePlaceholder")}
-            value={username}
-            minLength={MIN_USERNAME_LENGTH}
-            maxLength={MAX_USERNAME_LENGTH}
-            autoComplete="username"
-            required
-            onChange={(e) => {
-              setUsername(e.target.value);
-              setUsernameError(null);
-            }}
-          />
-          <p className={`font-body-md text-body-md ${usernameError ? "text-error" : "text-on-surface-variant"}`}>
-            {usernameError ?? t("usernameHint")}
-          </p>
-        </Field>
-
-        {error && (
-          <p className="font-body-md text-body-md text-error" role="alert">
-            {error}
-          </p>
-        )}
-      </div>
-    </Modal>
-    <ImageCropModal
-      file={cropFile}
-      isExisting={isCropExisting}
-      aspectRatio={1}
-      shape="circle"
-      onDone={handleCropModalDone}
-    />
+      </Modal>
+      <ImageCropModal
+        file={cropFile}
+        isExisting={isCropExisting}
+        aspectRatio={1}
+        shape="circle"
+        onDone={handleCropModalDone}
+      />
     </>
   );
 }

@@ -3,12 +3,12 @@
 Everything here is metadata (counts, byte sizes, timestamps, account info). Never read or
 return organization content (articles, answers, file names, ...)."""
 
+import shutil
+
+from django.conf import settings
 from django.db import transaction
 from django.db.models import Count, Max, Q, Sum
-from django.conf import settings
 from rest_framework.exceptions import PermissionDenied, ValidationError
-
-import shutil
 
 from accounts.models import User
 from accounts.services import create_password_reset_link
@@ -18,8 +18,9 @@ from backups.models import BackupJob
 from files.models import StoredFile
 from knowledge.models import Article, Component, Document, Failure, Project, Question, Sop, Test
 from organization.models import Organization
-from .models import ErrorEvent, PlatformSettings, organization_registration_enabled
 from training.models import Course
+
+from .models import ErrorEvent, PlatformSettings, organization_registration_enabled
 
 CONTENT_MODELS = {
     "articles": Article,
@@ -71,9 +72,9 @@ def organization_stats(organizations) -> list[dict]:
     }
     backups = _backup_bytes(ids)
     admins: dict = {}
-    for user in User.objects.filter(
-        organization_id__in=ids, is_active=True, roles__name="Organization Admin"
-    ).order_by("date_joined"):
+    for user in User.objects.filter(organization_id__in=ids, is_active=True, roles__name="Organization Admin").order_by(
+        "date_joined"
+    ):
         admins.setdefault(user.organization_id, []).append(user.email)
 
     result = []

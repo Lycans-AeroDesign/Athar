@@ -112,11 +112,7 @@ export function SettingsShell({ children }: { children: ReactNode }) {
                           <Icon name={section.icon} size={18} />
                         </span>
                         <span className="flex-1 min-w-0 truncate">{t(`sections.${section.id}`)}</span>
-                        <Icon
-                          name="chevron_right"
-                          size={18}
-                          className="lg:hidden shrink-0 text-on-surface-variant"
-                        />
+                        <Icon name="chevron_right" size={18} className="lg:hidden shrink-0 text-on-surface-variant" />
                       </Link>
                     );
                   })}

@@ -84,9 +84,9 @@ class CryptoStreamTests(SimpleTestCase):
         data = os.urandom(3 * crypto.CHUNK_SIZE)
         encrypted = self._encrypt(data)
         sealed = crypto.CHUNK_SIZE + crypto.TAG_SIZE
-        body = encrypted[crypto.HEADER_SIZE:]
-        chunks = [body[i:i + sealed] for i in range(0, len(body), sealed)]
-        header = bytearray(encrypted[:crypto.HEADER_SIZE])
+        body = encrypted[crypto.HEADER_SIZE :]
+        chunks = [body[i : i + sealed] for i in range(0, len(body), sealed)]
+        header = bytearray(encrypted[: crypto.HEADER_SIZE])
         header[-1] ^= 0x01
         flipped = bytearray(encrypted)
         flipped[crypto.HEADER_SIZE + 10] ^= 0x01
@@ -94,8 +94,11 @@ class CryptoStreamTests(SimpleTestCase):
             "wrong passphrase": (encrypted, "not the passphrase"),
             "flipped byte": (bytes(flipped), self.PASSPHRASE),
             "truncated mid-chunk": (encrypted[:-100], self.PASSPHRASE),
-            "last chunk dropped": (encrypted[:crypto.HEADER_SIZE] + b"".join(chunks[:-1]), self.PASSPHRASE),
-            "chunks reordered": (encrypted[:crypto.HEADER_SIZE] + chunks[1] + chunks[0] + b"".join(chunks[2:]), self.PASSPHRASE),
+            "last chunk dropped": (encrypted[: crypto.HEADER_SIZE] + b"".join(chunks[:-1]), self.PASSPHRASE),
+            "chunks reordered": (
+                encrypted[: crypto.HEADER_SIZE] + chunks[1] + chunks[0] + b"".join(chunks[2:]),
+                self.PASSPHRASE,
+            ),
             "header edited": (bytes(header) + body, self.PASSPHRASE),
             "no passphrase": (encrypted, None),
         }

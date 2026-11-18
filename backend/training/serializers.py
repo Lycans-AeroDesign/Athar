@@ -1,8 +1,8 @@
+from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
 from files.models import StoredFile
 from files.serializers import StoredFileSerializer
-from django.contrib.auth import get_user_model
 from knowledge.serializers import AuthorSerializer, OrgScopedPrimaryKeyRelatedField, RestrictedAccessMixin
 
 from . import services
@@ -12,8 +12,8 @@ from .models import (
     CourseEnrollment,
     CourseModule,
     CourseResource,
-    Lesson,
     LearningObjective,
+    Lesson,
     LessonKnowledgeReference,
 )
 
@@ -24,7 +24,14 @@ User = get_user_model()
 # own list, not imported, since Training's serializer layer shouldn't reach
 # into knowledge.services' private allowlist directly).
 KNOWLEDGE_REFERENCE_TYPE_CHOICES = [
-    "article", "question", "project", "component", "failure", "sop", "test", "document",
+    "article",
+    "question",
+    "project",
+    "component",
+    "failure",
+    "sop",
+    "test",
+    "document",
 ]
 
 
@@ -64,8 +71,17 @@ class CourseResourceSerializer(serializers.ModelSerializer):
     class Meta:
         model = CourseResource
         fields = [
-            "id", "title", "description", "resource_type", "provider", "url", "stored_file",
-            "is_primary", "order", "created_by", "created_at",
+            "id",
+            "title",
+            "description",
+            "resource_type",
+            "provider",
+            "url",
+            "stored_file",
+            "is_primary",
+            "order",
+            "created_by",
+            "created_at",
         ]
 
 
@@ -154,9 +170,21 @@ class LessonDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Lesson
         fields = [
-            "id", "module_id", "course_id", "title", "short_description", "lesson_type", "content",
-            "order", "estimated_minutes", "is_required", "objectives", "resources", "knowledge_references",
-            "created_at", "updated_at",
+            "id",
+            "module_id",
+            "course_id",
+            "title",
+            "short_description",
+            "lesson_type",
+            "content",
+            "order",
+            "estimated_minutes",
+            "is_required",
+            "objectives",
+            "resources",
+            "knowledge_references",
+            "created_at",
+            "updated_at",
         ]
 
     def get_module_id(self, obj: Lesson) -> str:
@@ -191,9 +219,24 @@ class CourseListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Course
         fields = [
-            "id", "title", "slug", "short_description", "cover_image", "category", "difficulty",
-            "estimated_minutes", "status", "visibility", "author", "co_authors", "module_count", "lesson_count",
-            "enrollment_count", "created_at", "updated_at", "published_at",
+            "id",
+            "title",
+            "slug",
+            "short_description",
+            "cover_image",
+            "category",
+            "difficulty",
+            "estimated_minutes",
+            "status",
+            "visibility",
+            "author",
+            "co_authors",
+            "module_count",
+            "lesson_count",
+            "enrollment_count",
+            "created_at",
+            "updated_at",
+            "published_at",
         ]
 
     def get_module_count(self, obj: Course) -> int:
@@ -233,7 +276,14 @@ class CourseWriteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Course
         fields = [
-            "title", "short_description", "description", "category_id", "cover_image_id", "difficulty", "visibility", "co_author_ids",
+            "title",
+            "short_description",
+            "description",
+            "category_id",
+            "cover_image_id",
+            "difficulty",
+            "visibility",
+            "co_author_ids",
         ]
 
     def validate_category_id(self, value):

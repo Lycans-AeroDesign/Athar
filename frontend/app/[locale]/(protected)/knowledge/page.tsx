@@ -3,18 +3,17 @@
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 
-import { ArticleCard } from "@/components/knowledge/ArticleCard";
+import { Can } from "@/components/auth/Can";
+import { ArticleCard, KnowledgeCardGridSkeleton } from "@/components/knowledge/ArticleCard";
 import { CategoryPanel } from "@/components/knowledge/CategoryPanel";
 import { CollectionShelf } from "@/components/knowledge/CollectionShelf";
 import { QuestionCard } from "@/components/knowledge/QuestionCard";
 import { ARTICLE_STATUS_LABEL_KEYS } from "@/components/knowledge/StatusPill";
 import { TagPanel } from "@/components/knowledge/TagPanel";
-import { Can } from "@/components/auth/Can";
 import { Button } from "@/components/ui/Button";
 import { Combobox } from "@/components/ui/Combobox";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
-import { KnowledgeCardGridSkeleton } from "@/components/knowledge/ArticleCard";
 import { Link } from "@/i18n/navigation";
 import { getArticles, getCategories, getQuestions, getTags } from "@/lib/api/knowledge";
 import type { ArticleStatusFilter, ArticleSummary, Category, QuestionSummary, Tag } from "@/lib/api/types";
@@ -144,7 +143,11 @@ export default function KnowledgePage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         <div className="lg:col-span-4 space-y-6">
-          <CategoryPanel categories={categories} selectedCategoryId={selectedCategoryId} onSelect={setSelectedCategoryId} />
+          <CategoryPanel
+            categories={categories}
+            selectedCategoryId={selectedCategoryId}
+            onSelect={setSelectedCategoryId}
+          />
           <TagPanel tags={tags} selectedTagId={selectedTagId} onSelect={setSelectedTagId} />
         </div>
 

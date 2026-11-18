@@ -4,7 +4,6 @@ from accounts.models import User
 from knowledge.models import Article
 from organization.models import Organization
 from rbac.models import Role
-
 from training import services
 from training.models import Course, CourseEnrollment, CourseResource, Lesson, LessonKnowledgeReference
 
@@ -113,11 +112,15 @@ class Command(BaseCommand):
         )
 
         fundamentals = services.create_module(
-            actor=head, course=course, title="Git Fundamentals",
+            actor=head,
+            course=course,
+            title="Git Fundamentals",
             description="What Git is, and the core commands you'll use every day.",
         )
         what_is_git = services.create_lesson(
-            actor=head, module=fundamentals, title="What is Git?",
+            actor=head,
+            module=fundamentals,
+            title="What is Git?",
             short_description="Version control, in plain terms.",
             lesson_type=Lesson.LessonType.TEXT,
             content=(
@@ -133,14 +136,18 @@ class Command(BaseCommand):
         services.create_objective(actor=head, lesson=what_is_git, text="Explain what a commit represents.")
 
         first_commit_video = services.create_lesson(
-            actor=head, module=fundamentals, title="Your First Commit",
+            actor=head,
+            module=fundamentals,
+            title="Your First Commit",
             short_description="A walkthrough of cloning a repo and making your first commit.",
             lesson_type=Lesson.LessonType.VIDEO,
             content="Follow along in your own terminal - pause the video after each step.",
             estimated_minutes=18,
         )
         services.create_resource(
-            actor=head, lesson=first_commit_video, title="Your First Commit - Recording",
+            actor=head,
+            lesson=first_commit_video,
+            title="Your First Commit - Recording",
             resource_type=CourseResource.ResourceType.EXTERNAL_LINK,
             provider=CourseResource.Provider.GOOGLE_DRIVE,
             url="https://drive.google.com/file/d/DEMO_PLACEHOLDER_FILE_ID/view",
@@ -149,11 +156,15 @@ class Command(BaseCommand):
         )
 
         branches = services.create_module(
-            actor=head, course=course, title="Branches",
+            actor=head,
+            course=course,
+            title="Branches",
             description="Working on changes in isolation before merging them in.",
         )
         branching_basics = services.create_lesson(
-            actor=head, module=branches, title="Branching Basics",
+            actor=head,
+            module=branches,
+            title="Branching Basics",
             short_description="Why we branch, and how to create one.",
             lesson_type=Lesson.LessonType.TEXT,
             content=(
@@ -163,15 +174,23 @@ class Command(BaseCommand):
             ),
             estimated_minutes=12,
         )
-        services.create_objective(actor=head, lesson=branching_basics, text="Create a new branch from the command line.")
-        services.create_objective(actor=head, lesson=branching_basics, text="Explain why we avoid committing directly to main.")
+        services.create_objective(
+            actor=head, lesson=branching_basics, text="Create a new branch from the command line."
+        )
+        services.create_objective(
+            actor=head, lesson=branching_basics, text="Explain why we avoid committing directly to main."
+        )
 
         pull_requests = services.create_module(
-            actor=head, course=course, title="Pull Requests",
+            actor=head,
+            course=course,
+            title="Pull Requests",
             description="Getting your changes reviewed and merged.",
         )
         opening_a_pr = services.create_lesson(
-            actor=head, module=pull_requests, title="Opening a Pull Request",
+            actor=head,
+            module=pull_requests,
+            title="Opening a Pull Request",
             short_description="Turning a branch into something the team can review.",
             lesson_type=Lesson.LessonType.TEXT,
             content=(
@@ -188,12 +207,17 @@ class Command(BaseCommand):
         candidate_article = Article.objects.filter(organization=organization, status=Article.Status.PUBLISHED).first()
         if candidate_article is not None:
             services.create_knowledge_reference(
-                actor=head, lesson=opening_a_pr, content_type="article", object_id=candidate_article.pk,
+                actor=head,
+                lesson=opening_a_pr,
+                content_type="article",
+                object_id=candidate_article.pk,
                 note="Example of a well-documented change, for reference.",
             )
 
         practice_exercise = services.create_lesson(
-            actor=head, module=pull_requests, title="Practice: Open Your First PR",
+            actor=head,
+            module=pull_requests,
+            title="Practice: Open Your First PR",
             short_description="Apply what you've learned on a real (practice) repository.",
             lesson_type=Lesson.LessonType.EXERCISE,
             content=(
@@ -206,7 +230,9 @@ class Command(BaseCommand):
             is_required=False,
         )
         services.create_resource(
-            actor=head, lesson=practice_exercise, title="Practice Repository",
+            actor=head,
+            lesson=practice_exercise,
+            title="Practice Repository",
             resource_type=CourseResource.ResourceType.EXTERNAL_LINK,
             provider=CourseResource.Provider.GITHUB,
             url="https://github.com/example-org/git-practice",
@@ -215,11 +241,15 @@ class Command(BaseCommand):
         )
 
         team_workflow = services.create_module(
-            actor=head, course=course, title="Team Workflow",
+            actor=head,
+            course=course,
+            title="Team Workflow",
             description="How the pieces fit together day to day.",
         )
         services.create_lesson(
-            actor=head, module=team_workflow, title="Putting It All Together",
+            actor=head,
+            module=team_workflow,
+            title="Putting It All Together",
             short_description="A recap of the full commit-branch-PR-merge cycle.",
             lesson_type=Lesson.LessonType.TEXT,
             content=(

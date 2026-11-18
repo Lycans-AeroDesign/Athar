@@ -3,8 +3,8 @@ from urllib.parse import urlsplit
 from django.conf import settings
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
-from drf_spectacular.utils import OpenApiParameter, extend_schema
 from django.utils import timezone
+from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import AllowAny
@@ -125,7 +125,9 @@ class UserActiveView(PlatformView):
     )
     def post(self, request, pk):
         user = get_object_or_404(User, pk=pk)
-        user = services.set_user_active(user=user, is_active=_require_bool(request), actor=request.user, request=request)
+        user = services.set_user_active(
+            user=user, is_active=_require_bool(request), actor=request.user, request=request
+        )
         return Response(PlatformUserSerializer(user).data)
 
 
@@ -222,7 +224,9 @@ class ErrorDetailView(PlatformView):
         event = get_object_or_404(ErrorEvent.objects.select_related("organization", "user"), pk=pk)
         return Response(ErrorEventSerializer(event).data)
 
-    @extend_schema(tags=[TAG], summary="Delete a recorded error", responses={204: None, 404: NOT_FOUND, **COMMON_ERRORS})
+    @extend_schema(
+        tags=[TAG], summary="Delete a recorded error", responses={204: None, 404: NOT_FOUND, **COMMON_ERRORS}
+    )
     def delete(self, request, pk):
         get_object_or_404(ErrorEvent, pk=pk).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)

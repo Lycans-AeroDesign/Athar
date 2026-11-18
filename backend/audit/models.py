@@ -23,9 +23,7 @@ class AuditLog(models.Model):
     )
     action = models.CharField(max_length=100)
 
-    target_content_type = models.ForeignKey(
-        ContentType, null=True, blank=True, on_delete=models.SET_NULL
-    )
+    target_content_type = models.ForeignKey(ContentType, null=True, blank=True, on_delete=models.SET_NULL)
     target_object_id = models.CharField(max_length=64, null=True, blank=True)
     target = GenericForeignKey("target_content_type", "target_object_id")
     target_repr = models.CharField(max_length=255, blank=True)

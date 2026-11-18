@@ -33,14 +33,32 @@ export interface WhatsNewEntry {
 }
 
 export const WHATS_NEW: readonly WhatsNewEntry[] = [
-  { id: "inlineDocumentPreview", date: "2026-11-16", kind: "improved", href: "/documents", permission: "document.read" },
-  { id: "lessonPreviewTab", date: "2026-11-16", kind: "improved", href: "/training/manage", permission: "training.manage" },
+  {
+    id: "inlineDocumentPreview",
+    date: "2026-11-16",
+    kind: "improved",
+    href: "/documents",
+    permission: "document.read",
+  },
+  {
+    id: "lessonPreviewTab",
+    date: "2026-11-16",
+    kind: "improved",
+    href: "/training/manage",
+    permission: "training.manage",
+  },
   { id: "platformErrorLog", date: "2026-11-15", kind: "new", href: "/platform/errors", platformAdmin: true },
   { id: "platformMobile", date: "2026-11-15", kind: "fixed", href: "/platform", platformAdmin: true },
   { id: "trash", date: "2026-11-15", kind: "new", href: "/trash" },
   { id: "articleRevisions", date: "2026-11-15", kind: "new", href: "/knowledge" },
   { id: "shareLinks", date: "2026-11-15", kind: "new", permission: "share_link.create" },
-  { id: "shareLinksSettings", date: "2026-11-15", kind: "new", href: "/settings/features", permission: "organization.manage" },
+  {
+    id: "shareLinksSettings",
+    date: "2026-11-15",
+    kind: "new",
+    href: "/settings/features",
+    permission: "organization.manage",
+  },
   { id: "fasterImages", date: "2026-11-15", kind: "improved" },
   { id: "componentPhotoPreview", date: "2026-11-15", kind: "improved", href: "/components" },
   { id: "mentionsEditor", date: "2026-11-15", kind: "improved" },
@@ -48,7 +66,13 @@ export const WHATS_NEW: readonly WhatsNewEntry[] = [
   { id: "arabicLayout", date: "2026-11-15", kind: "fixed" },
   { id: "trainingUploads", date: "2026-11-15", kind: "fixed", href: "/training" },
   { id: "importChecks", date: "2026-11-15", kind: "fixed" },
-  { id: "backupsReliability", date: "2026-11-15", kind: "fixed", href: "/settings/backups", permission: "organization.manage" },
+  {
+    id: "backupsReliability",
+    date: "2026-11-15",
+    kind: "fixed",
+    href: "/settings/backups",
+    permission: "organization.manage",
+  },
   { id: "searchKeyboard", date: "2026-11-14", kind: "new" },
   { id: "longTextRoll", date: "2026-11-14", kind: "improved" },
   { id: "mobileLists", date: "2026-11-14", kind: "fixed" },
@@ -71,7 +95,9 @@ export function entriesForUser(user: User, entries: readonly WhatsNewEntry[] = W
 export function unseenEntries(user: User, entries: readonly WhatsNewEntry[] = WHATS_NEW): WhatsNewEntry[] {
   const seenIndex = entries.findIndex((entry) => entry.id === user.preferences.whats_new_seen);
   const unseen =
-    seenIndex >= 0 ? entries.slice(0, seenIndex) : entries.filter((entry) => entry.date > user.date_joined.slice(0, 10));
+    seenIndex >= 0
+      ? entries.slice(0, seenIndex)
+      : entries.filter((entry) => entry.date > user.date_joined.slice(0, 10));
   return entriesForUser(user, unseen);
 }
 

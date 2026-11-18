@@ -3,9 +3,8 @@
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
-import { CourseCard } from "@/components/training/CourseCard";
+import { CourseCard, CourseCardGridSkeleton } from "@/components/training/CourseCard";
 import { Button } from "@/components/ui/Button";
-import { CourseCardGridSkeleton } from "@/components/training/CourseCard";
 import { Link } from "@/i18n/navigation";
 import { getCourseProgress, listMyCourses } from "@/lib/api/training";
 import type { CourseEnrollment } from "@/lib/api/types";
@@ -57,7 +56,11 @@ export default function MyLearningPage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {inProgress.map((enrollment) => (
-              <CourseCard key={enrollment.id} course={enrollment.course} progressPercent={progressById[enrollment.course.id]} />
+              <CourseCard
+                key={enrollment.id}
+                course={enrollment.course}
+                progressPercent={progressById[enrollment.course.id]}
+              />
             ))}
           </div>
         )}

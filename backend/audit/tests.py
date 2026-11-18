@@ -149,7 +149,9 @@ class AuditPrivacyTests(AuditTestCase):
         for log in AuditLog.objects.filter(organization=self.organization):
             self.assertNotIn(invitation.code, log.target_repr)
             self.assertNotIn(invitation.code, str(log.metadata))
-        self.assertTrue(AuditLog.objects.filter(action="invitation.create", target_repr=invitation.masked_code).exists())
+        self.assertTrue(
+            AuditLog.objects.filter(action="invitation.create", target_repr=invitation.masked_code).exists()
+        )
 
     def test_old_ip_and_user_agent_are_scrubbed(self):
         from datetime import timedelta

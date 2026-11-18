@@ -1,8 +1,8 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
-import { Suspense, useState, type FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
+import { Suspense, useState, type FormEvent } from "react";
 
 import { SecurityNote } from "@/components/auth/SecurityNote";
 import { BrandMark } from "@/components/ui/BrandMark";
@@ -80,17 +80,11 @@ function LoginForm() {
           <div className="flex flex-col items-center mb-8">
             {settings?.logo_url ? (
               // eslint-disable-next-line @next/next/no-img-element -- external backend URL, not a local asset next/image can optimize.
-              <img
-                src={apiUrl(settings.logo_url)}
-                alt={settings.name}
-                className="h-16 w-16 mb-4 object-contain"
-              />
+              <img src={apiUrl(settings.logo_url)} alt={settings.name} className="h-16 w-16 mb-4 object-contain" />
             ) : (
               <BrandMark className="h-16 w-16 mb-4" />
             )}
-            <h1 className="font-headline-lg text-headline-lg text-on-surface">
-              {settings?.name ?? "Athar"}
-            </h1>
+            <h1 className="font-headline-lg text-headline-lg text-on-surface">{settings?.name ?? "Athar"}</h1>
             <p
               className={
                 locale === "en"
@@ -166,7 +160,11 @@ function LoginForm() {
           <p className="text-center font-body-md text-body-md text-on-surface-variant mt-6">
             {t("login.needAccount")}{" "}
             <Link
-              href={searchParams.get("next") ? `/register?next=${encodeURIComponent(searchParams.get("next")!)}` : "/register"}
+              href={
+                searchParams.get("next")
+                  ? `/register?next=${encodeURIComponent(searchParams.get("next")!)}`
+                  : "/register"
+              }
               className="text-primary hover:underline"
             >
               {t("login.registerLink")}

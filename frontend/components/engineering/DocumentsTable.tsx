@@ -39,7 +39,9 @@ export function DocumentsTable({ documents, ordering, onOrderingChange }: Docume
     {
       field: "doc_type",
       labelKey: "colType",
-      render: (doc) => <span className="font-body-md text-body-md text-on-surface-variant">{docTypeT(doc.doc_type)}</span>,
+      render: (doc) => (
+        <span className="font-body-md text-body-md text-on-surface-variant">{docTypeT(doc.doc_type)}</span>
+      ),
     },
     {
       field: "source",

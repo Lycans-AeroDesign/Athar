@@ -5,9 +5,10 @@ export function redirectToLogin() {
   if (typeof window !== "undefined") {
     const current = window.location.pathname + window.location.search;
     const cleanPath = current.replace(/^\/(?:en|ar)(?=\/|$)/, "");
-    const loginUrl = cleanPath && cleanPath !== "/" && !cleanPath.startsWith("/login")
-      ? `/login?next=${encodeURIComponent(cleanPath)}`
-      : "/login";
+    const loginUrl =
+      cleanPath && cleanPath !== "/" && !cleanPath.startsWith("/login")
+        ? `/login?next=${encodeURIComponent(cleanPath)}`
+        : "/login";
     window.location.href = loginUrl;
   }
 }

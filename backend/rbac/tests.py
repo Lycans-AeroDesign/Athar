@@ -2,8 +2,8 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from core.testing import RoleLoginMixin, create_test_organization
 from accounts.models import User
+from core.testing import RoleLoginMixin, create_test_organization
 
 from .models import Permission, Role
 
@@ -15,9 +15,7 @@ class PermissionEnforcementTests(APITestCase):
 
     def _access_token_for(self, email, password):
         User.objects.create_user(email=email, password=password, organization=self.organization)
-        response = self.client.post(
-            reverse("auth-login"), {"email": email, "password": password}, format="json"
-        )
+        response = self.client.post(reverse("auth-login"), {"email": email, "password": password}, format="json")
         return response.data["access"]
 
     def _auth(self, access_token):
@@ -25,7 +23,9 @@ class PermissionEnforcementTests(APITestCase):
 
     def test_user_without_permission_is_forbidden(self):
         guest_role = Role.objects.get(organization=self.organization, name="Guest")
-        user = User.objects.create_user(email="plain@example.com", password="password123", organization=self.organization)
+        user = User.objects.create_user(
+            email="plain@example.com", password="password123", organization=self.organization
+        )
         guest_role.user_roles.create(user=user)
         access = self.client.post(
             reverse("auth-login"),
@@ -38,7 +38,9 @@ class PermissionEnforcementTests(APITestCase):
 
     def test_granting_permission_to_role_unlocks_access_with_no_code_change(self):
         guest_role = Role.objects.get(organization=self.organization, name="Guest")
-        user = User.objects.create_user(email="plain2@example.com", password="password123", organization=self.organization)
+        user = User.objects.create_user(
+            email="plain2@example.com", password="password123", organization=self.organization
+        )
         guest_role.user_roles.create(user=user)
         access = self.client.post(
             reverse("auth-login"),
@@ -158,9 +160,7 @@ class UserBlockUnblockTests(RoleLoginMixin, APITestCase):
 
     def test_admin_cannot_block_a_user_in_another_organization(self):
         _, admin_access = self._login_with_role("blockcrossadmin@example.com", "Organization Admin")
-        other_org_user, _ = self._login_with_role(
-            "blockcrosstarget@example.com", "Member", self.other_organization
-        )
+        other_org_user, _ = self._login_with_role("blockcrosstarget@example.com", "Member", self.other_organization)
 
         response = self.client.post(
             reverse("rbac-user-active", args=[other_org_user.id]),

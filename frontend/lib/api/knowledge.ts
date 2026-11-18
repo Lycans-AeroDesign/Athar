@@ -1,10 +1,10 @@
 import { apiJson, apiVoid } from "./client";
 import type {
+  Answer,
   ArticleDetail,
   ArticleRevision,
   ArticleStatusFilter,
   ArticleSummary,
-  Answer,
   Category,
   ContributionPeriod,
   ContributionType,
@@ -12,8 +12,8 @@ import type {
   KnowledgeAuthor,
   KnowledgeRelation,
   LeaderboardEntry,
-  ProjectLinkPayload,
   Paginated,
+  ProjectLinkPayload,
   QuestionDetail,
   QuestionSummary,
   RelatableType,
@@ -101,9 +101,9 @@ export function searchKnowledge(
 export function quickSearch(query: string, type?: RelatableType): Promise<Omit<SearchPage, "counts">> {
   const params = new URLSearchParams({ q: query, counts: "false" });
   if (type) params.set("type", type);
-  return apiJson<{ results: SearchResult[]; has_more: boolean }>(
-    `/api/v1/knowledge/search/?${params.toString()}`,
-  ).then((data) => ({ results: data.results, hasMore: data.has_more }));
+  return apiJson<{ results: SearchResult[]; has_more: boolean }>(`/api/v1/knowledge/search/?${params.toString()}`).then(
+    (data) => ({ results: data.results, hasMore: data.has_more }),
+  );
 }
 
 /** Everything tagged with `tagId` across every taggable type; same endpoint, pagination and
@@ -232,10 +232,7 @@ export function createQuestion(payload: QuestionWritePayload & { title: string }
   });
 }
 
-export function updateQuestion(
-  id: string,
-  payload: QuestionWritePayload,
-): Promise<QuestionDetail> {
+export function updateQuestion(id: string, payload: QuestionWritePayload): Promise<QuestionDetail> {
   return apiJson<QuestionDetail>(`/api/v1/knowledge/questions/${id}/`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
@@ -373,11 +370,7 @@ export function getUserProfile(id: string): Promise<UserProfile> {
 /** `T` is the summary type for whichever `type` you pass (e.g. ArticleSummary
  * for "article", Answer for "answer") - the backend returns a different shape
  * per type, so the caller picks the right one at the call site. */
-export function getUserContributions<T>(
-  id: string,
-  type: ContributionType,
-  page = 1,
-): Promise<Paginated<T>> {
+export function getUserContributions<T>(id: string, type: ContributionType, page = 1): Promise<Paginated<T>> {
   const params = new URLSearchParams({ type, page: String(page) });
   return apiJson<Paginated<T>>(`/api/v1/knowledge/users/${id}/contributions/?${params.toString()}`);
 }

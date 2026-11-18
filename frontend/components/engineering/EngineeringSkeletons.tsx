@@ -10,7 +10,10 @@ export function ComponentCardGridSkeleton({ count = 6 }: { count?: number }) {
   return (
     <SkeletonRegion className={ENGINEERING_CARD_GRID}>
       {Array.from({ length: count }).map((_, index) => (
-        <div key={index} className="flex flex-col bg-surface-container-low border border-outline-variant rounded-xl p-4">
+        <div
+          key={index}
+          className="flex flex-col bg-surface-container-low border border-outline-variant rounded-xl p-4"
+        >
           <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
             <SkeletonText variant="label-caps" width="w-20" />
             <div className="flex items-center gap-1 ms-auto">
@@ -66,7 +69,19 @@ export function SopListSkeleton({ rows = 5 }: { rows?: number }) {
 
 // Column shapes for TableSkeleton, one entry per real column of each table.
 export const COMPONENTS_TABLE_COLUMNS: TableSkeletonCell[] = [
-  "thumb", "title", "text", "text", "text", "pill", "text", "text", "pill", "text", "text", "text", "text",
+  "thumb",
+  "title",
+  "text",
+  "text",
+  "text",
+  "pill",
+  "text",
+  "text",
+  "pill",
+  "text",
+  "text",
+  "text",
+  "text",
 ];
 export const DOCUMENTS_TABLE_COLUMNS: TableSkeletonCell[] = ["title", "text", "text", "text"];
 export const FAILURES_TABLE_COLUMNS: TableSkeletonCell[] = ["title", "text", "pill", "text", "pill"];

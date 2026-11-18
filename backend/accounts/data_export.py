@@ -86,9 +86,7 @@ def build_user_export(user) -> dict:
             "courses": [str(pk) for pk in Course.objects.filter(co_authors=user).values_list("pk", flat=True)],
         },
         "personal_records": {name: _rows(queryset) for name, queryset in personal.items()},
-        "activity_log": list(
-            activity.values("action", "target_repr", "created_at", "ip_address", "user_agent")
-        ),
+        "activity_log": list(activity.values("action", "target_repr", "created_at", "ip_address", "user_agent")),
     }
     # Round-trip through the JSON encoder so UUIDs, datetimes and decimals are plain JSON values.
     return json.loads(json.dumps(export, cls=DjangoJSONEncoder))

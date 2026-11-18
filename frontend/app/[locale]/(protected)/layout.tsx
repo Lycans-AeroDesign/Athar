@@ -6,8 +6,8 @@ import { SideNav } from "@/components/layout/SideNav";
 import { TopBar } from "@/components/layout/TopBar";
 import { ProductTourAutostart } from "@/components/onboarding/ProductTourAutostart";
 import { PolicyGate } from "@/components/policies/PolicyGate";
-import { WhatsNewDialog } from "@/components/whatsNew/WhatsNewDialog";
 import { LoadingScreen } from "@/components/ui/LoadingScreen";
+import { WhatsNewDialog } from "@/components/whatsNew/WhatsNewDialog";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { useAuth } from "@/lib/auth/AuthProvider";
 

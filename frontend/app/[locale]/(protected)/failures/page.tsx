@@ -4,16 +4,16 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 import { Can } from "@/components/auth/Can";
+import { FAILURES_TABLE_COLUMNS } from "@/components/engineering/EngineeringSkeletons";
 import { FailuresTable } from "@/components/engineering/FailuresTable";
 import { ActiveFilterChip } from "@/components/ui/ActiveFilterChip";
 import { Button } from "@/components/ui/Button";
 import { Combobox } from "@/components/ui/Combobox";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
+import { INPUT_CLASS } from "@/components/ui/inputStyles";
 import { Pagination } from "@/components/ui/Pagination";
 import { TableSkeleton } from "@/components/ui/Skeleton";
-import { FAILURES_TABLE_COLUMNS } from "@/components/engineering/EngineeringSkeletons";
-import { INPUT_CLASS } from "@/components/ui/inputStyles";
 import { Link } from "@/i18n/navigation";
 import { getFailures, type FailureOrdering } from "@/lib/api/engineering";
 import type { FailureSeverity, FailureStatus, FailureSummary } from "@/lib/api/types";
@@ -70,7 +70,8 @@ export default function FailuresPage() {
       ordering,
     }).then(
       (data) => {
-        if (active) setResult({ key: filterKey, failures: data.results, hasNext: data.next !== null, count: data.count });
+        if (active)
+          setResult({ key: filterKey, failures: data.results, hasNext: data.next !== null, count: data.count });
       },
       (err) => {
         if (active) setErrorResult({ key: filterKey, message: errorMessage(err) });
@@ -119,7 +120,11 @@ export default function FailuresPage() {
               placeholder={severityT("all")}
               options={[
                 { value: "", label: severityT("all") },
-                ...SEVERITY_VALUES.map((value) => ({ value, label: severityT(value), ...FAILURE_SEVERITY_ICONS[value] })),
+                ...SEVERITY_VALUES.map((value) => ({
+                  value,
+                  label: severityT(value),
+                  ...FAILURE_SEVERITY_ICONS[value],
+                })),
               ]}
               value={severityFilter ?? ""}
               onChange={(value) => updateSeverityFilter((value || null) as FailureSeverity | null)}

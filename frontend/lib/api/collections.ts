@@ -105,9 +105,7 @@ export function reorderCollectionItems(collectionId: string, itemIds: string[]):
 /** Collections a SOP/article list page (or its editor picker) should show:
  * exactly-scoped rows plus MIXED ones, fetched side by side since the
  * backend's ?scope= filter is exact-match (CollectionListView.get). */
-export async function getCollectionsIncludingMixed(
-  scope: "SOP" | "ARTICLE",
-): Promise<CollectionSummary[]> {
+export async function getCollectionsIncludingMixed(scope: "SOP" | "ARTICLE"): Promise<CollectionSummary[]> {
   const [exact, mixed] = await Promise.all([
     getCollections({ scope }),
     getCollections({ scope: "MIXED", page_size: 100 }),

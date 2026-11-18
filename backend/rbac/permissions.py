@@ -13,9 +13,7 @@ class HasPermission(BasePermission):
 
     def has_permission(self, request, view):
         return bool(
-            request.user
-            and request.user.is_authenticated
-            and request.user.has_permission(self.permission_codename)
+            request.user and request.user.is_authenticated and request.user.has_permission(self.permission_codename)
         )
 
 

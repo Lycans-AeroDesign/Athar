@@ -296,15 +296,7 @@ export interface QuestionDetail extends QuestionSummary {
   bookmark_id: string | null;
 }
 
-export type RelatableType =
-  | "article"
-  | "question"
-  | "project"
-  | "component"
-  | "failure"
-  | "sop"
-  | "test"
-  | "document";
+export type RelatableType = "article" | "question" | "project" | "component" | "failure" | "sop" | "test" | "document";
 
 /** One related-content link chosen on a creation form, sent in the create request's `relations`
  * and saved in the same transaction as the item (backend services.create_with_links). */
@@ -584,15 +576,7 @@ export interface CollectionContext {
 }
 
 export type TestType =
-  | "FLIGHT"
-  | "THRUST"
-  | "STRUCTURAL"
-  | "ELECTRICAL"
-  | "GROUND"
-  | "SOFTWARE"
-  | "CALIBRATION"
-  | "EXPERIMENT"
-  | "OTHER";
+  "FLIGHT" | "THRUST" | "STRUCTURAL" | "ELECTRICAL" | "GROUND" | "SOFTWARE" | "CALIBRATION" | "EXPERIMENT" | "OTHER";
 export type TestRunStatus = "PLANNED" | "IN_PROGRESS" | "COMPLETED";
 export type TestPassFail = "PASS" | "FAIL" | "PARTIAL" | "NOT_APPLICABLE" | "";
 
@@ -674,16 +658,7 @@ export interface BookmarkEntry {
 // --- User profile -----------------------------------------------------------
 
 export type ContributionType =
-  | "course"
-  | "article"
-  | "question"
-  | "answer"
-  | "project"
-  | "component"
-  | "failure"
-  | "sop"
-  | "test"
-  | "document";
+  "course" | "article" | "question" | "answer" | "project" | "component" | "failure" | "sop" | "test" | "document";
 
 /** One row of GET /knowledge/leaderboard/ - see knowledge/scoring.py's CONTRIBUTION_POINTS table. */
 export interface LeaderboardEntry {

@@ -1,11 +1,6 @@
 from django.urls import path
 
 from .views import (
-    ShareLinkListCreateView,
-    ShareLinkRevokeView,
-    TrashItemView,
-    TrashListView,
-    TrashRestoreView,
     AccessGrantDetailView,
     AccessGrantListCreateView,
     AnswerDetailView,
@@ -32,9 +27,9 @@ from .views import (
     CollectionListView,
     CollectionReorderView,
     ComponentAttachmentDetailView,
+    ComponentAttachmentListView,
     ComponentCategoryDetailView,
     ComponentCategoryListView,
-    ComponentAttachmentListView,
     ComponentDetailView,
     ComponentExportView,
     ComponentImportTemplateView,
@@ -69,6 +64,8 @@ from .views import (
     RelationCreateView,
     RelationDetailView,
     SearchView,
+    ShareLinkListCreateView,
+    ShareLinkRevokeView,
     SopAttachmentDetailView,
     SopAttachmentListView,
     SopDetailView,
@@ -83,6 +80,9 @@ from .views import (
     TestDetailView,
     TestListCreateView,
     TestRelationsView,
+    TrashItemView,
+    TrashListView,
+    TrashRestoreView,
     UserContributionsView,
     UserProfileView,
 )

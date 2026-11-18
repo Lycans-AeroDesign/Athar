@@ -7,13 +7,12 @@ import { apiFetch, apiJson, apiUpload, apiVoid } from "./client";
 import { assertFileWithinUploadLimit } from "./files";
 import type {
   ComponentCategory,
-  CreationExtrasPayload,
-  ProjectLinkPayload,
   ComponentCondition,
   ComponentDetail,
-  ComponentStatus,
   ComponentSpecRow,
+  ComponentStatus,
   ComponentSummary,
+  CreationExtrasPayload,
   FailureDetail,
   FailureSeverity,
   FailureStatus,
@@ -22,9 +21,10 @@ import type {
   InventoryType,
   KnowledgeAttachment,
   Paginated,
-  ProjectDetail,
-  ProjectStatus,
   ProjectCard,
+  ProjectDetail,
+  ProjectLinkPayload,
+  ProjectStatus,
   SopDetail,
   SopSummary,
   StockStatus,
@@ -109,21 +109,36 @@ export function removeProjectAttachment(projectId: string, attachmentId: string)
  * COMPONENT_ORDERING_FIELDS, the allowlist this must stay in sync with.
  * "-"-prefix a value for descending. */
 export type ComponentOrdering =
-  | "name" | "-name"
-  | "category" | "-category"
-  | "manufacturer" | "-manufacturer"
-  | "part_number" | "-part_number"
-  | "status" | "-status"
-  | "quantity_available" | "-quantity_available"
-  | "visibility" | "-visibility"
-  | "inventory_type" | "-inventory_type"
-  | "location" | "-location"
-  | "unit" | "-unit"
-  | "condition" | "-condition"
-  | "stock_status" | "-stock_status"
-  | "min_quantity" | "-min_quantity"
-  | "created_at" | "-created_at"
-  | "updated_at" | "-updated_at";
+  | "name"
+  | "-name"
+  | "category"
+  | "-category"
+  | "manufacturer"
+  | "-manufacturer"
+  | "part_number"
+  | "-part_number"
+  | "status"
+  | "-status"
+  | "quantity_available"
+  | "-quantity_available"
+  | "visibility"
+  | "-visibility"
+  | "inventory_type"
+  | "-inventory_type"
+  | "location"
+  | "-location"
+  | "unit"
+  | "-unit"
+  | "condition"
+  | "-condition"
+  | "stock_status"
+  | "-stock_status"
+  | "min_quantity"
+  | "-min_quantity"
+  | "created_at"
+  | "-created_at"
+  | "updated_at"
+  | "-updated_at";
 
 /** Shared by the list, the CSV export and the inventory summary, so all
  * three always describe the same set of components. */
@@ -400,16 +415,26 @@ export async function importComponentsCsv(
 
 /** See backend/knowledge/views.py's FAILURE_ORDERING_FIELDS, the allowlist this must stay in sync with. */
 export type FailureOrdering =
-  | "title" | "-title"
-  | "component" | "-component"
-  | "project" | "-project"
-  | "aircraft" | "-aircraft"
-  | "date" | "-date"
-  | "severity" | "-severity"
-  | "status" | "-status"
-  | "visibility" | "-visibility"
-  | "created_at" | "-created_at"
-  | "updated_at" | "-updated_at";
+  | "title"
+  | "-title"
+  | "component"
+  | "-component"
+  | "project"
+  | "-project"
+  | "aircraft"
+  | "-aircraft"
+  | "date"
+  | "-date"
+  | "severity"
+  | "-severity"
+  | "status"
+  | "-status"
+  | "visibility"
+  | "-visibility"
+  | "created_at"
+  | "-created_at"
+  | "updated_at"
+  | "-updated_at";
 
 export function getFailures(filters?: {
   severity?: FailureSeverity;
@@ -555,16 +580,26 @@ export function removeSopAttachment(sopId: string, attachmentId: string): Promis
 
 /** See backend/knowledge/views.py's TEST_ORDERING_FIELDS, the allowlist this must stay in sync with. */
 export type TestOrdering =
-  | "title" | "-title"
-  | "test_type" | "-test_type"
-  | "date" | "-date"
-  | "location" | "-location"
-  | "project" | "-project"
-  | "status" | "-status"
-  | "pass_fail" | "-pass_fail"
-  | "visibility" | "-visibility"
-  | "created_at" | "-created_at"
-  | "updated_at" | "-updated_at";
+  | "title"
+  | "-title"
+  | "test_type"
+  | "-test_type"
+  | "date"
+  | "-date"
+  | "location"
+  | "-location"
+  | "project"
+  | "-project"
+  | "status"
+  | "-status"
+  | "pass_fail"
+  | "-pass_fail"
+  | "visibility"
+  | "-visibility"
+  | "created_at"
+  | "-created_at"
+  | "updated_at"
+  | "-updated_at";
 
 export function getTests(filters?: {
   test_type?: TestType;

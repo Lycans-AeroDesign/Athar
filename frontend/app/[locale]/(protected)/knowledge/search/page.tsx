@@ -79,7 +79,10 @@ function SearchResults() {
 
       {scope !== "all" && (
         <div className="flex items-center gap-2">
-          <ActiveFilterChip label={t(SEARCH_FILTER_LABEL_KEYS[scope])} onClear={() => updateParams({ type: "all", page: 1 })} />
+          <ActiveFilterChip
+            label={t(SEARCH_FILTER_LABEL_KEYS[scope])}
+            onClear={() => updateParams({ type: "all", page: 1 })}
+          />
         </div>
       )}
 
@@ -107,7 +110,9 @@ function SearchResults() {
             results !== null &&
             results.length > 0 && (
               <div className="flex items-center justify-end gap-2">
-                <span className="font-label-caps text-label-caps text-on-surface-variant uppercase">{t("sortByLabel")}</span>
+                <span className="font-label-caps text-label-caps text-on-surface-variant uppercase">
+                  {t("sortByLabel")}
+                </span>
                 <div className="w-48">
                   <Combobox
                     ariaLabel={t("sortByLabel")}

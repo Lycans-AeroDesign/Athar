@@ -61,10 +61,14 @@ class Command(BaseCommand):
         # plaintext dump never touches disk.
         command = [
             "pg_dump",
-            "-h", db.get("HOST") or "localhost",
-            "-p", str(db.get("PORT") or 5432),
-            "-U", db.get("USER") or "",
-            "-F", "c",
+            "-h",
+            db.get("HOST") or "localhost",
+            "-p",
+            str(db.get("PORT") or 5432),
+            "-U",
+            db.get("USER") or "",
+            "-F",
+            "c",
             db["NAME"],
         ]
         env = {**os.environ, "PGPASSWORD": db.get("PASSWORD") or ""}

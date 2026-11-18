@@ -3,27 +3,27 @@
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
-import { Button } from "@/components/ui/Button";
-import { ChangedIndicator } from "@/components/ui/ChangedIndicator";
-import { Combobox } from "@/components/ui/Combobox";
-import { MarkdownEditor } from "@/components/ui/MarkdownEditor";
+import { PendingRelations, toRelationInputs, type PendingRelation } from "@/components/knowledge/PendingRelations";
 import {
   EMPTY_RESTRICTED_ACCESS_DRAFT,
   RestrictedAccessPicker,
   type RestrictedAccessDraft,
 } from "@/components/knowledge/RestrictedAccessPicker";
-import { SavingOverlay } from "@/components/ui/SavingOverlay";
-import { PendingRelations, toRelationInputs, type PendingRelation } from "@/components/knowledge/PendingRelations";
 import { effectiveVisibility, VisibilitySelect } from "@/components/knowledge/VisibilitySelect";
+import { Button } from "@/components/ui/Button";
+import { ChangedIndicator } from "@/components/ui/ChangedIndicator";
+import { Combobox } from "@/components/ui/Combobox";
 import { INPUT_CLASS } from "@/components/ui/inputStyles";
+import { MarkdownEditor } from "@/components/ui/MarkdownEditor";
+import { SavingOverlay } from "@/components/ui/SavingOverlay";
 import { TitleInput } from "@/components/ui/TitleInput";
 import { useRouter } from "@/i18n/navigation";
-import { errorMessage } from "@/lib/errors";
-import { useSaveOnce } from "@/lib/useSaveOnce";
 import { addAccessGrant, removeAccessGrant } from "@/lib/api/accessGrants";
 import { createTest, getProjects, updateTest, type TestWritePayload } from "@/lib/api/engineering";
 import type { ProjectSummary, TestDetail, TestPassFail, TestRunStatus, TestType, Visibility } from "@/lib/api/types";
+import { errorMessage } from "@/lib/errors";
 import { TEST_PASS_FAIL_ICONS, TEST_STATUS_ICONS, TEST_TYPE_ICONS } from "@/lib/optionIcons";
+import { useSaveOnce } from "@/lib/useSaveOnce";
 import { useUnsavedChangesGuard } from "@/lib/useUnsavedChangesGuard";
 
 const TEST_TYPE_VALUES: TestType[] = [
@@ -75,13 +75,14 @@ export function TestEditor({ test, onDirtyChange, initialProjectId = null }: Tes
   // null = not explicitly chosen (new item only): inherits the project's visibility if one is picked.
   const [visibility, setVisibility] = useState<Visibility | null>(test?.visibility ?? null);
   const [pendingRelations, setPendingRelations] = useState<PendingRelation[]>([]);
-  const [restrictedAccessDraft, setRestrictedAccessDraft] = useState<RestrictedAccessDraft>(
-    EMPTY_RESTRICTED_ACCESS_DRAFT,
-  );
+  const [restrictedAccessDraft, setRestrictedAccessDraft] =
+    useState<RestrictedAccessDraft>(EMPTY_RESTRICTED_ACCESS_DRAFT);
   const { isSaving, run } = useSaveOnce();
   const [error, setError] = useState<string | null>(null);
 
-  const inheritVisibilityFrom: Visibility | null = test ? null : (projects.find((p) => p.id === projectId)?.visibility ?? null);
+  const inheritVisibilityFrom: Visibility | null = test
+    ? null
+    : (projects.find((p) => p.id === projectId)?.visibility ?? null);
   const resolvedVisibility = effectiveVisibility(visibility, inheritVisibilityFrom);
 
   useEffect(() => {
@@ -227,7 +228,11 @@ export function TestEditor({ test, onDirtyChange, initialProjectId = null }: Tes
               label={t("passFailLabel")}
               options={[
                 { value: "", label: passFailT("notSet") },
-                ...PASS_FAIL_VALUES.map((value) => ({ value, label: passFailT(value), ...TEST_PASS_FAIL_ICONS[value] })),
+                ...PASS_FAIL_VALUES.map((value) => ({
+                  value,
+                  label: passFailT(value),
+                  ...TEST_PASS_FAIL_ICONS[value],
+                })),
               ]}
               value={passFail}
               onChange={(value) => setPassFail((value || "") as TestPassFail)}

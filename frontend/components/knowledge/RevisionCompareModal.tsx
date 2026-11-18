@@ -6,12 +6,12 @@ import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { Modal } from "@/components/ui/Modal";
+import { restoreArticleRevision } from "@/lib/api/knowledge";
+import type { ArticleDetail, ArticleRevision } from "@/lib/api/types";
 import { formatDateTime } from "@/lib/datetime";
 import { diffLines, withContext } from "@/lib/diff";
 import { errorMessage } from "@/lib/errors";
 import { formatPersonName } from "@/lib/format";
-import { restoreArticleRevision } from "@/lib/api/knowledge";
-import type { ArticleDetail, ArticleRevision } from "@/lib/api/types";
 
 type Mode = "previous" | "current";
 

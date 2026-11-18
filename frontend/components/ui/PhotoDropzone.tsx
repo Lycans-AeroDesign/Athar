@@ -3,11 +3,12 @@
 import { useTranslations } from "next-intl";
 import { useRef, useState, type DragEvent, type KeyboardEvent, type ReactNode } from "react";
 
+import type { StoredFileRef } from "@/lib/api/types";
+
 import { AuthenticatedImage } from "./AuthenticatedImage";
 import { Icon } from "./Icon";
 import { IconButton } from "./IconButton";
 import { ProgressBar } from "./ProgressBar";
-import type { StoredFileRef } from "@/lib/api/types";
 
 interface PhotoDropzoneProps {
   value: StoredFileRef | null;

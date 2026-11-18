@@ -1,12 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import {
-  useEffect,
-  useRef,
-  useState,
-  type PointerEvent as ReactPointerEvent,
-} from "react";
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 
 import { Button } from "./Button";
 import { Modal } from "./Modal";
@@ -49,13 +44,7 @@ type DragAction =
       origRect: Rect;
     };
 
-export function ImageCropModal({
-  file,
-  isExisting = false,
-  aspectRatio,
-  shape = "rect",
-  onDone,
-}: ImageCropModalProps) {
+export function ImageCropModal({ file, isExisting = false, aspectRatio, shape = "rect", onDone }: ImageCropModalProps) {
   const t = useTranslations("imageCrop");
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -86,11 +75,7 @@ export function ImageCropModal({
     imageRef.current = img;
     img.onload = () => {
       if (imageRef.current !== img) return;
-      const scale = Math.min(
-        1,
-        MAX_DISPLAY_W / img.naturalWidth,
-        MAX_DISPLAY_H / img.naturalHeight,
-      );
+      const scale = Math.min(1, MAX_DISPLAY_W / img.naturalWidth, MAX_DISPLAY_H / img.naturalHeight);
       setNaturalSize({ w: img.naturalWidth, h: img.naturalHeight });
       const dispW = Math.max(1, Math.round(img.naturalWidth * scale));
       const dispH = Math.max(1, Math.round(img.naturalHeight * scale));
@@ -360,10 +345,7 @@ export function ImageCropModal({
   }
 
   const canApply =
-    !loadFailed &&
-    selection !== null &&
-    selection.width >= MIN_CROP_PX &&
-    selection.height >= MIN_CROP_PX;
+    !loadFailed && selection !== null && selection.width >= MIN_CROP_PX && selection.height >= MIN_CROP_PX;
 
   function handleApply() {
     const img = imageRef.current;
@@ -532,9 +514,7 @@ export function ImageCropModal({
               style={{ width: Math.min(MAX_DISPLAY_W, 480), height: loadFailed ? 0 : 280 }}
             />
           )}
-          <p className="mt-3 text-center font-body-md text-body-md text-on-surface-variant">
-            {statusText}
-          </p>
+          <p className="mt-3 text-center font-body-md text-body-md text-on-surface-variant">{statusText}</p>
         </div>
       )}
     </Modal>

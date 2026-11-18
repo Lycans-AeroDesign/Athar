@@ -123,7 +123,9 @@ export function IdentitySettingsForm({
       // number input's min/max already block most of it).
       if (
         parsedUploadLimit !== null &&
-        (!Number.isInteger(parsedUploadLimit) || parsedUploadLimit < 1 || parsedUploadLimit > settings.max_upload_size_ceiling)
+        (!Number.isInteger(parsedUploadLimit) ||
+          parsedUploadLimit < 1 ||
+          parsedUploadLimit > settings.max_upload_size_ceiling)
       ) {
         setUploadLimitError(generalT("uploadLimitInvalid", { max: settings.max_upload_size_ceiling }));
         return;

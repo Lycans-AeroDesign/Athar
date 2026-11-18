@@ -8,7 +8,6 @@ from django.contrib.contenttypes.models import ContentType
 from django.core import mail
 from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
-
 from django.db import connection
 from django.test import TransactionTestCase, override_settings
 from django.urls import reverse
@@ -75,15 +74,18 @@ class AuthFlowTests(APITestCase):
             },
             format="json",
         )
-        return self.client.post(
-            reverse("auth-login"), {"email": email, "password": password}, format="json"
-        )
+        return self.client.post(reverse("auth-login"), {"email": email, "password": password}, format="json")
 
     def test_register_assigns_guest_role(self):
         code = self._invitation_code()
         response = self.client.post(
             reverse("auth-register"),
-            {"email": "new@example.com", "password": "somepassword123", "invitation_code": code.code, "username": "new"},
+            {
+                "email": "new@example.com",
+                "password": "somepassword123",
+                "invitation_code": code.code,
+                "username": "new",
+            },
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
@@ -144,7 +146,12 @@ class AuthFlowTests(APITestCase):
         # Too short (< 3)
         response = self.client.post(
             reverse("auth-register"),
-            {"email": "short@example.com", "password": "somepassword123", "invitation_code": code.code, "username": "ab"},
+            {
+                "email": "short@example.com",
+                "password": "somepassword123",
+                "invitation_code": code.code,
+                "username": "ab",
+            },
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
@@ -153,7 +160,12 @@ class AuthFlowTests(APITestCase):
         # Too long (> 30)
         response = self.client.post(
             reverse("auth-register"),
-            {"email": "long@example.com", "password": "somepassword123", "invitation_code": code.code, "username": "a" * 31},
+            {
+                "email": "long@example.com",
+                "password": "somepassword123",
+                "invitation_code": code.code,
+                "username": "a" * 31,
+            },
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
@@ -162,7 +174,12 @@ class AuthFlowTests(APITestCase):
         # Invalid characters
         response = self.client.post(
             reverse("auth-register"),
-            {"email": "inv@example.com", "password": "somepassword123", "invitation_code": code.code, "username": "bad user!"},
+            {
+                "email": "inv@example.com",
+                "password": "somepassword123",
+                "invitation_code": code.code,
+                "username": "bad user!",
+            },
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
@@ -190,7 +207,12 @@ class AuthFlowTests(APITestCase):
         code = self._invitation_code(revoked_at=timezone.now())
         response = self.client.post(
             reverse("auth-register"),
-            {"email": "new@example.com", "password": "somepassword123", "invitation_code": code.code, "username": "new"},
+            {
+                "email": "new@example.com",
+                "password": "somepassword123",
+                "invitation_code": code.code,
+                "username": "new",
+            },
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
@@ -199,7 +221,12 @@ class AuthFlowTests(APITestCase):
         code = self._invitation_code(expires_at=timezone.now() - timezone.timedelta(minutes=1))
         response = self.client.post(
             reverse("auth-register"),
-            {"email": "new@example.com", "password": "somepassword123", "invitation_code": code.code, "username": "new"},
+            {
+                "email": "new@example.com",
+                "password": "somepassword123",
+                "invitation_code": code.code,
+                "username": "new",
+            },
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
@@ -211,14 +238,24 @@ class AuthFlowTests(APITestCase):
         code = self._invitation_code()
         first = self.client.post(
             reverse("auth-register"),
-            {"email": "first@example.com", "password": "somepassword123", "invitation_code": code.code, "username": "first"},
+            {
+                "email": "first@example.com",
+                "password": "somepassword123",
+                "invitation_code": code.code,
+                "username": "first",
+            },
             format="json",
         )
         self.assertEqual(first.status_code, status.HTTP_201_CREATED)
 
         second = self.client.post(
             reverse("auth-register"),
-            {"email": "second@example.com", "password": "somepassword123", "invitation_code": code.code, "username": "second"},
+            {
+                "email": "second@example.com",
+                "password": "somepassword123",
+                "invitation_code": code.code,
+                "username": "second",
+            },
             format="json",
         )
         self.assertEqual(second.status_code, status.HTTP_400_BAD_REQUEST)
@@ -289,7 +326,12 @@ class AuthFlowTests(APITestCase):
         access = login_response.data["access"]
         response = self.client.patch(
             reverse("auth-me"),
-            {"first_name": "Ada", "last_name": "Lovelace", "title": "Lead Systems Integration", "email": "hacked@example.com"},
+            {
+                "first_name": "Ada",
+                "last_name": "Lovelace",
+                "title": "Lead Systems Integration",
+                "email": "hacked@example.com",
+            },
             format="json",
             HTTP_AUTHORIZATION=f"Bearer {access}",
         )
@@ -393,8 +435,11 @@ class AuthFlowTests(APITestCase):
 
     def test_me_patch_rejects_already_existing_username(self):
         User.objects.create_user(email="other@example.com", username="taken_name", organization=self.organization)
-        user = User.objects.create_user(email="clashuser@example.com", username="clashuser", organization=self.organization)
+        user = User.objects.create_user(
+            email="clashuser@example.com", username="clashuser", organization=self.organization
+        )
         from rest_framework_simplejwt.tokens import RefreshToken
+
         access = str(RefreshToken.for_user(user).access_token)
         # Exact clash
         response = self.client.patch(
@@ -538,7 +583,6 @@ class AuthFlowTests(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
 
-
     @patch.dict(ScopedRateThrottle.THROTTLE_RATES, {"auth": "3/min"})
     def test_login_throttle_ignores_a_spoofed_x_forwarded_for(self):
         # nginx overwrites X-Forwarded-For with the real peer address, and
@@ -563,10 +607,17 @@ class AuthFlowTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
 
     def test_register_rejects_a_case_variant_of_an_existing_email(self):
-        User.objects.create_user(email="alice@example.com", password="correctpassword123", organization=self.organization)
+        User.objects.create_user(
+            email="alice@example.com", password="correctpassword123", organization=self.organization
+        )
         response = self.client.post(
             reverse("auth-register"),
-            {"email": "ALICE@Example.com", "password": "somepassword123", "invitation_code": self._invitation_code().code, "username": "ALICE"},
+            {
+                "email": "ALICE@Example.com",
+                "password": "somepassword123",
+                "invitation_code": self._invitation_code().code,
+                "username": "ALICE",
+            },
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
@@ -813,7 +864,6 @@ class PasswordResetLinkTests(APITestCase):
             response = self.client.post(reverse(url_name), body, format="json")
             self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS, url_name)
 
-
     def _generate_with_email(self, body):
         return self.client.post(
             reverse("auth-user-password-reset-link", args=[self.member.id]),
@@ -874,7 +924,6 @@ class PasswordResetLinkTests(APITestCase):
         self.assertFalse(response.data["email_sent"])
         self.assertTrue(response.data["token"])
 
-
     def _request_reset(self, email):
         return self.client.post(
             reverse("auth-password-reset-request"),
@@ -934,7 +983,6 @@ class PasswordResetLinkTests(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-
     @override_settings(
         EMAIL_ENABLED=True,
         MAILERS={"default": {"BACKEND": "django.core.mail.backends.locmem.EmailBackend"}},
@@ -984,7 +1032,9 @@ class RefreshTokenSecurityTests(APITestCase):
     @classmethod
     def setUpTestData(cls):
         cls.organization = create_test_organization()
-        cls.user = User.objects.create_user(email="rt@example.com", password="password123", organization=cls.organization)
+        cls.user = User.objects.create_user(
+            email="rt@example.com", password="password123", organization=cls.organization
+        )
         cls.other_user = User.objects.create_user(
             email="rt-other@example.com", password="password123", organization=cls.organization
         )
@@ -1156,7 +1206,9 @@ class AccountDataTests(RoleLoginMixin, APITestCase):
     def test_delete_requires_the_correct_password(self):
         user, access = self._login_with_role("keep@example.com", "Member")
 
-        response = self.client.post(reverse("auth-me-delete"), {"password": "wrong"}, format="json", **self._auth(access))
+        response = self.client.post(
+            reverse("auth-me-delete"), {"password": "wrong"}, format="json", **self._auth(access)
+        )
 
         self.assertEqual(response.status_code, 400)
         self.assertTrue(User.objects.filter(pk=user.pk).exists())
@@ -1203,12 +1255,16 @@ class AccountDataTests(RoleLoginMixin, APITestCase):
     def test_the_only_organization_admin_cannot_delete_their_account(self):
         admin, access = self._login_with_role("solo-admin@example.com", "Organization Admin")
 
-        response = self.client.post(reverse("auth-me-delete"), {"password": "password123"}, format="json", **self._auth(access))
+        response = self.client.post(
+            reverse("auth-me-delete"), {"password": "password123"}, format="json", **self._auth(access)
+        )
 
         self.assertEqual(response.status_code, 400)
         self.assertTrue(User.objects.filter(pk=admin.pk).exists())
 
         self._login_with_role("second-admin@example.com", "Organization Admin")
-        response = self.client.post(reverse("auth-me-delete"), {"password": "password123"}, format="json", **self._auth(access))
+        response = self.client.post(
+            reverse("auth-me-delete"), {"password": "password123"}, format="json", **self._auth(access)
+        )
 
         self.assertEqual(response.status_code, 204)

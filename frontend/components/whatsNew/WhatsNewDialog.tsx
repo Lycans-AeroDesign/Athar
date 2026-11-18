@@ -12,9 +12,9 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 import { formatDate } from "@/lib/datetime";
 import { useOrganization } from "@/lib/organization/OrganizationProvider";
 import {
-  OPEN_WHATS_NEW_EVENT,
   entriesForUser,
   latestEntryId,
+  OPEN_WHATS_NEW_EVENT,
   unseenEntries,
   type WhatsNewEntry,
   type WhatsNewKind,
@@ -78,7 +78,10 @@ export function WhatsNewDialog() {
   // several releases. Noon UTC keeps the calendar day in every time zone.
   let released: string | undefined;
   if (entries && entries.length > 0) {
-    const newest = entries.map((entry) => entry.date).sort().at(-1);
+    const newest = entries
+      .map((entry) => entry.date)
+      .sort()
+      .at(-1);
     released = t("released", { date: formatDate(`${newest}T12:00:00Z`) });
   }
 

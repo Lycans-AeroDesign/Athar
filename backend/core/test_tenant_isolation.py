@@ -28,8 +28,8 @@ from files.models import StoredFile
 from knowledge.models import (
     Answer,
     Article,
-    ArticleRevision,
     ArticleAttachment,
+    ArticleRevision,
     Bookmark,
     Category,
     Collection,
@@ -71,7 +71,10 @@ GET, POST, PATCH, DELETE = "get", "post", "patch", "delete"
 def _entity(prefix, key, *, workflow=(), attachments=True, writable=True):
     """Routes shared by the engineering-domain entities (detail, relations, attachments)."""
     methods = [GET, PATCH, DELETE] if writable else [GET]
-    routes = [(f"knowledge-{prefix}-detail", methods, {"pk": key}), (f"knowledge-{prefix}-relations", [GET], {"pk": key})]
+    routes = [
+        (f"knowledge-{prefix}-detail", methods, {"pk": key}),
+        (f"knowledge-{prefix}-relations", [GET], {"pk": key}),
+    ]
     if attachments:
         routes += [
             (f"knowledge-{prefix}-attachment-list", [GET, POST], {"pk": key}),
@@ -123,7 +126,10 @@ ROUTES = [
     ("knowledge-storage-location-detail", [PATCH, DELETE], {"pk": "storage_location"}),
     ("training-category-detail", [PATCH, DELETE], {"pk": "course_category"}),
     ("training-course-detail", [GET, PATCH, DELETE], {"pk": "course"}),
-    *[(f"training-course-{step}", [POST], {"pk": "course"}) for step in ("submit", "publish", "reject", "archive", "unarchive", "enroll", "import-curriculum")],
+    *[
+        (f"training-course-{step}", [POST], {"pk": "course"})
+        for step in ("submit", "publish", "reject", "archive", "unarchive", "enroll", "import-curriculum")
+    ],
     ("training-course-access-grant-list-create", [POST], {"pk": "course"}),
     ("training-course-access-grant-detail", [DELETE], {"pk": "course", "grant_pk": "course_grant"}),
     ("training-course-progress", [GET], {"pk": "course"}),

@@ -605,9 +605,9 @@ def _restore_collections(ctx, zf, tags_by_id, categories_by_id) -> dict[uuid.UUI
             # Unrecognized enum values can only come from a hand-edited archive
             # - a brand-new mode would break this (older) server's restore.
             mode=row["mode"] if row["mode"] in Collection.Mode.values else Collection.Mode.SERIES,
-            content_scope=row["content_scope"] if row["content_scope"] in Collection.ContentScope.values else (
-                Collection.ContentScope.MIXED
-            ),
+            content_scope=row["content_scope"]
+            if row["content_scope"] in Collection.ContentScope.values
+            else (Collection.ContentScope.MIXED),
             visibility=row["visibility"],
             category=categories_by_id.get(_uuid_or_none(row.get("category_id"))),
             created_by_id=ctx.user_id(row.get("created_by_id")),
@@ -715,7 +715,9 @@ def _legacy_component_category(ctx, name: str, cache: dict) -> ComponentCategory
     key = name.strip().lower()
     if key not in cache:
         cache[key] = ComponentCategory.objects.filter(organization=ctx.organization, name__iexact=name).first() or (
-            ComponentCategory.objects.create(organization=ctx.organization, name=name, slug=slugify(name)[:120] or "item")
+            ComponentCategory.objects.create(
+                organization=ctx.organization, name=name, slug=slugify(name)[:120] or "item"
+            )
         )
     return cache[key]
 
@@ -1500,11 +1502,15 @@ def _restore_in_transaction(organization, archive_file, actor, saved_files) -> R
         _restore_relations(ctx, zf)
         _restore_grants(ctx, zf)
         _restore_bookmarks(ctx, zf)
-        _restore_attachments(ctx, zf, ArticleAttachment, "article_attachments.csv", "article", articles_by_id, files_by_id)
+        _restore_attachments(
+            ctx, zf, ArticleAttachment, "article_attachments.csv", "article", articles_by_id, files_by_id
+        )
         _restore_attachments(
             ctx, zf, QuestionAttachment, "question_attachments.csv", "question", questions_by_id, files_by_id
         )
-        _restore_attachments(ctx, zf, ProjectAttachment, "project_attachments.csv", "project", projects_by_id, files_by_id)
+        _restore_attachments(
+            ctx, zf, ProjectAttachment, "project_attachments.csv", "project", projects_by_id, files_by_id
+        )
         _restore_attachments(
             ctx, zf, ComponentAttachment, "component_attachments.csv", "component", components_by_id, files_by_id
         )

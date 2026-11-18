@@ -118,12 +118,17 @@ export function PlatformOverview() {
           {summary.disk_total_bytes != null && summary.disk_used_bytes != null ? (
             <StatCard
               label={t("diskUsage")}
-              value={t("diskUsedOfTotal", { used: formatBytes(summary.disk_used_bytes), total: formatBytes(summary.disk_total_bytes) })}
+              value={t("diskUsedOfTotal", {
+                used: formatBytes(summary.disk_used_bytes),
+                total: formatBytes(summary.disk_total_bytes),
+              })}
               icon="hard_drive"
               className="col-span-2 lg:col-span-1"
               trend={
                 summary.disk_total_bytes > 0
-                  ? t("diskPercentUsed", { percent: Math.round((summary.disk_used_bytes / summary.disk_total_bytes) * 100) })
+                  ? t("diskPercentUsed", {
+                      percent: Math.round((summary.disk_used_bytes / summary.disk_total_bytes) * 100),
+                    })
                   : undefined
               }
             />
@@ -172,75 +177,81 @@ export function PlatformOverview() {
           <p className="px-4 sm:px-6 pb-6 font-body-md text-body-md text-on-surface-variant">{t("emptyState")}</p>
         ) : (
           <>
-          {/* Phones: one card per organization instead of a five-column table that
+            {/* Phones: one card per organization instead of a five-column table that
               would need sideways scrolling. */}
-          <ul className="md:hidden">
-            {data.results.map((org) => (
-              <li key={org.id} className="border-t border-outline-variant px-4 py-3 space-y-2">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <Link href={`/platform/${org.id}`} className="text-primary font-bold hover:underline break-words">
-                      {org.name}
-                    </Link>
-                    <div className="font-mono-sm text-mono-sm text-on-surface-variant break-all">{org.slug}</div>
-                  </div>
-                  <StatusPill active={org.is_active} label={org.is_active ? t("statusActive") : t("statusSuspended")} />
-                </div>
-                <dl className="grid grid-cols-2 gap-x-4 gap-y-1 font-body-md text-body-md">
-                  <dt className="text-on-surface-variant">{t("usersColumn")}</dt>
-                  <dd className="text-on-surface text-end">
-                    {org.active_user_count} / {org.user_count}
-                  </dd>
-                  <dt className="text-on-surface-variant">{t("storageColumn")}</dt>
-                  <dd className="text-on-surface text-end">{formatBytes(org.total_bytes)}</dd>
-                  <dt className="text-on-surface-variant">{t("activityColumn")}</dt>
-                  <dd className="text-on-surface text-end">
-                    {org.last_activity ? formatRelativeTime(org.last_activity) : t("never")}
-                  </dd>
-                </dl>
-              </li>
-            ))}
-          </ul>
-          <div className="hidden md:block overflow-x-auto">
-            <table className="w-full font-body-md text-body-md">
-              <thead>
-                <tr className="border-t border-outline-variant">
-                  {COLUMNS.map((key) => (
-                    <th
-                      key={key}
-                      className="px-6 py-2 text-start font-label-caps text-label-caps uppercase text-on-surface-variant"
-                    >
-                      {t(key)}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {data.results.map((org) => (
-                  <tr key={org.id} className="border-t border-outline-variant">
-                    <td className="px-6 py-2.5">
-                      <Link href={`/platform/${org.id}`} className="text-primary font-bold hover:underline">
+            <ul className="md:hidden">
+              {data.results.map((org) => (
+                <li key={org.id} className="border-t border-outline-variant px-4 py-3 space-y-2">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <Link href={`/platform/${org.id}`} className="text-primary font-bold hover:underline break-words">
                         {org.name}
                       </Link>
-                      <div className="font-mono-sm text-mono-sm text-on-surface-variant">{org.slug}</div>
-                    </td>
-                    <td className="px-6 py-2.5">
-                      <StatusPill active={org.is_active} label={org.is_active ? t("statusActive") : t("statusSuspended")} />
-                    </td>
-                    <td className="px-6 py-2.5 text-on-surface-variant">
+                      <div className="font-mono-sm text-mono-sm text-on-surface-variant break-all">{org.slug}</div>
+                    </div>
+                    <StatusPill
+                      active={org.is_active}
+                      label={org.is_active ? t("statusActive") : t("statusSuspended")}
+                    />
+                  </div>
+                  <dl className="grid grid-cols-2 gap-x-4 gap-y-1 font-body-md text-body-md">
+                    <dt className="text-on-surface-variant">{t("usersColumn")}</dt>
+                    <dd className="text-on-surface text-end">
                       {org.active_user_count} / {org.user_count}
-                    </td>
-                    <td className="px-6 py-2.5 text-on-surface-variant whitespace-nowrap">
-                      {formatBytes(org.total_bytes)}
-                    </td>
-                    <td className="px-6 py-2.5 text-on-surface-variant whitespace-nowrap">
+                    </dd>
+                    <dt className="text-on-surface-variant">{t("storageColumn")}</dt>
+                    <dd className="text-on-surface text-end">{formatBytes(org.total_bytes)}</dd>
+                    <dt className="text-on-surface-variant">{t("activityColumn")}</dt>
+                    <dd className="text-on-surface text-end">
                       {org.last_activity ? formatRelativeTime(org.last_activity) : t("never")}
-                    </td>
+                    </dd>
+                  </dl>
+                </li>
+              ))}
+            </ul>
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full font-body-md text-body-md">
+                <thead>
+                  <tr className="border-t border-outline-variant">
+                    {COLUMNS.map((key) => (
+                      <th
+                        key={key}
+                        className="px-6 py-2 text-start font-label-caps text-label-caps uppercase text-on-surface-variant"
+                      >
+                        {t(key)}
+                      </th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {data.results.map((org) => (
+                    <tr key={org.id} className="border-t border-outline-variant">
+                      <td className="px-6 py-2.5">
+                        <Link href={`/platform/${org.id}`} className="text-primary font-bold hover:underline">
+                          {org.name}
+                        </Link>
+                        <div className="font-mono-sm text-mono-sm text-on-surface-variant">{org.slug}</div>
+                      </td>
+                      <td className="px-6 py-2.5">
+                        <StatusPill
+                          active={org.is_active}
+                          label={org.is_active ? t("statusActive") : t("statusSuspended")}
+                        />
+                      </td>
+                      <td className="px-6 py-2.5 text-on-surface-variant">
+                        {org.active_user_count} / {org.user_count}
+                      </td>
+                      <td className="px-6 py-2.5 text-on-surface-variant whitespace-nowrap">
+                        {formatBytes(org.total_bytes)}
+                      </td>
+                      <td className="px-6 py-2.5 text-on-surface-variant whitespace-nowrap">
+                        {org.last_activity ? formatRelativeTime(org.last_activity) : t("never")}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </>
         )}
       </div>

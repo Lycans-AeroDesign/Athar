@@ -4,21 +4,16 @@ import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 
+import { CollectionDetailSkeleton } from "@/components/knowledge/KnowledgeSkeletons";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { DetailMessage } from "@/components/ui/DetailMessage";
 import { Icon } from "@/components/ui/Icon";
 import { IconButton } from "@/components/ui/IconButton";
 import { Markdown } from "@/components/ui/Markdown";
-import { CollectionDetailSkeleton } from "@/components/knowledge/KnowledgeSkeletons";
 import { TagChip } from "@/components/ui/TagChip";
 import { UpdatedBadge } from "@/components/ui/UpdatedBadge";
 import { Link, useRouter } from "@/i18n/navigation";
-import {
-  deleteCollection,
-  getCollection,
-  removeCollectionItem,
-  reorderCollectionItems,
-} from "@/lib/api/collections";
+import { deleteCollection, getCollection, removeCollectionItem, reorderCollectionItems } from "@/lib/api/collections";
 import type { CollectionContentRef } from "@/lib/api/types";
 import { useHasPermission } from "@/lib/auth/permissions";
 import { errorMessage } from "@/lib/errors";
@@ -130,9 +125,7 @@ export default function CollectionPage() {
       // Optimistic drop (renumbered) - rolled back by refetching on failure.
       setCollection({
         ...collection!,
-        items: collection!.items
-          .filter((item) => item.id !== itemId)
-          .map((item, index) => ({ ...item, order: index })),
+        items: collection!.items.filter((item) => item.id !== itemId).map((item, index) => ({ ...item, order: index })),
       });
       await removeCollectionItem(collection!.id, itemId);
     } catch (err) {
@@ -275,13 +268,21 @@ export default function CollectionPage() {
                     </span>
                   )}
                   {item.phase_title && ref && ref.title !== item.phase_title && (
-                    <span className="block font-label-md text-label-md text-on-surface-variant truncate">{ref.title}</span>
+                    <span className="block font-label-md text-label-md text-on-surface-variant truncate">
+                      {ref.title}
+                    </span>
                   )}
                   {item.note && (
                     <span className="block font-label-md text-label-md text-on-surface-variant">{item.note}</span>
                   )}
                 </span>
-                {ref && <Icon name={TYPE_ICONS[ref.type] ?? "description"} size={16} className="text-on-surface-variant shrink-0" />}
+                {ref && (
+                  <Icon
+                    name={TYPE_ICONS[ref.type] ?? "description"}
+                    size={16}
+                    className="text-on-surface-variant shrink-0"
+                  />
+                )}
                 {canManage && (
                   <>
                     <IconButton

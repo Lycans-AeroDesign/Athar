@@ -9,12 +9,12 @@ import { Markdown } from "@/components/ui/Markdown";
 import { downloadFile } from "@/lib/api/files";
 import type { CourseResource, LessonDetail } from "@/lib/api/types";
 import {
-  SHAREPOINT_DOMAINS,
   detectResourceProvider,
   getGoogleDriveEmbedUrl,
   getSharePointEmbedUrl,
   getVideoEmbedUrl,
   hostMatches,
+  SHAREPOINT_DOMAINS,
 } from "@/lib/training/video";
 
 function VideoStreamCard({
@@ -59,10 +59,7 @@ function VideoStreamCard({
       </a>
 
       <div className="relative z-10 mt-5">
-        <Button
-          onClick={() => window.open(url, "_blank", "noopener,noreferrer")}
-          className="gap-2 shadow-md"
-        >
+        <Button onClick={() => window.open(url, "_blank", "noopener,noreferrer")} className="gap-2 shadow-md">
           <Icon name="open_in_new" size={18} />
           {isSharePoint ? t("openInSharePoint") : openLabel}
         </Button>
@@ -157,11 +154,7 @@ function DocumentResource({ resource, openLabel }: { resource: CourseResource; o
     if (resource.url.toLowerCase().endsWith(".pdf") || resource.url.toLowerCase().includes(".pdf?")) {
       return (
         <div className="w-full h-[75vh] rounded-xl overflow-hidden border border-outline-variant bg-surface-container-high">
-          <iframe
-            src={resource.url}
-            className="h-full w-full border-0"
-            title={resource.title}
-          />
+          <iframe src={resource.url} className="h-full w-full border-0" title={resource.title} />
         </div>
       );
     }

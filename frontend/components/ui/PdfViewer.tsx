@@ -51,10 +51,7 @@ function PdfJsViewer({ url, title, className }: PdfViewerProps) {
       // Imported lazily: pdf.js touches browser-only globals at module load,
       // and this keeps it out of the bundle for pages that never show a PDF.
       const pdfjs = await import("pdfjs-dist");
-      pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-        "pdfjs-dist/build/pdf.worker.min.mjs",
-        import.meta.url,
-      ).toString();
+      pdfjs.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/build/pdf.worker.min.mjs", import.meta.url).toString();
 
       const task = pdfjs.getDocument({ url });
       destroy = () => void task.destroy();

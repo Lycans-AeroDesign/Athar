@@ -149,9 +149,7 @@ def create_link(*, actor, model_name: str, object_id, label: str = "", expires_i
     if instance.visibility == Visibility.RESTRICTED and not actor.has_permission(
         RESTRICTED_SHARE_PERMISSION[model_name]
     ):
-        raise PermissionDenied(
-            f"Sharing restricted content requires {RESTRICTED_SHARE_PERMISSION[model_name]}."
-        )
+        raise PermissionDenied(f"Sharing restricted content requires {RESTRICTED_SHARE_PERMISSION[model_name]}.")
     if expires_in_days is not None and expires_in_days not in EXPIRY_CHOICES_DAYS:
         raise ValidationError({"expires_in_days": f"Must be one of {EXPIRY_CHOICES_DAYS}, or null for never."})
     link = ShareLink.objects.create(
@@ -191,9 +189,7 @@ def revoke_link(*, link: ShareLink, actor, request=None) -> ShareLink:
 def links_for(actor, *, model_name: str | None = None, object_id=None, include_inactive: bool = False):
     """Links `actor` may manage: their own, or every one in the organization
     with share_link.manage."""
-    queryset = ShareLink.objects.filter(organization=actor.organization).select_related(
-        "created_by", "content_type"
-    )
+    queryset = ShareLink.objects.filter(organization=actor.organization).select_related("created_by", "content_type")
     if not actor.has_permission(MANAGE_PERMISSION):
         queryset = queryset.filter(created_by=actor)
     if model_name:
@@ -255,8 +251,7 @@ def shared_file(link: ShareLink, instance, file_id: str) -> StoredFile | None:
 def attachments_of(model_name: str, instance) -> list[StoredFile]:
     attachment_model, field = ATTACHMENTS[model_name]
     return [
-        attachment.file
-        for attachment in attachment_model.objects.filter(**{field: instance}).select_related("file")
+        attachment.file for attachment in attachment_model.objects.filter(**{field: instance}).select_related("file")
     ]
 
 

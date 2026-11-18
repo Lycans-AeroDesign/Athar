@@ -10,11 +10,11 @@ import { Modal } from "@/components/ui/Modal";
 import { Pagination } from "@/components/ui/Pagination";
 import { Skeleton, SkeletonButton, SkeletonText, TableSkeleton } from "@/components/ui/Skeleton";
 import { StatCard } from "@/components/ui/StatCard";
-import { Link, getPathname } from "@/i18n/navigation";
+import { getPathname, Link } from "@/i18n/navigation";
 import {
-  sendPlatformPasswordResetLink,
   getPlatformOrganization,
   getPlatformOrganizationUsers,
+  sendPlatformPasswordResetLink,
   setPlatformOrganizationActive,
   setPlatformUserActive,
   type PlatformOrganization,
@@ -25,7 +25,14 @@ import { formatBytes } from "@/lib/bytes";
 import { formatDate, formatRelativeTime } from "@/lib/datetime";
 import { errorMessage } from "@/lib/errors";
 
-const USER_COLUMNS = ["userColumn", "rolesColumn", "statusColumn", "joinedColumn", "activityColumn", "actionsColumn"] as const;
+const USER_COLUMNS = [
+  "userColumn",
+  "rolesColumn",
+  "statusColumn",
+  "joinedColumn",
+  "activityColumn",
+  "actionsColumn",
+] as const;
 
 export function PlatformOrganizationDetail({ id }: { id: string }) {
   const t = useTranslations("platform");
@@ -81,11 +88,7 @@ export function PlatformOrganizationDetail({ id }: { id: string }) {
     run(async () => {
       if (!resetTarget) return;
       const path = getPathname({ href: "/reset-password", locale });
-      const result = await sendPlatformPasswordResetLink(
-        resetTarget.id,
-        `${window.location.origin}${path}`,
-        locale,
-      );
+      const result = await sendPlatformPasswordResetLink(resetTarget.id, `${window.location.origin}${path}`, locale);
       setResetResult({ email: result.email, sent: result.email_sent });
       setResetTarget(null);
     });
@@ -194,116 +197,109 @@ export function PlatformOrganizationDetail({ id }: { id: string }) {
       <div className="bg-surface rounded-xl border border-outline-variant overflow-hidden">
         <h2 className="p-4 sm:p-6 pb-4 sm:pb-4 font-headline-md text-headline-md text-on-surface">{t("users")}</h2>
         {!users ? (
-          <TableSkeleton
-            variant="flush"
-            rows={5}
-            columns={["two-line", "text", "text", "text", "text", "actions"]}
-          />
+          <TableSkeleton variant="flush" rows={5} columns={["two-line", "text", "text", "text", "text", "actions"]} />
         ) : (
           <>
-          {/* Phones: one card per user instead of a six-column table with action
+            {/* Phones: one card per user instead of a six-column table with action
               buttons pushed off-screen. */}
-          <ul className="md:hidden">
-            {users.results.map((user) => (
-              <li key={user.id} className="border-t border-outline-variant px-4 py-3 space-y-2">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="text-on-surface [overflow-wrap:anywhere]">{user.email}</div>
-                    <div className="text-on-surface-variant break-words">
-                      {[user.first_name, user.last_name].filter(Boolean).join(" ")}
-                    </div>
-                  </div>
-                  <span className="shrink-0 whitespace-nowrap text-on-surface-variant">
-                    {user.is_active ? t("statusActive") : t("statusBlocked")}
-                  </span>
-                </div>
-                <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 font-body-md text-body-md">
-                  <dt className="text-on-surface-variant">{t("rolesColumn")}</dt>
-                  <dd className="text-on-surface text-end break-words">
-                    {[...user.roles, ...(user.is_superuser ? [t("platformAdmin")] : [])].join(", ") || "—"}
-                  </dd>
-                  <dt className="text-on-surface-variant">{t("joinedColumn")}</dt>
-                  <dd className="text-on-surface text-end">{formatDate(user.date_joined)}</dd>
-                  <dt className="text-on-surface-variant">{t("activityColumn")}</dt>
-                  <dd className="text-on-surface text-end">
-                    {user.last_activity ? formatRelativeTime(user.last_activity) : t("never")}
-                  </dd>
-                </dl>
-                {!user.is_superuser && (
-                  <div className="flex flex-wrap justify-end gap-2 pt-1">
-                    {user.is_active && (
-                      <Button variant="secondary" onClick={() => setResetTarget(user)}>
-                        {t("resetLink")}
-                      </Button>
-                    )}
-                    <Button
-                      variant={user.is_active ? "secondary" : "primary"}
-                      onClick={() => setUserConfirm(user)}
-                    >
-                      {user.is_active ? t("block") : t("unblock")}
-                    </Button>
-                  </div>
-                )}
-              </li>
-            ))}
-          </ul>
-          <div className="hidden md:block overflow-x-auto">
-            <table className="w-full font-body-md text-body-md">
-              <thead>
-                <tr className="border-t border-outline-variant">
-                  {USER_COLUMNS.map((key, index) => (
-                    <th
-                      key={index}
-                      className="px-6 py-2 text-start font-label-caps text-label-caps uppercase text-on-surface-variant"
-                    >
-                      {key === "actionsColumn" ? <span className="sr-only">{t(key)}</span> : t(key)}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {users.results.map((user) => (
-                  <tr key={user.id} className="border-t border-outline-variant">
-                    <td className="px-6 py-2.5">
-                      <div className="text-on-surface">{user.email}</div>
-                      <div className="text-on-surface-variant">
+            <ul className="md:hidden">
+              {users.results.map((user) => (
+                <li key={user.id} className="border-t border-outline-variant px-4 py-3 space-y-2">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="text-on-surface [overflow-wrap:anywhere]">{user.email}</div>
+                      <div className="text-on-surface-variant break-words">
                         {[user.first_name, user.last_name].filter(Boolean).join(" ")}
                       </div>
-                    </td>
-                    <td className="px-6 py-2.5 text-on-surface-variant">
-                      {[...user.roles, ...(user.is_superuser ? [t("platformAdmin")] : [])].join(", ")}
-                    </td>
-                    <td className="px-6 py-2.5 text-on-surface-variant">
+                    </div>
+                    <span className="shrink-0 whitespace-nowrap text-on-surface-variant">
                       {user.is_active ? t("statusActive") : t("statusBlocked")}
-                    </td>
-                    <td className="px-6 py-2.5 text-on-surface-variant whitespace-nowrap">
-                      {formatDate(user.date_joined)}
-                    </td>
-                    <td className="px-6 py-2.5 text-on-surface-variant whitespace-nowrap">
+                    </span>
+                  </div>
+                  <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 font-body-md text-body-md">
+                    <dt className="text-on-surface-variant">{t("rolesColumn")}</dt>
+                    <dd className="text-on-surface text-end break-words">
+                      {[...user.roles, ...(user.is_superuser ? [t("platformAdmin")] : [])].join(", ") || "—"}
+                    </dd>
+                    <dt className="text-on-surface-variant">{t("joinedColumn")}</dt>
+                    <dd className="text-on-surface text-end">{formatDate(user.date_joined)}</dd>
+                    <dt className="text-on-surface-variant">{t("activityColumn")}</dt>
+                    <dd className="text-on-surface text-end">
                       {user.last_activity ? formatRelativeTime(user.last_activity) : t("never")}
-                    </td>
-                    <td className="px-6 py-2.5 text-end whitespace-nowrap">
-                      {!user.is_superuser && (
-                        <div className="flex justify-end gap-2">
-                          {user.is_active && (
-                            <Button variant="secondary" onClick={() => setResetTarget(user)}>
-                              {t("resetLink")}
-                            </Button>
-                          )}
-                          <Button
-                            variant={user.is_active ? "secondary" : "primary"}
-                            onClick={() => setUserConfirm(user)}
-                          >
-                            {user.is_active ? t("block") : t("unblock")}
-                          </Button>
-                        </div>
+                    </dd>
+                  </dl>
+                  {!user.is_superuser && (
+                    <div className="flex flex-wrap justify-end gap-2 pt-1">
+                      {user.is_active && (
+                        <Button variant="secondary" onClick={() => setResetTarget(user)}>
+                          {t("resetLink")}
+                        </Button>
                       )}
-                    </td>
+                      <Button variant={user.is_active ? "secondary" : "primary"} onClick={() => setUserConfirm(user)}>
+                        {user.is_active ? t("block") : t("unblock")}
+                      </Button>
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full font-body-md text-body-md">
+                <thead>
+                  <tr className="border-t border-outline-variant">
+                    {USER_COLUMNS.map((key, index) => (
+                      <th
+                        key={index}
+                        className="px-6 py-2 text-start font-label-caps text-label-caps uppercase text-on-surface-variant"
+                      >
+                        {key === "actionsColumn" ? <span className="sr-only">{t(key)}</span> : t(key)}
+                      </th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {users.results.map((user) => (
+                    <tr key={user.id} className="border-t border-outline-variant">
+                      <td className="px-6 py-2.5">
+                        <div className="text-on-surface">{user.email}</div>
+                        <div className="text-on-surface-variant">
+                          {[user.first_name, user.last_name].filter(Boolean).join(" ")}
+                        </div>
+                      </td>
+                      <td className="px-6 py-2.5 text-on-surface-variant">
+                        {[...user.roles, ...(user.is_superuser ? [t("platformAdmin")] : [])].join(", ")}
+                      </td>
+                      <td className="px-6 py-2.5 text-on-surface-variant">
+                        {user.is_active ? t("statusActive") : t("statusBlocked")}
+                      </td>
+                      <td className="px-6 py-2.5 text-on-surface-variant whitespace-nowrap">
+                        {formatDate(user.date_joined)}
+                      </td>
+                      <td className="px-6 py-2.5 text-on-surface-variant whitespace-nowrap">
+                        {user.last_activity ? formatRelativeTime(user.last_activity) : t("never")}
+                      </td>
+                      <td className="px-6 py-2.5 text-end whitespace-nowrap">
+                        {!user.is_superuser && (
+                          <div className="flex justify-end gap-2">
+                            {user.is_active && (
+                              <Button variant="secondary" onClick={() => setResetTarget(user)}>
+                                {t("resetLink")}
+                              </Button>
+                            )}
+                            <Button
+                              variant={user.is_active ? "secondary" : "primary"}
+                              onClick={() => setUserConfirm(user)}
+                            >
+                              {user.is_active ? t("block") : t("unblock")}
+                            </Button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </>
         )}
       </div>

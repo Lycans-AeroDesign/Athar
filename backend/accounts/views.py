@@ -34,24 +34,24 @@ from .serializers import (
     PasswordResetCheckResponseSerializer,
     PasswordResetConfirmSerializer,
     PasswordResetLinkCreateSerializer,
-    PasswordResetRequestSerializer,
     PasswordResetLinkSerializer,
+    PasswordResetRequestSerializer,
     PasswordResetTokenSerializer,
     RegisterSerializer,
     UserSerializer,
     check_password_strength,
 )
 from .services import (
+    RotationProbeToken,
     create_invitation_code,
-    delete_own_account,
     create_password_reset_link,
+    delete_own_account,
     get_valid_password_reset_link,
     handle_refresh_token_reuse,
     register_user,
     reset_password_with_link,
-    RotationProbeToken,
-    send_password_reset_email,
     revoke_invitation_code,
+    send_password_reset_email,
     update_own_profile,
 )
 
@@ -95,8 +95,7 @@ class LoginView(TokenObtainPairView):
         summary="Log in and receive an access token + httpOnly refresh cookie",
         responses={
             200: OpenApiResponse(
-                description="The refresh token is set as an httpOnly cookie, "
-                "never returned in the response body."
+                description="The refresh token is set as an httpOnly cookie, never returned in the response body."
             ),
             401: OpenApiResponse(description="Invalid credentials."),
         },
@@ -139,7 +138,9 @@ class RefreshView(APIView):
             # unchanged (CodeQL stack-trace-exposure). The detail lands in
             # server logs via the chained exception instead.
             logger.info("Refresh probe rejected: %s", exc)
-            raise AuthenticationFailed("This session's refresh token is invalid or expired. Please sign in again.") from exc
+            raise AuthenticationFailed(
+                "This session's refresh token is invalid or expired. Please sign in again."
+            ) from exc
 
         # A suspended organization's users can't mint new access tokens (platform_admin).
         owner = User.objects.select_related("organization").filter(pk=probe.payload.get("user_id")).first()

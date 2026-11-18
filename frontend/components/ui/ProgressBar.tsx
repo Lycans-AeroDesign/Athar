@@ -14,7 +14,10 @@ export function ProgressBar({ progress, className }: ProgressBarProps) {
       aria-valuemax={100}
       className={`h-1.5 w-full rounded-full bg-surface-variant overflow-hidden ${className ?? ""}`}
     >
-      <div className="h-full bg-primary transition-[width] duration-150 ease-out rounded-full" style={{ width: `${percent}%` }} />
+      <div
+        className="h-full bg-primary transition-[width] duration-150 ease-out rounded-full"
+        style={{ width: `${percent}%` }}
+      />
     </div>
   );
 }

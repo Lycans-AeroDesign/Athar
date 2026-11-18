@@ -102,7 +102,9 @@ class PlatformAdminTests(RoleLoginMixin, APITestCase):
             reverse("auth-login"), {"email": "m@b2.example", "password": "password123"}, format="json"
         )
         self.assertEqual(login.status_code, 401)
-        self.assertTrue(AuditLog.objects.filter(action="platform.organization.suspend", organization=self.other).exists())
+        self.assertTrue(
+            AuditLog.objects.filter(action="platform.organization.suspend", organization=self.other).exists()
+        )
 
         self.client.post(url, {"is_active": True}, format="json", **headers)
         login = self.client.post(
@@ -149,16 +151,24 @@ class PlatformAdminTests(RoleLoginMixin, APITestCase):
     def test_suspended_org_cannot_refresh_and_org_admin_cannot_block_operator(self):
         operator, headers = self._operator()
         other_admin, other_token = self._login_with_role("oa@b.example", "Organization Admin", organization=self.other)
-        login = self.client.post(reverse("auth-login"), {"email": "oa@b.example", "password": "password123"}, format="json")
+        login = self.client.post(
+            reverse("auth-login"), {"email": "oa@b.example", "password": "password123"}, format="json"
+        )
         self.assertEqual(login.status_code, 200)
 
         self.client.post(
-            reverse("platform-organization-active", kwargs={"pk": self.other.pk}), {"is_active": False}, format="json", **headers
+            reverse("platform-organization-active", kwargs={"pk": self.other.pk}),
+            {"is_active": False},
+            format="json",
+            **headers,
         )
         self.assertEqual(self.client.post(reverse("auth-refresh")).status_code, 401)
 
         self.client.post(
-            reverse("platform-organization-active", kwargs={"pk": self.other.pk}), {"is_active": True}, format="json", **headers
+            reverse("platform-organization-active", kwargs={"pk": self.other.pk}),
+            {"is_active": True},
+            format="json",
+            **headers,
         )
         other_operator = User.objects.create_user(
             email="op2@b.example", password="password123", organization=self.other, is_superuser=True

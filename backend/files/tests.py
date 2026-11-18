@@ -2,18 +2,16 @@ import io
 from unittest import mock
 
 from django.core.files.uploadedfile import SimpleUploadedFile
-
 from django.test import SimpleTestCase, override_settings
 from django.urls import reverse
+from PIL import Image
 from rest_framework import status
 from rest_framework.exceptions import ValidationError
 from rest_framework.test import APITestCase
 
-from core.testing import create_test_organization
 from accounts.models import User
+from core.testing import create_test_organization
 from rbac.models import Role
-
-from PIL import Image
 
 from . import services, thumbnails
 from .models import StoredFile
@@ -28,9 +26,7 @@ class FileServingTests(APITestCase):
     def _login_with_role(self, email, role_name):
         user = User.objects.create_user(email=email, password="password123", organization=self.organization)
         Role.objects.get(organization=self.organization, name=role_name).user_roles.create(user=user)
-        response = self.client.post(
-            reverse("auth-login"), {"email": email, "password": "password123"}, format="json"
-        )
+        response = self.client.post(reverse("auth-login"), {"email": email, "password": "password123"}, format="json")
         return response.data["access"]
 
     def _auth(self, access_token):
@@ -58,9 +54,7 @@ class FileServingTests(APITestCase):
 
         # file.delete is Organization-Admin-only by default (no ownership override) -
         # the uploader's own Member role can't delete it themselves.
-        member_delete_attempt = self.client.delete(
-            reverse("files-delete", args=[file_id]), **self._auth(access)
-        )
+        member_delete_attempt = self.client.delete(reverse("files-delete", args=[file_id]), **self._auth(access))
         self.assertEqual(member_delete_attempt.status_code, status.HTTP_403_FORBIDDEN)
 
         admin_access = self._login_with_role("fileadmin@example.com", "Organization Admin")
@@ -89,9 +83,7 @@ class FileServingTests(APITestCase):
 
     def test_upload_rejects_file_over_the_configured_size_limit(self):
         access = self._login_with_role("uploader3@example.com", "Member")
-        oversized = SimpleUploadedFile(
-            "big.bin", b"x" * (3 * 1024 * 1024), content_type="application/octet-stream"
-        )
+        oversized = SimpleUploadedFile("big.bin", b"x" * (3 * 1024 * 1024), content_type="application/octet-stream")
 
         with override_settings(MAX_UPLOAD_SIZE_MB=2):
             response = self.client.post(
@@ -111,9 +103,7 @@ class FileServingTests(APITestCase):
         OrganizationSettings.load(self.organization)
         OrganizationSettings.objects.filter(pk=self.organization.pk).update(max_upload_size_mb=2)
         access = self._login_with_role("uploader5@example.com", "Member")
-        oversized = SimpleUploadedFile(
-            "big.bin", b"x" * (3 * 1024 * 1024), content_type="application/octet-stream"
-        )
+        oversized = SimpleUploadedFile("big.bin", b"x" * (3 * 1024 * 1024), content_type="application/octet-stream")
 
         # Platform default raised high enough that only the per-org override
         # could reject this upload.
@@ -215,6 +205,7 @@ class UploadEndpointValidationTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(StoredFile.objects.count(), 0)
 
+
 class ThumbnailTests(APITestCase):
     """?size= on the download endpoint serves a downscaled WebP of an image,
     generated once and reused, and removed together with the original."""
@@ -224,7 +215,9 @@ class ThumbnailTests(APITestCase):
         cls.organization = create_test_organization()
 
     def setUp(self):
-        self.user = User.objects.create_user(email="thumbs@example.com", password="password123", organization=self.organization)
+        self.user = User.objects.create_user(
+            email="thumbs@example.com", password="password123", organization=self.organization
+        )
         Role.objects.get(organization=self.organization, name="Member").user_roles.create(user=self.user)
         self.access = self.client.post(
             reverse("auth-login"), {"email": "thumbs@example.com", "password": "password123"}, format="json"
@@ -238,7 +231,10 @@ class ThumbnailTests(APITestCase):
         Image.new("RGB", (width, height), (200, 30, 30)).save(buffer, format="PNG")
         upload = SimpleUploadedFile("photo.png", buffer.getvalue(), content_type="image/png")
         response = self.client.post(
-            reverse("files-upload"), {"file": upload, "required_permission": "file.read"}, format="multipart", **self._auth()
+            reverse("files-upload"),
+            {"file": upload, "required_permission": "file.read"},
+            format="multipart",
+            **self._auth(),
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
         return StoredFile.objects.get(pk=response.data["id"])
@@ -279,7 +275,10 @@ class ThumbnailTests(APITestCase):
     def test_non_images_and_undecodable_images_fall_back_to_the_original(self):
         upload = SimpleUploadedFile("note.txt", b"hello world", content_type="text/plain")
         text_id = self.client.post(
-            reverse("files-upload"), {"file": upload, "required_permission": "file.read"}, format="multipart", **self._auth()
+            reverse("files-upload"),
+            {"file": upload, "required_permission": "file.read"},
+            format="multipart",
+            **self._auth(),
         ).data["id"]
         text_file = StoredFile.objects.get(pk=text_id)
         self.assertEqual(b"".join(self._get(text_file, "sm").streaming_content), b"hello world")

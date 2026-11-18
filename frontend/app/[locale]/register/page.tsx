@@ -1,15 +1,15 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
-import { Suspense, useState, type FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
+import { Suspense, useState, type FormEvent } from "react";
 
 import { SecurityNote } from "@/components/auth/SecurityNote";
 import { BrandMark } from "@/components/ui/BrandMark";
 import { FloatingLabelInput } from "@/components/ui/FloatingLabelInput";
 import { Link, useRouter } from "@/i18n/navigation";
-import { ApiError, apiUrl } from "@/lib/api/client";
 import { createOrganizationRequest, registerRequest } from "@/lib/api/auth";
+import { ApiError, apiUrl } from "@/lib/api/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { safeRedirectPath } from "@/lib/auth/redirect";
 import { useOrganization } from "@/lib/organization/OrganizationProvider";
@@ -86,8 +86,10 @@ function RegisterForm() {
     const errors: FieldErrors = {};
     const trimmedUsername = username.trim();
     if (!trimmedUsername) errors.username = t("fieldRequired");
-    else if (trimmedUsername.length < MIN_USERNAME_LENGTH) errors.username = t("usernameTooShort", { min: MIN_USERNAME_LENGTH });
-    else if (trimmedUsername.length > MAX_USERNAME_LENGTH) errors.username = t("usernameTooLong", { max: MAX_USERNAME_LENGTH });
+    else if (trimmedUsername.length < MIN_USERNAME_LENGTH)
+      errors.username = t("usernameTooShort", { min: MIN_USERNAME_LENGTH });
+    else if (trimmedUsername.length > MAX_USERNAME_LENGTH)
+      errors.username = t("usernameTooLong", { max: MAX_USERNAME_LENGTH });
     else if (!USERNAME_PATTERN.test(trimmedUsername)) errors.username = t("invalidUsername");
     if (!email.trim()) errors.email = t("fieldRequired");
     else if (!EMAIL_PATTERN.test(email)) errors.email = t("invalidEmail");
@@ -160,17 +162,11 @@ function RegisterForm() {
           <div className="flex flex-col items-center mb-8">
             {settings?.logo_url ? (
               // eslint-disable-next-line @next/next/no-img-element -- external backend URL, not a local asset next/image can optimize.
-              <img
-                src={apiUrl(settings.logo_url)}
-                alt={settings.name}
-                className="h-16 w-16 mb-4 object-contain"
-              />
+              <img src={apiUrl(settings.logo_url)} alt={settings.name} className="h-16 w-16 mb-4 object-contain" />
             ) : (
               <BrandMark className="h-16 w-16 mb-4" />
             )}
-            <h1 className="font-headline-lg text-headline-lg text-on-surface">
-              {settings?.name ?? "Athar"}
-            </h1>
+            <h1 className="font-headline-lg text-headline-lg text-on-surface">{settings?.name ?? "Athar"}</h1>
             <p
               className={
                 locale === "en"
@@ -344,7 +340,9 @@ function RegisterForm() {
           <p className="text-center font-body-md text-body-md text-on-surface-variant mt-6">
             {t("register.hasAccount")}{" "}
             <Link
-              href={searchParams.get("next") ? `/login?next=${encodeURIComponent(searchParams.get("next")!)}` : "/login"}
+              href={
+                searchParams.get("next") ? `/login?next=${encodeURIComponent(searchParams.get("next")!)}` : "/login"
+              }
               className="text-primary hover:underline"
             >
               {t("register.loginLink")}

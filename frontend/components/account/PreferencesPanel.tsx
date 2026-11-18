@@ -5,11 +5,11 @@ import { useLocale, useTranslations } from "next-intl";
 import { Combobox } from "@/components/ui/Combobox";
 import { Switch } from "@/components/ui/Switch";
 import { usePathname, useRouter } from "@/i18n/navigation";
-import { locales, localeNames, type Locale } from "@/i18n/request";
+import { localeNames, locales, type Locale } from "@/i18n/request";
 import { updateMe } from "@/lib/api/accounts";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { useTheme } from "@/lib/theme/ThemeProvider";
 import type { ThemePreference } from "@/lib/theme/theme";
+import { useTheme } from "@/lib/theme/ThemeProvider";
 
 const LANGUAGE_OPTIONS = locales.map((code) => ({
   value: code,

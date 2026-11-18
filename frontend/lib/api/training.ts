@@ -175,7 +175,11 @@ export interface CourseSearchPage {
   count: number;
 }
 
-export function searchCourses(query: string, category?: string, difficulty?: CourseDifficulty): Promise<CourseSearchPage> {
+export function searchCourses(
+  query: string,
+  category?: string,
+  difficulty?: CourseDifficulty,
+): Promise<CourseSearchPage> {
   const params = new URLSearchParams({ q: query });
   if (category) params.set("category", category);
   if (difficulty) params.set("difficulty", difficulty);
@@ -374,10 +378,7 @@ export interface ImportCurriculumModule {
   }[];
 }
 
-export function importCurriculum(
-  courseId: string,
-  modules: ImportCurriculumModule[],
-): Promise<CourseDetail> {
+export function importCurriculum(courseId: string, modules: ImportCurriculumModule[]): Promise<CourseDetail> {
   return apiJson<CourseDetail>(`/api/v1/training/courses/${courseId}/import-curriculum/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

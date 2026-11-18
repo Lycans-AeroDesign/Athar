@@ -1,6 +1,5 @@
-import type { useTranslations } from "next-intl";
-
 import { driver, type DriveStep } from "driver.js";
+import type { useTranslations } from "next-intl";
 
 /** One entry per `data-tour="<id>"` in SideNav.tsx/TopBar.tsx; add a step here and tag its target
  * the same way. Order matches the sidebar top to bottom. Content-type steps explain what belongs
@@ -50,15 +49,13 @@ export function runProductTour(
   // not visibility). No-op at `lg`+; closed again once the tour moves past the sidebar steps.
   openMobileNav();
 
-  const steps: DriveStep[] = TOUR_STEP_IDS.filter((id) => document.querySelector(`[data-tour="${id}"]`)).map(
-    (id) => ({
-      element: `[data-tour="${id}"]`,
-      popover: {
-        title: key(`${id}Title`),
-        description: key(`${id}Description`),
-      },
-    }),
-  );
+  const steps: DriveStep[] = TOUR_STEP_IDS.filter((id) => document.querySelector(`[data-tour="${id}"]`)).map((id) => ({
+    element: `[data-tour="${id}"]`,
+    popover: {
+      title: key(`${id}Title`),
+      description: key(`${id}Description`),
+    },
+  }));
 
   // Targets are always in the DOM once logged in, so an empty result means the shell hasn't
   // mounted yet; skip silently rather than open an empty overlay.

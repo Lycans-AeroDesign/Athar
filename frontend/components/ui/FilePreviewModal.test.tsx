@@ -1,8 +1,9 @@
 import { render, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import { FilePreviewModal } from "./FilePreviewModal";
 import type { StoredFile } from "@/lib/api/types";
+
+import { FilePreviewModal } from "./FilePreviewModal";
 
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => key,
@@ -31,9 +32,7 @@ describe("FilePreviewModal", () => {
       blob: () => Promise.resolve(new Blob(["fake"], { type: "application/octet-stream" })),
     });
 
-    const createObjectURLSpy = vi
-      .spyOn(URL, "createObjectURL")
-      .mockImplementation(() => "blob:mock-url");
+    const createObjectURLSpy = vi.spyOn(URL, "createObjectURL").mockImplementation(() => "blob:mock-url");
     const revokeObjectURLSpy = vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
 
     const { unmount } = render(<FilePreviewModal open onOpenChange={() => {}} file={file} />);

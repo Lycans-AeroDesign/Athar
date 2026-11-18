@@ -54,7 +54,8 @@ export default function ResetPasswordPage() {
     setError(null);
     const errors: FieldErrors = {};
     if (!password) errors.password = t("fieldRequired");
-    else if (password.length < MIN_PASSWORD_LENGTH) errors.password = t("passwordTooShort", { min: MIN_PASSWORD_LENGTH });
+    else if (password.length < MIN_PASSWORD_LENGTH)
+      errors.password = t("passwordTooShort", { min: MIN_PASSWORD_LENGTH });
     if (password && confirm !== password) errors.confirm = t("reset.mismatch");
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) return;

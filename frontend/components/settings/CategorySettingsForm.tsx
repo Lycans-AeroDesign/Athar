@@ -7,10 +7,10 @@ import { Button } from "@/components/ui/Button";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
+import { INPUT_CLASS } from "@/components/ui/inputStyles";
 import { LoadError } from "@/components/ui/LoadError";
 import { Modal } from "@/components/ui/Modal";
 import { SettingsListSkeleton } from "@/components/ui/Skeleton";
-import { INPUT_CLASS } from "@/components/ui/inputStyles";
 import { createCategory, deleteCategory, getCategories, updateCategory } from "@/lib/api/knowledge";
 import type { Category } from "@/lib/api/types";
 import { errorMessage } from "@/lib/errors";
@@ -67,9 +67,7 @@ export function CategorySettingsForm() {
         setCategories((prev) => [...(prev ?? []), created].sort((a, b) => a.name.localeCompare(b.name)));
       } else if (editTarget) {
         const updated = await updateCategory(editTarget.id, { name: name.trim(), description: description.trim() });
-        setCategories((prev) =>
-          (prev ?? []).map((category) => (category.id === updated.id ? updated : category)),
-        );
+        setCategories((prev) => (prev ?? []).map((category) => (category.id === updated.id ? updated : category)));
       }
       setEditTarget(null);
     } catch (err) {
@@ -121,16 +119,10 @@ export function CategorySettingsForm() {
                 key={category.id}
                 className="flex items-center justify-between gap-4 px-3 py-2 rounded-lg bg-surface-container"
               >
-                <button
-                  type="button"
-                  onClick={() => openRename(category)}
-                  className="min-w-0 text-start flex-1"
-                >
+                <button type="button" onClick={() => openRename(category)} className="min-w-0 text-start flex-1">
                   <p className="font-body-md text-body-md text-on-surface truncate">{category.name}</p>
                   {category.description && (
-                    <p className="font-body-md text-body-md text-on-surface-variant truncate">
-                      {category.description}
-                    </p>
+                    <p className="font-body-md text-body-md text-on-surface-variant truncate">{category.description}</p>
                   )}
                 </button>
                 <div className="flex items-center gap-3 shrink-0">
@@ -157,7 +149,9 @@ export function CategorySettingsForm() {
         onOpenChange={(open) => !open && setEditTarget(null)}
         title={editTarget === "new" ? t("newCategory") : t("renameCategory")}
         isDirty={
-          editTarget === "new" ? name.length > 0 || description.length > 0 : name !== editTarget?.name || description !== editTarget?.description
+          editTarget === "new"
+            ? name.length > 0 || description.length > 0
+            : name !== editTarget?.name || description !== editTarget?.description
         }
         footer={
           <Button onClick={handleSave} disabled={isSaving || !name.trim()}>
@@ -170,21 +164,13 @@ export function CategorySettingsForm() {
             <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase">
               {t("nameLabel")}
             </label>
-            <input
-              className={INPUT_CLASS}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
+            <input className={INPUT_CLASS} value={name} onChange={(e) => setName(e.target.value)} />
           </div>
           <div className="space-y-2">
             <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase">
               {t("descriptionLabel")}
             </label>
-            <input
-              className={INPUT_CLASS}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
+            <input className={INPUT_CLASS} value={description} onChange={(e) => setDescription(e.target.value)} />
           </div>
           {saveError && (
             <p className="font-body-md text-body-md text-error" role="alert">

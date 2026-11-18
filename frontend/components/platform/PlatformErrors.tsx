@@ -20,7 +20,6 @@ import type { Paginated } from "@/lib/api/types";
 import { formatRelativeTime } from "@/lib/datetime";
 import { errorMessage } from "@/lib/errors";
 
-
 // Platform-admin error log: backend exceptions/ERROR logs and browser-reported errors,
 // grouped so each row is one distinct bug (see backend platform_admin/error_log.py).
 export function PlatformErrors() {

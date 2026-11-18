@@ -4,14 +4,13 @@ import zipfile
 from pathlib import Path
 
 import zstandard
-
 from django.conf import settings
 from django.core.files import File
 from django.db import transaction
 from django.http import StreamingHttpResponse
+from django.shortcuts import get_object_or_404
 from django.utils.decorators import method_decorator
 from django.views.decorators.debug import sensitive_post_parameters
-from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import status
 from rest_framework.exceptions import ValidationError
@@ -21,11 +20,11 @@ from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from audit.services import log_action
-from core import crypto
 from config.openapi import BAD_REQUEST, COMMON_ERRORS, NOT_FOUND
+from config.pagination import paginated_response
+from core import crypto
 from core.shortcuts import org_object_or_404
 from organization.models import Organization
-from config.pagination import paginated_response
 from rbac.permissions import require_permission
 
 from . import restore, services, tasks
@@ -120,7 +119,12 @@ class BackupJobDownloadView(APIView):
         tags=["Backups"],
         summary="Download a finished backup archive, encrypted with the given passphrase",
         request=DownloadBackupSerializer,
-        responses={200: OpenApiResponse(description="The encrypted .athar archive."), 400: OpenApiResponse(description="Not ready yet, or passphrase too short."), 404: NOT_FOUND, **COMMON_ERRORS},
+        responses={
+            200: OpenApiResponse(description="The encrypted .athar archive."),
+            400: OpenApiResponse(description="Not ready yet, or passphrase too short."),
+            404: NOT_FOUND,
+            **COMMON_ERRORS,
+        },
     )
     def post(self, request, pk):
         job = org_object_or_404(request, BackupJob, pk)
@@ -192,7 +196,13 @@ class RestoreJobListCreateView(APIView):
             job = RestoreJob.objects.create(
                 organization=request.user.organization, source_backup=backup_job, requested_by=request.user
             )
-            log_action(request.user, "backup.restore", target=job, metadata={"source_backup": str(backup_job.id)}, request=request)
+            log_action(
+                request.user,
+                "backup.restore",
+                target=job,
+                metadata={"source_backup": str(backup_job.id)},
+                request=request,
+            )
         tasks.restore_org_backup.delay(str(job.id))
         return Response(RestoreJobSerializer(job).data, status=status.HTTP_201_CREATED)
 
@@ -280,7 +290,9 @@ class RestoreJobUploadView(APIView):
         uploaded_file = serializer.validated_data["archive"]
         passphrase = serializer.validated_data.get("passphrase") or None
         if uploaded_file.size > settings.BACKUP_UPLOAD_MAX_SIZE_MB * 1024 * 1024:
-            raise ValidationError({"archive": [f"This file is too large - the limit is {settings.BACKUP_UPLOAD_MAX_SIZE_MB}MB."]})
+            raise ValidationError(
+                {"archive": [f"This file is too large - the limit is {settings.BACKUP_UPLOAD_MAX_SIZE_MB}MB."]}
+            )
         # Fail fast before the (slow) decrypt/validate below; checked again
         # under the lock when the job is actually saved.
         with transaction.atomic():
@@ -335,7 +347,10 @@ class RestoreJobUploadView(APIView):
                 services.lock_and_ensure_idle(request.user.organization, starting="restore")
                 job.save()
                 log_action(
-                    request.user, "backup.restore", target=job, metadata={"uploaded_filename": job.uploaded_filename},
+                    request.user,
+                    "backup.restore",
+                    target=job,
+                    metadata={"uploaded_filename": job.uploaded_filename},
                     request=request,
                 )
         except ValidationError:

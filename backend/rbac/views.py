@@ -39,7 +39,7 @@ class UserActiveView(APIView):
 
     @extend_schema(
         tags=["RBAC"],
-        summary="Block or unblock a user (body: {\"is_active\": bool})",
+        summary='Block or unblock a user (body: {"is_active": bool})',
         request={"application/json": {"type": "object", "properties": {"is_active": {"type": "boolean"}}}},
         responses={200: UserSerializer, 400: BAD_REQUEST, 404: NOT_FOUND, **COMMON_ERRORS},
     )
@@ -140,7 +140,12 @@ class RolePermissionsView(APIView):
     @extend_schema(
         tags=["RBAC"],
         summary="Grant a permission to a role",
-        request={"application/json": {"type": "object", "properties": {"permission_id": {"type": "string", "format": "uuid"}}}},
+        request={
+            "application/json": {
+                "type": "object",
+                "properties": {"permission_id": {"type": "string", "format": "uuid"}},
+            }
+        },
         responses={200: PermissionSerializer(many=True), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def post(self, request, pk):
@@ -158,7 +163,11 @@ class RolePermissionDetailView(APIView):
     @extend_schema(
         tags=["RBAC"],
         summary="Revoke a permission from a role",
-        responses={204: OpenApiResponse(description="Revoked (or was already absent)."), 404: NOT_FOUND, **COMMON_ERRORS},
+        responses={
+            204: OpenApiResponse(description="Revoked (or was already absent)."),
+            404: NOT_FOUND,
+            **COMMON_ERRORS,
+        },
     )
     def delete(self, request, pk, permission_id):
         role = org_object_or_404(request, Role, pk)
@@ -173,7 +182,9 @@ class UserRolesView(APIView):
     @extend_schema(
         tags=["RBAC"],
         summary="Assign a role to a user",
-        request={"application/json": {"type": "object", "properties": {"role_id": {"type": "string", "format": "uuid"}}}},
+        request={
+            "application/json": {"type": "object", "properties": {"role_id": {"type": "string", "format": "uuid"}}}
+        },
         responses={204: OpenApiResponse(description="Assigned (or already held)."), 404: NOT_FOUND, **COMMON_ERRORS},
     )
     def post(self, request, pk):

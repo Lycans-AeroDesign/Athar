@@ -64,7 +64,9 @@ export function ComponentsTable({ components, ordering, onOrderingChange }: Comp
       field: "quantity_available",
       labelKey: "colQuantity",
       render: (component) => (
-        <span className={`font-mono-sm text-mono-sm ${component.quantity_available > 0 ? "text-on-surface-variant" : "text-error"}`}>
+        <span
+          className={`font-mono-sm text-mono-sm ${component.quantity_available > 0 ? "text-on-surface-variant" : "text-error"}`}
+        >
           {component.quantity_available}
           {component.unit && <span className="ms-1 font-body-md text-body-md">{component.unit}</span>}
         </span>
@@ -74,7 +76,11 @@ export function ComponentsTable({ components, ordering, onOrderingChange }: Comp
       field: "stock_status",
       labelKey: "colStockStatus",
       render: (component) =>
-        component.stock_status ? <StockStatusPill status={component.stock_status} /> : <span className={muted}>{t("noValue")}</span>,
+        component.stock_status ? (
+          <StockStatusPill status={component.stock_status} />
+        ) : (
+          <span className={muted}>{t("noValue")}</span>
+        ),
     },
     {
       field: "condition",
@@ -97,14 +103,20 @@ export function ComponentsTable({ components, ordering, onOrderingChange }: Comp
       field: "inventory_type",
       labelKey: "colInventoryType",
       render: (component) => (
-        <span className={muted}>{component.inventory_type ? inventoryTypeT(component.inventory_type) : t("noValue")}</span>
+        <span className={muted}>
+          {component.inventory_type ? inventoryTypeT(component.inventory_type) : t("noValue")}
+        </span>
       ),
     },
     {
       field: "status",
       labelKey: "colStatus",
       render: (component) =>
-        component.status ? <EngineeringStatusPill status={component.status} /> : <span className={muted}>{t("noValue")}</span>,
+        component.status ? (
+          <EngineeringStatusPill status={component.status} />
+        ) : (
+          <span className={muted}>{t("noValue")}</span>
+        ),
     },
     {
       field: "manufacturer",
@@ -115,7 +127,9 @@ export function ComponentsTable({ components, ordering, onOrderingChange }: Comp
       field: "part_number",
       labelKey: "colPartNumber",
       render: (component) => (
-        <span className="font-mono-sm text-mono-sm text-on-surface-variant">{component.part_number || t("noValue")}</span>
+        <span className="font-mono-sm text-mono-sm text-on-surface-variant">
+          {component.part_number || t("noValue")}
+        </span>
       ),
     },
     {

@@ -96,10 +96,14 @@ class Command(BaseCommand):
         # role doesn't exist in this environment.
         command = [
             "pg_restore",
-            "-h", db.get("HOST") or "localhost",
-            "-p", str(db.get("PORT") or 5432),
-            "-U", db.get("USER") or "",
-            "-d", db["NAME"],
+            "-h",
+            db.get("HOST") or "localhost",
+            "-p",
+            str(db.get("PORT") or 5432),
+            "-U",
+            db.get("USER") or "",
+            "-d",
+            db["NAME"],
             "--clean",
             "--if-exists",
             "--no-owner",
@@ -110,8 +114,7 @@ class Command(BaseCommand):
             subprocess.run(command, env=env, check=True, capture_output=True, text=True)
         except FileNotFoundError as exc:
             raise CommandError(
-                "pg_restore isn't installed in this image - add the postgresql-client "
-                "package to backend/Dockerfile."
+                "pg_restore isn't installed in this image - add the postgresql-client package to backend/Dockerfile."
             ) from exc
         except subprocess.CalledProcessError as exc:
             raise CommandError(f"pg_restore failed:\n{exc.stderr}") from exc

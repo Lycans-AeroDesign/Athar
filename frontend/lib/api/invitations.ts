@@ -7,7 +7,10 @@ export function getInvitationCodes(): Promise<InvitationCode[]> {
   return apiJson<Paginated<InvitationCode>>("/api/v1/auth/invitations/").then((data) => data.results);
 }
 
-export function createInvitationCode(payload: { max_uses?: number; expires_at?: string | null }): Promise<InvitationCode> {
+export function createInvitationCode(payload: {
+  max_uses?: number;
+  expires_at?: string | null;
+}): Promise<InvitationCode> {
   return apiJson<InvitationCode>("/api/v1/auth/invitations/", {
     method: "POST",
     headers: { "Content-Type": "application/json" },

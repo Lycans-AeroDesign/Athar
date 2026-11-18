@@ -40,11 +40,7 @@ async function ensureFreshToken(): Promise<string> {
   return refreshPromise;
 }
 
-export async function apiFetch(
-  path: string,
-  options: RequestInit = {},
-  _retried = false,
-): Promise<Response> {
+export async function apiFetch(path: string, options: RequestInit = {}, _retried = false): Promise<Response> {
   const token = tokenStore.getAccessToken();
   const headers = new Headers(options.headers);
   if (token) headers.set("Authorization", `Bearer ${token}`);
@@ -124,7 +120,11 @@ function parseErrorBody(
       // gives a bare string instead.
       if (typeof value === "string" && value) {
         fields[key] = value;
-      } else if (Array.isArray(value) && value.every((entry): entry is string => typeof entry === "string") && value.length > 0) {
+      } else if (
+        Array.isArray(value) &&
+        value.every((entry): entry is string => typeof entry === "string") &&
+        value.length > 0
+      ) {
         fields[key] = value.join(" ");
       }
     }

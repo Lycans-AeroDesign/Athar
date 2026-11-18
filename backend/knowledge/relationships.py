@@ -66,7 +66,9 @@ def get_definition(name: str, source_type: str, target_type: str) -> Relationshi
     return None
 
 
-def find_definition_for_creation(name: str, source_type: str, target_type: str) -> tuple[RelationshipDefinition, bool] | None:
+def find_definition_for_creation(
+    name: str, source_type: str, target_type: str
+) -> tuple[RelationshipDefinition, bool] | None:
     """Look up a registry entry for a relation someone is about to *create*,
     given the (name, source_type, target_type) they submitted. Also tries
     matching `name` against each definition's reverse_name with source/target
@@ -82,7 +84,11 @@ def find_definition_for_creation(name: str, source_type: str, target_type: str) 
     for definition in RELATIONSHIP_DEFINITIONS:
         if definition.name == name and definition.source_type == source_type and definition.target_type == target_type:
             return definition, False
-        if definition.reverse_name == name and definition.source_type == target_type and definition.target_type == source_type:
+        if (
+            definition.reverse_name == name
+            and definition.source_type == target_type
+            and definition.target_type == source_type
+        ):
             return definition, True
     return None
 

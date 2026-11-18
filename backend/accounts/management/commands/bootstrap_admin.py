@@ -31,7 +31,9 @@ class Command(BaseCommand):
                 raise CommandError(f"No organization with slug '{slug}'.") from exc
         count = Organization.objects.count()
         if count == 0:
-            raise CommandError("No organizations exist yet - create one first (see organization.services.create_organization).")
+            raise CommandError(
+                "No organizations exist yet - create one first (see organization.services.create_organization)."
+            )
         if count > 1:
             slugs = ", ".join(Organization.objects.order_by("slug").values_list("slug", flat=True))
             raise CommandError(f"Multiple organizations exist - pass --organization <slug>. Options: {slugs}")

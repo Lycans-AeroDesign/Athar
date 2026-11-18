@@ -5,9 +5,9 @@ import { useEffect, useState } from "react";
 
 import { Pagination } from "@/components/ui/Pagination";
 import { TableSkeleton } from "@/components/ui/Skeleton";
-import { formatDateTime } from "@/lib/datetime";
 import { getAuditLogs } from "@/lib/api/audit";
 import type { AuditLogEntry, Paginated } from "@/lib/api/types";
+import { formatDateTime } from "@/lib/datetime";
 import { errorMessage } from "@/lib/errors";
 
 // Rendered only when the viewer has audit.read (see settings/page.tsx) -

@@ -72,11 +72,15 @@ jobs:
       - name: Install dependencies
         run: uv sync --frozen
 
-      # Ruff's default rules (pyflakes + basic pycodestyle) - catches undefined
-      # names and dead imports, e.g. a missing ValidationError import that only
-      # failed at request time. Version pinned for the same reason as uv's.
+      # Ruff's default rules (pyflakes + basic pycodestyle) plus import order -
+      # catches undefined names and dead imports, e.g. a missing ValidationError
+      # import that only failed at request time. Config in pyproject.toml;
+      # version pinned for the same reason as uv's.
       - name: Lint (ruff)
         run: uvx ruff@0.14.0 check .
+
+      - name: Formatting (ruff format)
+        run: uvx ruff@0.14.0 format --check .
 
       - name: Django system check
         run: uv run manage.py check
@@ -122,6 +126,10 @@ jobs:
 
       - name: Lint
         run: npm run lint
+
+      # Prettier, including import order (@ianvs/prettier-plugin-sort-imports) - see .prettierrc.json.
+      - name: Formatting
+        run: npm run format:check
 
       - name: Test
         run: npm test

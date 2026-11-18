@@ -3,36 +3,36 @@
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
-import { Button } from "@/components/ui/Button";
-import { Icon } from "@/components/ui/Icon";
-import { Markdown } from "@/components/ui/Markdown";
-import { ChangedIndicator } from "@/components/ui/ChangedIndicator";
-import { Combobox } from "@/components/ui/Combobox";
-import { MarkdownEditor } from "@/components/ui/MarkdownEditor";
-import { TagInput } from "@/components/ui/TagInput";
+import { CoAuthorPicker } from "@/components/knowledge/CoAuthorPicker";
 import { CollectionMembershipPicker } from "@/components/knowledge/CollectionMembershipPicker";
+import { PendingRelations, toRelationInputs, type PendingRelation } from "@/components/knowledge/PendingRelations";
+import { ProjectSelect } from "@/components/knowledge/ProjectSelect";
 import {
   EMPTY_RESTRICTED_ACCESS_DRAFT,
   RestrictedAccessPicker,
   type RestrictedAccessDraft,
 } from "@/components/knowledge/RestrictedAccessPicker";
+import { effectiveVisibility, VisibilitySelect } from "@/components/knowledge/VisibilitySelect";
+import { Button } from "@/components/ui/Button";
+import { ChangedIndicator } from "@/components/ui/ChangedIndicator";
+import { Combobox } from "@/components/ui/Combobox";
+import { Icon } from "@/components/ui/Icon";
+import { Markdown } from "@/components/ui/Markdown";
+import { MarkdownEditor } from "@/components/ui/MarkdownEditor";
 import { SavingOverlay } from "@/components/ui/SavingOverlay";
 import { Switch } from "@/components/ui/Switch";
+import { TagInput } from "@/components/ui/TagInput";
 import { TitleInput } from "@/components/ui/TitleInput";
-import { PendingRelations, toRelationInputs, type PendingRelation } from "@/components/knowledge/PendingRelations";
-import { effectiveVisibility, VisibilitySelect } from "@/components/knowledge/VisibilitySelect";
-import { ProjectSelect } from "@/components/knowledge/ProjectSelect";
-import { CoAuthorPicker } from "@/components/knowledge/CoAuthorPicker";
-import { useAuth } from "@/lib/auth/AuthProvider";
 import { useRouter } from "@/i18n/navigation";
+import { addAccessGrant, removeAccessGrant } from "@/lib/api/accessGrants";
+import { syncCollectionMembership } from "@/lib/api/collections";
+import { createSop, updateSop, type SopWritePayload } from "@/lib/api/engineering";
+import { createCategory, getCategories } from "@/lib/api/knowledge";
+import type { Category, KnowledgeAuthor, SopDetail, Visibility } from "@/lib/api/types";
+import { useAuth } from "@/lib/auth/AuthProvider";
 import { useHasPermission } from "@/lib/auth/permissions";
 import { errorMessage } from "@/lib/errors";
 import { useSaveOnce } from "@/lib/useSaveOnce";
-import { addAccessGrant, removeAccessGrant } from "@/lib/api/accessGrants";
-import { createSop, updateSop, type SopWritePayload } from "@/lib/api/engineering";
-import { syncCollectionMembership } from "@/lib/api/collections";
-import { createCategory, getCategories } from "@/lib/api/knowledge";
-import type { Category, KnowledgeAuthor, SopDetail, Visibility } from "@/lib/api/types";
 import { useUnsavedChangesGuard } from "@/lib/useUnsavedChangesGuard";
 
 interface SopEditorProps {
@@ -74,9 +74,8 @@ export function SopEditor({ sop, onDirtyChange, initialProjectId = null }: SopEd
   const [pendingRelations, setPendingRelations] = useState<PendingRelation[]>([]);
   const [linkProjectId, setLinkProjectId] = useState<string | null>(initialProjectId);
   const [projectVisibility, setProjectVisibility] = useState<Visibility | null>(null);
-  const [restrictedAccessDraft, setRestrictedAccessDraft] = useState<RestrictedAccessDraft>(
-    EMPTY_RESTRICTED_ACCESS_DRAFT,
-  );
+  const [restrictedAccessDraft, setRestrictedAccessDraft] =
+    useState<RestrictedAccessDraft>(EMPTY_RESTRICTED_ACCESS_DRAFT);
   const { isSaving, run } = useSaveOnce();
   const [error, setError] = useState<string | null>(null);
   const canManageCollections = useHasPermission("collection.manage");

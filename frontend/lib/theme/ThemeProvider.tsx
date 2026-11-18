@@ -23,13 +23,7 @@ function systemPrefersDark(): boolean {
 // app/layout.tsx (reading the cookie via next/headers), so there's no
 // flash-of-wrong-theme to fix on mount here - this provider only needs to
 // react to the user actively changing their preference afterwards.
-export function ThemeProvider({
-  initialTheme,
-  children,
-}: {
-  initialTheme: ThemePreference;
-  children: ReactNode;
-}) {
+export function ThemeProvider({ initialTheme, children }: { initialTheme: ThemePreference; children: ReactNode }) {
   const [theme, setThemeState] = useState<ThemePreference>(initialTheme);
   const [prefersDark, setPrefersDark] = useState(systemPrefersDark);
 
@@ -48,9 +42,7 @@ export function ThemeProvider({
     applyThemeToDocument(next);
   }, []);
 
-  return (
-    <ThemeContext.Provider value={{ theme, resolvedTheme, setTheme }}>{children}</ThemeContext.Provider>
-  );
+  return <ThemeContext.Provider value={{ theme, resolvedTheme, setTheme }}>{children}</ThemeContext.Provider>;
 }
 
 export function useTheme(): ThemeContextValue {

@@ -7,12 +7,12 @@ import { Button } from "@/components/ui/Button";
 import { Combobox } from "@/components/ui/Combobox";
 import { Icon } from "@/components/ui/Icon";
 import { Modal } from "@/components/ui/Modal";
-import { formatDate } from "@/lib/datetime";
-import { errorMessage } from "@/lib/errors";
-import { formatPersonName } from "@/lib/format";
 import { createShareLink, getShareLinks, publicShareUrl, revokeShareLink } from "@/lib/api/shareLinks";
 import type { ShareableType, ShareLinkEntry } from "@/lib/api/types";
 import { useHasPermission } from "@/lib/auth/permissions";
+import { formatDate } from "@/lib/datetime";
+import { errorMessage } from "@/lib/errors";
+import { formatPersonName } from "@/lib/format";
 
 export interface PublicLinkTarget {
   type: ShareableType;
@@ -181,7 +181,11 @@ export function ShareDialog({ open, onOpenChange, target }: ShareDialogProps) {
                       )}
                     </p>
                   </div>
-                  <Button variant="secondary" size="sm" onClick={() => copy(publicShareUrl(link.token, locale), link.id)}>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => copy(publicShareUrl(link.token, locale), link.id)}
+                  >
                     <Icon name={copiedId === link.id ? "check" : "content_copy"} size={16} />
                     {copiedId === link.id ? t("copied") : t("copy")}
                   </Button>

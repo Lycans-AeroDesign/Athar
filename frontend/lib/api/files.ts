@@ -32,9 +32,7 @@ let uploadLimitMbPromise: Promise<number> | null = null;
  * admin changes it mid-session - call clearUploadLimitCache() after a save
  * (IdentitySettingsForm does). */
 export function getUploadLimitMb(): Promise<number> {
-  uploadLimitMbPromise ??= apiJson<{ effective_max_upload_size_mb: number }>(
-    "/api/v1/organization/settings/",
-  )
+  uploadLimitMbPromise ??= apiJson<{ effective_max_upload_size_mb: number }>("/api/v1/organization/settings/")
     .then((settings) => settings.effective_max_upload_size_mb)
     .catch(() => DEFAULT_UPLOAD_LIMIT_MB);
   return uploadLimitMbPromise;

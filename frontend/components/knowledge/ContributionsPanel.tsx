@@ -4,17 +4,17 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 import { ArticleCard } from "@/components/knowledge/ArticleCard";
+import { ActivityLineSkeleton, ContributionItemsSkeleton } from "@/components/knowledge/KnowledgeSkeletons";
 import { QuestionCard } from "@/components/knowledge/QuestionCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
 import { Pagination } from "@/components/ui/Pagination";
-import { ActivityLineSkeleton, ContributionItemsSkeleton } from "@/components/knowledge/KnowledgeSkeletons";
 import { Link } from "@/i18n/navigation";
 import { getUserActivity } from "@/lib/api/audit";
 import { getUserContributions } from "@/lib/api/knowledge";
 import type {
-  Answer,
   ActivityEntry,
+  Answer,
   ArticleSummary,
   ComponentSummary,
   ContributionPeriod,
@@ -320,7 +320,9 @@ export function ContributionsPanel({ profile }: ContributionsPanelProps) {
               </h3>
 
               {items === null ? (
-                <ContributionItemsSkeleton kind={tab === "article" || tab === "question" || tab === "answer" ? "card" : "row"} />
+                <ContributionItemsSkeleton
+                  kind={tab === "article" || tab === "question" || tab === "answer" ? "card" : "row"}
+                />
               ) : items.length === 0 ? (
                 <p className="font-body-md text-body-md text-on-surface-variant">{t("emptyState")}</p>
               ) : (

@@ -58,7 +58,9 @@ class Course(UUIDPrimaryKeyModel, OrganizationScopedModel, TimeStampedModel, Sof
     title = models.CharField(max_length=200)
     slug = models.SlugField(max_length=220)
     short_description = models.CharField(max_length=300, blank=True)
-    description = models.TextField(blank=True)  # markdown source, same flat-field precedent as Article.content/Sop.content
+    description = models.TextField(
+        blank=True
+    )  # markdown source, same flat-field precedent as Article.content/Sop.content
     cover_image = models.ForeignKey(StoredFile, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
     category = models.ForeignKey(
         CourseCategory, null=True, blank=True, on_delete=models.SET_NULL, related_name="courses"
@@ -79,9 +81,7 @@ class Course(UUIDPrimaryKeyModel, OrganizationScopedModel, TimeStampedModel, Sof
     author = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="authored_courses"
     )
-    co_authors = models.ManyToManyField(
-        settings.AUTH_USER_MODEL, blank=True, related_name="coauthored_courses"
-    )
+    co_authors = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, related_name="coauthored_courses")
     published_at = models.DateTimeField(null=True, blank=True)
 
     search_vector, search_text = search_columns(*COURSE_SEARCH_FIELDS)

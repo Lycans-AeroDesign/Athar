@@ -1,6 +1,6 @@
+from django.conf import settings
 from django.db import transaction
 from django.utils.text import slugify
-from django.conf import settings
 from rest_framework.exceptions import ValidationError
 
 from audit.services import log_action

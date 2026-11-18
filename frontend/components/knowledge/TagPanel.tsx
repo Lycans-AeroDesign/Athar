@@ -13,9 +13,7 @@ export function TagPanel({ tags, selectedTagId, onSelect }: TagPanelProps) {
 
   return (
     <div className="bg-surface-container-low rounded-xl border border-outline-variant p-4 space-y-2 flex-1">
-      <h3 className="font-label-caps text-label-caps text-on-surface-variant uppercase px-2 pb-1">
-        {t("tagsTitle")}
-      </h3>
+      <h3 className="font-label-caps text-label-caps text-on-surface-variant uppercase px-2 pb-1">{t("tagsTitle")}</h3>
       <div className="flex flex-wrap gap-2 px-2">
         {tags.map((tag) => {
           const isSelected = tag.id === selectedTagId;

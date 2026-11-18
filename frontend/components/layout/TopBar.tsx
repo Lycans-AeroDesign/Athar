@@ -9,15 +9,15 @@ import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Icon } from "@/components/ui/Icon";
 import { Menu } from "@/components/ui/Menu";
 import { usePathname, useRouter } from "@/i18n/navigation";
-import { locales, localeNames, type Locale } from "@/i18n/request";
+import { localeNames, locales, type Locale } from "@/i18n/request";
 import { updateMe } from "@/lib/api/accounts";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { formatPersonName } from "@/lib/format";
 import { runProductTour } from "@/lib/onboarding/tour";
-import { openWhatsNew } from "@/lib/whatsNew";
 import { useOrganization } from "@/lib/organization/OrganizationProvider";
-import { useTheme } from "@/lib/theme/ThemeProvider";
 import type { ThemePreference } from "@/lib/theme/theme";
+import { useTheme } from "@/lib/theme/ThemeProvider";
+import { openWhatsNew } from "@/lib/whatsNew";
 
 interface TopBarProps {
   /** Opens the off-canvas SideNav drawer below the `lg` breakpoint (see the (protected) layout). */

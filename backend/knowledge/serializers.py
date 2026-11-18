@@ -7,10 +7,8 @@ from files.models import StoredFile
 from files.serializers import StoredFileSerializer
 
 from . import relationships, services
-from .search import plain_text_excerpt
 from . import visibility as visibility_rules
 from .models import (
-    ShareLink,
     Answer,
     Article,
     ArticleAttachment,
@@ -31,6 +29,7 @@ from .models import (
     Question,
     QuestionAttachment,
     RestrictedAccessGrant,
+    ShareLink,
     Sop,
     SopAttachment,
     StorageLocation,
@@ -38,6 +37,7 @@ from .models import (
     Test,
     TestAttachment,
 )
+from .search import plain_text_excerpt
 
 # Every real relatable content type, shared by the relation, access-grant and bookmark
 # serializers so a new type is added in one place.
@@ -411,9 +411,7 @@ class UpdateCollectionItemSerializer(serializers.Serializer):
 
 
 class ReorderCollectionItemsSerializer(serializers.Serializer):
-    item_ids = serializers.ListField(
-        child=serializers.UUIDField(), required=True, allow_empty=False
-    )
+    item_ids = serializers.ListField(child=serializers.UUIDField(), required=True, allow_empty=False)
 
 
 class ArticleRevisionSerializer(serializers.ModelSerializer):
@@ -792,7 +790,13 @@ class ProjectCardSerializer(ProjectListSerializer):
     collaborator_count = serializers.SerializerMethodField()
 
     class Meta(ProjectListSerializer.Meta):
-        fields = [*ProjectListSerializer.Meta.fields, "test_count", "failure_count", "collaborators", "collaborator_count"]
+        fields = [
+            *ProjectListSerializer.Meta.fields,
+            "test_count",
+            "failure_count",
+            "collaborators",
+            "collaborator_count",
+        ]
         list_serializer_class = ProjectCardListSerializer
 
     def _details(self, obj: Project) -> dict:
@@ -1084,7 +1088,17 @@ class SopListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Sop
-        fields = ["id", "title", "category", "mandatory", "visibility", "tags", "created_by", "created_at", "updated_at"]
+        fields = [
+            "id",
+            "title",
+            "category",
+            "mandatory",
+            "visibility",
+            "tags",
+            "created_by",
+            "created_at",
+            "updated_at",
+        ]
 
 
 class SopDetailSerializer(
@@ -1311,9 +1325,7 @@ class DocumentWriteSerializer(ProjectLinkMixin, serializers.ModelSerializer):
     )
     tag_names = serializers.ListField(child=serializers.CharField(), required=False)
     # See DocumentListSerializer's matching comment - API name unchanged.
-    organization = serializers.CharField(
-        source="external_organization", required=False, allow_blank=True
-    )
+    organization = serializers.CharField(source="external_organization", required=False, allow_blank=True)
 
     class Meta:
         model = Document

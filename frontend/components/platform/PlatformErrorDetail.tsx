@@ -123,11 +123,7 @@ export function PlatformErrorDetail({ id }: { id: string }) {
               {event.message}
             </h1>
             <div className="flex flex-wrap gap-2">
-              <Button
-                variant={event.resolved_at ? "secondary" : "primary"}
-                onClick={toggleResolved}
-                loading={busy}
-              >
+              <Button variant={event.resolved_at ? "secondary" : "primary"} onClick={toggleResolved} loading={busy}>
                 {event.resolved_at ? t("reopen") : t("markResolved")}
               </Button>
               <Button variant="secondary" onClick={() => setConfirmDelete(true)}>

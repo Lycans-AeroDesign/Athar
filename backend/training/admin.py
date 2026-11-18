@@ -6,8 +6,8 @@ from .models import (
     CourseEnrollment,
     CourseModule,
     CourseResource,
-    Lesson,
     LearningObjective,
+    Lesson,
     LessonKnowledgeReference,
     LessonProgress,
 )

@@ -1,8 +1,9 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import { Avatar } from "./Avatar";
 import type { KnowledgeAuthor } from "@/lib/api/types";
+
+import { Avatar } from "./Avatar";
 
 // AuthenticatedImage does its own apiFetch/blob-URL dance (see
 // AuthenticatedImage.tsx) - irrelevant to what Avatar itself decides to

@@ -4,27 +4,21 @@ import * as Popover from "@radix-ui/react-popover";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
+import { Link } from "@/i18n/navigation";
+import { updateMe } from "@/lib/api/accounts";
+import { apiFetch } from "@/lib/api/client";
+import { uploadFile } from "@/lib/api/files";
+import { createRelation, quickSearch } from "@/lib/api/knowledge";
+import type { RelatableType, SearchResult } from "@/lib/api/types";
+import { useAuth } from "@/lib/auth/AuthProvider";
+import { errorMessage } from "@/lib/errors";
+import { RELATABLE_ICON, RELATABLE_ROUTE_PREFIX } from "@/lib/knowledgeTypes";
+import { CALLOUT_TYPES, type CalloutType } from "@/lib/markdownCallouts";
+import { canDisplayAsMention, mentionLink, mentionRanges, toDisplay, toStorage, type MentionMap } from "@/lib/mentions";
+
 import { Icon } from "./Icon";
 import { ImageCropModal } from "./ImageCropModal";
 import { Markdown } from "./Markdown";
-import { Link } from "@/i18n/navigation";
-import { errorMessage } from "@/lib/errors";
-import { CALLOUT_TYPES, type CalloutType } from "@/lib/markdownCallouts";
-import { updateMe } from "@/lib/api/accounts";
-import { apiFetch } from "@/lib/api/client";
-import { createRelation, quickSearch } from "@/lib/api/knowledge";
-import { uploadFile } from "@/lib/api/files";
-import type { RelatableType, SearchResult } from "@/lib/api/types";
-import { useAuth } from "@/lib/auth/AuthProvider";
-import { RELATABLE_ICON, RELATABLE_ROUTE_PREFIX } from "@/lib/knowledgeTypes";
-import {
-  canDisplayAsMention,
-  mentionLink,
-  mentionRanges,
-  toDisplay,
-  toStorage,
-  type MentionMap,
-} from "@/lib/mentions";
 
 interface MarkdownEditorProps {
   value: string;
@@ -199,7 +193,12 @@ function ToolbarSeparator() {
 // button: CommonMark/GFM has no underline syntax, and rendering raw <u> HTML
 // would need rehype-raw (and then sanitizing untrusted user content against
 // XSS) - not worth it for one button.
-export function MarkdownEditor({ value: storedValue, onChange: onStoredChange, placeholder, relateFrom }: MarkdownEditorProps) {
+export function MarkdownEditor({
+  value: storedValue,
+  onChange: onStoredChange,
+  placeholder,
+  relateFrom,
+}: MarkdownEditorProps) {
   // Everything below edits the *display* text, where each @-mention link
   // `[Motor](/components/<uuid>)` reads as `@Motor` (lib/mentions.ts) - the
   // textarea, its selection offsets and every toolbar/upload helper all work
@@ -359,9 +358,12 @@ export function MarkdownEditor({ value: storedValue, onChange: onStoredChange, p
   // it instead of a fixed spot in the editor - recomputed only when a new
   // mention starts (not on every keystroke of the query, so the popup holds
   // still while typing).
-  const [mentionCoords, setMentionCoords] = useState<{ top: number; left: number; height: number; width: number } | null>(
-    null,
-  );
+  const [mentionCoords, setMentionCoords] = useState<{
+    top: number;
+    left: number;
+    height: number;
+    width: number;
+  } | null>(null);
 
   // Mirrors `value` synchronously (the prop only catches up once the parent
   // re-renders) so a chain of uploads - each awaiting the network before
@@ -447,9 +449,7 @@ export function MarkdownEditor({ value: storedValue, onChange: onStoredChange, p
         target_type: result.type,
         target_id: result.id,
       }).catch((err) => {
-        setRelationError(
-          t("relationError", { title: result.title, message: errorMessage(err) }),
-        );
+        setRelationError(t("relationError", { title: result.title, message: errorMessage(err) }));
       });
     }
   }
@@ -492,7 +492,6 @@ export function MarkdownEditor({ value: storedValue, onChange: onStoredChange, p
     lastCaretRef.current = from;
     focusSelection(from, from);
   }
-
 
   function snapSelection(textarea: HTMLTextAreaElement, expandRange: boolean) {
     const { selectionStart: start, selectionEnd: end, selectionDirection } = textarea;
@@ -564,8 +563,7 @@ export function MarkdownEditor({ value: storedValue, onChange: onStoredChange, p
       `${isImage ? "!" : ""}[${t(isImage ? "uploadingImage" : "uploadingFile", { filename: file.name, percent })}](uploading:${uploadId})`;
     let placeholderText = placeholderFor(0);
 
-    const withPlaceholder =
-      valueRef.current.slice(0, insertPos) + placeholderText + valueRef.current.slice(insertPos);
+    const withPlaceholder = valueRef.current.slice(0, insertPos) + placeholderText + valueRef.current.slice(insertPos);
     valueRef.current = withPlaceholder;
     onChange(withPlaceholder);
     const cursor = insertPos + placeholderText.length;
@@ -600,9 +598,7 @@ export function MarkdownEditor({ value: storedValue, onChange: onStoredChange, p
       const next = current.includes(placeholderText) ? current.replace(placeholderText, "") : current;
       valueRef.current = next;
       onChange(next);
-      setUploadError(
-        t("uploadError", { filename: file.name, message: errorMessage(err) }),
-      );
+      setUploadError(t("uploadError", { filename: file.name, message: errorMessage(err) }));
       return insertPos;
     }
   }
@@ -683,14 +679,10 @@ export function MarkdownEditor({ value: storedValue, onChange: onStoredChange, p
       onChange(next);
     } catch (err) {
       const current = valueRef.current;
-      const next = current.includes(placeholderText)
-        ? current.replace(placeholderText, originalMarkdown)
-        : current;
+      const next = current.includes(placeholderText) ? current.replace(placeholderText, originalMarkdown) : current;
       valueRef.current = next;
       onChange(next);
-      setUploadError(
-        t("uploadError", { filename: croppedFile.name, message: errorMessage(err) }),
-      );
+      setUploadError(t("uploadError", { filename: croppedFile.name, message: errorMessage(err) }));
     }
   }
 
@@ -1177,14 +1169,20 @@ export function MarkdownEditor({ value: storedValue, onChange: onStoredChange, p
           {mention && mentionCoords && (
             <div
               className="absolute z-10 max-h-64 overflow-y-auto bg-surface-container-lowest border border-outline-variant rounded-lg shadow-[0_2px_8px_0_rgba(0,0,0,0.15)]"
-              style={{ top: mentionCoords.top + mentionCoords.height, left: mentionCoords.left, width: mentionCoords.width }}
+              style={{
+                top: mentionCoords.top + mentionCoords.height,
+                left: mentionCoords.left,
+                width: mentionCoords.width,
+              }}
             >
               {mentionSearching ? (
                 <p className="px-3 py-2 font-body-md text-body-md text-on-surface-variant">{t("mentionSearching")}</p>
               ) : !mention.query.trim() ? (
                 <p className="px-3 py-2 font-body-md text-body-md text-on-surface-variant">{commonT("typeToSearch")}</p>
               ) : mentionResults.length === 0 ? (
-                <p className="px-3 py-2 font-body-md text-body-md text-on-surface-variant">{commonT("noResultsFound")}</p>
+                <p className="px-3 py-2 font-body-md text-body-md text-on-surface-variant">
+                  {commonT("noResultsFound")}
+                </p>
               ) : (
                 <ul className="py-1">
                   {mentionResults.map((result, i) => (
@@ -1197,7 +1195,11 @@ export function MarkdownEditor({ value: storedValue, onChange: onStoredChange, p
                           i === mentionActiveIndex ? "bg-surface-variant" : "hover:bg-surface-variant"
                         }`}
                       >
-                        <Icon name={RELATABLE_ICON[result.type]} size={16} className="text-on-surface-variant shrink-0" />
+                        <Icon
+                          name={RELATABLE_ICON[result.type]}
+                          size={16}
+                          className="text-on-surface-variant shrink-0"
+                        />
                         <span className="font-body-md text-body-md text-on-surface truncate">{result.title}</span>
                       </button>
                     </li>

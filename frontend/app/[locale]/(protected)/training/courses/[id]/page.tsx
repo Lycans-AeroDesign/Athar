@@ -8,6 +8,7 @@ import { CoAuthorsByline } from "@/components/knowledge/CoAuthorsByline";
 import { CourseStatusPill } from "@/components/training/CourseStatusPill";
 import { CurriculumList } from "@/components/training/CurriculumList";
 import { DifficultyPill } from "@/components/training/DifficultyPill";
+import { CourseDetailSkeleton } from "@/components/training/TrainingSkeletons";
 import { AuthenticatedImage } from "@/components/ui/AuthenticatedImage";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
@@ -18,11 +19,8 @@ import { Icon } from "@/components/ui/Icon";
 import { IconButton } from "@/components/ui/IconButton";
 import { Markdown } from "@/components/ui/Markdown";
 import { Modal } from "@/components/ui/Modal";
-import { CourseDetailSkeleton } from "@/components/training/TrainingSkeletons";
 import { UpdatedBadge } from "@/components/ui/UpdatedBadge";
 import { Link, useRouter } from "@/i18n/navigation";
-import { errorMessage } from "@/lib/errors";
-import { formatPersonName } from "@/lib/format";
 import {
   archiveCourse,
   deleteCourse,
@@ -37,6 +35,8 @@ import {
 import type { CourseProgress } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { useHasPermission } from "@/lib/auth/permissions";
+import { errorMessage } from "@/lib/errors";
+import { formatPersonName } from "@/lib/format";
 import { useResource } from "@/lib/useResource";
 
 export default function CourseDetailPage() {
@@ -218,9 +218,7 @@ export default function CourseDetailPage() {
               )}
             </div>
 
-            <h1 className="font-display text-display text-on-surface font-extrabold tracking-tight">
-              {course.title}
-            </h1>
+            <h1 className="font-display text-display text-on-surface font-extrabold tracking-tight">{course.title}</h1>
 
             {course.short_description && (
               <p className="font-body-lg text-body-lg text-on-surface-variant leading-relaxed">
@@ -246,9 +244,7 @@ export default function CourseDetailPage() {
                   <span className="font-medium text-on-surface">{authorName}</span>
                 </div>
               ) : null}
-              {course.co_authors && course.co_authors.length > 0 && (
-                <CoAuthorsByline coAuthors={course.co_authors} />
-              )}
+              {course.co_authors && course.co_authors.length > 0 && <CoAuthorsByline coAuthors={course.co_authors} />}
               <UpdatedBadge updatedAt={course.updated_at} createdAt={course.created_at} />
             </div>
           </div>
@@ -320,9 +316,7 @@ export default function CourseDetailPage() {
           {/* Course Curriculum List */}
           <div className="space-y-4">
             <div>
-              <h2 className="font-headline-md text-headline-md font-bold text-on-surface">
-                {t("curriculumTitle")}
-              </h2>
+              <h2 className="font-headline-md text-headline-md font-bold text-on-surface">{t("curriculumTitle")}</h2>
               <p className="font-body-sm text-body-sm text-on-surface-variant mt-0.5">
                 {cardT("moduleCount", { count: course.module_count })} &middot;{" "}
                 {cardT("lessonCount", { count: course.lesson_count })}
@@ -442,7 +436,9 @@ export default function CourseDetailPage() {
                         <Icon name="schedule" size={16} className="text-on-surface-variant/70" />
                         {t("durationStat")}
                       </span>
-                      <span className="font-medium font-mono">{t("durationMinutes", { minutes: course.estimated_minutes })}</span>
+                      <span className="font-medium font-mono">
+                        {t("durationMinutes", { minutes: course.estimated_minutes })}
+                      </span>
                     </li>
                   )}
                   <li className="flex items-center justify-between gap-2">
@@ -482,9 +478,7 @@ export default function CourseDetailPage() {
         }
       >
         <div className="space-y-4">
-          <p className="font-body-md text-body-md text-on-surface-variant">
-            {workflowT("deleteConfirmBody")}
-          </p>
+          <p className="font-body-md text-body-md text-on-surface-variant">{workflowT("deleteConfirmBody")}</p>
           {course.enrollment_count > 0 && (
             <div className="p-3 rounded-lg border border-error/30 bg-error/10 space-y-3">
               <div className="flex items-start gap-2 text-error">

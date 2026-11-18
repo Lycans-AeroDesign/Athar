@@ -39,7 +39,9 @@ export function TestsTable({ tests, ordering, onOrderingChange }: TestsTableProp
     {
       field: "test_type",
       labelKey: "colType",
-      render: (test) => <span className="font-body-md text-body-md text-on-surface-variant">{typeT(test.test_type)}</span>,
+      render: (test) => (
+        <span className="font-body-md text-body-md text-on-surface-variant">{typeT(test.test_type)}</span>
+      ),
     },
     {
       field: "project",

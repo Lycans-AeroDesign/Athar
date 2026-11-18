@@ -13,7 +13,17 @@ import { RELATABLE_ICON, RELATABLE_ROUTE_PREFIX } from "@/lib/knowledgeTypes";
 
 type BookmarkTab = RelatableType | "all";
 
-const TABS: BookmarkTab[] = ["all", "article", "question", "project", "component", "failure", "sop", "test", "document"];
+const TABS: BookmarkTab[] = [
+  "all",
+  "article",
+  "question",
+  "project",
+  "component",
+  "failure",
+  "sop",
+  "test",
+  "document",
+];
 
 // Trimmed ContributionsPanel.tsx (tab row + Pagination, no stats/leaderboard/
 // activity feed) - BookmarkEntry is deliberately thin (id/type/object_id/
@@ -24,9 +34,12 @@ export function BookmarksPanel() {
   const [tab, setTab] = useState<BookmarkTab>("all");
   const [page, setPage] = useState(1);
 
-  const [result, setResult] = useState<{ key: string; entries: BookmarkEntry[]; hasNext: boolean; count: number } | null>(
-    null,
-  );
+  const [result, setResult] = useState<{
+    key: string;
+    entries: BookmarkEntry[];
+    hasNext: boolean;
+    count: number;
+  } | null>(null);
   const resultKey = `${tab}:${page}`;
   const entries = result?.key === resultKey ? result.entries : null;
 

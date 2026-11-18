@@ -92,7 +92,10 @@ export function CollectionMembershipPicker({
                 : "bg-surface-container text-on-surface-variant border-outline-variant hover:border-primary hover:text-on-surface"
             }`}
           >
-            <Icon name={selected ? "check_circle" : collection.mode === "SERIES" ? "format_list_numbered" : "folder_open"} size={14} />
+            <Icon
+              name={selected ? "check_circle" : collection.mode === "SERIES" ? "format_list_numbered" : "folder_open"}
+              size={14}
+            />
             <span className="max-w-[240px] truncate">{collection.title}</span>
           </button>
         );

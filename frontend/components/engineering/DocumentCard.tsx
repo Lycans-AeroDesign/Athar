@@ -91,7 +91,9 @@ export function DocumentCard({ document }: { document: DocumentSummary }) {
             </span>
           ))}
           {extraTags > 0 && (
-            <span className="font-mono-sm text-mono-sm text-on-surface-variant">{t("moreTags", { count: extraTags })}</span>
+            <span className="font-mono-sm text-mono-sm text-on-surface-variant">
+              {t("moreTags", { count: extraTags })}
+            </span>
           )}
         </div>
       )}
@@ -125,7 +127,10 @@ export function DocumentCardGridSkeleton({ count = 6 }: { count?: number }) {
   return (
     <SkeletonRegion className={DOCUMENT_CARD_GRID}>
       {Array.from({ length: count }).map((_, index) => (
-        <div key={index} className="flex flex-col bg-surface-container-low border border-outline-variant rounded-xl p-4">
+        <div
+          key={index}
+          className="flex flex-col bg-surface-container-low border border-outline-variant rounded-xl p-4"
+        >
           <div className="flex items-start gap-3 mb-2">
             <Skeleton className="h-10 w-10 rounded-lg shrink-0" />
             <div className="min-w-0 flex-1">

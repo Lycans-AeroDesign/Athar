@@ -6,12 +6,13 @@ import { use, useEffect, useState } from "react";
 import { BrandMark } from "@/components/ui/BrandMark";
 import { Icon } from "@/components/ui/Icon";
 import { Markdown } from "@/components/ui/Markdown";
-import { formatBytes } from "@/lib/bytes";
-import { formatDate } from "@/lib/datetime";
 import { getPublicShare, publicShareFileUrl } from "@/lib/api/shareLinks";
 import type { PublicShare } from "@/lib/api/types";
+import { formatBytes } from "@/lib/bytes";
+import { formatDate } from "@/lib/datetime";
 
-type State = { status: "loading" } | { status: "missing" } | { status: "error" } | { status: "ready"; share: PublicShare };
+type State =
+  { status: "loading" } | { status: "missing" } | { status: "error" } | { status: "ready"; share: PublicShare };
 
 // A read-only page for someone holding a share link - no account, no app
 // chrome (side nav, search). Everything shown comes from the public share
@@ -111,7 +112,9 @@ export default function SharedItemPage({ params }: { params: Promise<{ token: st
                         <span className="flex-1 min-w-0 truncate font-body-md text-body-md text-on-surface">
                           {file.original_filename}
                         </span>
-                        <span className="font-mono-sm text-mono-sm text-on-surface-variant">{formatBytes(file.size)}</span>
+                        <span className="font-mono-sm text-mono-sm text-on-surface-variant">
+                          {formatBytes(file.size)}
+                        </span>
                         <Icon name="download" size={18} className="text-on-surface-variant shrink-0" />
                       </a>
                     </li>

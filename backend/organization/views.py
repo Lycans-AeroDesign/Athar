@@ -39,10 +39,7 @@ def _public_organization(request) -> Organization | None:
     if request.user.is_authenticated:
         return request.user.organization
     return (
-        Organization.objects.annotate(user_count=Count("users"))
-        .filter(user_count__gt=0)
-        .order_by("created_at")
-        .first()
+        Organization.objects.annotate(user_count=Count("users")).filter(user_count__gt=0).order_by("created_at").first()
         or Organization.objects.order_by("created_at").first()
     )
 
@@ -72,7 +69,10 @@ class OrganizationSettingsView(APIView):
     @extend_schema(
         tags=["Organization"],
         summary="Get the current organization settings (name, branding, ...) - public, no auth required",
-        responses={200: OrganizationSettingsSerializer, 404: OpenApiResponse(description="No organization exists yet.")},
+        responses={
+            200: OrganizationSettingsSerializer,
+            404: OpenApiResponse(description="No organization exists yet."),
+        },
     )
     def get(self, request):
         organization = _public_organization(request)
@@ -91,7 +91,10 @@ class OrganizationLogoView(APIView):
     @extend_schema(
         tags=["Organization"],
         summary="Get the organization logo image - public, no auth required",
-        responses={200: OpenApiResponse(description="The logo image."), 404: OpenApiResponse(description="No logo set.")},
+        responses={
+            200: OpenApiResponse(description="The logo image."),
+            404: OpenApiResponse(description="No logo set."),
+        },
     )
     def get(self, request):
         organization = _public_organization(request)
@@ -112,7 +115,10 @@ class OrganizationFaviconView(APIView):
     @extend_schema(
         tags=["Organization"],
         summary="Get the organization favicon image - public, no auth required",
-        responses={200: OpenApiResponse(description="The favicon image."), 404: OpenApiResponse(description="No favicon set.")},
+        responses={
+            200: OpenApiResponse(description="The favicon image."),
+            404: OpenApiResponse(description="No favicon set."),
+        },
     )
     def get(self, request):
         organization = _public_organization(request)
@@ -184,7 +190,9 @@ class OrganizationCreateView(APIView):
         responses={
             201: UserSerializer,
             400: BAD_REQUEST,
-            404: OpenApiResponse(description="Organization signup is disabled (by the platform operator or ENABLE_ORGANIZATION_REGISTRATION=False)."),
+            404: OpenApiResponse(
+                description="Organization signup is disabled (by the platform operator or ENABLE_ORGANIZATION_REGISTRATION=False)."
+            ),
         },
     )
     def post(self, request):

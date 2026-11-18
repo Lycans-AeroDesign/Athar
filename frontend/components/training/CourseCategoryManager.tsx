@@ -6,10 +6,10 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Icon } from "@/components/ui/Icon";
+import { INPUT_CLASS } from "@/components/ui/inputStyles";
 import { LoadError } from "@/components/ui/LoadError";
 import { Modal } from "@/components/ui/Modal";
 import { SettingsListSkeleton } from "@/components/ui/Skeleton";
-import { INPUT_CLASS } from "@/components/ui/inputStyles";
 import {
   createCourseCategory,
   deleteCourseCategory,
@@ -76,9 +76,7 @@ export function CourseCategoryManager() {
           name: name.trim(),
           description: description.trim(),
         });
-        setCategories((prev) =>
-          (prev ?? []).map((category) => (category.id === updated.id ? updated : category)),
-        );
+        setCategories((prev) => (prev ?? []).map((category) => (category.id === updated.id ? updated : category)));
       }
       setEditTarget(null);
     } catch (err) {
@@ -121,16 +119,10 @@ export function CourseCategoryManager() {
                 key={category.id}
                 className="flex items-center justify-between gap-4 px-3 py-2 rounded-lg bg-surface-container"
               >
-                <button
-                  type="button"
-                  onClick={() => openRename(category)}
-                  className="min-w-0 text-start flex-1"
-                >
+                <button type="button" onClick={() => openRename(category)} className="min-w-0 text-start flex-1">
                   <p className="font-body-md text-body-md text-on-surface truncate">{category.name}</p>
                   {category.description && (
-                    <p className="font-body-md text-body-md text-on-surface-variant truncate">
-                      {category.description}
-                    </p>
+                    <p className="font-body-md text-body-md text-on-surface-variant truncate">{category.description}</p>
                   )}
                 </button>
                 <div className="flex items-center gap-3 shrink-0">
@@ -172,21 +164,13 @@ export function CourseCategoryManager() {
             <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase">
               {categoriesT("nameLabel")}
             </label>
-            <input
-              className={INPUT_CLASS}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
+            <input className={INPUT_CLASS} value={name} onChange={(e) => setName(e.target.value)} />
           </div>
           <div className="space-y-2">
             <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase">
               {categoriesT("descriptionLabel")}
             </label>
-            <input
-              className={INPUT_CLASS}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
+            <input className={INPUT_CLASS} value={description} onChange={(e) => setDescription(e.target.value)} />
           </div>
           {saveError && (
             <p className="font-body-md text-body-md text-error" role="alert">

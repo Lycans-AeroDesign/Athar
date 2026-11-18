@@ -5,7 +5,10 @@ function hexToRgb(hex: string): [number, number, number] {
 }
 
 function rgbToHex(r: number, g: number, b: number): string {
-  const channel = (c: number) => Math.round(Math.min(255, Math.max(0, c))).toString(16).padStart(2, "0");
+  const channel = (c: number) =>
+    Math.round(Math.min(255, Math.max(0, c)))
+      .toString(16)
+      .padStart(2, "0");
   return `#${channel(r)}${channel(g)}${channel(b)}`;
 }
 

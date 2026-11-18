@@ -20,12 +20,7 @@ interface ImportCurriculumModalProps {
   onSuccess: (course: CourseDetail) => void;
 }
 
-export function ImportCurriculumModal({
-  courseId,
-  open,
-  onOpenChange,
-  onSuccess,
-}: ImportCurriculumModalProps) {
+export function ImportCurriculumModal({ courseId, open, onOpenChange, onSuccess }: ImportCurriculumModalProps) {
   const t = useTranslations("training.manage");
   const commonT = useTranslations("common");
   const textareaId = useId();
@@ -42,10 +37,7 @@ export function ImportCurriculumModal({
     setParsedModules(result.modules);
   }
 
-  const totalLessons = useMemo(
-    () => parsedModules.reduce((acc, m) => acc + m.lessons.length, 0),
-    [parsedModules],
-  );
+  const totalLessons = useMemo(() => parsedModules.reduce((acc, m) => acc + m.lessons.length, 0), [parsedModules]);
 
   async function handleImport() {
     if (parsedModules.length === 0) return;
@@ -69,9 +61,7 @@ export function ImportCurriculumModal({
   function handleDeleteLesson(moduleIdx: number, lessonIdx: number) {
     setParsedModules((prev) =>
       prev.map((mod, i) =>
-        i === moduleIdx
-          ? { ...mod, lessons: mod.lessons.filter((_, li) => li !== lessonIdx) }
-          : mod,
+        i === moduleIdx ? { ...mod, lessons: mod.lessons.filter((_, li) => li !== lessonIdx) } : mod,
       ),
     );
   }
@@ -88,11 +78,7 @@ export function ImportCurriculumModal({
           <Button variant="secondary" onClick={() => onOpenChange(false)} disabled={isImporting}>
             {commonT("cancel")}
           </Button>
-          <Button
-            onClick={handleImport}
-            disabled={parsedModules.length === 0 || isImporting}
-            loading={isImporting}
-          >
+          <Button onClick={handleImport} disabled={parsedModules.length === 0 || isImporting} loading={isImporting}>
             {isImporting ? commonT("saving") : t("importCurriculumConfirm", { count: totalLessons })}
           </Button>
         </>
@@ -135,9 +121,7 @@ export function ImportCurriculumModal({
                   className="rounded-lg border border-outline-variant bg-surface-container-low p-3 space-y-2 text-start"
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-headline-sm text-headline-sm font-bold text-on-surface">
-                      {module.title}
-                    </span>
+                    <span className="font-headline-sm text-headline-sm font-bold text-on-surface">{module.title}</span>
                     <IconButton
                       icon="delete"
                       size={16}
@@ -147,17 +131,12 @@ export function ImportCurriculumModal({
                     />
                   </div>
                   {module.description && (
-                    <p className="font-body-sm text-body-sm text-on-surface-variant italic">
-                      {module.description}
-                    </p>
+                    <p className="font-body-sm text-body-sm text-on-surface-variant italic">{module.description}</p>
                   )}
 
                   <ul className="space-y-1 ps-2 border-s-2 border-outline-variant/60">
                     {module.lessons.map((lesson, lIdx) => (
-                      <li
-                        key={lIdx}
-                        className="flex items-center justify-between gap-2 text-body-sm py-0.5"
-                      >
+                      <li key={lIdx} className="flex items-center justify-between gap-2 text-body-sm py-0.5">
                         <span className="flex items-center gap-1.5 truncate">
                           <Icon
                             name={LESSON_TYPE_ICONS[lesson.lesson_type ?? "TEXT"].icon}

@@ -4,12 +4,11 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 import { Can } from "@/components/auth/Can";
-import { CourseCard } from "@/components/training/CourseCard";
+import { CourseCard, CourseCardGridSkeleton } from "@/components/training/CourseCard";
 import { Button } from "@/components/ui/Button";
 import { Combobox } from "@/components/ui/Combobox";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
-import { CourseCardGridSkeleton } from "@/components/training/CourseCard";
 import { Link } from "@/i18n/navigation";
 import { getCourseProgress, listCourseCategories, listCourses, listMyCourses, searchCourses } from "@/lib/api/training";
 import type { CourseCategory, CourseDifficulty, CourseEnrollment, CourseSummary } from "@/lib/api/types";
@@ -46,7 +45,10 @@ export default function TrainingDiscoveryPage() {
           onError,
         );
       } else {
-        listCourses({ category: categoryId ?? undefined, difficulty: difficulty ?? undefined }).then(setCourses, onError);
+        listCourses({ category: categoryId ?? undefined, difficulty: difficulty ?? undefined }).then(
+          setCourses,
+          onError,
+        );
       }
     }, 300);
     return () => clearTimeout(handle);
@@ -128,7 +130,11 @@ export default function TrainingDiscoveryPage() {
             <div className="flex-1 min-w-36 sm:flex-none sm:w-44">
               <Combobox
                 placeholder={t("difficultyAll")}
-                options={DIFFICULTIES.map((value) => ({ value, label: difficultyT(value), ...DIFFICULTY_ICONS[value] }))}
+                options={DIFFICULTIES.map((value) => ({
+                  value,
+                  label: difficultyT(value),
+                  ...DIFFICULTY_ICONS[value],
+                }))}
                 value={difficulty}
                 onChange={(value) => setDifficulty(value as CourseDifficulty)}
               />

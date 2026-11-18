@@ -29,9 +29,7 @@ export function LoadingScreen() {
           <BrandMark className="h-16 w-16 animate-pulse" />
         )}
       </div>
-      <p className="font-label-caps text-label-caps uppercase text-on-surface-variant">
-        {t("loading")}
-      </p>
+      <p className="font-label-caps text-label-caps uppercase text-on-surface-variant">{t("loading")}</p>
     </div>
   );
 }

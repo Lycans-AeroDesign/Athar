@@ -44,9 +44,7 @@ describe("toDisplay / toStorage", () => {
 
   it("turns a re-typed @title back into the link while editing", () => {
     const { display, mentions } = toDisplay(`[Motor](${MOTOR})`);
-    expect(toStorage(`${display} then @Motor again`, mentions)).toBe(
-      `[Motor](${MOTOR}) then [Motor](${MOTOR}) again`,
-    );
+    expect(toStorage(`${display} then @Motor again`, mentions)).toBe(`[Motor](${MOTOR}) then [Motor](${MOTOR}) again`);
   });
 
   it("drops the link once the @title is edited", () => {

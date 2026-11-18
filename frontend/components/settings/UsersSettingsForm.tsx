@@ -119,8 +119,15 @@ export function UsersSettingsForm() {
     ? null
     : query
       ? users.filter((user) =>
-          [user.email, user.username ?? "", user.first_name, user.last_name, `${user.first_name} ${user.last_name}`, user.title, ...user.roles]
-            .some((field) => field.toLowerCase().includes(query)),
+          [
+            user.email,
+            user.username ?? "",
+            user.first_name,
+            user.last_name,
+            `${user.first_name} ${user.last_name}`,
+            user.title,
+            ...user.roles,
+          ].some((field) => field.toLowerCase().includes(query)),
         )
       : users;
 

@@ -69,20 +69,15 @@ export function CurriculumList({
       <div className="space-y-3">
         {modules.map((module, mIdx) => {
           const isOpen = openModules[module.id] ?? true;
-          const completedCount = module.lessons.filter((l) =>
-            completedLessonIds?.has(l.id),
-          ).length;
-          const allCompleted =
-            module.lessons.length > 0 && completedCount === module.lessons.length;
+          const completedCount = module.lessons.filter((l) => completedLessonIds?.has(l.id)).length;
+          const allCompleted = module.lessons.length > 0 && completedCount === module.lessons.length;
           const hasActiveLesson = module.lessons.some((l) => l.id === activeLessonId);
 
           return (
             <div
               key={module.id}
               className={`rounded-xl border transition-colors overflow-hidden ${
-                hasActiveLesson
-                  ? "border-primary/40 bg-surface-container"
-                  : "border-outline-variant bg-surface"
+                hasActiveLesson ? "border-primary/40 bg-surface-container" : "border-outline-variant bg-surface"
               }`}
             >
               <button
@@ -102,14 +97,8 @@ export function CurriculumList({
                   <span className="text-[11px] font-mono">
                     {completedCount}/{module.lessons.length}
                   </span>
-                  {allCompleted && (
-                    <Icon name="check_circle" size={13} className="text-primary" />
-                  )}
-                  <Icon
-                    name={isOpen ? "expand_less" : "expand_more"}
-                    size={16}
-                    className="text-on-surface-variant"
-                  />
+                  {allCompleted && <Icon name="check_circle" size={13} className="text-primary" />}
+                  <Icon name={isOpen ? "expand_less" : "expand_more"} size={16} className="text-on-surface-variant" />
                 </div>
               </button>
 
@@ -136,17 +125,11 @@ export function CurriculumList({
                             name={isCompleted ? "check_circle" : "radio_button_unchecked"}
                             size={16}
                             className={`mt-0.5 shrink-0 ${
-                              isActive
-                                ? "text-on-primary"
-                                : isCompleted
-                                  ? "text-primary"
-                                  : "text-on-surface-variant/60"
+                              isActive ? "text-on-primary" : isCompleted ? "text-primary" : "text-on-surface-variant/60"
                             }`}
                           />
                           <div className="flex-1 min-w-0">
-                            <span className="block text-xs leading-snug line-clamp-2">
-                              {lesson.title}
-                            </span>
+                            <span className="block text-xs leading-snug line-clamp-2">{lesson.title}</span>
                             <span
                               className={`flex items-center gap-1 text-[10px] mt-0.5 uppercase tracking-wider ${
                                 isActive ? "text-on-primary/80" : "text-on-surface-variant/70"
@@ -175,11 +158,8 @@ export function CurriculumList({
     <div className="space-y-3">
       {modules.map((module, mIdx) => {
         const isOpen = openModules[module.id] ?? true;
-        const completedCount = module.lessons.filter((l) =>
-          completedLessonIds?.has(l.id),
-        ).length;
-        const allCompleted =
-          module.lessons.length > 0 && completedCount === module.lessons.length;
+        const completedCount = module.lessons.filter((l) => completedLessonIds?.has(l.id)).length;
+        const allCompleted = module.lessons.length > 0 && completedCount === module.lessons.length;
 
         return (
           <div
@@ -248,7 +228,9 @@ export function CurriculumList({
                               name={isCompleted ? "check_circle" : "play_circle"}
                               size={18}
                               className={`shrink-0 ${
-                                isCompleted ? "text-primary" : "text-on-surface-variant group-hover:text-primary transition-colors"
+                                isCompleted
+                                  ? "text-primary"
+                                  : "text-on-surface-variant group-hover:text-primary transition-colors"
                               }`}
                             />
                             <div className="min-w-0">
@@ -260,9 +242,7 @@ export function CurriculumList({
                                   <Icon name={LESSON_TYPE_ICONS[lesson.lesson_type].icon} size={12} />
                                   {lessonTypeT(lesson.lesson_type)}
                                 </span>
-                                {!lesson.is_required && (
-                                  <span>&middot; {t("optionalLabel")}</span>
-                                )}
+                                {!lesson.is_required && <span>&middot; {t("optionalLabel")}</span>}
                                 {lesson.estimated_minutes > 0 && (
                                   <span>&middot; {cardT("minutes", { count: lesson.estimated_minutes })}</span>
                                 )}

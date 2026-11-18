@@ -37,7 +37,10 @@ export function parseCurriculumText(rawText: string): {
     .replace(/([^\n])([➢•])/g, "$1\n$2")
     .replace(/(>>>>>>>\s*https?:\/\/[^\s]+)/g, "\n$1\n");
 
-  const lines = normalized.split("\n").map((l) => l.trim()).filter(Boolean);
+  const lines = normalized
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
 
   const modules: ImportCurriculumModule[] = [];
   let currentModule: ImportCurriculumModule | null = null;
@@ -64,7 +67,9 @@ export function parseCurriculumText(rawText: string): {
       let description = "";
 
       // If the heading line contains a short title followed by sentence description (e.g. "4. Nesting It is the final step...")
-      const splitMatch = title.match(/^(\d+[\.\)]\s+[\w\s]{2,30}?)(?:[\.\:\-]\s*|\s{2,}|\s+(?=[A-Z][a-z]+\s+(?:is|are|contains|covers|focuses)\b))(.*)$/i);
+      const splitMatch = title.match(
+        /^(\d+[\.\)]\s+[\w\s]{2,30}?)(?:[\.\:\-]\s*|\s{2,}|\s+(?=[A-Z][a-z]+\s+(?:is|are|contains|covers|focuses)\b))(.*)$/i,
+      );
       if (splitMatch && splitMatch[2].trim()) {
         title = splitMatch[1].trim();
         description = splitMatch[2].trim();
@@ -136,7 +141,10 @@ export function parseCurriculumText(rawText: string): {
           if (currentLesson.lesson_type === "TEXT") {
             currentLesson.lesson_type = detectLessonType(line);
           }
-          const nonUrlText = line.replace(URL_PATTERN, "").replace(/[()\[\]:–—-]+/g, " ").trim();
+          const nonUrlText = line
+            .replace(URL_PATTERN, "")
+            .replace(/[()\[\]:–—-]+/g, " ")
+            .trim();
           if (nonUrlText) {
             const combined = currentLesson.short_description
               ? `${currentLesson.short_description} ${nonUrlText}`
@@ -145,17 +153,13 @@ export function parseCurriculumText(rawText: string): {
           }
         } else {
           // Regular text description / note
-          const combined = currentLesson.short_description
-            ? `${currentLesson.short_description} ${line}`
-            : line;
+          const combined = currentLesson.short_description ? `${currentLesson.short_description} ${line}` : line;
           if (combined.length <= 280) {
             currentLesson.short_description = combined;
           } else {
             currentLesson.short_description = combined.slice(0, 280);
             const remainder = combined.slice(280);
-            currentLesson.content = currentLesson.content
-              ? `${currentLesson.content}\n${remainder}`
-              : remainder;
+            currentLesson.content = currentLesson.content ? `${currentLesson.content}\n${remainder}` : remainder;
           }
         }
       } else if (currentModule) {

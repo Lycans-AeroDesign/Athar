@@ -12,7 +12,9 @@ from .models import AuditLog
 from .serializers import ActivityEntrySerializer, AuditLogSerializer
 
 
-@extend_schema(tags=["Audit"], summary="List audit log entries", responses={200: AuditLogSerializer(many=True), **COMMON_ERRORS})
+@extend_schema(
+    tags=["Audit"], summary="List audit log entries", responses={200: AuditLogSerializer(many=True), **COMMON_ERRORS}
+)
 class AuditLogListView(ListAPIView):
     permission_classes = [require_permission("audit.read")]
     serializer_class = AuditLogSerializer
@@ -52,7 +54,9 @@ def _visible_activity(queryset, viewer):
     from knowledge.models import Answer, Article, Question
 
     org = viewer.organization
-    articles = visibility_rules.exclude_inaccessible(Article.objects.filter(organization=org), viewer, Article, "article")
+    articles = visibility_rules.exclude_inaccessible(
+        Article.objects.filter(organization=org), viewer, Article, "article"
+    )
     questions = visibility_rules.exclude_inaccessible(
         Question.objects.filter(organization=org), viewer, Question, "question"
     )

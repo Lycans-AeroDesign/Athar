@@ -319,9 +319,7 @@ export function GlobalSearch() {
                       className="mt-0.5 text-on-surface-variant shrink-0"
                     />
                     <span className="min-w-0">
-                      <span className="block font-body-md text-body-md text-on-surface truncate">
-                        {result.title}
-                      </span>
+                      <span className="block font-body-md text-body-md text-on-surface truncate">{result.title}</span>
                       {result.excerpt && (
                         <span className="block font-body-md text-body-md text-on-surface-variant truncate">
                           {result.excerpt}

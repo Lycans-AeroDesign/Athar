@@ -5,9 +5,10 @@ import { useParams } from "next/navigation";
 import { useState } from "react";
 
 import { Can } from "@/components/auth/Can";
-import { QuestionStatusPill } from "@/components/knowledge/QuestionStatusPill";
 import { Attachments } from "@/components/knowledge/Attachments";
+import { CoAuthorsByline } from "@/components/knowledge/CoAuthorsByline";
 import { ContributorsRow } from "@/components/knowledge/Contributors";
+import { QuestionStatusPill } from "@/components/knowledge/QuestionStatusPill";
 import { RelatedContent } from "@/components/knowledge/RelatedContent";
 import { Avatar } from "@/components/ui/Avatar";
 import { BookmarkButton } from "@/components/ui/BookmarkButton";
@@ -22,11 +23,7 @@ import { ShareButton } from "@/components/ui/ShareButton";
 import { DetailPageSkeleton } from "@/components/ui/Skeleton";
 import { TagChip } from "@/components/ui/TagChip";
 import { UpdatedBadge } from "@/components/ui/UpdatedBadge";
-import { CoAuthorsByline } from "@/components/knowledge/CoAuthorsByline";
 import { Link, useRouter } from "@/i18n/navigation";
-import { formatRelativeTime } from "@/lib/datetime";
-import { errorMessage } from "@/lib/errors";
-import { formatPersonName } from "@/lib/format";
 import {
   acceptAnswer,
   closeQuestion,
@@ -38,6 +35,9 @@ import {
 } from "@/lib/api/knowledge";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { useHasPermission } from "@/lib/auth/permissions";
+import { formatRelativeTime } from "@/lib/datetime";
+import { errorMessage } from "@/lib/errors";
+import { formatPersonName } from "@/lib/format";
 import { useResource } from "@/lib/useResource";
 
 export default function QuestionDetailPage() {
@@ -102,7 +102,9 @@ export default function QuestionDetailPage() {
     setIsWorking(true);
     setActionError(null);
     try {
-      setQuestion(question!.status === "CLOSED" ? await reopenQuestion(question!.id) : await closeQuestion(question!.id));
+      setQuestion(
+        question!.status === "CLOSED" ? await reopenQuestion(question!.id) : await closeQuestion(question!.id),
+      );
     } catch (err) {
       setActionError(errorMessage(err));
     } finally {
@@ -135,208 +137,218 @@ export default function QuestionDetailPage() {
 
   return (
     <div className="flex flex-col lg:flex-row gap-8 items-start">
-    <div className="flex-1 w-full min-w-0 max-w-[800px] space-y-6">
-      <Link
-        href="/knowledge"
-        className="inline-flex items-center gap-1 font-label-caps text-label-caps uppercase text-on-surface-variant hover:text-on-surface transition-colors"
-      >
-        <Icon name="arrow_back" size={16} />
-        {t("backToKnowledge")}
-      </Link>
+      <div className="flex-1 w-full min-w-0 max-w-[800px] space-y-6">
+        <Link
+          href="/knowledge"
+          className="inline-flex items-center gap-1 font-label-caps text-label-caps uppercase text-on-surface-variant hover:text-on-surface transition-colors"
+        >
+          <Icon name="arrow_back" size={16} />
+          {t("backToKnowledge")}
+        </Link>
 
-      <div className="pb-4 border-b border-outline-variant space-y-3">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="flex items-center gap-2 font-mono-sm text-mono-sm text-on-surface-variant">
-            <Icon name="forum" size={16} />
-            <span>{questionId}</span>
-            <span>•</span>
-            {authorName && question.author && (
-              <Link href={`/users/${question.author.id}`} className="hover:text-primary hover:underline transition-colors">
-                {t("askedBy", { name: authorName })}
-              </Link>
-            )}
-            <CoAuthorsByline coAuthors={question.co_authors} />
-            <span>•</span>
-            <UpdatedBadge updatedAt={question.updated_at} createdAt={question.created_at} />
-          </div>
-          <div className="flex items-center gap-2">
-            <BookmarkButton key={question.id} type="question" objectId={question.id} bookmarkId={question.bookmark_id} />
-            <ShareButton title={question.title} />
-            {canEdit && (
-              <Link href={`/knowledge/questions/${question.id}/edit`}>
-                <IconButton icon="edit" variant="secondary" aria-label={t("editButton")} />
-              </Link>
-            )}
-            {canManage && (
-              <IconButton
-                icon="delete"
-                variant="danger"
-                aria-label={t("deleteButton")}
-                onClick={() => setDeleteOpen(true)}
-              />
-            )}
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <h1 className="font-headline-lg text-headline-lg text-on-surface">{question.title}</h1>
-          <QuestionStatusPill status={question.status} />
-          {question.visibility === "RESTRICTED" && (
-            <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-error-container text-on-error-container font-label-caps text-label-caps uppercase">
-              <Icon name="lock" size={12} />
-              {t("visibilityRESTRICTED")}
-            </span>
-          )}
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {question.tags.map((tag) => (
-            <TagChip key={tag.id} tag={tag} />
-          ))}
-        </div>
-        <ContributorsRow contributors={question.contributors} />
-        <div className="flex flex-wrap items-center gap-2">
-          {canManage && (
-            <Button variant="secondary" onClick={handleToggleClose} disabled={isWorking}>
-              {question.status === "CLOSED" ? t("reopenButton") : t("closeButton")}
-            </Button>
-          )}
-          {question.promoted_to_article && (
-            <Link href={`/knowledge/articles/${question.promoted_to_article}`}>
-              <Button variant="secondary">
-                <Icon name="menu_book" size={16} />
-                {t("viewPromotedArticle")}
-              </Button>
-            </Link>
-          )}
-        </div>
-      </div>
-
-      {actionError && (
-        <p className="font-body-md text-body-md text-error" role="alert">
-          {actionError}
-        </p>
-      )}
-
-      <Markdown content={question.body} />
-
-      {canPromote && (
-        <div className="flex flex-wrap items-center justify-between gap-3 p-4 bg-primary-container/10 border border-primary/20 rounded-xl">
-          <div className="flex items-center gap-3 text-primary font-body-md text-body-md">
-            <Icon name="auto_awesome" size={20} className="shrink-0" />
-            <span>{t("promoteBannerText")}</span>
-          </div>
-          <Button onClick={handlePromote} disabled={isWorking}>
-            {t("promoteButton")}
-          </Button>
-        </div>
-      )}
-
-      <div>
-        <h2 className="flex items-center gap-2 font-headline-md text-headline-md text-on-surface mb-4">
-          <Icon name="forum" size={18} />
-          {t("answersHeading", { count: question.answers.length })}
-        </h2>
-
-        {question.answers.length === 0 ? (
-          <p className="font-body-md text-body-md text-on-surface-variant">{t("noAnswersYet")}</p>
-        ) : (
-          <div className="space-y-4">
-            {question.answers.map((answer) => {
-              const answerAuthorName = formatPersonName(answer.author);
-              return (
-                <div
-                  key={answer.id}
-                  className={`relative overflow-hidden rounded-xl bg-surface border p-6 ${
-                    answer.is_accepted ? "border-secondary-fixed" : "border-outline-variant"
-                  }`}
+        <div className="pb-4 border-b border-outline-variant space-y-3">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="flex items-center gap-2 font-mono-sm text-mono-sm text-on-surface-variant">
+              <Icon name="forum" size={16} />
+              <span>{questionId}</span>
+              <span>•</span>
+              {authorName && question.author && (
+                <Link
+                  href={`/users/${question.author.id}`}
+                  className="hover:text-primary hover:underline transition-colors"
                 >
-                  {answer.is_accepted && <div className="absolute top-0 start-0 w-1 h-full bg-primary" />}
-                  <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
-                    <div className="flex items-center gap-2">
-                      {answer.author ? (
-                        <Link href={`/users/${answer.author.id}`} className="shrink-0">
-                          <Avatar person={answer.author} size="sm" />
-                        </Link>
-                      ) : (
-                        <Avatar person={answer.author} size="sm" />
-                      )}
-                      <div>
-                        {answerAuthorName &&
-                          (answer.author ? (
-                            <Link
-                              href={`/users/${answer.author.id}`}
-                              className="block font-body-md text-body-md font-bold text-on-surface hover:text-primary hover:underline transition-colors"
-                            >
-                              {answerAuthorName}
-                            </Link>
-                          ) : (
-                            <div className="font-body-md text-body-md font-bold text-on-surface">{answerAuthorName}</div>
-                          ))}
-                        <div className="font-mono-sm text-mono-sm text-on-surface-variant">
-                          {answer.author?.title && <span>{answer.author.title} • </span>}
-                          {formatRelativeTime(answer.created_at)}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {answer.is_accepted && (
-                        <span className="flex items-center gap-1 text-primary bg-primary-fixed/30 px-2.5 py-1 rounded-full font-label-caps text-label-caps uppercase">
-                          <Icon name="check_circle" size={14} />
-                          {t("acceptedAnswerBadge")}
-                        </span>
-                      )}
-                      {canAccept && (
-                        <Button
-                          variant="secondary"
-                          onClick={() => handleAccept(answer.id, answer.is_accepted)}
-                          disabled={workingAnswerId === answer.id}
-                        >
-                          {answer.is_accepted ? t("unacceptButton") : t("acceptButton")}
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                  <Markdown content={answer.body} />
-                </div>
-              );
-            })}
+                  {t("askedBy", { name: authorName })}
+                </Link>
+              )}
+              <CoAuthorsByline coAuthors={question.co_authors} />
+              <span>•</span>
+              <UpdatedBadge updatedAt={question.updated_at} createdAt={question.created_at} />
+            </div>
+            <div className="flex items-center gap-2">
+              <BookmarkButton
+                key={question.id}
+                type="question"
+                objectId={question.id}
+                bookmarkId={question.bookmark_id}
+              />
+              <ShareButton title={question.title} />
+              {canEdit && (
+                <Link href={`/knowledge/questions/${question.id}/edit`}>
+                  <IconButton icon="edit" variant="secondary" aria-label={t("editButton")} />
+                </Link>
+              )}
+              {canManage && (
+                <IconButton
+                  icon="delete"
+                  variant="danger"
+                  aria-label={t("deleteButton")}
+                  onClick={() => setDeleteOpen(true)}
+                />
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <h1 className="font-headline-lg text-headline-lg text-on-surface">{question.title}</h1>
+            <QuestionStatusPill status={question.status} />
+            {question.visibility === "RESTRICTED" && (
+              <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-error-container text-on-error-container font-label-caps text-label-caps uppercase">
+                <Icon name="lock" size={12} />
+                {t("visibilityRESTRICTED")}
+              </span>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {question.tags.map((tag) => (
+              <TagChip key={tag.id} tag={tag} />
+            ))}
+          </div>
+          <ContributorsRow contributors={question.contributors} />
+          <div className="flex flex-wrap items-center gap-2">
+            {canManage && (
+              <Button variant="secondary" onClick={handleToggleClose} disabled={isWorking}>
+                {question.status === "CLOSED" ? t("reopenButton") : t("closeButton")}
+              </Button>
+            )}
+            {question.promoted_to_article && (
+              <Link href={`/knowledge/articles/${question.promoted_to_article}`}>
+                <Button variant="secondary">
+                  <Icon name="menu_book" size={16} />
+                  {t("viewPromotedArticle")}
+                </Button>
+              </Link>
+            )}
+          </div>
+        </div>
+
+        {actionError && (
+          <p className="font-body-md text-body-md text-error" role="alert">
+            {actionError}
+          </p>
+        )}
+
+        <Markdown content={question.body} />
+
+        {canPromote && (
+          <div className="flex flex-wrap items-center justify-between gap-3 p-4 bg-primary-container/10 border border-primary/20 rounded-xl">
+            <div className="flex items-center gap-3 text-primary font-body-md text-body-md">
+              <Icon name="auto_awesome" size={20} className="shrink-0" />
+              <span>{t("promoteBannerText")}</span>
+            </div>
+            <Button onClick={handlePromote} disabled={isWorking}>
+              {t("promoteButton")}
+            </Button>
           </div>
         )}
+
+        <div>
+          <h2 className="flex items-center gap-2 font-headline-md text-headline-md text-on-surface mb-4">
+            <Icon name="forum" size={18} />
+            {t("answersHeading", { count: question.answers.length })}
+          </h2>
+
+          {question.answers.length === 0 ? (
+            <p className="font-body-md text-body-md text-on-surface-variant">{t("noAnswersYet")}</p>
+          ) : (
+            <div className="space-y-4">
+              {question.answers.map((answer) => {
+                const answerAuthorName = formatPersonName(answer.author);
+                return (
+                  <div
+                    key={answer.id}
+                    className={`relative overflow-hidden rounded-xl bg-surface border p-6 ${
+                      answer.is_accepted ? "border-secondary-fixed" : "border-outline-variant"
+                    }`}
+                  >
+                    {answer.is_accepted && <div className="absolute top-0 start-0 w-1 h-full bg-primary" />}
+                    <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
+                      <div className="flex items-center gap-2">
+                        {answer.author ? (
+                          <Link href={`/users/${answer.author.id}`} className="shrink-0">
+                            <Avatar person={answer.author} size="sm" />
+                          </Link>
+                        ) : (
+                          <Avatar person={answer.author} size="sm" />
+                        )}
+                        <div>
+                          {answerAuthorName &&
+                            (answer.author ? (
+                              <Link
+                                href={`/users/${answer.author.id}`}
+                                className="block font-body-md text-body-md font-bold text-on-surface hover:text-primary hover:underline transition-colors"
+                              >
+                                {answerAuthorName}
+                              </Link>
+                            ) : (
+                              <div className="font-body-md text-body-md font-bold text-on-surface">
+                                {answerAuthorName}
+                              </div>
+                            ))}
+                          <div className="font-mono-sm text-mono-sm text-on-surface-variant">
+                            {answer.author?.title && <span>{answer.author.title} • </span>}
+                            {formatRelativeTime(answer.created_at)}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {answer.is_accepted && (
+                          <span className="flex items-center gap-1 text-primary bg-primary-fixed/30 px-2.5 py-1 rounded-full font-label-caps text-label-caps uppercase">
+                            <Icon name="check_circle" size={14} />
+                            {t("acceptedAnswerBadge")}
+                          </span>
+                        )}
+                        {canAccept && (
+                          <Button
+                            variant="secondary"
+                            onClick={() => handleAccept(answer.id, answer.is_accepted)}
+                            disabled={workingAnswerId === answer.id}
+                          >
+                            {answer.is_accepted ? t("unacceptButton") : t("acceptButton")}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                    <Markdown content={answer.body} />
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <Attachments type="question" id={question.id} canEdit={canEdit} />
+
+        {question.status === "CLOSED" ? (
+          <p className="font-body-md text-body-md text-on-surface-variant">{t("closedNotice")}</p>
+        ) : (
+          <Can permission="question.answer">
+            <div className="space-y-3">
+              <h3 className="font-headline-md text-headline-md text-on-surface">{t("addAnswerHeading")}</h3>
+              <MarkdownEditor
+                value={newAnswerBody}
+                onChange={setNewAnswerBody}
+                placeholder={t("answerComposerPlaceholder")}
+                relateFrom={{ type: "question", id: question.id }}
+              />
+              <Button onClick={handleSubmitAnswer} disabled={isSubmittingAnswer || !newAnswerBody.trim()}>
+                <Icon name="send" size={16} />
+                {t("submitAnswer")}
+              </Button>
+            </div>
+          </Can>
+        )}
+
+        <ConfirmModal
+          open={deleteOpen}
+          onOpenChange={setDeleteOpen}
+          title={t("deleteConfirmTitle")}
+          description={t("deleteConfirmBody")}
+          confirmLabel={t("deleteButton")}
+          danger
+          onConfirm={handleDelete}
+        />
       </div>
 
-      <Attachments type="question" id={question.id} canEdit={canEdit} />
-
-      {question.status === "CLOSED" ? (
-        <p className="font-body-md text-body-md text-on-surface-variant">{t("closedNotice")}</p>
-      ) : (
-        <Can permission="question.answer">
-          <div className="space-y-3">
-            <h3 className="font-headline-md text-headline-md text-on-surface">{t("addAnswerHeading")}</h3>
-            <MarkdownEditor
-              value={newAnswerBody}
-              onChange={setNewAnswerBody}
-              placeholder={t("answerComposerPlaceholder")}
-              relateFrom={{ type: "question", id: question.id }}
-            />
-            <Button onClick={handleSubmitAnswer} disabled={isSubmittingAnswer || !newAnswerBody.trim()}>
-              <Icon name="send" size={16} />
-              {t("submitAnswer")}
-            </Button>
-          </div>
-        </Can>
-      )}
-
-      <ConfirmModal
-        open={deleteOpen}
-        onOpenChange={setDeleteOpen}
-        title={t("deleteConfirmTitle")}
-        description={t("deleteConfirmBody")}
-        confirmLabel={t("deleteButton")}
-        danger
-        onConfirm={handleDelete}
-      />
-    </div>
-
-    <RelatedContent type="question" id={question.id} canEdit={canEdit} />
+      <RelatedContent type="question" id={question.id} canEdit={canEdit} />
     </div>
   );
 }

@@ -4,8 +4,8 @@ import { AuthenticatedImage } from "@/components/ui/AuthenticatedImage";
 import { Icon } from "@/components/ui/Icon";
 import { Skeleton, SkeletonRegion, SkeletonText } from "@/components/ui/Skeleton";
 import { Link } from "@/i18n/navigation";
-import { formatPersonName } from "@/lib/format";
 import type { CourseSummary } from "@/lib/api/types";
+import { formatPersonName } from "@/lib/format";
 
 import { CourseStatusPill } from "./CourseStatusPill";
 
@@ -126,7 +126,13 @@ export function CourseCardSkeleton({ withProgress = false }: { withProgress?: bo
   );
 }
 
-export function CourseCardGridSkeleton({ count = 6, withProgress = false }: { count?: number; withProgress?: boolean }) {
+export function CourseCardGridSkeleton({
+  count = 6,
+  withProgress = false,
+}: {
+  count?: number;
+  withProgress?: boolean;
+}) {
   return (
     <SkeletonRegion className={COURSE_CARD_GRID}>
       {Array.from({ length: count }).map((_, index) => (

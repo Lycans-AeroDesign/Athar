@@ -69,14 +69,20 @@ export function ProjectCard({ project }: { project: ProjectCardData }) {
             </span>
           ))}
           {extraTags > 0 && (
-            <span className="font-mono-sm text-mono-sm text-on-surface-variant">{t("moreTags", { count: extraTags })}</span>
+            <span className="font-mono-sm text-mono-sm text-on-surface-variant">
+              {t("moreTags", { count: extraTags })}
+            </span>
           )}
         </div>
       )}
 
       <div className="mt-auto flex items-center justify-between gap-3 pt-3 border-t border-outline-variant">
         {project.collaborators.length > 0 ? (
-          <div role="group" className="flex items-center min-w-0" aria-label={t("collaboratorsLabel", { count: project.collaborator_count })}>
+          <div
+            role="group"
+            className="flex items-center min-w-0"
+            aria-label={t("collaboratorsLabel", { count: project.collaborator_count })}
+          >
             <div className="flex -space-x-2 rtl:space-x-reverse">
               {project.collaborators.map((person) => (
                 <div
@@ -120,7 +126,10 @@ export function ProjectCardGridSkeleton({ count = 6 }: { count?: number }) {
   return (
     <SkeletonRegion className={PROJECT_CARD_GRID}>
       {Array.from({ length: count }).map((_, index) => (
-        <div key={index} className="flex flex-col bg-surface-container-low border border-outline-variant rounded-xl p-4">
+        <div
+          key={index}
+          className="flex flex-col bg-surface-container-low border border-outline-variant rounded-xl p-4"
+        >
           <div className="flex items-center justify-between gap-2 mb-3">
             <SkeletonPill className="w-20" />
             <SkeletonText variant="mono-sm" width="w-16" />

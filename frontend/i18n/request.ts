@@ -28,8 +28,7 @@ export default getRequestConfig(async ({ requestLocale }) => {
   const locale = await requestLocale;
 
   // Validate and fallback to 'en' if invalid
-  const resolvedLocale =
-    locale && locales.includes(locale as Locale) ? (locale as Locale) : defaultLocale;
+  const resolvedLocale = locale && locales.includes(locale as Locale) ? (locale as Locale) : defaultLocale;
 
   const messages = await import(`./messages/${resolvedLocale}.json`);
   return {

@@ -7,11 +7,12 @@ import { Can } from "@/components/auth/Can";
 import { CreateCollectionModal } from "@/components/knowledge/CreateCollectionModal";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
-import { CollectionShelfSkeleton } from "./KnowledgeSkeletons";
 import { Link } from "@/i18n/navigation";
 import { getCollections } from "@/lib/api/collections";
 import type { CollectionSummary } from "@/lib/api/types";
 import { errorMessage } from "@/lib/errors";
+
+import { CollectionShelfSkeleton } from "./KnowledgeSkeletons";
 
 /** The horizontal "Series & collections" strip shown above a content list
  * (SOPs page / Knowledge landing), filtered to the scope of that page -

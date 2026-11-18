@@ -4,8 +4,8 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 import { Icon } from "@/components/ui/Icon";
-import { Modal } from "@/components/ui/Modal";
 import { INPUT_CLASS } from "@/components/ui/inputStyles";
+import { Modal } from "@/components/ui/Modal";
 import { quickSearch } from "@/lib/api/knowledge";
 import type { RelatableType, SearchResult } from "@/lib/api/types";
 import { RELATABLE_ICON as ICON_BY_TYPE, relationshipChoicesFor } from "@/lib/knowledgeTypes";
@@ -41,11 +41,7 @@ export function RelationTypeChoices({ sourceType, otherType, current, onPick }: 
         </li>
       ))}
       <li className="border-t border-outline-variant pt-1">
-        <button
-          type="button"
-          onClick={() => onPick(undefined)}
-          className={itemClass(current === GENERIC_RELATED)}
-        >
+        <button type="button" onClick={() => onPick(undefined)} className={itemClass(current === GENERIC_RELATED)}>
           <span className={current === GENERIC_RELATED ? "" : "text-on-surface-variant"}>
             {t("genericRelatedOption")}
           </span>

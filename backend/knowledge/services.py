@@ -21,13 +21,6 @@ from files.services import confirm_stored_files, confirm_stored_files_in_text
 
 from . import relationships, trash
 from . import visibility as visibility_rules
-from .scoring import (
-    ACCEPTED_ANSWER_ACTION,
-    ACCEPTED_ANSWER_POINTS,
-    CO_AUTHOR_CREDITED_ACTIONS,
-    CONTRIBUTION_POINTS,
-)
-
 from .models import (
     Answer,
     Article,
@@ -35,6 +28,8 @@ from .models import (
     ArticleRevision,
     Bookmark,
     Category,
+    Collection,
+    CollectionItem,
     Component,
     ComponentAttachment,
     ComponentCategory,
@@ -53,9 +48,13 @@ from .models import (
     Tag,
     Test,
     TestAttachment,
-    Collection,
-    CollectionItem,
     Visibility,
+)
+from .scoring import (
+    ACCEPTED_ANSWER_ACTION,
+    ACCEPTED_ANSWER_POINTS,
+    CO_AUTHOR_CREDITED_ACTIONS,
+    CONTRIBUTION_POINTS,
 )
 
 
@@ -474,9 +473,7 @@ def delete_answer(*, answer: Answer, actor, request=None) -> None:
     answer.delete()
     if was_accepted:
         question.accepted_answer = None
-    new_status = (
-        question.status if question.status == Question.Status.CLOSED else _recomputed_open_status(question)
-    )
+    new_status = question.status if question.status == Question.Status.CLOSED else _recomputed_open_status(question)
     if was_accepted or new_status != question.status:
         question.status = new_status
         question.save(update_fields=["accepted_answer", "status", "updated_at"])
@@ -572,11 +569,21 @@ def promote_question_to_article(*, question: Question, actor, request=None) -> A
 
 
 def create_project(
-    *, actor, request=None, name, description="", status=Project.Status.ACTIVE, tag_names=None,
+    *,
+    actor,
+    request=None,
+    name,
+    description="",
+    status=Project.Status.ACTIVE,
+    tag_names=None,
     visibility=Visibility.PUBLIC,
 ) -> Project:
     project = Project.objects.create(
-        organization=actor.organization, name=name, description=description, status=status, created_by=actor,
+        organization=actor.organization,
+        name=name,
+        description=description,
+        status=status,
+        created_by=actor,
         visibility=visibility,
     )
     _sync_tags(project, tag_names)
@@ -666,7 +673,9 @@ def _get_or_create_named(model, name: str, actor, create):
 
 
 def create_storage_location(*, actor, request=None, name, description="") -> StorageLocation:
-    location = StorageLocation.objects.create(organization=actor.organization, name=name.strip(), description=description)
+    location = StorageLocation.objects.create(
+        organization=actor.organization, name=name.strip(), description=description
+    )
     log_action(actor=actor, action="storage_location.create", target=location, request=request)
     return location
 
@@ -757,10 +766,29 @@ def derive_stock_status(quantity: int, min_quantity: int | None, current: str = 
 
 
 def create_component(
-    *, actor, request=None, name, category=None, photo=None, manufacturer="", part_number="", link="",
-    quantity_available=0, status=Component.Status.TESTING, summary="", specifications=None, tag_names=None,
-    visibility=Visibility.PUBLIC, inventory_type="", location=None, location_name=None, unit="", condition="",
-    stock_status=None, min_quantity=None, inventory_notes="",
+    *,
+    actor,
+    request=None,
+    name,
+    category=None,
+    photo=None,
+    manufacturer="",
+    part_number="",
+    link="",
+    quantity_available=0,
+    status=Component.Status.TESTING,
+    summary="",
+    specifications=None,
+    tag_names=None,
+    visibility=Visibility.PUBLIC,
+    inventory_type="",
+    location=None,
+    location_name=None,
+    unit="",
+    condition="",
+    stock_status=None,
+    min_quantity=None,
+    inventory_notes="",
 ) -> Component:
     """`stock_status` None/"" means "work it out from the quantity" - see
     derive_stock_status."""
@@ -805,7 +833,9 @@ def _apply_stock_status_rule(component: Component, fields: dict) -> None:
     if "stock_status" in fields:
         if not fields["stock_status"]:
             fields["stock_status"] = derive_stock_status(quantity, min_quantity, component.stock_status)
-    elif ("quantity_available" in fields or "min_quantity" in fields) and component.stock_status in _AUTO_STOCK_STATUSES:
+    elif (
+        "quantity_available" in fields or "min_quantity" in fields
+    ) and component.stock_status in _AUTO_STOCK_STATUSES:
         derived = derive_stock_status(quantity, min_quantity, component.stock_status)
         if derived != component.stock_status:
             fields["stock_status"] = derived
@@ -843,13 +873,23 @@ def _sync_failure_relations(
     project kept listing a failure that no longer belongs to it."""
     if previous_component is not None and previous_component != failure.component:
         _remove_relation(
-            actor=actor, request=request, source_type="component", source=previous_component,
-            target_type="failure", target=failure, relation_type="INVOLVED_IN",
+            actor=actor,
+            request=request,
+            source_type="component",
+            source=previous_component,
+            target_type="failure",
+            target=failure,
+            relation_type="INVOLVED_IN",
         )
     if previous_project is not None and previous_project != failure.project:
         _remove_relation(
-            actor=actor, request=request, source_type="project", source=previous_project,
-            target_type="failure", target=failure, relation_type="HAS_FAILURE",
+            actor=actor,
+            request=request,
+            source_type="project",
+            source=previous_project,
+            target_type="failure",
+            target=failure,
+            relation_type="HAS_FAILURE",
         )
     if failure.component is not None:
         _store_relation(
@@ -874,9 +914,21 @@ def _sync_failure_relations(
 
 
 def create_failure(
-    *, actor, request=None, title, component=None, project=None, aircraft="", date=None,
-    severity=Failure.Severity.MEDIUM, status=Failure.Status.UNDER_INVESTIGATION,
-    summary="", root_cause="", corrective_action="", preventive_action="", visibility=Visibility.PUBLIC,
+    *,
+    actor,
+    request=None,
+    title,
+    component=None,
+    project=None,
+    aircraft="",
+    date=None,
+    severity=Failure.Severity.MEDIUM,
+    status=Failure.Status.UNDER_INVESTIGATION,
+    summary="",
+    root_cause="",
+    corrective_action="",
+    preventive_action="",
+    visibility=Visibility.PUBLIC,
 ) -> Failure:
     failure = Failure.objects.create(
         organization=actor.organization,
@@ -895,7 +947,9 @@ def create_failure(
         visibility=visibility,
     )
     _sync_failure_relations(failure, actor=actor, request=request)
-    confirm_stored_files_in_text(summary, root_cause, corrective_action, preventive_action, organization=actor.organization)
+    confirm_stored_files_in_text(
+        summary, root_cause, corrective_action, preventive_action, organization=actor.organization
+    )
     log_action(actor=actor, action="failure.create", target=failure, request=request)
     return failure
 
@@ -908,8 +962,11 @@ def update_failure(*, failure: Failure, actor, request=None, **fields) -> Failur
     failure.save(update_fields=[*fields.keys(), "updated_at"])
     if "component" in fields or "project" in fields:
         _sync_failure_relations(
-            failure, actor=actor, request=request,
-            previous_component=previous_component, previous_project=previous_project,
+            failure,
+            actor=actor,
+            request=request,
+            previous_component=previous_component,
+            previous_project=previous_project,
         )
     confirm_stored_files_in_text(
         *(fields[f] for f in ("summary", "root_cause", "corrective_action", "preventive_action") if f in fields),
@@ -925,8 +982,17 @@ def delete_failure(*, failure: Failure, actor, request=None) -> None:
 
 
 def create_sop(
-    *, actor, request=None, title, category=None, mandatory=False, safety_notes="", content="", tag_names=None,
-    visibility=Visibility.PUBLIC, co_authors=None,
+    *,
+    actor,
+    request=None,
+    title,
+    category=None,
+    mandatory=False,
+    safety_notes="",
+    content="",
+    tag_names=None,
+    visibility=Visibility.PUBLIC,
+    co_authors=None,
 ) -> Sop:
     sop = Sop.objects.create(
         organization=actor.organization,
@@ -1013,7 +1079,9 @@ def create_test(
             target=test,
             relation_type="HAS_TEST",
         )
-    confirm_stored_files_in_text(objective, configuration, procedure, results, conclusion, organization=actor.organization)
+    confirm_stored_files_in_text(
+        objective, configuration, procedure, results, conclusion, organization=actor.organization
+    )
     log_action(actor=actor, action="test.create", target=test, request=request)
     return test
 
@@ -1030,8 +1098,13 @@ def update_test(*, test: Test, actor, request=None, **fields) -> Test:
     # auto-created HAS_TEST link, so it stops listing the test.
     if "project" in fields and previous_project is not None and previous_project != test.project:
         _remove_relation(
-            actor=actor, request=request, source_type="project", source=previous_project,
-            target_type="test", target=test, relation_type="HAS_TEST",
+            actor=actor,
+            request=request,
+            source_type="project",
+            source=previous_project,
+            target_type="test",
+            target=test,
+            relation_type="HAS_TEST",
         )
     if "project" in fields and test.project is not None:
         _store_relation(
@@ -1162,9 +1235,9 @@ def collections_context_for(instance, viewer) -> list[dict]:
     the sibling list - all computed over the nodes *this viewer* can see, so
     positions don't skip and neighbors never point somewhere unreadable."""
     content_type = ContentType.objects.get_for_model(type(instance))
-    item_qs = CollectionItem.objects.filter(
-        content_type=content_type, object_id=instance.pk
-    ).select_related("collection")
+    item_qs = CollectionItem.objects.filter(content_type=content_type, object_id=instance.pk).select_related(
+        "collection"
+    )
     contexts = []
     for item in item_qs:
         collection = item.collection
@@ -1177,9 +1250,7 @@ def collections_context_for(instance, viewer) -> list[dict]:
             continue
         nodes = _visible_collection_nodes(collection, viewer)
         summaries = [summary for _node, summary in nodes]
-        position = next(
-            (index + 1 for index, (node, _summary) in enumerate(nodes) if node.pk == item.pk), None
-        )
+        position = next((index + 1 for index, (node, _summary) in enumerate(nodes) if node.pk == item.pk), None)
         if position is None:
             continue
         contexts.append(
@@ -1394,7 +1465,10 @@ def update_document(*, document: Document, actor, request=None, **fields) -> Doc
     # for why this (not a tiered read/create/update/delete-only scheme) is
     # the right fit here.
     _require_owner_or_permission(
-        actor=actor, owner=document.created_by, codename="document.update", message="You can only edit your own document."
+        actor=actor,
+        owner=document.created_by,
+        codename="document.update",
+        message="You can only edit your own document.",
     )
     tag_names = fields.pop("tag_names", None)
     for field, value in fields.items():
@@ -1422,7 +1496,11 @@ def _add_engineering_attachment(*, owner, attachment_model, owner_field: str, fi
     attachment = attachment_model.objects.create(**{owner_field: owner}, file=file, uploaded_by=actor)
     confirm_stored_files(file)
     log_action(
-        actor=actor, action=action, target=owner, metadata={"file_id": str(file.pk), "filename": file.original_filename}, request=request
+        actor=actor,
+        action=action,
+        target=owner,
+        metadata={"file_id": str(file.pk), "filename": file.original_filename},
+        request=request,
     )
     return attachment
 
@@ -1440,26 +1518,40 @@ def _remove_engineering_attachment(*, attachment, actor, request, action: str, i
 def add_project_attachment(*, project: Project, file, actor, request=None) -> ProjectAttachment:
     _require_permission(actor, "project.update", "You need project.update to attach files to this project.")
     return _add_engineering_attachment(
-        owner=project, attachment_model=ProjectAttachment, owner_field="project", file=file, actor=actor,
-        request=request, action="attachment.add",
+        owner=project,
+        attachment_model=ProjectAttachment,
+        owner_field="project",
+        file=file,
+        actor=actor,
+        request=request,
+        action="attachment.add",
     )
 
 
 def remove_project_attachment(*, attachment: ProjectAttachment, actor, request=None) -> None:
     _require_permission(actor, "project.update", "You need project.update to remove attachments from this project.")
-    _remove_engineering_attachment(attachment=attachment, actor=actor, request=request, action="attachment.remove", id_field="project_id")
+    _remove_engineering_attachment(
+        attachment=attachment, actor=actor, request=request, action="attachment.remove", id_field="project_id"
+    )
 
 
 def add_component_attachment(*, component: Component, file, actor, request=None) -> ComponentAttachment:
     _require_permission(actor, "component.update", "You need component.update to attach files to this component.")
     return _add_engineering_attachment(
-        owner=component, attachment_model=ComponentAttachment, owner_field="component", file=file, actor=actor,
-        request=request, action="attachment.add",
+        owner=component,
+        attachment_model=ComponentAttachment,
+        owner_field="component",
+        file=file,
+        actor=actor,
+        request=request,
+        action="attachment.add",
     )
 
 
 def remove_component_attachment(*, attachment: ComponentAttachment, actor, request=None) -> None:
-    _require_permission(actor, "component.update", "You need component.update to remove attachments from this component.")
+    _require_permission(
+        actor, "component.update", "You need component.update to remove attachments from this component."
+    )
     _remove_engineering_attachment(
         attachment=attachment, actor=actor, request=request, action="attachment.remove", id_field="component_id"
     )
@@ -1468,40 +1560,63 @@ def remove_component_attachment(*, attachment: ComponentAttachment, actor, reque
 def add_failure_attachment(*, failure: Failure, file, actor, request=None) -> FailureAttachment:
     _require_permission(actor, "failure.update", "You need failure.update to attach files to this failure report.")
     return _add_engineering_attachment(
-        owner=failure, attachment_model=FailureAttachment, owner_field="failure", file=file, actor=actor,
-        request=request, action="attachment.add",
+        owner=failure,
+        attachment_model=FailureAttachment,
+        owner_field="failure",
+        file=file,
+        actor=actor,
+        request=request,
+        action="attachment.add",
     )
 
 
 def remove_failure_attachment(*, attachment: FailureAttachment, actor, request=None) -> None:
-    _require_permission(actor, "failure.update", "You need failure.update to remove attachments from this failure report.")
-    _remove_engineering_attachment(attachment=attachment, actor=actor, request=request, action="attachment.remove", id_field="failure_id")
+    _require_permission(
+        actor, "failure.update", "You need failure.update to remove attachments from this failure report."
+    )
+    _remove_engineering_attachment(
+        attachment=attachment, actor=actor, request=request, action="attachment.remove", id_field="failure_id"
+    )
 
 
 def add_sop_attachment(*, sop: Sop, file, actor, request=None) -> SopAttachment:
     _require_permission(actor, "sop.update", "You need sop.update to attach files to this SOP.")
     return _add_engineering_attachment(
-        owner=sop, attachment_model=SopAttachment, owner_field="sop", file=file, actor=actor,
-        request=request, action="attachment.add",
+        owner=sop,
+        attachment_model=SopAttachment,
+        owner_field="sop",
+        file=file,
+        actor=actor,
+        request=request,
+        action="attachment.add",
     )
 
 
 def remove_sop_attachment(*, attachment: SopAttachment, actor, request=None) -> None:
     _require_permission(actor, "sop.update", "You need sop.update to remove attachments from this SOP.")
-    _remove_engineering_attachment(attachment=attachment, actor=actor, request=request, action="attachment.remove", id_field="sop_id")
+    _remove_engineering_attachment(
+        attachment=attachment, actor=actor, request=request, action="attachment.remove", id_field="sop_id"
+    )
 
 
 def add_test_attachment(*, test: Test, file, actor, request=None) -> TestAttachment:
     _require_permission(actor, "test.update", "You need test.update to attach files to this test.")
     return _add_engineering_attachment(
-        owner=test, attachment_model=TestAttachment, owner_field="test", file=file, actor=actor,
-        request=request, action="attachment.add",
+        owner=test,
+        attachment_model=TestAttachment,
+        owner_field="test",
+        file=file,
+        actor=actor,
+        request=request,
+        action="attachment.add",
     )
 
 
 def remove_test_attachment(*, attachment: TestAttachment, actor, request=None) -> None:
     _require_permission(actor, "test.update", "You need test.update to remove attachments from this test.")
-    _remove_engineering_attachment(attachment=attachment, actor=actor, request=request, action="attachment.remove", id_field="test_id")
+    _remove_engineering_attachment(
+        attachment=attachment, actor=actor, request=request, action="attachment.remove", id_field="test_id"
+    )
 
 
 # Only Article/Question/Project/Component/Failure/Sop/Test/Document exist as
@@ -2029,9 +2144,7 @@ def get_relations_for(model_name: str, object_id, *, actor) -> list[KnowledgeRel
 
     visible = []
     for relation in relations:
-        is_source = (
-            relation.source_content_type_id == content_type.id and relation.source_object_id == object_id
-        )
+        is_source = relation.source_content_type_id == content_type.id and relation.source_object_id == object_id
         other_ct, other = (
             (relation.target_content_type, relation.target)
             if is_source
@@ -2067,10 +2180,14 @@ def project_card_details_for(projects, viewer) -> dict:
             details[row["project"]][key] = row["n"]
 
     project_ct = ContentType.objects.get_for_model(Project)
-    relations = KnowledgeRelation.objects.filter(organization=viewer.organization).filter(
-        Q(source_content_type=project_ct, source_object_id__in=project_ids)
-        | Q(target_content_type=project_ct, target_object_id__in=project_ids)
-    ).values_list("source_content_type_id", "source_object_id", "target_content_type_id", "target_object_id")
+    relations = (
+        KnowledgeRelation.objects.filter(organization=viewer.organization)
+        .filter(
+            Q(source_content_type=project_ct, source_object_id__in=project_ids)
+            | Q(target_content_type=project_ct, target_object_id__in=project_ids)
+        )
+        .values_list("source_content_type_id", "source_object_id", "target_content_type_id", "target_object_id")
+    )
     # (project id, other side's content type id, other side's id) for each link.
     links = []
     for source_ct, source_id, target_ct, target_id in relations:
@@ -2202,7 +2319,9 @@ def _compute_contribution_scores(organization, *, since=None) -> dict:
     # never double-credited.
     co_author_models = {"article": Article, "question": Question, "sop": Sop, "course": Course}
     for model_name, model in co_author_models.items():
-        target_ids = {target_id for action, target_id, _ in co_credited if CO_AUTHOR_CREDITED_ACTIONS[action] == model_name}
+        target_ids = {
+            target_id for action, target_id, _ in co_credited if CO_AUTHOR_CREDITED_ACTIONS[action] == model_name
+        }
         if not target_ids:
             continue
         co_authors_by_item: dict[str, list] = {}
@@ -2220,9 +2339,7 @@ def _compute_contribution_scores(organization, *, since=None) -> dict:
     accept_logs = AuditLog.objects.filter(organization=organization, action=ACCEPTED_ANSWER_ACTION)
     if since is not None:
         accept_logs = accept_logs.filter(created_at__gte=since)
-    answer_ids = [
-        log.metadata.get("answer_id") for log in accept_logs if log.metadata.get("answer_id")
-    ]
+    answer_ids = [log.metadata.get("answer_id") for log in accept_logs if log.metadata.get("answer_id")]
     authors_by_answer_id = {
         str(answer_id): author_id
         for answer_id, author_id in Answer.objects.filter(pk__in=answer_ids).values_list("pk", "author_id")
@@ -2238,9 +2355,9 @@ def _compute_contribution_scores(organization, *, since=None) -> dict:
     if since is not None:
         course_publish_logs = course_publish_logs.filter(created_at__gte=since)
     course_coauthors_by_id: dict[str, list] = {}
-    for c_id, u_id in Course.co_authors.through.objects.filter(
-        course_id__in=active_courses.keys()
-    ).values_list("course_id", "user_id"):
+    for c_id, u_id in Course.co_authors.through.objects.filter(course_id__in=active_courses.keys()).values_list(
+        "course_id", "user_id"
+    ):
         course_coauthors_by_id.setdefault(str(c_id), []).append(u_id)
 
     for log in course_publish_logs:
@@ -2269,9 +2386,7 @@ def leaderboard_for(organization, *, limit: int | None = None, since=None) -> li
         top_user_ids = top_user_ids[:limit]
     users_by_id = {user.id: user for user in User.objects.filter(pk__in=top_user_ids)}
     return [
-        {"user": users_by_id[user_id], "score": scores[user_id]}
-        for user_id in top_user_ids
-        if user_id in users_by_id
+        {"user": users_by_id[user_id], "score": scores[user_id]} for user_id in top_user_ids if user_id in users_by_id
     ]
 
 
@@ -2280,9 +2395,8 @@ def contributors_for(model_name: str, obj) -> list:
     targeting `obj` - see scoring.py's module docstring and PART 2 of the
     plan for why this reuses AuditLog instead of adding real per-type
     revision history the way ArticleRevision does for Article alone."""
-    from audit.models import AuditLog
-
     from accounts.models import User
+    from audit.models import AuditLog
 
     content_type = ContentType.objects.get_for_model(type(obj))
     actor_ids = (
@@ -2306,15 +2420,32 @@ def contributors_for(model_name: str, obj) -> list:
 # and a sheet tab as-is (its headers, no Athar ID yet) imports too - see _HEADER_ALIASES.
 
 INVENTORY_CSV_COLUMNS = [
-    "Athar ID", "Category", "Item", "Grid Location", "Quantity", "Unit", "Condition", "Status",
-    "Min. Qty Desired", "Notes", "Last Updated", "Updated By",
-    "Inventory Type", "Engineering Status", "Manufacturer", "Part Number", "Link", "Visibility", "Tags",
-    "Summary", "Specifications",
+    "Athar ID",
+    "Category",
+    "Item",
+    "Grid Location",
+    "Quantity",
+    "Unit",
+    "Condition",
+    "Status",
+    "Min. Qty Desired",
+    "Notes",
+    "Last Updated",
+    "Updated By",
+    "Inventory Type",
+    "Engineering Status",
+    "Manufacturer",
+    "Part Number",
+    "Link",
+    "Visibility",
+    "Tags",
+    "Summary",
+    "Specifications",
 ]
 
 
 def _normalize_label(value: str) -> str:
-    """"Min. Qty Desired" -> "min qty desired", "Missing / Need to Order" ->
+    """ "Min. Qty Desired" -> "min qty desired", "Missing / Need to Order" ->
     "missing need to order" - so headers and dropdown values match no matter
     the punctuation, spacing or case a spreadsheet ends up with."""
     return re.sub(r"[^a-z0-9]+", " ", (value or "").lower()).strip()
@@ -2434,13 +2565,50 @@ def component_import_template_rows():
     views.ComponentImportTemplateView - the same columns an export has."""
     yield INVENTORY_CSV_COLUMNS
     yield [
-        "", "Hand Tools", "Example: Allen Key Set", "Fuselage Box -> Hand Tools", "1", "set", "Good", "Low Stock",
-        "2", "Missing the 2mm key", "", "", "Mechanical", "", "", "", "", "Public", "", "", "",
+        "",
+        "Hand Tools",
+        "Example: Allen Key Set",
+        "Fuselage Box -> Hand Tools",
+        "1",
+        "set",
+        "Good",
+        "Low Stock",
+        "2",
+        "Missing the 2mm key",
+        "",
+        "",
+        "Mechanical",
+        "",
+        "",
+        "",
+        "",
+        "Public",
+        "",
+        "",
+        "",
     ]
     yield [
-        "", "Motor", "Example: T-Motor AT3520 550KV", "Motors, ESCs and BECs Box", "1", "each", "New", "In Stock",
-        "", "", "", "", "Electrical", "Testing", "T-Motor", "AT3520", "https://example.com/product", "Public",
-        "motor, propulsion", "Short description of the component.", "KV: 550; Weight: 238g",
+        "",
+        "Motor",
+        "Example: T-Motor AT3520 550KV",
+        "Motors, ESCs and BECs Box",
+        "1",
+        "each",
+        "New",
+        "In Stock",
+        "",
+        "",
+        "",
+        "",
+        "Electrical",
+        "Testing",
+        "T-Motor",
+        "AT3520",
+        "https://example.com/product",
+        "Public",
+        "motor, propulsion",
+        "Short description of the component.",
+        "KV: 550; Weight: 238g",
     ]
 
 
@@ -2522,6 +2690,7 @@ def _parse_component_row(record: dict) -> tuple[dict, dict]:
     writes to the database. Only filled-in cells are included, so a blank cell leaves the
     existing value alone on update. `meta` holds the columns that steer matching (Athar ID,
     Last Updated). Raises ValueError on a malformed cell."""
+
     def cell(key: str) -> str:
         return (record.get(key) or "").strip()
 
@@ -2577,7 +2746,7 @@ def _parse_component_row(record: dict) -> tuple[dict, dict]:
         else:
             raise ValueError(
                 f'Status "{status_raw}" must be a stock status ({", ".join(Component.StockStatus.labels)}) '
-                f'or an engineering status ({", ".join(Component.Status.labels)}).'
+                f"or an engineering status ({', '.join(Component.Status.labels)})."
             )
 
     if cell("specifications"):
@@ -2679,7 +2848,9 @@ def _build_field_changes(fields: dict, existing: Component | None) -> dict[str, 
         if existing is None:
             derived = derive_stock_status(fields.get("quantity_available", 0), fields.get("min_quantity"))
             changes["stock_status"] = {"old": "", "new": Component.StockStatus(derived).label}
-        elif ("quantity_available" in fields or "min_quantity" in fields) and existing.stock_status in _AUTO_STOCK_STATUSES:
+        elif (
+            "quantity_available" in fields or "min_quantity" in fields
+        ) and existing.stock_status in _AUTO_STOCK_STATUSES:
             derived = derive_stock_status(
                 fields.get("quantity_available", existing.quantity_available),
                 fields.get("min_quantity", existing.min_quantity),
@@ -2789,7 +2960,9 @@ def _find_component_for_entry(entry: dict, *, actor, claimed: set, remaining_in_
         return component, None
 
     fields = entry["fields"]
-    same_name = organization_components.filter(name__iexact=fields["name"]).exclude(pk__in=claimed).order_by("created_at")
+    same_name = (
+        organization_components.filter(name__iexact=fields["name"]).exclude(pk__in=claimed).order_by("created_at")
+    )
     location_name = fields.get("location_name", "")
     if location_name:
         candidates = list(same_name.filter(location__name__iexact=location_name)) or list(
@@ -2818,7 +2991,11 @@ def _classify_entry(entry: dict, *, actor, claimed: set, remaining_in_group: int
 
     fields = dict(entry["fields"])
     fields.pop("name")
-    if default_inventory_type and "inventory_type" not in fields and (component is None or not component.inventory_type):
+    if (
+        default_inventory_type
+        and "inventory_type" not in fields
+        and (component is None or not component.inventory_type)
+    ):
         fields["inventory_type"] = default_inventory_type
 
     if component is None:
@@ -2835,7 +3012,11 @@ def _classify_entry(entry: dict, *, actor, claimed: set, remaining_in_group: int
     if not changes:
         return {**result, "action": "unchanged"}
     if not actor.has_permission("component.update"):
-        return {**result, "action": "error", "message": f'"{component.name}" already exists and you don\'t have permission to update it.'}
+        return {
+            **result,
+            "action": "error",
+            "message": f'"{component.name}" already exists and you don\'t have permission to update it.',
+        }
 
     last_updated = entry["meta"]["last_updated"]
     edited_on = timezone.localdate(component.updated_at)
@@ -2855,7 +3036,9 @@ def _resolve_fields_for_apply(fields: dict, *, actor, request=None) -> dict:
     update_component themselves."""
     resolved = dict(fields)
     if "category_name" in resolved:
-        resolved["category"] = get_or_create_component_category(resolved.pop("category_name"), actor=actor, request=request)
+        resolved["category"] = get_or_create_component_category(
+            resolved.pop("category_name"), actor=actor, request=request
+        )
     return resolved
 
 
@@ -2908,7 +3091,9 @@ def import_components_csv(
         athar_id = entry.get("meta", {}).get("athar_id", "").lower()
         if athar_id and "merged_into" not in entry:
             if athar_id in seen_ids:
-                entry["error"] = f"This Athar ID is also used on row {seen_ids[athar_id]} - each component can appear only once."
+                entry["error"] = (
+                    f"This Athar ID is also used on row {seen_ids[athar_id]} - each component can appear only once."
+                )
             else:
                 seen_ids[athar_id] = entry["row"]
 
@@ -2929,15 +3114,22 @@ def import_components_csv(
             position_in_group[key] = index + 1
             remaining = len(groups[key]) - index
         results[entry["row"]] = _classify_entry(
-            entry, actor=actor, claimed=claimed, remaining_in_group=remaining, default_inventory_type=default_inventory_type
+            entry,
+            actor=actor,
+            claimed=claimed,
+            remaining_in_group=remaining,
+            default_inventory_type=default_inventory_type,
         )
     for entry in entries:
         if "error" in entry:
             results[entry["row"]] = {"row": entry["row"], "action": "error", "message": entry["error"], "warnings": []}
         elif "merged_into" in entry:
             results[entry["row"]] = {
-                "row": entry["row"], "action": "merged", "name": entry["fields"]["name"],
-                "merged_into": entry["merged_into"], "warnings": [],
+                "row": entry["row"],
+                "action": "merged",
+                "name": entry["fields"]["name"],
+                "merged_into": entry["merged_into"],
+                "warnings": [],
             }
 
     created = updated = 0
@@ -2948,19 +3140,26 @@ def import_components_csv(
         for row_number in sorted(results):
             result = results[row_number]
             if commit and result["action"] == "create":
-                create_component(actor=actor, request=request, **{
-                    "status": "", **_resolve_fields_for_apply(result["fields"], actor=actor, request=request)
-                })
+                create_component(
+                    actor=actor,
+                    request=request,
+                    **{"status": "", **_resolve_fields_for_apply(result["fields"], actor=actor, request=request)},
+                )
                 created += 1
             elif commit and result["action"] == "update":
                 update_component(
-                    component=result["component"], actor=actor, request=request,
+                    component=result["component"],
+                    actor=actor,
+                    request=request,
                     **_resolve_fields_for_apply(result["fields"], actor=actor, request=request),
                 )
                 updated += 1
             rows.append({key: value for key, value in result.items() if key not in ("fields", "component")})
 
-    summary = {action: sum(1 for row in rows if row["action"] == action) for action in ("create", "update", "unchanged", "error", "merged")}
+    summary = {
+        action: sum(1 for row in rows if row["action"] == action)
+        for action in ("create", "update", "unchanged", "error", "merged")
+    }
     summary["duplicate_groups"] = len(duplicate_groups)
     response = {"rows": rows, "summary": summary}
     if commit:

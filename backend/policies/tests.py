@@ -28,7 +28,10 @@ class PolicyTests(APITestCase):
 
     def _publish(self, kind="privacy", title="Privacy Policy", content="We keep your data private."):
         self.client.put(
-            reverse("policies-draft", args=[kind]), {"title": title, "content": content}, format="json", **self.admin_auth
+            reverse("policies-draft", args=[kind]),
+            {"title": title, "content": content},
+            format="json",
+            **self.admin_auth,
         )
         return self.client.post(reverse("policies-publish", args=[kind]), **self.admin_auth)
 
@@ -65,7 +68,10 @@ class PolicyTests(APITestCase):
 
     def test_draft_is_invisible_until_published(self):
         self.client.put(
-            reverse("policies-draft", args=["privacy"]), {"title": "Draft", "content": "WIP"}, format="json", **self.admin_auth
+            reverse("policies-draft", args=["privacy"]),
+            {"title": "Draft", "content": "WIP"},
+            format="json",
+            **self.admin_auth,
         )
         self.assertEqual(self.client.get(reverse("policies-current"), **self.member_auth).data, [])
         response = self.client.get(reverse("knowledge-article-list-create"), **self.member_auth)
@@ -124,7 +130,10 @@ class PolicyTests(APITestCase):
         response = self.client.get(reverse("policies-manage"), **self.member_auth)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         response = self.client.put(
-            reverse("policies-draft", args=["privacy"]), {"title": "x", "content": "y"}, format="json", **self.member_auth
+            reverse("policies-draft", args=["privacy"]),
+            {"title": "x", "content": "y"},
+            format="json",
+            **self.member_auth,
         )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         response = self.client.get(reverse("policies-manage"), **self.admin_auth)
@@ -134,7 +143,9 @@ class PolicyTests(APITestCase):
     def test_policies_are_per_organization(self):
         self._publish()
         other_org = create_test_organization(name="Other policy org")
-        outsider = User.objects.create_user(email="policy-out@example.com", password="password123", organization=other_org)
+        outsider = User.objects.create_user(
+            email="policy-out@example.com", password="password123", organization=other_org
+        )
         Role.objects.get(organization=other_org, name="Member").user_roles.create(user=outsider)
         login = self.client.post(
             reverse("auth-login"), {"email": outsider.email, "password": "password123"}, format="json"

@@ -9,12 +9,12 @@ import { Icon } from "@/components/ui/Icon";
 import { Pagination } from "@/components/ui/Pagination";
 import { IconRowListSkeleton } from "@/components/ui/Skeleton";
 import { Link } from "@/i18n/navigation";
-import { formatDate, formatDateTime } from "@/lib/datetime";
-import { errorMessage } from "@/lib/errors";
-import { formatPersonName } from "@/lib/format";
 import { getTrash, purgeFromTrash, restoreFromTrash } from "@/lib/api/trash";
 import type { TrashedItem, TrashType } from "@/lib/api/types";
 import { useHasPermission } from "@/lib/auth/permissions";
+import { formatDate, formatDateTime } from "@/lib/datetime";
+import { errorMessage } from "@/lib/errors";
+import { formatPersonName } from "@/lib/format";
 import { RELATABLE_ICON, RELATABLE_ROUTE_PREFIX } from "@/lib/knowledgeTypes";
 
 type Tab = TrashType | "all";
@@ -53,7 +53,9 @@ export default function TrashPage() {
 
   useEffect(() => {
     getTrash(tab === "all" ? undefined : tab, page)
-      .then((data) => setResult({ key: resultKey, items: data.results, hasNext: data.next !== null, count: data.count }))
+      .then((data) =>
+        setResult({ key: resultKey, items: data.results, hasNext: data.next !== null, count: data.count }),
+      )
       .catch((err) => setError(errorMessage(err)));
   }, [tab, page, resultKey]);
 
@@ -123,10 +125,7 @@ export default function TrashPage() {
         <p className="flex flex-wrap items-center gap-2 font-body-md text-body-md text-on-surface" role="status">
           <Icon name="check_circle" size={18} className="text-primary" />
           {t("restored", { title: restored.title })}
-          <Link
-            href={`${TYPE_ROUTE[restored.type]}/${restored.id}`}
-            className="text-primary hover:underline"
-          >
+          <Link href={`${TYPE_ROUTE[restored.type]}/${restored.id}`} className="text-primary hover:underline">
             {t("open")}
           </Link>
         </p>

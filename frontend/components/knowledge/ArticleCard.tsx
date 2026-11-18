@@ -3,9 +3,9 @@ import { useTranslations } from "next-intl";
 import { Icon } from "@/components/ui/Icon";
 import { SkeletonRegion, SkeletonText } from "@/components/ui/Skeleton";
 import { Link } from "@/i18n/navigation";
+import type { ArticleSummary } from "@/lib/api/types";
 import { formatRelativeTime } from "@/lib/datetime";
 import { formatPersonName } from "@/lib/format";
-import type { ArticleSummary } from "@/lib/api/types";
 
 import { StatusPill } from "./StatusPill";
 

@@ -10,8 +10,8 @@ import {
   type ReactNode,
 } from "react";
 
-import { apiFetch } from "@/lib/api/client";
 import { loginRequest, logoutRequest, refreshRequest } from "@/lib/api/auth";
+import { apiFetch } from "@/lib/api/client";
 import type { User } from "@/lib/api/types";
 
 import { tokenStore } from "./token-store";
@@ -29,11 +29,7 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const accessToken = useSyncExternalStore(
-    tokenStore.subscribe,
-    tokenStore.getAccessToken,
-    () => null,
-  );
+  const accessToken = useSyncExternalStore(tokenStore.subscribe, tokenStore.getAccessToken, () => null);
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 

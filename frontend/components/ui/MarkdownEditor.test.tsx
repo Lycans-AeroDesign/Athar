@@ -3,8 +3,9 @@ import { NextIntlClientProvider } from "next-intl";
 import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { MarkdownEditor } from "./MarkdownEditor";
 import messages from "@/i18n/messages/en.json";
+
+import { MarkdownEditor } from "./MarkdownEditor";
 
 vi.mock("@/i18n/navigation", () => ({
   Link: ({ href, children }: { href: string; children?: React.ReactNode }) => <a href={href}>{children}</a>,
@@ -26,7 +27,7 @@ globalThis.ResizeObserver ??= class {
   disconnect() {}
 } as unknown as typeof ResizeObserver;
 
-const MOTOR ="/components/3f2b1c4e-0000-4000-8000-000000000001";
+const MOTOR = "/components/3f2b1c4e-0000-4000-8000-000000000001";
 
 let stored = "";
 

@@ -48,7 +48,9 @@ class ErrorEvent(UUIDPrimaryKeyModel):
     method = models.CharField(max_length=10, blank=True)
     path = models.CharField(max_length=500, blank=True)
     user_agent = models.CharField(max_length=300, blank=True)
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
     organization = models.ForeignKey(
         "organization.Organization", null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
     )

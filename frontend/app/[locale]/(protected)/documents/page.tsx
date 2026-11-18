@@ -6,18 +6,18 @@ import { useEffect, useState } from "react";
 import { Can } from "@/components/auth/Can";
 import { DOCUMENT_CARD_GRID, DocumentCard, DocumentCardGridSkeleton } from "@/components/engineering/DocumentCard";
 import { DocumentsTable } from "@/components/engineering/DocumentsTable";
+import { DOCUMENTS_TABLE_COLUMNS } from "@/components/engineering/EngineeringSkeletons";
 import { ActiveFilterChip } from "@/components/ui/ActiveFilterChip";
 import { Button } from "@/components/ui/Button";
 import { Combobox } from "@/components/ui/Combobox";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
+import { INPUT_CLASS } from "@/components/ui/inputStyles";
 import { Pagination } from "@/components/ui/Pagination";
 import { TableSkeleton } from "@/components/ui/Skeleton";
 import { useViewMode, ViewModeToggle } from "@/components/ui/ViewModeToggle";
-import { DOCUMENTS_TABLE_COLUMNS } from "@/components/engineering/EngineeringSkeletons";
-import { INPUT_CLASS } from "@/components/ui/inputStyles";
-import { getDocuments, type DocumentOrdering } from "@/lib/api/documents";
 import { Link } from "@/i18n/navigation";
+import { getDocuments, type DocumentOrdering } from "@/lib/api/documents";
 import type { DocType, DocumentSource, DocumentSummary } from "@/lib/api/types";
 import { useEngineeringListFiltersEnabled } from "@/lib/auth/permissions";
 import { errorMessage } from "@/lib/errors";
@@ -84,7 +84,8 @@ export default function DocumentsPage() {
       ordering,
     }).then(
       (data) => {
-        if (active) setResult({ key: filterKey, documents: data.results, hasNext: data.next !== null, count: data.count });
+        if (active)
+          setResult({ key: filterKey, documents: data.results, hasNext: data.next !== null, count: data.count });
       },
       (err) => {
         if (active) setErrorResult({ key: filterKey, message: errorMessage(err) });

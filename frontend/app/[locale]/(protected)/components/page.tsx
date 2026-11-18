@@ -9,6 +9,7 @@ import { EngineeringStatusPill, StockStatusPill } from "@/components/engineering
 import { ComponentImportModal } from "@/components/engineering/ComponentImportModal";
 import { ComponentPhotoCell } from "@/components/engineering/ComponentPhotoCell";
 import { ComponentsTable } from "@/components/engineering/ComponentsTable";
+import { ComponentCardGridSkeleton, COMPONENTS_TABLE_COLUMNS } from "@/components/engineering/EngineeringSkeletons";
 import { InventorySummaryPanel } from "@/components/engineering/InventorySummaryPanel";
 import { ActiveFilterChip } from "@/components/ui/ActiveFilterChip";
 import { Button } from "@/components/ui/Button";
@@ -19,7 +20,6 @@ import { Menu, type MenuEntry } from "@/components/ui/Menu";
 import { Pagination } from "@/components/ui/Pagination";
 import { TableSkeleton } from "@/components/ui/Skeleton";
 import { useViewMode, ViewModeToggle } from "@/components/ui/ViewModeToggle";
-import { COMPONENTS_TABLE_COLUMNS, ComponentCardGridSkeleton } from "@/components/engineering/EngineeringSkeletons";
 import { Link } from "@/i18n/navigation";
 import {
   exportComponentsCsv,
@@ -93,7 +93,9 @@ function ComponentsPageContent() {
   });
   const [stockFilter, setStockFilter] = useState<StockFilter | null>(() => {
     const value = searchParams.get("stock_status");
-    return value === "NEEDS_ORDERING" || STOCK_STATUS_VALUES.includes(value as StockStatus) ? (value as StockFilter) : null;
+    return value === "NEEDS_ORDERING" || STOCK_STATUS_VALUES.includes(value as StockStatus)
+      ? (value as StockFilter)
+      : null;
   });
   const [statusFilter, setStatusFilter] = useState<ComponentStatus | null>(null);
   const [searchInput, setSearchInput] = useState("");
@@ -179,7 +181,8 @@ function ComponentsPageContent() {
       ordering,
     }).then(
       (data) => {
-        if (active) setResult({ key: filterKey, components: data.results, hasNext: data.next !== null, count: data.count });
+        if (active)
+          setResult({ key: filterKey, components: data.results, hasNext: data.next !== null, count: data.count });
       },
       (err) => {
         if (active) setErrorResult({ key: filterKey, message: errorMessage(err) });
@@ -188,7 +191,17 @@ function ComponentsPageContent() {
     return () => {
       active = false;
     };
-  }, [categoryFilter, locationFilter, statusFilter, inventoryTypeFilter, stockFilter, query, page, ordering, filterKey]);
+  }, [
+    categoryFilter,
+    locationFilter,
+    statusFilter,
+    inventoryTypeFilter,
+    stockFilter,
+    query,
+    page,
+    ordering,
+    filterKey,
+  ]);
 
   useEffect(() => {
     if (!showSummary) return;
@@ -311,7 +324,11 @@ function ComponentsPageContent() {
             placeholder={commonT("select")}
             options={[
               { value: "", label: inventoryTypeT("all") },
-              ...INVENTORY_TYPE_VALUES.map((value) => ({ value, label: inventoryTypeT(value), ...INVENTORY_TYPE_ICONS[value] })),
+              ...INVENTORY_TYPE_VALUES.map((value) => ({
+                value,
+                label: inventoryTypeT(value),
+                ...INVENTORY_TYPE_ICONS[value],
+              })),
             ]}
             value={inventoryTypeFilter ?? ""}
             onChange={(value) => updateInventoryTypeFilter((value || null) as InventoryType | null)}
@@ -321,7 +338,10 @@ function ComponentsPageContent() {
         <div className="flex-1 min-w-36 sm:flex-none sm:w-48">
           <Combobox
             placeholder={commonT("select")}
-            options={[{ value: "", label: t("allCategories") }, ...categories.map((c) => ({ value: c.id, label: c.name }))]}
+            options={[
+              { value: "", label: t("allCategories") },
+              ...categories.map((c) => ({ value: c.id, label: c.name })),
+            ]}
             value={categoryFilter ?? ""}
             onChange={(value) => updateCategoryFilter(value || null)}
             triggerClassName="h-10"
@@ -384,7 +404,9 @@ function ComponentsPageContent() {
               }}
             />
           )}
-          {activeLocation && <ActiveFilterChip label={activeLocation.name} onClear={() => updateLocationFilter(null)} />}
+          {activeLocation && (
+            <ActiveFilterChip label={activeLocation.name} onClear={() => updateLocationFilter(null)} />
+          )}
         </div>
       )}
 
@@ -460,7 +482,9 @@ function ComponentsPageContent() {
                   )}
                   <div className="flex items-center justify-between gap-2 mb-3">
                     {component.part_number && (
-                      <p className="font-mono-sm text-mono-sm text-on-surface-variant truncate">{component.part_number}</p>
+                      <p className="font-mono-sm text-mono-sm text-on-surface-variant truncate">
+                        {component.part_number}
+                      </p>
                     )}
                     <span
                       className={`font-mono-sm text-mono-sm shrink-0 ms-auto ${

@@ -13,10 +13,9 @@ from core.testing import RoleLoginMixin, create_test_organization
 from files.models import StoredFile
 from knowledge import services as knowledge_services
 
-from .models import Course, CourseEnrollment, CourseModule, CourseResource, Lesson, LessonProgress
 from . import services
+from .models import Course, CourseEnrollment, CourseModule, CourseResource, Lesson, LessonProgress
 from .services import detect_resource_provider
-
 
 # A minimal file that passes files/validation.py's PNG magic-byte check.
 PNG_BYTES = b"\x89PNG\r\n\x1a\n" + b"0" * 64
@@ -35,7 +34,12 @@ class DetectResourceProviderTests(SimpleTestCase):
         self.assertEqual(detect_resource_provider("https://github.com/org/repo"), CourseResource.Provider.GITHUB)
 
     def test_look_alikes_are_plain_websites(self):
-        for url in ("https://notgithub.com/x", "https://evil.example/?next=youtube.com", "https://vimeo.com.evil.example/", "garbage"):
+        for url in (
+            "https://notgithub.com/x",
+            "https://evil.example/?next=youtube.com",
+            "https://vimeo.com.evil.example/",
+            "garbage",
+        ):
             self.assertEqual(detect_resource_provider(url), CourseResource.Provider.WEBSITE, url)
 
 
@@ -54,7 +58,9 @@ class TrainingTestCase(RoleLoginMixin, APITestCase):
 
     def _create_module(self, access_token, course_id, title="Module 1"):
         return self.client.post(
-            reverse("training-module-list-create", args=[course_id]), {"title": title}, format="json",
+            reverse("training-module-list-create", args=[course_id]),
+            {"title": title},
+            format="json",
             **self._auth(access_token),
         ).data
 
@@ -173,8 +179,10 @@ class CourseLifecycleTests(TrainingTestCase):
 
         _, head_access = self._login_with_role("head2@example.com", "Subteam Head")
         response = self.client.post(
-            reverse("training-course-reject", args=[course["id"]]), {"reason": "needs more detail"},
-            format="json", **self._auth(head_access),
+            reverse("training-course-reject", args=[course["id"]]),
+            {"reason": "needs more detail"},
+            format="json",
+            **self._auth(head_access),
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["status"], Course.Status.REJECTED)
@@ -191,12 +199,16 @@ class CourseLifecycleTests(TrainingTestCase):
         self.assertEqual(response.data["status"], Course.Status.ARCHIVED)
 
         response = self.client.patch(
-            reverse("training-course-detail", args=[course["id"]]), {"title": "New title"}, format="json",
+            reverse("training-course-detail", args=[course["id"]]),
+            {"title": "New title"},
+            format="json",
             **self._auth(mentor_access),
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-        response = self.client.post(reverse("training-course-unarchive", args=[course["id"]]), **self._auth(head_access))
+        response = self.client.post(
+            reverse("training-course-unarchive", args=[course["id"]]), **self._auth(head_access)
+        )
         self.assertEqual(response.data["status"], Course.Status.PUBLISHED)
 
 
@@ -220,12 +232,16 @@ class CoursePermissionTests(TrainingTestCase):
         self.assertEqual(course["status"], Course.Status.DRAFT)
 
         response = self.client.patch(
-            reverse("training-course-detail", args=[course["id"]]), {"title": "Updated"}, format="json",
+            reverse("training-course-detail", args=[course["id"]]),
+            {"title": "Updated"},
+            format="json",
             **self._auth(mentor_access),
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        response = self.client.post(reverse("training-course-publish", args=[course["id"]]), **self._auth(mentor_access))
+        response = self.client.post(
+            reverse("training-course-publish", args=[course["id"]]), **self._auth(mentor_access)
+        )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_subteam_head_can_publish_and_archive(self):
@@ -248,13 +264,17 @@ class CoursePermissionTests(TrainingTestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
         _, admin_access = self._login_with_role("admin@example.com", "Organization Admin")
-        response = self.client.delete(reverse("training-course-detail", args=[course["id"]]), **self._auth(admin_access))
+        response = self.client.delete(
+            reverse("training-course-detail", args=[course["id"]]), **self._auth(admin_access)
+        )
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
 
     def test_own_draft_deletable_without_special_permission(self):
         _, mentor_access = self._login_with_role("mentor@example.com", "Mentor")
         course = self._create_course(mentor_access)
-        response = self.client.delete(reverse("training-course-detail", args=[course["id"]]), **self._auth(mentor_access))
+        response = self.client.delete(
+            reverse("training-course-detail", args=[course["id"]]), **self._auth(mentor_access)
+        )
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
 
     def test_course_deletion_with_enrollments_requires_force_override(self):
@@ -268,14 +288,15 @@ class CoursePermissionTests(TrainingTestCase):
         self.client.post(reverse("training-course-enroll", args=[course["id"]]), **self._auth(learner_access))
 
         # Blocked without force
-        response = self.client.delete(reverse("training-course-detail", args=[course["id"]]), **self._auth(admin_access))
+        response = self.client.delete(
+            reverse("training-course-detail", args=[course["id"]]), **self._auth(admin_access)
+        )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertTrue(Course.objects.filter(pk=course["id"]).exists())
 
         # Permitted with force=true
         response = self.client.delete(
-            reverse("training-course-detail", args=[course["id"]]) + "?force=true",
-            **self._auth(admin_access)
+            reverse("training-course-detail", args=[course["id"]]) + "?force=true", **self._auth(admin_access)
         )
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(Course.objects.filter(pk=course["id"]).exists())
@@ -310,6 +331,7 @@ class CoursePermissionTests(TrainingTestCase):
 
         # Check contribution scores for creator & co-author
         from knowledge import services as k_services
+
         scores = k_services.compute_contribution_scores_for(self.organization)
         # 5 points for course.create + 10 points for course.publish = 15 points each!
         self.assertGreaterEqual(scores.get(lead_mentor.pk, 0), 15)
@@ -353,7 +375,9 @@ class CourseCategoryTests(TrainingTestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-        response = self.client.delete(reverse("training-category-detail", args=[category_id]), **self._auth(admin_access))
+        response = self.client.delete(
+            reverse("training-category-detail", args=[category_id]), **self._auth(admin_access)
+        )
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
 
 
@@ -368,20 +392,17 @@ class ModuleLessonOrderingTests(TrainingTestCase):
                     "description": "Lofting and planes",
                     "lessons": [
                         {"title": "Loft tool.mp4", "lesson_type": "VIDEO", "estimated_minutes": 15},
-                        {"title": "Mass notes", "lesson_type": "TEXT", "content": "Check mass"}
-                    ]
+                        {"title": "Mass notes", "lesson_type": "TEXT", "content": "Check mass"},
+                    ],
                 },
-                {
-                    "title": "2. Detailed Structure",
-                    "lessons": [
-                        {"title": "Mirror bodies.mp4", "lesson_type": "VIDEO"}
-                    ]
-                }
+                {"title": "2. Detailed Structure", "lessons": [{"title": "Mirror bodies.mp4", "lesson_type": "VIDEO"}]},
             ]
         }
         res = self.client.post(
             reverse("training-course-import-curriculum", args=[course["id"]]),
-            payload, format="json", **self._auth(head_access),
+            payload,
+            format="json",
+            **self._auth(head_access),
         )
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(len(res.data["modules"]), 2)
@@ -415,12 +436,21 @@ class ModuleLessonOrderingTests(TrainingTestCase):
     def test_import_curriculum_parses_string_booleans_and_skips_unusable_text_urls(self):
         _, head_access = self._login_with_role("head_boolimport@example.com", "Subteam Head")
         course = self._create_course(head_access)
-        payload = {"modules": [{"title": None, "lessons": [
-            {"title": "", "is_required": "false", "content": "see https://x.com/" + "a" * 2100},
-        ]}]}
+        payload = {
+            "modules": [
+                {
+                    "title": None,
+                    "lessons": [
+                        {"title": "", "is_required": "false", "content": "see https://x.com/" + "a" * 2100},
+                    ],
+                }
+            ]
+        }
         res = self.client.post(
             reverse("training-course-import-curriculum", args=[course["id"]]),
-            payload, format="json", **self._auth(head_access),
+            payload,
+            format="json",
+            **self._auth(head_access),
         )
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         lesson = Lesson.objects.get(module__course_id=course["id"])
@@ -450,7 +480,9 @@ class ModuleLessonOrderingTests(TrainingTestCase):
 
         response = self.client.post(
             reverse("training-module-reorder", args=[course["id"]]),
-            {"order": [module_b["id"], module_a["id"]]}, format="json", **self._auth(head_access),
+            {"order": [module_b["id"], module_a["id"]]},
+            format="json",
+            **self._auth(head_access),
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data[0]["id"], module_b["id"])
@@ -460,7 +492,9 @@ class ModuleLessonOrderingTests(TrainingTestCase):
 
         response = self.client.post(
             reverse("training-module-reorder", args=[course["id"]]),
-            {"order": [module_a["id"]]}, format="json", **self._auth(head_access),
+            {"order": [module_a["id"]]},
+            format="json",
+            **self._auth(head_access),
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
@@ -473,7 +507,9 @@ class ModuleLessonOrderingTests(TrainingTestCase):
 
         self.client.post(
             reverse("training-lesson-reorder", args=[module["id"]]),
-            {"order": [lesson_2["id"], lesson_1["id"]]}, format="json", **self._auth(head_access),
+            {"order": [lesson_2["id"], lesson_1["id"]]},
+            format="json",
+            **self._auth(head_access),
         )
         response = self.client.get(reverse("training-lesson-detail", args=[lesson_1["id"]]), **self._auth(head_access))
         self.assertEqual(response.data["id"], lesson_1["id"])
@@ -534,9 +570,13 @@ class LessonProgressTests(TrainingTestCase):
         _, member_access = self._login_with_role("member@example.com", "Member")
         self.client.post(reverse("training-course-enroll", args=[course["id"]]), **self._auth(member_access))
 
-        response = self.client.post(reverse("training-lesson-complete", args=[lessons[0]["id"]]), **self._auth(member_access))
+        response = self.client.post(
+            reverse("training-lesson-complete", args=[lessons[0]["id"]]), **self._auth(member_access)
+        )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        response = self.client.post(reverse("training-lesson-complete", args=[lessons[0]["id"]]), **self._auth(member_access))
+        response = self.client.post(
+            reverse("training-lesson-complete", args=[lessons[0]["id"]]), **self._auth(member_access)
+        )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(LessonProgress.objects.filter(lesson_id=lessons[0]["id"]).count(), 1)
 
@@ -544,7 +584,9 @@ class LessonProgressTests(TrainingTestCase):
         _, head_access = self._login_with_role("head@example.com", "Subteam Head")
         course, lessons = self._setup_published_course_with_lessons(head_access)
         _, member_access = self._login_with_role("member@example.com", "Member")
-        response = self.client.post(reverse("training-lesson-complete", args=[lessons[0]["id"]]), **self._auth(member_access))
+        response = self.client.post(
+            reverse("training-lesson-complete", args=[lessons[0]["id"]]), **self._auth(member_access)
+        )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_progress_calculation_and_required_only_completion(self):
@@ -554,13 +596,17 @@ class LessonProgressTests(TrainingTestCase):
         self.client.post(reverse("training-course-enroll", args=[course["id"]]), **self._auth(member_access))
 
         self.client.post(reverse("training-lesson-complete", args=[lessons[0]["id"]]), **self._auth(member_access))
-        response = self.client.get(reverse("training-course-progress", args=[course["id"]]), **self._auth(member_access))
+        response = self.client.get(
+            reverse("training-course-progress", args=[course["id"]]), **self._auth(member_access)
+        )
         self.assertEqual(response.data["completed_lessons"], 1)
         self.assertEqual(response.data["total_lessons"], 3)
         self.assertEqual(response.data["status"], CourseEnrollment.Status.IN_PROGRESS)
 
         self.client.post(reverse("training-lesson-complete", args=[lessons[1]["id"]]), **self._auth(member_access))
-        response = self.client.get(reverse("training-course-progress", args=[course["id"]]), **self._auth(member_access))
+        response = self.client.get(
+            reverse("training-course-progress", args=[course["id"]]), **self._auth(member_access)
+        )
         # lessons[2] is optional and never completed - course should still
         # complete once every REQUIRED lesson is done.
         self.assertEqual(response.data["status"], CourseEnrollment.Status.COMPLETED)
@@ -580,7 +626,8 @@ class CourseResourceTests(TrainingTestCase):
         response = self.client.post(
             reverse("training-resource-list-create", args=[lesson["id"]]),
             {"title": "Video", "resource_type": CourseResource.ResourceType.EXTERNAL_LINK},
-            format="json", **self._auth(head_access),
+            format="json",
+            **self._auth(head_access),
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
@@ -590,10 +637,12 @@ class CourseResourceTests(TrainingTestCase):
         response = self.client.post(
             reverse("training-resource-list-create", args=[lesson["id"]]),
             {
-                "title": "Doc", "resource_type": CourseResource.ResourceType.STORED_FILE,
+                "title": "Doc",
+                "resource_type": CourseResource.ResourceType.STORED_FILE,
                 "url": "https://example.com/x.pdf",
             },
-            format="json", **self._auth(head_access),
+            format="json",
+            **self._auth(head_access),
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
@@ -603,19 +652,25 @@ class CourseResourceTests(TrainingTestCase):
         first = self.client.post(
             reverse("training-resource-list-create", args=[lesson["id"]]),
             {
-                "title": "Main Video", "resource_type": CourseResource.ResourceType.EXTERNAL_LINK,
-                "provider": CourseResource.Provider.GOOGLE_DRIVE, "url": "https://drive.google.com/file/d/abc/view",
+                "title": "Main Video",
+                "resource_type": CourseResource.ResourceType.EXTERNAL_LINK,
+                "provider": CourseResource.Provider.GOOGLE_DRIVE,
+                "url": "https://drive.google.com/file/d/abc/view",
                 "is_primary": True,
             },
-            format="json", **self._auth(head_access),
+            format="json",
+            **self._auth(head_access),
         ).data
         second = self.client.post(
             reverse("training-resource-list-create", args=[lesson["id"]]),
             {
-                "title": "Alt Video", "resource_type": CourseResource.ResourceType.EXTERNAL_LINK,
-                "url": "https://example.com/alt.mp4", "is_primary": True,
+                "title": "Alt Video",
+                "resource_type": CourseResource.ResourceType.EXTERNAL_LINK,
+                "url": "https://example.com/alt.mp4",
+                "is_primary": True,
             },
-            format="json", **self._auth(head_access),
+            format="json",
+            **self._auth(head_access),
         ).data
         self.assertTrue(second["is_primary"])
         first_reloaded = CourseResource.objects.get(pk=first["id"])
@@ -634,7 +689,8 @@ class LessonKnowledgeReferenceTests(TrainingTestCase):
         response = self.client.post(
             reverse("training-knowledge-reference-list-create", args=[lesson["id"]]),
             {"content_type": "component", "object_id": "00000000-0000-0000-0000-000000000000"},
-            format="json", **self._auth(head_access),
+            format="json",
+            **self._auth(head_access),
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
@@ -648,7 +704,8 @@ class LessonKnowledgeReferenceTests(TrainingTestCase):
         response = self.client.post(
             reverse("training-knowledge-reference-list-create", args=[lesson["id"]]),
             {"content_type": "component", "object_id": str(other_component.pk)},
-            format="json", **self._auth(head_access),
+            format="json",
+            **self._auth(head_access),
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
@@ -664,7 +721,8 @@ class LessonKnowledgeReferenceTests(TrainingTestCase):
         self.client.post(
             reverse("training-knowledge-reference-list-create", args=[lesson["id"]]),
             {"content_type": "component", "object_id": str(restricted_component.pk)},
-            format="json", **self._auth(head_access),
+            format="json",
+            **self._auth(head_access),
         )
 
         response = self.client.get(
@@ -673,9 +731,12 @@ class LessonKnowledgeReferenceTests(TrainingTestCase):
         self.assertEqual(len(response.data), 1)
 
         _, member_access = self._login_with_role("member@example.com", "Member")
-        self._publish_course(head_access, self.client.get(
-            reverse("training-lesson-detail", args=[lesson["id"]]), **self._auth(head_access)
-        ).data["course_id"])
+        self._publish_course(
+            head_access,
+            self.client.get(reverse("training-lesson-detail", args=[lesson["id"]]), **self._auth(head_access)).data[
+                "course_id"
+            ],
+        )
         response = self.client.get(
             reverse("training-knowledge-reference-list-create", args=[lesson["id"]]), **self._auth(member_access)
         )
@@ -699,7 +760,9 @@ class MultiTenancyIsolationTests(RoleLoginMixin, APITestCase):
     def test_courses_are_isolated(self):
         _, a_head_access = self._login_with_role("a-head@example.com", "Subteam Head", self.org_a)
         course = self.client.post(
-            reverse("training-course-list-create"), {"title": "Org A Secret Course"}, format="json",
+            reverse("training-course-list-create"),
+            {"title": "Org A Secret Course"},
+            format="json",
             **self._auth(a_head_access),
         ).data
         self.client.post(reverse("training-course-publish", args=[course["id"]]), **self._auth(a_head_access))
@@ -712,16 +775,17 @@ class MultiTenancyIsolationTests(RoleLoginMixin, APITestCase):
         response = self.client.get(reverse("training-course-detail", args=[course["id"]]), **self._auth(b_head_access))
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
-        response = self.client.get(
-            reverse("training-search") + "?q=Secret", **self._auth(b_head_access)
-        )
+        response = self.client.get(reverse("training-search") + "?q=Secret", **self._auth(b_head_access))
         titles = [row["title"] for row in response.data["results"]]
         self.assertNotIn("Org A Secret Course", titles)
 
     def test_enrollment_and_progress_isolated(self):
         _, a_head_access = self._login_with_role("a-head@example.com", "Subteam Head", self.org_a)
         course = self.client.post(
-            reverse("training-course-list-create"), {"title": "Org A Course"}, format="json", **self._auth(a_head_access)
+            reverse("training-course-list-create"),
+            {"title": "Org A Course"},
+            format="json",
+            **self._auth(a_head_access),
         ).data
         self.client.post(reverse("training-course-publish", args=[course["id"]]), **self._auth(a_head_access))
 
@@ -729,7 +793,9 @@ class MultiTenancyIsolationTests(RoleLoginMixin, APITestCase):
         self.client.post(reverse("training-course-enroll", args=[course["id"]]), **self._auth(a_member_access))
 
         _, b_member_access = self._login_with_role("b-member@example.com", "Member", self.org_b)
-        response = self.client.post(reverse("training-course-enroll", args=[course["id"]]), **self._auth(b_member_access))
+        response = self.client.post(
+            reverse("training-course-enroll", args=[course["id"]]), **self._auth(b_member_access)
+        )
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
         response = self.client.get(reverse("training-my-courses"), **self._auth(b_member_access))

@@ -40,7 +40,9 @@ class CurrentPoliciesView(APIView):
     def get(self, request):
         versions = services.current_versions_for(request.user.organization).select_related("published_by")
         accepted_ids = set(
-            PolicyAcceptance.objects.filter(user=request.user, version__in=versions).values_list("version_id", flat=True)
+            PolicyAcceptance.objects.filter(user=request.user, version__in=versions).values_list(
+                "version_id", flat=True
+            )
         )
         return Response(CurrentPolicySerializer(versions, many=True, context={"accepted_ids": accepted_ids}).data)
 
@@ -59,7 +61,9 @@ class AcceptPoliciesView(APIView):
     def post(self, request):
         serializer = AcceptPoliciesSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        services.accept_policies(user=request.user, version_ids=serializer.validated_data["version_ids"], request=request)
+        services.accept_policies(
+            user=request.user, version_ids=serializer.validated_data["version_ids"], request=request
+        )
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -89,7 +93,11 @@ class PolicyDraftView(APIView):
         serializer = PolicyDraftWriteSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         draft = services.save_draft(
-            organization=request.user.organization, kind=kind, actor=request.user, request=request, **serializer.validated_data
+            organization=request.user.organization,
+            kind=kind,
+            actor=request.user,
+            request=request,
+            **serializer.validated_data,
         )
         return Response(PolicyDraftSerializer(draft).data)
 
@@ -108,5 +116,7 @@ class PolicyPublishView(APIView):
     )
     def post(self, request, kind):
         kind = _kind_or_404(kind)
-        version = services.publish_policy(organization=request.user.organization, kind=kind, actor=request.user, request=request)
+        version = services.publish_policy(
+            organization=request.user.organization, kind=kind, actor=request.user, request=request
+        )
         return Response(PolicyVersionSerializer(version).data, status=status.HTTP_201_CREATED)

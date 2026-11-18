@@ -56,11 +56,7 @@ export function ConfirmModal({
           <Button variant="secondary" onClick={() => onOpenChange(false)} disabled={isConfirming}>
             {cancelLabel ?? t("cancel")}
           </Button>
-          <Button
-            variant={danger ? "danger" : "primary"}
-            onClick={handleConfirm}
-            disabled={isConfirming}
-          >
+          <Button variant={danger ? "danger" : "primary"} onClick={handleConfirm} disabled={isConfirming}>
             {isConfirming ? t("working") : (confirmLabel ?? t("confirm"))}
           </Button>
         </>

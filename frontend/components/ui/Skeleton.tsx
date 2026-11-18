@@ -189,7 +189,11 @@ export function TableSkeleton({ rows = 6, columns, variant = "boxed" }: TableSke
     >
       <table className="w-full border-collapse">
         <thead>
-          <tr className={flush ? "border-t border-outline-variant" : "border-b border-outline-variant bg-surface-container-low"}>
+          <tr
+            className={
+              flush ? "border-t border-outline-variant" : "border-b border-outline-variant bg-surface-container-low"
+            }
+          >
             {columns.map((_, index) => (
               <th key={index} className={flush ? "px-6 py-2" : "px-4 py-3"}>
                 <SkeletonText variant="label-caps" width="w-16" />
@@ -243,10 +247,7 @@ export function SettingsListSkeleton({
   return (
     <SkeletonRegion className="space-y-1">
       {Array.from({ length: rows }).map((_, index) => (
-        <div
-          key={index}
-          className="flex items-center justify-between gap-4 px-3 py-2 rounded-lg bg-surface-container"
-        >
+        <div key={index} className="flex items-center justify-between gap-4 px-3 py-2 rounded-lg bg-surface-container">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <SkeletonText width="w-48 max-w-full" />

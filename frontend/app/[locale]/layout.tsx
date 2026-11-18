@@ -1,18 +1,20 @@
 import { DirectionProvider } from "@radix-ui/react-direction";
 import type { Metadata } from "next";
+import { NextIntlClientProvider } from "next-intl";
+import { getMessages, setRequestLocale } from "next-intl/server";
 import localFont from "next/font/local";
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
-import { NextIntlClientProvider } from "next-intl";
-import { getMessages, setRequestLocale } from "next-intl/server";
+
 import { ErrorReporter } from "@/components/errors/ErrorReporter";
 import { BrandColorSync } from "@/components/theme/BrandColorSync";
 import { TruncateRoller } from "@/components/ui/TruncateRoller";
+import { localeDirections, locales, type Locale } from "@/i18n/request";
 import { AuthProvider } from "@/lib/auth/AuthProvider";
 import { OrganizationProvider } from "@/lib/organization/OrganizationProvider";
-import { ThemeProvider } from "@/lib/theme/ThemeProvider";
 import { isThemePreference, THEME_COOKIE_NAME } from "@/lib/theme/theme";
-import { localeDirections, locales, type Locale } from "@/i18n/request";
+import { ThemeProvider } from "@/lib/theme/ThemeProvider";
+
 import "./globals.css";
 
 // Self-hosted variable fonts (frontend/app/fonts/) instead of next/font/google, which fetches
@@ -54,10 +56,7 @@ export const metadata: Metadata = {
   description: "Engineering Knowledge System",
 };
 
-export default async function LocaleLayout({
-  children,
-  params,
-}: LayoutProps<"/[locale]">) {
+export default async function LocaleLayout({ children, params }: LayoutProps<"/[locale]">) {
   const { locale } = await params;
   if (!locales.includes(locale as Locale)) {
     notFound();

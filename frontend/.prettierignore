@@ -1,0 +1,11 @@
+# Generated or vendored - not hand-written code.
+.next/
+out/
+build/
+coverage/
+node_modules/
+public/
+package-lock.json
+next-env.d.ts
+# Translation catalogues are rewritten by scripts with their own 2-space JSON layout.
+i18n/messages/

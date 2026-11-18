@@ -82,11 +82,7 @@ export function SideNav({ open, onClose }: SideNavProps) {
     <>
       {/* Backdrop - mobile/tablet only, and only while the drawer is open. */}
       {open && (
-        <div
-          className="fixed inset-0 bg-inverse-surface/40 z-30 lg:hidden"
-          onClick={onClose}
-          aria-hidden="true"
-        />
+        <div className="fixed inset-0 bg-inverse-surface/40 z-30 lg:hidden" onClick={onClose} aria-hidden="true" />
       )}
 
       <nav
@@ -117,9 +113,7 @@ export function SideNav({ open, onClose }: SideNavProps) {
               <span className="font-headline-md text-headline-md font-bold text-primary">
                 {settings?.name ?? "Athar"}
               </span>
-              <span className="font-label-caps text-label-caps text-on-surface-variant">
-                {t("tagline")}
-              </span>
+              <span className="font-label-caps text-label-caps text-on-surface-variant">{t("tagline")}</span>
             </div>
             <button
               type="button"
@@ -138,9 +132,7 @@ export function SideNav({ open, onClose }: SideNavProps) {
             return (
               <Can key={item.href} permission={item.permission}>
                 <>
-                  {item.separatorBefore && (
-                    <div className="h-px bg-outline-variant my-2 mx-2" aria-hidden="true" />
-                  )}
+                  {item.separatorBefore && <div className="h-px bg-outline-variant my-2 mx-2" aria-hidden="true" />}
                   <Link
                     className={
                       isActive

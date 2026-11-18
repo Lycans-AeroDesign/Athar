@@ -11,12 +11,12 @@ import { IdentitySettingsForm } from "@/components/settings/IdentitySettingsForm
 import { InvitationsSettingsForm } from "@/components/settings/InvitationsSettingsForm";
 import { PoliciesSettingsForm } from "@/components/settings/PoliciesSettingsForm";
 import { RolesSettingsForm } from "@/components/settings/RolesSettingsForm";
-import { SharedLinksSettings } from "@/components/settings/SharedLinksSettings";
 import { useSettingsPermissions, useVisibleSettingsGroups } from "@/components/settings/sections";
 import { useReportSettingsDirty } from "@/components/settings/SettingsShell";
+import { FeaturesSettingsSkeleton, IdentitySettingsSkeleton } from "@/components/settings/SettingsSkeletons";
+import { SharedLinksSettings } from "@/components/settings/SharedLinksSettings";
 import { UsersSettingsForm } from "@/components/settings/UsersSettingsForm";
 import { CourseCategoryManager } from "@/components/training/CourseCategoryManager";
-import { FeaturesSettingsSkeleton, IdentitySettingsSkeleton } from "@/components/settings/SettingsSkeletons";
 import { useRouter } from "@/i18n/navigation";
 import { useOrganization } from "@/lib/organization/OrganizationProvider";
 

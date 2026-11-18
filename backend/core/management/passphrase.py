@@ -34,9 +34,7 @@ def resolve_passphrase(options, confirm: bool) -> str:
         if confirm and getpass.getpass("Repeat passphrase: ") != passphrase:
             raise CommandError("The passphrases don't match.")
     else:
-        raise CommandError(
-            "No passphrase given - pass --passphrase-file, set BACKUP_PASSPHRASE, or run interactively."
-        )
+        raise CommandError("No passphrase given - pass --passphrase-file, set BACKUP_PASSPHRASE, or run interactively.")
     if confirm and len(passphrase) < settings.BACKUP_PASSPHRASE_MIN_LENGTH:
         raise CommandError(f"The passphrase must be at least {settings.BACKUP_PASSPHRASE_MIN_LENGTH} characters.")
     return passphrase

@@ -4,16 +4,16 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 import { Can } from "@/components/auth/Can";
+import { TESTS_TABLE_COLUMNS } from "@/components/engineering/EngineeringSkeletons";
 import { TestsTable } from "@/components/engineering/TestsTable";
 import { ActiveFilterChip } from "@/components/ui/ActiveFilterChip";
 import { Button } from "@/components/ui/Button";
 import { Combobox } from "@/components/ui/Combobox";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
+import { INPUT_CLASS } from "@/components/ui/inputStyles";
 import { Pagination } from "@/components/ui/Pagination";
 import { TableSkeleton } from "@/components/ui/Skeleton";
-import { TESTS_TABLE_COLUMNS } from "@/components/engineering/EngineeringSkeletons";
-import { INPUT_CLASS } from "@/components/ui/inputStyles";
 import { Link } from "@/i18n/navigation";
 import { getTests, type TestOrdering } from "@/lib/api/engineering";
 import type { TestPassFail, TestRunStatus, TestSummary, TestType } from "@/lib/api/types";
@@ -156,7 +156,11 @@ export default function TestsPage() {
               placeholder={passFailT("all")}
               options={[
                 { value: "", label: passFailT("all") },
-                ...PASS_FAIL_VALUES.map((value) => ({ value, label: passFailT(value), ...TEST_PASS_FAIL_ICONS[value] })),
+                ...PASS_FAIL_VALUES.map((value) => ({
+                  value,
+                  label: passFailT(value),
+                  ...TEST_PASS_FAIL_ICONS[value],
+                })),
               ]}
               value={passFailFilter ?? ""}
               onChange={(value) => updatePassFailFilter((value || null) as Exclude<TestPassFail, ""> | null)}

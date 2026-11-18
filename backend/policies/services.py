@@ -33,7 +33,9 @@ def seed_default_policies(organization, *, published_by=None) -> None:
         if PolicyVersion.objects.filter(organization=organization, kind=kind).exists():
             continue
         PolicyDraft.objects.update_or_create(
-            organization=organization, kind=kind, defaults={"title": title, "content": content, "updated_by": published_by}
+            organization=organization,
+            kind=kind,
+            defaults={"title": title, "content": content, "updated_by": published_by},
         )
         PolicyVersion.objects.create(
             organization=organization,
@@ -135,9 +137,7 @@ def overview_for(organization) -> list[dict]:
     for kind in PolicyKind.values:
         draft = drafts.get(kind)
         current = currents.get(kind)
-        accepted_count = (
-            current.acceptances.filter(user__is_active=True).count() if current is not None else 0
-        )
+        accepted_count = current.acceptances.filter(user__is_active=True).count() if current is not None else 0
         rows.append(
             {
                 "kind": kind,

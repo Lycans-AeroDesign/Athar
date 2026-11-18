@@ -31,7 +31,8 @@ const DAY_PICKER_CLASS_NAMES = {
   weekday: "w-9 h-9 flex items-center justify-center font-label-caps text-label-caps text-on-surface-variant uppercase",
   week: "flex",
   day: "w-9 h-9 flex items-center justify-center",
-  day_button: "h-8 w-8 flex items-center justify-center rounded-lg text-on-surface hover:bg-surface-variant transition-colors",
+  day_button:
+    "h-8 w-8 flex items-center justify-center rounded-lg text-on-surface hover:bg-surface-variant transition-colors",
   today: "font-bold text-primary",
   selected: "[&>button]:bg-primary [&>button]:text-on-primary [&>button]:hover:bg-primary-hover",
   outside: "text-outline",
@@ -67,9 +68,7 @@ export function DatePicker({ label, value, onChange, includeTime = false }: Date
   return (
     <div className="space-y-2">
       {label && (
-        <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase">
-          {label}
-        </label>
+        <label className="block font-label-caps text-label-caps text-on-surface-variant uppercase">{label}</label>
       )}
       <Popover.Root open={open} onOpenChange={setOpen}>
         <Popover.Trigger asChild>

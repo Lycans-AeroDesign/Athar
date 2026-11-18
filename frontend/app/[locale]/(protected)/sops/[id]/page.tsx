@@ -5,23 +5,23 @@ import { useParams } from "next/navigation";
 import { useState } from "react";
 
 import { Attachments } from "@/components/knowledge/Attachments";
+import { CoAuthorsByline } from "@/components/knowledge/CoAuthorsByline";
 import { ContributorsRow } from "@/components/knowledge/Contributors";
 import { RelatedContent } from "@/components/knowledge/RelatedContent";
 import { SeriesStepper } from "@/components/knowledge/SeriesStepper";
 import { BookmarkButton } from "@/components/ui/BookmarkButton";
-import { ShareButton } from "@/components/ui/ShareButton";
-import { CoAuthorsByline } from "@/components/knowledge/CoAuthorsByline";
-import { useAuth } from "@/lib/auth/AuthProvider";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { DetailMessage } from "@/components/ui/DetailMessage";
 import { Icon } from "@/components/ui/Icon";
 import { IconButton } from "@/components/ui/IconButton";
 import { Markdown } from "@/components/ui/Markdown";
+import { ShareButton } from "@/components/ui/ShareButton";
 import { DetailPageSkeleton } from "@/components/ui/Skeleton";
 import { TagChip } from "@/components/ui/TagChip";
 import { UpdatedBadge } from "@/components/ui/UpdatedBadge";
 import { Link, useRouter } from "@/i18n/navigation";
 import { deleteSop, getSop } from "@/lib/api/engineering";
+import { useAuth } from "@/lib/auth/AuthProvider";
 import { useHasPermission } from "@/lib/auth/permissions";
 import { errorMessage } from "@/lib/errors";
 import { useResource } from "@/lib/useResource";
@@ -36,7 +36,9 @@ export default function SopDetailPage() {
 
   const { data: sop, notFound } = useResource(id, getSop);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const canEdit = canUpdate || Boolean(user && sop && (user.id === sop.created_by?.id || (sop.co_authors ?? []).some((c) => c.id === user.id)));
+  const canEdit =
+    canUpdate ||
+    Boolean(user && sop && (user.id === sop.created_by?.id || (sop.co_authors ?? []).some((c) => c.id === user.id)));
   const [actionError, setActionError] = useState<string | null>(null);
 
   if (notFound) {
@@ -58,113 +60,118 @@ export default function SopDetailPage() {
 
   return (
     <div className="flex flex-col lg:flex-row gap-8 items-start">
-    <div className="flex-1 w-full min-w-0 max-w-[800px] space-y-6">
-      <Link
-        href="/sops"
-        className="inline-flex items-center gap-1 font-label-caps text-label-caps uppercase text-on-surface-variant hover:text-on-surface transition-colors"
-      >
-        <Icon name="arrow_back" size={16} />
-        {t("backToList")}
-      </Link>
+      <div className="flex-1 w-full min-w-0 max-w-[800px] space-y-6">
+        <Link
+          href="/sops"
+          className="inline-flex items-center gap-1 font-label-caps text-label-caps uppercase text-on-surface-variant hover:text-on-surface transition-colors"
+        >
+          <Icon name="arrow_back" size={16} />
+          {t("backToList")}
+        </Link>
 
-      <div className="border-t-4 border-primary rounded-t-xl bg-surface pt-6 space-y-3">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <span className="bg-primary-container text-on-primary-container font-label-caps text-label-caps px-2.5 py-1 rounded-full uppercase">
-              {t("badgeLabel")}
-            </span>
-            {sop.mandatory && (
-              <span className="bg-surface-container-high text-on-surface-variant font-label-caps text-label-caps px-2.5 py-1 rounded-full uppercase">
-                {t("mandatoryLabel")}
+        <div className="border-t-4 border-primary rounded-t-xl bg-surface pt-6 space-y-3">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <span className="bg-primary-container text-on-primary-container font-label-caps text-label-caps px-2.5 py-1 rounded-full uppercase">
+                {t("badgeLabel")}
+              </span>
+              {sop.mandatory && (
+                <span className="bg-surface-container-high text-on-surface-variant font-label-caps text-label-caps px-2.5 py-1 rounded-full uppercase">
+                  {t("mandatoryLabel")}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <ShareButton
+                title={sop.title}
+                publicLink={{
+                  type: "sop",
+                  objectId: sop.id,
+                  isPublished: true,
+                  isRestricted: sop.visibility === "RESTRICTED",
+                }}
+              />
+              <BookmarkButton key={sop.id} type="sop" objectId={sop.id} bookmarkId={sop.bookmark_id} />
+              {canEdit && (
+                <Link href={`/sops/${sop.id}/edit`}>
+                  <IconButton icon="edit" variant="secondary" aria-label={t("editButton")} />
+                </Link>
+              )}
+              {canDelete && (
+                <IconButton
+                  icon="delete"
+                  variant="danger"
+                  aria-label={t("deleteButton")}
+                  onClick={() => setDeleteOpen(true)}
+                />
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <h1 className="font-display text-display text-on-surface">{sop.title}</h1>
+            {sop.visibility === "RESTRICTED" && (
+              <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-error-container text-on-error-container font-label-caps text-label-caps uppercase">
+                <Icon name="lock" size={12} />
+                {t("visibilityRESTRICTED")}
               </span>
             )}
           </div>
-          <div className="flex items-center gap-2">
-            <ShareButton
-              title={sop.title}
-              publicLink={{
-                type: "sop",
-                objectId: sop.id,
-                isPublished: true,
-                isRestricted: sop.visibility === "RESTRICTED",
-              }}
-            />
-            <BookmarkButton key={sop.id} type="sop" objectId={sop.id} bookmarkId={sop.bookmark_id} />
-            {canEdit && (
-              <Link href={`/sops/${sop.id}/edit`}>
-                <IconButton icon="edit" variant="secondary" aria-label={t("editButton")} />
-              </Link>
-            )}
-            {canDelete && (
-              <IconButton icon="delete" variant="danger" aria-label={t("deleteButton")} onClick={() => setDeleteOpen(true)} />
-            )}
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <h1 className="font-display text-display text-on-surface">{sop.title}</h1>
-          {sop.visibility === "RESTRICTED" && (
-            <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-error-container text-on-error-container font-label-caps text-label-caps uppercase">
-              <Icon name="lock" size={12} />
-              {t("visibilityRESTRICTED")}
-            </span>
+          {sop.tags.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {sop.tags.map((tag) => (
+                <TagChip key={tag.id} tag={tag} />
+              ))}
+            </div>
           )}
+          <UpdatedBadge updatedAt={sop.updated_at} createdAt={sop.created_at} />
+          {sop.co_authors && sop.co_authors.length > 0 && <CoAuthorsByline coAuthors={sop.co_authors} />}
+          <ContributorsRow contributors={sop.contributors} />
         </div>
-        {sop.tags.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {sop.tags.map((tag) => (
-              <TagChip key={tag.id} tag={tag} />
-            ))}
-          </div>
+
+        {actionError && (
+          <p className="font-body-md text-body-md text-error" role="alert">
+            {actionError}
+          </p>
         )}
-        <UpdatedBadge updatedAt={sop.updated_at} createdAt={sop.created_at} />
-        {sop.co_authors && sop.co_authors.length > 0 && (
-          <CoAuthorsByline coAuthors={sop.co_authors} />
-        )}
-        <ContributorsRow contributors={sop.contributors} />
-      </div>
 
-      {actionError && (
-        <p className="font-body-md text-body-md text-error" role="alert">
-          {actionError}
-        </p>
-      )}
+        {sop.collections.map((context) => (
+          <SeriesStepper key={context.id} context={context} />
+        ))}
 
-      {sop.collections.map((context) => (
-        <SeriesStepper key={context.id} context={context} />
-      ))}
-
-      {sop.safety_notes && (
-        <div className="bg-error-container border-s-4 border-error rounded-e-xl p-4 flex gap-3 items-start">
-          <Icon name="report_problem" size={20} className="text-on-error-container shrink-0 mt-0.5" />
-          <div className="min-w-0 flex-1">
-            <h3 className="font-headline-md text-headline-md text-on-error-container mb-1">{t("safetyNotesLabel")}</h3>
-            <div className="font-body-md text-body-md text-on-error-container max-w-none [&_p]:text-on-error-container [&_p]:mb-2 [&_p:last-child]:mb-0 [&_li]:text-on-error-container [&_strong]:text-on-error-container [&_strong]:font-bold [&_code]:text-on-error-container [&_code]:bg-error/20 [&_code]:px-1 [&_code]:rounded [&_a]:underline [&_a]:text-on-error-container [&_ul]:list-disc [&_ul]:ps-5 [&_ol]:list-decimal [&_ol]:ps-5">
-              <Markdown content={sop.safety_notes} />
+        {sop.safety_notes && (
+          <div className="bg-error-container border-s-4 border-error rounded-e-xl p-4 flex gap-3 items-start">
+            <Icon name="report_problem" size={20} className="text-on-error-container shrink-0 mt-0.5" />
+            <div className="min-w-0 flex-1">
+              <h3 className="font-headline-md text-headline-md text-on-error-container mb-1">
+                {t("safetyNotesLabel")}
+              </h3>
+              <div className="font-body-md text-body-md text-on-error-container max-w-none [&_p]:text-on-error-container [&_p]:mb-2 [&_p:last-child]:mb-0 [&_li]:text-on-error-container [&_strong]:text-on-error-container [&_strong]:font-bold [&_code]:text-on-error-container [&_code]:bg-error/20 [&_code]:px-1 [&_code]:rounded [&_a]:underline [&_a]:text-on-error-container [&_ul]:list-disc [&_ul]:ps-5 [&_ol]:list-decimal [&_ol]:ps-5">
+                <Markdown content={sop.safety_notes} />
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {sop.content ? (
-        <Markdown content={sop.content} />
-      ) : (
-        <p className="font-body-md text-body-md text-on-surface-variant">{t("noContent")}</p>
-      )}
+        {sop.content ? (
+          <Markdown content={sop.content} />
+        ) : (
+          <p className="font-body-md text-body-md text-on-surface-variant">{t("noContent")}</p>
+        )}
 
-      <Attachments type="sop" id={sop.id} canEdit={canUpdate} />
+        <Attachments type="sop" id={sop.id} canEdit={canUpdate} />
 
-      <ConfirmModal
-        open={deleteOpen}
-        onOpenChange={setDeleteOpen}
-        title={t("deleteConfirmTitle")}
-        description={t("deleteConfirmBody")}
-        confirmLabel={t("deleteButton")}
-        danger
-        onConfirm={handleDelete}
-      />
-    </div>
+        <ConfirmModal
+          open={deleteOpen}
+          onOpenChange={setDeleteOpen}
+          title={t("deleteConfirmTitle")}
+          description={t("deleteConfirmBody")}
+          confirmLabel={t("deleteButton")}
+          danger
+          onConfirm={handleDelete}
+        />
+      </div>
 
-    <RelatedContent type="sop" id={sop.id} canEdit={canUpdate} />
+      <RelatedContent type="sop" id={sop.id} canEdit={canUpdate} />
     </div>
   );
 }

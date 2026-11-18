@@ -3,7 +3,6 @@ import zipfile
 from unittest import mock
 
 import zstandard
-
 from django.contrib.contenttypes.models import ContentType
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import override_settings
@@ -12,24 +11,21 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 
+from accounts.models import User
 from core import crypto
 from core.testing import RoleLoginMixin, create_test_organization
-from accounts.models import User
 from files.models import StoredFile
-from organization.models import OrganizationSettings
-from rbac.models import Role
-
 from knowledge import services as knowledge_services
 from knowledge.models import (
     Answer,
     Article,
     Bookmark,
+    Category,
     Collection,
     CollectionItem,
     Component,
     ComponentCategory,
     KnowledgeRelation,
-    Category,
     Project,
     Question,
     RestrictedAccessGrant,
@@ -38,6 +34,8 @@ from knowledge.models import (
     Tag,
     Visibility,
 )
+from organization.models import OrganizationSettings
+from rbac.models import Role
 from training.models import (
     Course,
     CourseCategory,
@@ -50,8 +48,7 @@ from training.models import (
     LessonProgress,
 )
 
-from . import restore
-from . import services, tasks
+from . import restore, services, tasks
 from .models import BackupJob, RestoreJob
 
 PASSPHRASE = "correct horse battery"
@@ -85,7 +82,10 @@ class BackupJobPermissionTests(BackupJobTestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
         response = self.client.post(
-            reverse("backups-download", args=[job_id]), {"passphrase": PASSPHRASE}, format="json", **self._auth(member_access)
+            reverse("backups-download", args=[job_id]),
+            {"passphrase": PASSPHRASE},
+            format="json",
+            **self._auth(member_access),
         )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
@@ -114,7 +114,10 @@ class BackupJobCrossOrgIsolationTests(RoleLoginMixin, APITestCase):
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
         response = self.client.post(
-            reverse("backups-download", args=[job_id]), {"passphrase": PASSPHRASE}, format="json", **self._auth(b_admin_access)
+            reverse("backups-download", args=[job_id]),
+            {"passphrase": PASSPHRASE},
+            format="json",
+            **self._auth(b_admin_access),
         )
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
@@ -156,12 +159,18 @@ class BackupJobGenerationTests(BackupJobTestCase):
             self.assertFalse(crypto.needs_passphrase(stored))
 
         response = self.client.post(
-            reverse("backups-download", args=[job_id]), {"passphrase": "too short"}, format="json", **self._auth(admin_access)
+            reverse("backups-download", args=[job_id]),
+            {"passphrase": "too short"},
+            format="json",
+            **self._auth(admin_access),
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
         response = self.client.post(
-            reverse("backups-download", args=[job_id]), {"passphrase": PASSPHRASE}, format="json", **self._auth(admin_access)
+            reverse("backups-download", args=[job_id]),
+            {"passphrase": PASSPHRASE},
+            format="json",
+            **self._auth(admin_access),
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -236,7 +245,9 @@ class JobLifecycleGuardTests(BackupJobTestCase):
 
     def test_interrupted_running_backup_can_be_deleted(self):
         user, access = self._admin()
-        job = BackupJob.objects.create(organization=self.organization, requested_by=user, status=BackupJob.Status.RUNNING)
+        job = BackupJob.objects.create(
+            organization=self.organization, requested_by=user, status=BackupJob.Status.RUNNING
+        )
         url = reverse("backups-detail", args=[job.pk])
         self.assertEqual(self.client.delete(url, **self._auth(access)).status_code, status.HTTP_400_BAD_REQUEST)
 
@@ -245,8 +256,12 @@ class JobLifecycleGuardTests(BackupJobTestCase):
 
     def test_fail_stale_jobs_marks_only_interrupted_jobs_failed(self):
         user, _ = self._admin()
-        stale = BackupJob.objects.create(organization=self.organization, requested_by=user, status=BackupJob.Status.RUNNING)
-        fresh = BackupJob.objects.create(organization=self.organization, requested_by=user, status=BackupJob.Status.RUNNING)
+        stale = BackupJob.objects.create(
+            organization=self.organization, requested_by=user, status=BackupJob.Status.RUNNING
+        )
+        fresh = BackupJob.objects.create(
+            organization=self.organization, requested_by=user, status=BackupJob.Status.RUNNING
+        )
         stale_restore = RestoreJob.objects.create(organization=self.organization, requested_by=user)
         self._age(stale, hours=7)
         self._age(stale_restore, hours=7)
@@ -287,7 +302,9 @@ class JobLifecycleGuardTests(BackupJobTestCase):
 
     def test_task_skips_a_job_that_is_no_longer_pending(self):
         user, _ = self._admin()
-        job = BackupJob.objects.create(organization=self.organization, requested_by=user, status=BackupJob.Status.FAILED)
+        job = BackupJob.objects.create(
+            organization=self.organization, requested_by=user, status=BackupJob.Status.FAILED
+        )
         tasks.generate_org_backup(str(job.pk))
         job.refresh_from_db()
         self.assertEqual(job.status, BackupJob.Status.FAILED)
@@ -584,14 +601,19 @@ class RestoreJobTests(BackupJobTestCase):
             format="json",
             **self._auth(admin_access),
         )
-        response = self.client.get(reverse("backups-restore-detail", args=[response.data["id"]]), **self._auth(admin_access))
+        response = self.client.get(
+            reverse("backups-restore-detail", args=[response.data["id"]]), **self._auth(admin_access)
+        )
         self.assertEqual(response.data["status"], "DONE", response.data)
         return response.data["summary"]
 
     def _backup_bytes(self, admin_access) -> bytes:
         backup_job = self._run_backup(admin_access)
         response = self.client.post(
-            reverse("backups-download", args=[backup_job.id]), {"passphrase": PASSPHRASE}, format="json", **self._auth(admin_access)
+            reverse("backups-download", args=[backup_job.id]),
+            {"passphrase": PASSPHRASE},
+            format="json",
+            **self._auth(admin_access),
         )
         return b"".join(response.streaming_content)
 
@@ -774,8 +796,12 @@ class RestoreJobTests(BackupJobTestCase):
 
     def test_crafted_archive_cannot_reach_into_another_organization(self):
         other_org = create_test_organization()
-        other_user = User.objects.create_user(email="victim@example.com", password="password123", organization=other_org)
-        victim_question = Question.objects.create(organization=other_org, title="Private", body="...", author=other_user)
+        other_user = User.objects.create_user(
+            email="victim@example.com", password="password123", organization=other_org
+        )
+        victim_question = Question.objects.create(
+            organization=other_org, title="Private", body="...", author=other_user
+        )
 
         archive = io.BytesIO()
         with zipfile.ZipFile(archive, "w") as zf:
@@ -838,7 +864,9 @@ class RestoreJobTests(BackupJobTestCase):
             format="json",
             **self._auth(admin_access),
         )
-        response = self.client.get(reverse("backups-restore-detail", args=[response.data["id"]]), **self._auth(admin_access))
+        response = self.client.get(
+            reverse("backups-restore-detail", args=[response.data["id"]]), **self._auth(admin_access)
+        )
         self.assertEqual(response.data["status"], "DONE", response.data)
 
         restored = Component.objects.get(pk=drill.pk)
@@ -876,7 +904,9 @@ class RestoreJobTests(BackupJobTestCase):
             format="json",
             **self._auth(admin_access),
         )
-        response = self.client.get(reverse("backups-restore-detail", args=[response.data["id"]]), **self._auth(admin_access))
+        response = self.client.get(
+            reverse("backups-restore-detail", args=[response.data["id"]]), **self._auth(admin_access)
+        )
         self.assertEqual(response.data["status"], "DONE", response.data)
 
         restored = StoredFile.objects.get(pk=stored_file.pk)
@@ -889,7 +919,9 @@ class RestoreJobTests(BackupJobTestCase):
     def test_restore_keeps_a_questions_accepted_answer(self):
         author, _ = self._login_with_role("restoreqa@example.com", "Subteam Head")
         _, admin_access = self._login_with_role("restoreqaadmin@example.com", "Organization Admin")
-        question = Question.objects.create(organization=self.organization, title="Which servo?", body="...", author=author)
+        question = Question.objects.create(
+            organization=self.organization, title="Which servo?", body="...", author=author
+        )
         answer = Answer.objects.create(question=question, body="The MG996R", author=author)
         Question.objects.filter(pk=question.pk).update(accepted_answer=answer)
 
@@ -904,7 +936,9 @@ class RestoreJobTests(BackupJobTestCase):
             format="json",
             **self._auth(admin_access),
         )
-        response = self.client.get(reverse("backups-restore-detail", args=[response.data["id"]]), **self._auth(admin_access))
+        response = self.client.get(
+            reverse("backups-restore-detail", args=[response.data["id"]]), **self._auth(admin_access)
+        )
         self.assertEqual(response.data["status"], "DONE", response.data)
         self.assertEqual(Question.objects.get(pk=question.pk).accepted_answer_id, answer.pk)
 
@@ -923,7 +957,9 @@ class RestoreJobTests(BackupJobTestCase):
         restore.restore_org_backup_archive(self.organization, archive)
 
         pixhawk = Component.objects.get(organization=self.organization, name="Pixhawk")
-        self.assertEqual(pixhawk.category, ComponentCategory.objects.get(organization=self.organization, name="Avionics"))
+        self.assertEqual(
+            pixhawk.category, ComponentCategory.objects.get(organization=self.organization, name="Avionics")
+        )
         self.assertEqual(pixhawk.stock_status, "")  # untracked, as it was
 
     def test_failed_restore_deletes_the_file_bytes_it_wrote(self):

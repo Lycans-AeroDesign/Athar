@@ -3,6 +3,16 @@
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
+import { CoAuthorPicker } from "@/components/knowledge/CoAuthorPicker";
+import { CollectionMembershipPicker } from "@/components/knowledge/CollectionMembershipPicker";
+import { PendingRelations, toRelationInputs, type PendingRelation } from "@/components/knowledge/PendingRelations";
+import { ProjectSelect } from "@/components/knowledge/ProjectSelect";
+import {
+  EMPTY_RESTRICTED_ACCESS_DRAFT,
+  RestrictedAccessPicker,
+  type RestrictedAccessDraft,
+} from "@/components/knowledge/RestrictedAccessPicker";
+import { effectiveVisibility, VisibilitySelect } from "@/components/knowledge/VisibilitySelect";
 import { Button } from "@/components/ui/Button";
 import { ChangedIndicator } from "@/components/ui/ChangedIndicator";
 import { Combobox } from "@/components/ui/Combobox";
@@ -10,27 +20,17 @@ import { MarkdownEditor } from "@/components/ui/MarkdownEditor";
 import { SavingOverlay } from "@/components/ui/SavingOverlay";
 import { TagInput } from "@/components/ui/TagInput";
 import { TitleInput } from "@/components/ui/TitleInput";
-import { CoAuthorPicker } from "@/components/knowledge/CoAuthorPicker";
-import { CollectionMembershipPicker } from "@/components/knowledge/CollectionMembershipPicker";
-import { PendingRelations, toRelationInputs, type PendingRelation } from "@/components/knowledge/PendingRelations";
-import { ProjectSelect } from "@/components/knowledge/ProjectSelect";
-import { effectiveVisibility, VisibilitySelect } from "@/components/knowledge/VisibilitySelect";
-import {
-  EMPTY_RESTRICTED_ACCESS_DRAFT,
-  RestrictedAccessPicker,
-  type RestrictedAccessDraft,
-} from "@/components/knowledge/RestrictedAccessPicker";
 import { useRouter } from "@/i18n/navigation";
 import { addAccessGrant, removeAccessGrant } from "@/lib/api/accessGrants";
 import { syncCollectionMembership } from "@/lib/api/collections";
 import {
-  type ArticleWritePayload,
   createArticle,
   createCategory,
   getCategories,
   publishArticle,
   submitArticle,
   updateArticle,
+  type ArticleWritePayload,
 } from "@/lib/api/knowledge";
 import type { ArticleDetail, Category, KnowledgeAuthor, Visibility } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth/AuthProvider";
@@ -77,9 +77,8 @@ export function ArticleEditor({ article, onDirtyChange, initialProjectId = null 
   const [projectVisibility, setProjectVisibility] = useState<Visibility | null>(null);
   const [pendingRelations, setPendingRelations] = useState<PendingRelation[]>([]);
   const [coAuthors, setCoAuthors] = useState<KnowledgeAuthor[]>(article?.co_authors ?? []);
-  const [restrictedAccessDraft, setRestrictedAccessDraft] = useState<RestrictedAccessDraft>(
-    EMPTY_RESTRICTED_ACCESS_DRAFT,
-  );
+  const [restrictedAccessDraft, setRestrictedAccessDraft] =
+    useState<RestrictedAccessDraft>(EMPTY_RESTRICTED_ACCESS_DRAFT);
   const { isSaving, run } = useSaveOnce();
   const [error, setError] = useState<string | null>(null);
   const canManageCollections = useHasPermission("collection.manage");
@@ -303,11 +302,7 @@ export function ArticleEditor({ article, onDirtyChange, initialProjectId = null 
             {commonT("discard")}
           </Button>
         )}
-        <Button
-          onClick={() => saveAndThen()}
-          loading={isSaving}
-          disabled={!title.trim() || (!!article && !isDirty)}
-        >
+        <Button onClick={() => saveAndThen()} loading={isSaving} disabled={!title.trim() || (!!article && !isDirty)}>
           {saveLabel}
         </Button>
         {canSubmitForReview && (

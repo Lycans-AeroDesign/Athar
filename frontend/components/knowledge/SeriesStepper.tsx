@@ -91,15 +91,21 @@ export function SeriesStepper({ context }: { context: CollectionContext }) {
           href={`/collections/${context.id}`}
           className="inline-flex items-center gap-2 min-w-0 hover:text-primary transition-colors"
         >
-          <Icon name={context.mode === "SERIES" ? "format_list_numbered" : "folder_open"} size={18} className="text-primary shrink-0" />
-          <span className="font-headline-sm font-normal text-headline-sm text-on-surface truncate">{context.title}</span>
+          <Icon
+            name={context.mode === "SERIES" ? "format_list_numbered" : "folder_open"}
+            size={18}
+            className="text-primary shrink-0"
+          />
+          <span className="font-headline-sm font-normal text-headline-sm text-on-surface truncate">
+            {context.title}
+          </span>
         </Link>
-        <span className="shrink-0 font-label-caps text-label-caps uppercase text-on-surface-variant">{positionLabel}</span>
+        <span className="shrink-0 font-label-caps text-label-caps uppercase text-on-surface-variant">
+          {positionLabel}
+        </span>
       </div>
 
-      {context.phase_title && (
-        <p className="font-body-md text-body-md text-on-surface">{context.phase_title}</p>
-      )}
+      {context.phase_title && <p className="font-body-md text-body-md text-on-surface">{context.phase_title}</p>}
 
       <div className="flex flex-wrap items-center gap-2">
         {context.items.map((item, index) => (
@@ -123,7 +129,9 @@ export function SeriesStepper({ context }: { context: CollectionContext }) {
                 <span className="block font-label-caps text-label-caps uppercase text-on-surface-variant">
                   {t("stepper.previous")}
                 </span>
-                <span className="block font-body-md text-body-md text-on-surface truncate">{context.prev_item.title}</span>
+                <span className="block font-body-md text-body-md text-on-surface truncate">
+                  {context.prev_item.title}
+                </span>
               </span>
             </Link>
           ) : (
@@ -138,9 +146,15 @@ export function SeriesStepper({ context }: { context: CollectionContext }) {
                 <span className="block font-label-caps text-label-caps uppercase text-on-surface-variant">
                   {t("stepper.next")}
                 </span>
-                <span className="block font-body-md text-body-md text-on-surface truncate">{context.next_item.title}</span>
+                <span className="block font-body-md text-body-md text-on-surface truncate">
+                  {context.next_item.title}
+                </span>
               </span>
-              <Icon name="arrow_forward" size={18} className="text-on-surface-variant group-hover:text-primary shrink-0" />
+              <Icon
+                name="arrow_forward"
+                size={18}
+                className="text-on-surface-variant group-hover:text-primary shrink-0"
+              />
             </Link>
           ) : (
             <span className="flex-1" />

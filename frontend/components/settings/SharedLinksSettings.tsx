@@ -8,11 +8,11 @@ import { Icon } from "@/components/ui/Icon";
 import { Pagination } from "@/components/ui/Pagination";
 import { Switch } from "@/components/ui/Switch";
 import { Link } from "@/i18n/navigation";
+import { getShareLinks, publicShareUrl, revokeShareLink } from "@/lib/api/shareLinks";
+import type { ShareLinkEntry } from "@/lib/api/types";
 import { formatDate, formatDateTime } from "@/lib/datetime";
 import { errorMessage } from "@/lib/errors";
 import { formatPersonName } from "@/lib/format";
-import { getShareLinks, publicShareUrl, revokeShareLink } from "@/lib/api/shareLinks";
-import type { ShareLinkEntry } from "@/lib/api/types";
 import { RELATABLE_ICON, RELATABLE_ROUTE_PREFIX } from "@/lib/knowledgeTypes";
 
 // Every public link in the organization, for share_link.manage holders -
@@ -22,9 +22,12 @@ export function SharedLinksSettings() {
   const locale = useLocale();
   const [includeInactive, setIncludeInactive] = useState(false);
   const [page, setPage] = useState(1);
-  const [result, setResult] = useState<{ key: string; links: ShareLinkEntry[]; hasNext: boolean; count: number } | null>(
-    null,
-  );
+  const [result, setResult] = useState<{
+    key: string;
+    links: ShareLinkEntry[];
+    hasNext: boolean;
+    count: number;
+  } | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [confirmRevokeId, setConfirmRevokeId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -34,7 +37,9 @@ export function SharedLinksSettings() {
 
   useEffect(() => {
     getShareLinks({ includeInactive, page })
-      .then((data) => setResult({ key: resultKey, links: data.results, hasNext: data.next !== null, count: data.count }))
+      .then((data) =>
+        setResult({ key: resultKey, links: data.results, hasNext: data.next !== null, count: data.count }),
+      )
       .catch((err) => setError(errorMessage(err)));
   }, [includeInactive, page, resultKey]);
 

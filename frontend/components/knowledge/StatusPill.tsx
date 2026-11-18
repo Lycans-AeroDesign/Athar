@@ -13,7 +13,10 @@ const STATUS_CLASSES: Record<ArticleStatus, string> = {
 // Exported so anywhere else needing an ArticleStatus's display name (e.g.
 // the Knowledge page's status filter) uses the exact same mapping instead
 // of re-deriving it.
-export const ARTICLE_STATUS_LABEL_KEYS: Record<ArticleStatus, "draft" | "inReview" | "published" | "rejected" | "archived"> = {
+export const ARTICLE_STATUS_LABEL_KEYS: Record<
+  ArticleStatus,
+  "draft" | "inReview" | "published" | "rejected" | "archived"
+> = {
   DRAFT: "draft",
   IN_REVIEW: "inReview",
   PUBLISHED: "published",

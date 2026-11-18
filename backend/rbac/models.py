@@ -26,15 +26,11 @@ class Role(models.Model):
     into which named role, per org, varies."""
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
-    organization = models.ForeignKey(
-        "organization.Organization", on_delete=models.CASCADE, related_name="roles"
-    )
+    organization = models.ForeignKey("organization.Organization", on_delete=models.CASCADE, related_name="roles")
     name = models.CharField(max_length=100)
     description = models.CharField(max_length=255, blank=True)
     is_system = models.BooleanField(default=False)
-    permissions = models.ManyToManyField(
-        Permission, through="RolePermission", related_name="roles", blank=True
-    )
+    permissions = models.ManyToManyField(Permission, through="RolePermission", related_name="roles", blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -64,9 +60,7 @@ class RolePermission(models.Model):
 
 class UserRole(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="user_roles"
-    )
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="user_roles")
     role = models.ForeignKey(Role, on_delete=models.CASCADE, related_name="user_roles")
     granted_at = models.DateTimeField(auto_now_add=True)
     granted_by = models.ForeignKey(

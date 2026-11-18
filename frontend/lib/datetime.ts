@@ -34,6 +34,20 @@ export function formatDate(utcIsoString: string | null | undefined): string {
   return date ? dateFormatter.format(date) : "—";
 }
 
+/** Formats a calendar date with no time ("YYYY-MM-DD", e.g. a DateField) as that same day in
+ * every timezone - formatDate would read it as UTC midnight and could show the day before. */
+export function formatCalendarDate(isoDate: string | null | undefined): string {
+  if (!isoDate) return "—";
+  const [year, month, day] = isoDate.split("-").map(Number);
+  return dateFormatter.format(new Date(year, month - 1, day));
+}
+
+/** A local Date's calendar day as "YYYY-MM-DD" (for sending a DateField). */
+export function toCalendarDate(date: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
 const relativeTimeFormatter = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
 const RELATIVE_TIME_UNITS: Array<[Intl.RelativeTimeFormatUnit, number]> = [
   ["year", 60 * 60 * 24 * 365],

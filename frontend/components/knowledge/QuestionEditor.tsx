@@ -3,12 +3,6 @@
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
-import { Button } from "@/components/ui/Button";
-import { ChangedIndicator } from "@/components/ui/ChangedIndicator";
-import { MarkdownEditor } from "@/components/ui/MarkdownEditor";
-import { SavingOverlay } from "@/components/ui/SavingOverlay";
-import { TagInput } from "@/components/ui/TagInput";
-import { TitleInput } from "@/components/ui/TitleInput";
 import { CoAuthorPicker } from "@/components/knowledge/CoAuthorPicker";
 import { PendingRelations, toRelationInputs, type PendingRelation } from "@/components/knowledge/PendingRelations";
 import { ProjectSelect } from "@/components/knowledge/ProjectSelect";
@@ -18,6 +12,12 @@ import {
   type RestrictedAccessDraft,
 } from "@/components/knowledge/RestrictedAccessPicker";
 import { effectiveVisibility, VisibilitySelect } from "@/components/knowledge/VisibilitySelect";
+import { Button } from "@/components/ui/Button";
+import { ChangedIndicator } from "@/components/ui/ChangedIndicator";
+import { MarkdownEditor } from "@/components/ui/MarkdownEditor";
+import { SavingOverlay } from "@/components/ui/SavingOverlay";
+import { TagInput } from "@/components/ui/TagInput";
+import { TitleInput } from "@/components/ui/TitleInput";
 import { useRouter } from "@/i18n/navigation";
 import { addAccessGrant, removeAccessGrant } from "@/lib/api/accessGrants";
 import { createQuestion, updateQuestion, type QuestionWritePayload } from "@/lib/api/knowledge";
@@ -54,9 +54,8 @@ export function QuestionEditor({ question, onDirtyChange, initialProjectId = nul
   const [projectVisibility, setProjectVisibility] = useState<Visibility | null>(null);
   const [pendingRelations, setPendingRelations] = useState<PendingRelation[]>([]);
   const [coAuthors, setCoAuthors] = useState<KnowledgeAuthor[]>(question?.co_authors ?? []);
-  const [restrictedAccessDraft, setRestrictedAccessDraft] = useState<RestrictedAccessDraft>(
-    EMPTY_RESTRICTED_ACCESS_DRAFT,
-  );
+  const [restrictedAccessDraft, setRestrictedAccessDraft] =
+    useState<RestrictedAccessDraft>(EMPTY_RESTRICTED_ACCESS_DRAFT);
   const { isSaving, run } = useSaveOnce();
   const [error, setError] = useState<string | null>(null);
 
