@@ -1143,7 +1143,7 @@ class AnswerDetailView(APIView):
     )
     def patch(self, request, pk):
         answer = get_object_or_404(Answer, pk=pk, question__organization=request.user.organization)
-        serializer = AnswerWriteSerializer(answer, data=request.data, partial=True)
+        serializer = AnswerWriteSerializer(answer, data=request.data)
         serializer.is_valid(raise_exception=True)
         answer = services.update_answer(answer=answer, actor=request.user, request=request, **serializer.validated_data)
         return Response(AnswerSerializer(answer).data)

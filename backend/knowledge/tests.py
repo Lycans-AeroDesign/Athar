@@ -346,6 +346,35 @@ class QuestionAndAnswerTests(KnowledgeTestCase):
         self.assertIsNone(Question.objects.get(pk=question["id"]).accepted_answer_id)
         self.assertFalse(Answer.objects.filter(pk=answer["id"]).exists())
 
+    def test_editing_answer_without_body_is_rejected(self):
+        asker, asker_access = self._login_with_role("asker4@example.com", "Member")
+        question = self.client.post(
+            reverse("knowledge-question-list-create"),
+            {"title": "Q", "body": "..."},
+            format="json",
+            **self._auth(asker_access),
+        ).data
+        answer = self.client.post(
+            reverse("knowledge-answer-list-create", args=[question["id"]]),
+            {"body": "A"},
+            format="json",
+            **self._auth(asker_access),
+        ).data
+
+        response = self.client.patch(
+            reverse("knowledge-answer-detail", args=[answer["id"]]), {}, format="json", **self._auth(asker_access)
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        response = self.client.patch(
+            reverse("knowledge-answer-detail", args=[answer["id"]]),
+            {"body": "Edited"},
+            format="json",
+            **self._auth(asker_access),
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["body"], "Edited")
+
 
 class CategoryAndTagTests(KnowledgeTestCase):
     def test_require_authentication_only(self):
