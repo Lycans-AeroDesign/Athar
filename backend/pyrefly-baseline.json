@@ -1,0 +1,1159 @@
+{
+  "errors": [
+    {
+      "column": 16,
+      "path": "accounts/management/commands/bootstrap_admin.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `User` has no attribute `organization_id`",
+      "severity": "error"
+    },
+    {
+      "column": 59,
+      "path": "accounts/serializers.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `NoneType` has no attribute `organization_id`",
+      "severity": "error"
+    },
+    {
+      "column": 24,
+      "path": "accounts/serializers.py",
+      "name": "unsupported-operation",
+      "concise_description": "Cannot set item in `dict[str, str]`",
+      "severity": "error"
+    },
+    {
+      "column": 65,
+      "path": "accounts/serializers.py",
+      "name": "bad-argument-type",
+      "concise_description": "Argument `list[(value: str) -> str]` is not assignable to parameter `validators` with type `Sequence[Validator] | None` in function `rest_framework.fields.CharField.__init__`",
+      "severity": "error"
+    },
+    {
+      "column": 12,
+      "path": "accounts/services.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `User` has no attribute `profile_picture_id`",
+      "severity": "error"
+    },
+    {
+      "column": 13,
+      "path": "accounts/services.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `NoneType` has no attribute `file`",
+      "severity": "error"
+    },
+    {
+      "column": 13,
+      "path": "accounts/services.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `NoneType` has no attribute `delete`",
+      "severity": "error"
+    },
+    {
+      "column": 29,
+      "path": "accounts/tests.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `EmailMessage` has no attribute `alternatives`",
+      "severity": "error"
+    },
+    {
+      "column": 36,
+      "path": "accounts/tests.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `EmailMessage` has no attribute `alternatives`",
+      "severity": "error"
+    },
+    {
+      "column": 16,
+      "path": "accounts/tests.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `EmailMessage` has no attribute `alternatives`",
+      "severity": "error"
+    },
+    {
+      "column": 8,
+      "path": "audit/services.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `AuditLog` has no attribute `organization_id`",
+      "severity": "error"
+    },
+    {
+      "column": 77,
+      "path": "audit/views.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of type `AbstractBaseUser | AnonymousUser` has no attribute `organization`",
+      "severity": "error"
+    },
+    {
+      "column": 30,
+      "path": "audit/views.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of type `AbstractBaseUser | AnonymousUser` has no attribute `organization`",
+      "severity": "error"
+    },
+    {
+      "column": 82,
+      "path": "audit/views.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of type `AbstractBaseUser | AnonymousUser` has no attribute `organization`",
+      "severity": "error"
+    },
+    {
+      "column": 30,
+      "path": "audit/views.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of type `AbstractBaseUser | AnonymousUser` has no attribute `organization`",
+      "severity": "error"
+    },
+    {
+      "column": 23,
+      "path": "backups/models.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `BackupJob` has no attribute `organization_id`",
+      "severity": "error"
+    },
+    {
+      "column": 19,
+      "path": "backups/models.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `BackupJob` has no attribute `organization_id`",
+      "severity": "error"
+    },
+    {
+      "column": 23,
+      "path": "backups/models.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `RestoreJob` has no attribute `organization_id`",
+      "severity": "error"
+    },
+    {
+      "column": 19,
+      "path": "backups/models.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `RestoreJob` has no attribute `organization_id`",
+      "severity": "error"
+    },
+    {
+      "column": 49,
+      "path": "backups/restore.py",
+      "name": "unsupported-operation",
+      "concise_description": "Cannot set item in `dict[str, UUID]`",
+      "severity": "error"
+    },
+    {
+      "column": 45,
+      "path": "backups/restore.py",
+      "name": "bad-argument-type",
+      "concise_description": "Argument `list[Answer | Article | ArticleAttachment | ArticleRevision | AuditLog | Bookmark | Category | Collection | CollectionItem | Component | ComponentAttachment | ComponentCategory | Course | CourseCategory | CourseEnrollment | CourseModule | CourseResource | Document | Failure | FailureAttachment | InvitationCode | KnowledgeRelation | LearningObjective | Lesson | LessonKnowledgeReference | LessonProgress | PolicyAcceptance | PolicyDraft | PolicyVersion | Project | ProjectAttachment | Question | QuestionAttachment | RestrictedAccessGrant | Role | RolePermission | Sop | SopAttachment | StorageLocation | StoredFile | Tag | Test | TestAttachment | UserRole]` is not assignable to parameter `objs` with type `Iterable[Answer]` in function `django.db.models.manager.Manager.bulk_update`",
+      "severity": "error"
+    },
+    {
+      "column": 45,
+      "path": "backups/restore.py",
+      "name": "bad-argument-type",
+      "concise_description": "Argument `list[Answer | Article | ArticleAttachment | ArticleRevision | AuditLog | Bookmark | Category | Collection | CollectionItem | Component | ComponentAttachment | ComponentCategory | Course | CourseCategory | CourseEnrollment | CourseModule | CourseResource | Document | Failure | FailureAttachment | InvitationCode | KnowledgeRelation | LearningObjective | Lesson | LessonKnowledgeReference | LessonProgress | PolicyAcceptance | PolicyDraft | PolicyVersion | Project | ProjectAttachment | Question | QuestionAttachment | RestrictedAccessGrant | Role | RolePermission | Sop | SopAttachment | StorageLocation | StoredFile | Tag | Test | TestAttachment | UserRole]` is not assignable to parameter `objs` with type `Iterable[Article]` in function `django.db.models.manager.Manager.bulk_update`",
+      "severity": "error"
+    },
+    {
+      "column": 45,
+      "path": "backups/restore.py",
+      "name": "bad-argument-type",
+      "concise_description": "Argument `list[Answer | Article | ArticleAttachment | ArticleRevision | AuditLog | Bookmark | Category | Collection | CollectionItem | Component | ComponentAttachment | ComponentCategory | Course | CourseCategory | CourseEnrollment | CourseModule | CourseResource | Document | Failure | FailureAttachment | InvitationCode | KnowledgeRelation | LearningObjective | Lesson | LessonKnowledgeReference | LessonProgress | PolicyAcceptance | PolicyDraft | PolicyVersion | Project | ProjectAttachment | Question | QuestionAttachment | RestrictedAccessGrant | Role | RolePermission | Sop | SopAttachment | StorageLocation | StoredFile | Tag | Test | TestAttachment | UserRole]` is not assignable to parameter `objs` with type `Iterable[ArticleAttachment]` in function `django.db.models.manager.Manager.bulk_update`",
+      "severity": "error"
+    },
+    {
+      "column": 45,
+      "path": "backups/restore.py",
+      "name": "bad-argument-type",
+      "concise_description": "Argument `list[Answer | Article | ArticleAttachment | ArticleRevision | AuditLog | Bookmark | Category | Collection | CollectionItem | Component | ComponentAttachment | ComponentCategory | Course | CourseCategory | CourseEnrollment | CourseModule | CourseResource | Document | Failure | FailureAttachment | InvitationCode | KnowledgeRelation | LearningObjective | Lesson | LessonKnowledgeReference | LessonProgress | PolicyAcceptance | PolicyDraft | PolicyVersion | Project | ProjectAttachment | Question | QuestionAttachment | RestrictedAccessGrant | Role | RolePermission | Sop | SopAttachment | StorageLocation | StoredFile | Tag | Test | TestAttachment | UserRole]` is not assignable to parameter `objs` with type `Iterable[ArticleRevision]` in function `django.db.models.manager.Manager.bulk_update`",
+      "severity": "error"
+    },
+    {
+      "column": 45,
+      "path": "backups/restore.py",
+      "name": "bad-argument-type",
+      "concise_description": "Argument `list[Answer | Article | ArticleAttachment | ArticleRevision | AuditLog | Bookmark | Category | Collection | CollectionItem | Component | ComponentAttachment | ComponentCategory | Course | CourseCategory | CourseEnrollment | CourseModule | CourseResource | Document | Failure | FailureAttachment | InvitationCode | KnowledgeRelation | LearningObjective | Lesson | LessonKnowledgeReference | LessonProgress | PolicyAcceptance | PolicyDraft | PolicyVersion | Project | ProjectAttachment | Question | QuestionAttachment | RestrictedAccessGrant | Role | RolePermission | Sop | SopAttachment | StorageLocation | StoredFile | Tag | Test | TestAttachment | UserRole]` is not assignable to parameter `objs` with type `Iterable[AuditLog]` in function `django.db.models.manager.Manager.bulk_update`",
+      "severity": "error"
+    },
+    {
+      "column": 45,
+      "path": "backups/restore.py",
+      "name": "bad-argument-type",
+      "concise_description": "Argument `list[Answer | Article | ArticleAttachment | ArticleRevision | AuditLog | Bookmark | Category | Collection | CollectionItem | Component | ComponentAttachment | ComponentCategory | Course | CourseCategory | CourseEnrollment | CourseModule | CourseResource | Document | Failure | FailureAttachment | InvitationCode | KnowledgeRelation | LearningObjective | Lesson | LessonKnowledgeReference | LessonProgress | PolicyAcceptance | PolicyDraft | PolicyVersion | Project | ProjectAttachment | Question | QuestionAttachment | RestrictedAccessGrant | Role | RolePermission | Sop | SopAttachment | StorageLocation | StoredFile | Tag | Test | TestAttachment | UserRole]` is not assignable to parameter `objs` with type `Iterable[Bookmark]` in function `django.db.models.manager.Manager.bulk_update`",
+      "severity": "error"
+    },
+    {
+      "column": 45,
+      "path": "backups/restore.py",
+      "name": "bad-argument-type",
+      "concise_description": "Argument `list[Answer | Article | ArticleAttachment | ArticleRevision | AuditLog | Bookmark | Category | Collection | CollectionItem | Component | ComponentAttachment | ComponentCategory | Course | CourseCategory | CourseEnrollment | CourseModule | CourseResource | Document | Failure | FailureAttachment | InvitationCode | KnowledgeRelation | LearningObjective | Lesson | LessonKnowledgeReference | LessonProgress | PolicyAcceptance | PolicyDraft | PolicyVersion | Project | ProjectAttachment | Question | QuestionAttachment | RestrictedAccessGrant | Role | RolePermission | Sop | SopAttachment | StorageLocation | StoredFile | Tag | Test | TestAttachment | UserRole]` is not assignable to parameter `objs` with type `Iterable[Category]` in function `django.db.models.manager.Manager.bulk_update`",
+      "severity": "error"
+    },
+    {
+      "column": 45,
+      "path": "backups/restore.py",
+      "name": "bad-argument-type",
+      "concise_description": "Argument `list[Answer | Article | ArticleAttachment | ArticleRevision | AuditLog | Bookmark | Category | Collection | CollectionItem | Component | ComponentAttachment | ComponentCategory | Course | CourseCategory | CourseEnrollment | CourseModule | CourseResource | Document | Failure | FailureAttachment | InvitationCode | KnowledgeRelation | LearningObjective | Lesson | LessonKnowledgeReference | LessonProgress | PolicyAcceptance | PolicyDraft | PolicyVersion | Project | ProjectAttachment | Question | QuestionAttachment | RestrictedAccessGrant | Role | RolePermission | Sop | SopAttachment | StorageLocation | StoredFile | Tag | Test | TestAttachment | UserRole]` is not assignable to parameter `objs` with type `Iterable[Collection]` in function `django.db.models.manager.Manager.bulk_update`",
+      "severity": "error"
+    },
+    {
+      "column": 45,
+      "path": "backups/restore.py",
+      "name": "bad-argument-type",
+      "concise_description": "Argument `list[Answer | Article | ArticleAttachment | ArticleRevision | AuditLog | Bookmark | Category | Collection | CollectionItem | Component | ComponentAttachment | ComponentCategory | Course | CourseCategory | CourseEnrollment | CourseModule | CourseResource | Document | Failure | FailureAttachment | InvitationCode | KnowledgeRelation | LearningObjective | Lesson | LessonKnowledgeReference | LessonProgress | PolicyAcceptance | PolicyDraft | PolicyVersion | Project | ProjectAttachment | Question | QuestionAttachment | RestrictedAccessGrant | Role | RolePermission | Sop | SopAttachment | StorageLocation | StoredFile | Tag | Test | TestAttachment | UserRole]` is not assignable to parameter `objs` with type `Iterable[CollectionItem]` in function `django.db.models.manager.Manager.bulk_update`",
+      "severity": "error"
+    },
+    {
+      "column": 45,
+      "path": "backups/restore.py",
+      "name": "bad-argument-type",
+      "concise_description": "Argument `list[Answer | Article | ArticleAttachment | ArticleRevision | AuditLog | Bookmark | Category | Collection | CollectionItem | Component | ComponentAttachment | ComponentCategory | Course | CourseCategory | CourseEnrollment | CourseModule | CourseResource | Document | Failure | FailureAttachment | InvitationCode | KnowledgeRelation | LearningObjective | Lesson | LessonKnowledgeReference | LessonProgress | PolicyAcceptance | PolicyDraft | PolicyVersion | Project | ProjectAttachment | Question | QuestionAttachment | RestrictedAccessGrant | Role | RolePermission | Sop | SopAttachment | StorageLocation | StoredFile | Tag | Test | TestAttachment | UserRole]` is not assignable to parameter `objs` with type `Iterable[Component]` in function `django.db.models.manager.Manager.bulk_update`",
+      "severity": "error"
+    },
+    {
+      "column": 45,
+      "path": "backups/restore.py",
+      "name": "bad-argument-type",
+      "concise_description": "Argument `list[Answer | Article | ArticleAttachment | ArticleRevision | AuditLog | Bookmark | Category | Collection | CollectionItem | Component | ComponentAttachment | ComponentCategory | Course | CourseCategory | CourseEnrollment | CourseModule | CourseResource | Document | Failure | FailureAttachment | InvitationCode | KnowledgeRelation | LearningObjective | Lesson | LessonKnowledgeReference | LessonProgress | PolicyAcceptance | PolicyDraft | PolicyVersion | Project | ProjectAttachment | Question | QuestionAttachment | RestrictedAccessGrant | Role | RolePermission | Sop | SopAttachment | StorageLocation | StoredFile | Tag | Test | TestAttachment | UserRole]` is not assignable to parameter `objs` with type `Iterable[ComponentAttachment]` in function `django.db.models.manager.Manager.bulk_update`",
+      "severity": "error"
+    },
+    {
+      "column": 45,
+      "path": "backups/restore.py",
+      "name": "bad-argument-type",
+      "concise_description": "Argument `list[Answer | Article | ArticleAttachment | ArticleRevision | AuditLog | Bookmark | Category | Collection | CollectionItem | Component | ComponentAttachment | ComponentCategory | Course | CourseCategory | CourseEnrollment | CourseModule | CourseResource | Document | Failure | FailureAttachment | InvitationCode | KnowledgeRelation | LearningObjective | Lesson | LessonKnowledgeReference | LessonProgress | PolicyAcceptance | PolicyDraft | PolicyVersion | Project | ProjectAttachment | Question | QuestionAttachment | RestrictedAccessGrant | Role | RolePermission | Sop | SopAttachment | StorageLocation | StoredFile | Tag | Test | TestAttachment | UserRole]` is not assignable to parameter `objs` with type `Iterable[ComponentCategory]` in function `django.db.models.manager.Manager.bulk_update`",
+      "severity": "error"
+    },
+    {
+      "column": 45,
+      "path": "backups/restore.py",
+      "name": "bad-argument-type",
+      "concise_description": "Argument `list[Answer | Article | ArticleAttachment | ArticleRevision | AuditLog | Bookmark | Category | Collection | CollectionItem | Component | ComponentAttachment | ComponentCategory | Course | CourseCategory | CourseEnrollment | CourseModule | CourseResource | Document | Failure | FailureAttachment | InvitationCode | KnowledgeRelation | LearningObjective | Lesson | LessonKnowledgeReference | LessonProgress | PolicyAcceptance | PolicyDraft | PolicyVersion | Project | ProjectAttachment | Question | QuestionAttachment | RestrictedAccessGrant | Role | RolePermission | Sop | SopAttachment | StorageLocation | StoredFile | Tag | Test | TestAttachment | UserRole]` is not assignable to parameter `objs` with type `Iterable[Course]` in function `django.db.models.manager.Manager.bulk_update`",
+      "severity": "error"
+    },
+    {
+      "column": 45,
+      "path": "backups/restore.py",
+      "name": "bad-argument-type",
+      "concise_description": "Argument `list[Answer | Article | ArticleAttachment | ArticleRevision | AuditLog | Bookmark | Category | Collection | CollectionItem | Component | ComponentAttachment | ComponentCategory | Course | CourseCategory | CourseEnrollment | CourseModule | CourseResource | Document | Failure | FailureAttachment | InvitationCode | KnowledgeRelation | LearningObjective | Lesson | LessonKnowledgeReference | LessonProgress | PolicyAcceptance | PolicyDraft | PolicyVersion | Project | ProjectAttachment | Question | QuestionAttachment | RestrictedAccessGrant | Role | RolePermission | Sop | SopAttachment | StorageLocation | StoredFile | Tag | Test | TestAttachment | UserRole]` is not assignable to parameter `objs` with type `Iterable[CourseCategory]` in function `django.db.models.manager.Manager.bulk_update`",
+      "severity": "error"
+    },
+    {
+      "column": 45,
+      "path": "backups/restore.py",
+      "name": "bad-argument-type",
+      "concise_description": "Argument `list[Answer | Article | ArticleAttachment | ArticleRevision | AuditLog | Bookmark | Category | Collection | CollectionItem | Component | ComponentAttachment | ComponentCategory | Course | CourseCategory | CourseEnrollment | CourseModule | CourseResource | Document | Failure | FailureAttachment | InvitationCode | KnowledgeRelation | LearningObjective | Lesson | LessonKnowledgeReference | LessonProgress | PolicyAcceptance | PolicyDraft | PolicyVersion | Project | ProjectAttachment | Question | QuestionAttachment | RestrictedAccessGrant | Role | RolePermission | Sop | SopAttachment | StorageLocation | StoredFile | Tag | Test | TestAttachment | UserRole]` is not assignable to parameter `objs` with type `Iterable[CourseEnrollment]` in function `django.db.models.manager.Manager.bulk_update`",
+      "severity": "error"
+    },
+    {
+      "column": 45,
+      "path": "backups/restore.py",
+      "name": "bad-argument-type",
+      "concise_description": "Argument `list[Answer | Article | ArticleAttachment | ArticleRevision | AuditLog | Bookmark | Category | Collection | CollectionItem | Component | ComponentAttachment | ComponentCategory | Course | CourseCategory | CourseEnrollment | CourseModule | CourseResource | Document | Failure | FailureAttachment | InvitationCode | KnowledgeRelation | LearningObjective | Lesson | LessonKnowledgeReference | LessonProgress | PolicyAcceptance | PolicyDraft | PolicyVersion | Project | ProjectAttachment | Question | QuestionAttachment | RestrictedAccessGrant | Role | RolePermission | Sop | SopAttachment | StorageLocation | StoredFile | Tag | Test | TestAttachment | UserRole]` is not assignable to parameter `objs` with type `Iterable[CourseModule]` in function `django.db.models.manager.Manager.bulk_update`",
+      "severity": "error"
+    },
+    {
+      "column": 45,
+      "path": "backups/restore.py",
+      "name": "bad-argument-type",
+      "concise_description": "Argument `list[Answer | Article | ArticleAttachment | ArticleRevision | AuditLog | Bookmark | Category | Collection | CollectionItem | Component | ComponentAttachment | ComponentCategory | Course | CourseCategory | CourseEnrollment | CourseModule | CourseResource | Document | Failure | FailureAttachment | InvitationCode | KnowledgeRelation | LearningObjective | Lesson | LessonKnowledgeReference | LessonProgress | PolicyAcceptance | PolicyDraft | PolicyVersion | Project | ProjectAttachment | Question | QuestionAttachment | RestrictedAccessGrant | Role | RolePermission | Sop | SopAttachment | StorageLocation | StoredFile | Tag | Test | TestAttachment | UserRole]` is not assignable to parameter `objs` with type `Iterable[CourseResource]` in function `django.db.models.manager.Manager.bulk_update`",
+      "severity": "error"
+    },
+    {
+      "column": 45,
+      "path": "backups/restore.py",
+      "name": "bad-argument-type",
+      "concise_description": "Argument `list[Answer | Article | ArticleAttachment | ArticleRevision | AuditLog | Bookmark | Category | Collection | CollectionItem | Component | ComponentAttachment | ComponentCategory | Course | CourseCategory | CourseEnrollment | CourseModule | CourseResource | Document | Failure | FailureAttachment | InvitationCode | KnowledgeRelation | LearningObjective | Lesson | LessonKnowledgeReference | LessonProgress | PolicyAcceptance | PolicyDraft | PolicyVersion | Project | ProjectAttachment | Question | QuestionAttachment | RestrictedAccessGrant | Role | RolePermission | Sop | SopAttachment | StorageLocation | StoredFile | Tag | Test | TestAttachment | UserRole]` is not assignable to parameter `objs` with type `Iterable[Document]` in function `django.db.models.manager.Manager.bulk_update`",
+      "severity": "error"
+    },
+    {
+      "column": 45,
+      "path": "backups/restore.py",
+      "name": "bad-argument-type",
+      "concise_description": "Argument `list[Answer | Article | ArticleAttachment | ArticleRevision | AuditLog | Bookmark | Category | Collection | CollectionItem | Component | ComponentAttachment | ComponentCategory | Course | CourseCategory | CourseEnrollment | CourseModule | CourseResource | Document | Failure | FailureAttachment | InvitationCode | KnowledgeRelation | LearningObjective | Lesson | LessonKnowledgeReference | LessonProgress | PolicyAcceptance | PolicyDraft | PolicyVersion | Project | ProjectAttachment | Question | QuestionAttachment | RestrictedAccessGrant | Role | RolePermission | Sop | SopAttachment | StorageLocation | StoredFile | Tag | Test | TestAttachment | UserRole]` is not assignable to parameter `objs` with type `Iterable[Failure]` in function `django.db.models.manager.Manager.bulk_update`",
+      "severity": "error"
+    },
+    {
+      "column": 45,
+      "path": "backups/restore.py",
+      "name": "bad-argument-type",
+      "concise_description": "Argument `list[Answer | Article | ArticleAttachment | ArticleRevision | AuditLog | Bookmark | Category | Collection | CollectionItem | Component | ComponentAttachment | ComponentCategory | Course | CourseCategory | CourseEnrollment | CourseModule | CourseResource | Document | Failure | FailureAttachment | InvitationCode | KnowledgeRelation | LearningObjective | Lesson | LessonKnowledgeReference | LessonProgress | PolicyAcceptance | PolicyDraft | PolicyVersion | Project | ProjectAttachment | Question | QuestionAttachment | RestrictedAccessGrant | Role | RolePermission | Sop | SopAttachment | StorageLocation | StoredFile | Tag | Test | TestAttachment | UserRole]` is not assignable to parameter `objs` with type `Iterable[FailureAttachment]` in function `django.db.models.manager.Manager.bulk_update`",
+      "severity": "error"
+    },
+    {
+      "column": 45,
+      "path": "backups/restore.py",
+      "name": "bad-argument-type",
+      "concise_description": "Argument `list[Answer | Article | ArticleAttachment | ArticleRevision | AuditLog | Bookmark | Category | Collection | CollectionItem | Component | ComponentAttachment | ComponentCategory | Course | CourseCategory | CourseEnrollment | CourseModule | CourseResource | Document | Failure | FailureAttachment | InvitationCode | KnowledgeRelation | LearningObjective | Lesson | LessonKnowledgeReference | LessonProgress | PolicyAcceptance | PolicyDraft | PolicyVersion | Project | ProjectAttachment | Question | QuestionAttachment | RestrictedAccessGrant | Role | RolePermission | Sop | SopAttachment | StorageLocation | StoredFile | Tag | Test | TestAttachment | UserRole]` is not assignable to parameter `objs` with type `Iterable[InvitationCode]` in function `django.db.models.manager.Manager.bulk_update`",
+      "severity": "error"
+    },
+    {
+      "column": 45,
+      "path": "backups/restore.py",
+      "name": "bad-argument-type",
+      "concise_description": "Argument `list[Answer | Article | ArticleAttachment | ArticleRevision | AuditLog | Bookmark | Category | Collection | CollectionItem | Component | ComponentAttachment | ComponentCategory | Course | CourseCategory | CourseEnrollment | CourseModule | CourseResource | Document | Failure | FailureAttachment | InvitationCode | KnowledgeRelation | LearningObjective | Lesson | LessonKnowledgeReference | LessonProgress | PolicyAcceptance | PolicyDraft | PolicyVersion | Project | ProjectAttachment | Question | QuestionAttachment | RestrictedAccessGrant | Role | RolePermission | Sop | SopAttachment | StorageLocation | StoredFile | Tag | Test | TestAttachment | UserRole]` is not assignable to parameter `objs` with type `Iterable[KnowledgeRelation]` in function `django.db.models.manager.Manager.bulk_update`",
+      "severity": "error"
+    },
+    {
+      "column": 45,
+      "path": "backups/restore.py",
+      "name": "bad-argument-type",
+      "concise_description": "Argument `list[Answer | Article | ArticleAttachment | ArticleRevision | AuditLog | Bookmark | Category | Collection | CollectionItem | Component | ComponentAttachment | ComponentCategory | Course | CourseCategory | CourseEnrollment | CourseModule | CourseResource | Document | Failure | FailureAttachment | InvitationCode | KnowledgeRelation | LearningObjective | Lesson | LessonKnowledgeReference | LessonProgress | PolicyAcceptance | PolicyDraft | PolicyVersion | Project | ProjectAttachment | Question | QuestionAttachment | RestrictedAccessGrant | Role | RolePermission | Sop | SopAttachment | StorageLocation | StoredFile | Tag | Test | TestAttachment | UserRole]` is not assignable to parameter `objs` with type `Iterable[LearningObjective]` in function `django.db.models.manager.Manager.bulk_update`",
+      "severity": "error"
+    },
+    {
+      "column": 45,
+      "path": "backups/restore.py",
+      "name": "bad-argument-type",
+      "concise_description": "Argument `list[Answer | Article | ArticleAttachment | ArticleRevision | AuditLog | Bookmark | Category | Collection | CollectionItem | Component | ComponentAttachment | ComponentCategory | Course | CourseCategory | CourseEnrollment | CourseModule | CourseResource | Document | Failure | FailureAttachment | InvitationCode | KnowledgeRelation | LearningObjective | Lesson | LessonKnowledgeReference | LessonProgress | PolicyAcceptance | PolicyDraft | PolicyVersion | Project | ProjectAttachment | Question | QuestionAttachment | RestrictedAccessGrant | Role | RolePermission | Sop | SopAttachment | StorageLocation | StoredFile | Tag | Test | TestAttachment | UserRole]` is not assignable to parameter `objs` with type `Iterable[Lesson]` in function `django.db.models.manager.Manager.bulk_update`",
+      "severity": "error"
+    },
+    {
+      "column": 45,
+      "path": "backups/restore.py",
+      "name": "bad-argument-type",
+      "concise_description": "Argument `list[Answer | Article | ArticleAttachment | ArticleRevision | AuditLog | Bookmark | Category | Collection | CollectionItem | Component | ComponentAttachment | ComponentCategory | Course | CourseCategory | CourseEnrollment | CourseModule | CourseResource | Document | Failure | FailureAttachment | InvitationCode | KnowledgeRelation | LearningObjective | Lesson | LessonKnowledgeReference | LessonProgress | PolicyAcceptance | PolicyDraft | PolicyVersion | Project | ProjectAttachment | Question | QuestionAttachment | RestrictedAccessGrant | Role | RolePermission | Sop | SopAttachment | StorageLocation | StoredFile | Tag | Test | TestAttachment | UserRole]` is not assignable to parameter `objs` with type `Iterable[LessonKnowledgeReference]` in function `django.db.models.manager.Manager.bulk_update`",
+      "severity": "error"
+    },
+    {
+      "column": 45,
+      "path": "backups/restore.py",
+      "name": "bad-argument-type",
+      "concise_description": "Argument `list[Answer | Article | ArticleAttachment | ArticleRevision | AuditLog | Bookmark | Category | Collection | CollectionItem | Component | ComponentAttachment | ComponentCategory | Course | CourseCategory | CourseEnrollment | CourseModule | CourseResource | Document | Failure | FailureAttachment | InvitationCode | KnowledgeRelation | LearningObjective | Lesson | LessonKnowledgeReference | LessonProgress | PolicyAcceptance | PolicyDraft | PolicyVersion | Project | ProjectAttachment | Question | QuestionAttachment | RestrictedAccessGrant | Role | RolePermission | Sop | SopAttachment | StorageLocation | StoredFile | Tag | Test | TestAttachment | UserRole]` is not assignable to parameter `objs` with type `Iterable[LessonProgress]` in function `django.db.models.manager.Manager.bulk_update`",
+      "severity": "error"
+    },
+    {
+      "column": 45,
+      "path": "backups/restore.py",
+      "name": "bad-argument-type",
+      "concise_description": "Argument `list[Answer | Article | ArticleAttachment | ArticleRevision | AuditLog | Bookmark | Category | Collection | CollectionItem | Component | ComponentAttachment | ComponentCategory | Course | CourseCategory | CourseEnrollment | CourseModule | CourseResource | Document | Failure | FailureAttachment | InvitationCode | KnowledgeRelation | LearningObjective | Lesson | LessonKnowledgeReference | LessonProgress | PolicyAcceptance | PolicyDraft | PolicyVersion | Project | ProjectAttachment | Question | QuestionAttachment | RestrictedAccessGrant | Role | RolePermission | Sop | SopAttachment | StorageLocation | StoredFile | Tag | Test | TestAttachment | UserRole]` is not assignable to parameter `objs` with type `Iterable[PolicyAcceptance]` in function `django.db.models.manager.Manager.bulk_update`",
+      "severity": "error"
+    },
+    {
+      "column": 45,
+      "path": "backups/restore.py",
+      "name": "bad-argument-type",
+      "concise_description": "Argument `list[Answer | Article | ArticleAttachment | ArticleRevision | AuditLog | Bookmark | Category | Collection | CollectionItem | Component | ComponentAttachment | ComponentCategory | Course | CourseCategory | CourseEnrollment | CourseModule | CourseResource | Document | Failure | FailureAttachment | InvitationCode | KnowledgeRelation | LearningObjective | Lesson | LessonKnowledgeReference | LessonProgress | PolicyAcceptance | PolicyDraft | PolicyVersion | Project | ProjectAttachment | Question | QuestionAttachment | RestrictedAccessGrant | Role | RolePermission | Sop | SopAttachment | StorageLocation | StoredFile | Tag | Test | TestAttachment | UserRole]` is not assignable to parameter `objs` with type `Iterable[PolicyDraft]` in function `django.db.models.manager.Manager.bulk_update`",
+      "severity": "error"
+    },
+    {
+      "column": 45,
+      "path": "backups/restore.py",
+      "name": "bad-argument-type",
+      "concise_description": "Argument `list[Answer | Article | ArticleAttachment | ArticleRevision | AuditLog | Bookmark | Category | Collection | CollectionItem | Component | ComponentAttachment | ComponentCategory | Course | CourseCategory | CourseEnrollment | CourseModule | CourseResource | Document | Failure | FailureAttachment | InvitationCode | KnowledgeRelation | LearningObjective | Lesson | LessonKnowledgeReference | LessonProgress | PolicyAcceptance | PolicyDraft | PolicyVersion | Project | ProjectAttachment | Question | QuestionAttachment | RestrictedAccessGrant | Role | RolePermission | Sop | SopAttachment | StorageLocation | StoredFile | Tag | Test | TestAttachment | UserRole]` is not assignable to parameter `objs` with type `Iterable[PolicyVersion]` in function `django.db.models.manager.Manager.bulk_update`",
+      "severity": "error"
+    },
+    {
+      "column": 45,
+      "path": "backups/restore.py",
+      "name": "bad-argument-type",
+      "concise_description": "Argument `list[Answer | Article | ArticleAttachment | ArticleRevision | AuditLog | Bookmark | Category | Collection | CollectionItem | Component | ComponentAttachment | ComponentCategory | Course | CourseCategory | CourseEnrollment | CourseModule | CourseResource | Document | Failure | FailureAttachment | InvitationCode | KnowledgeRelation | LearningObjective | Lesson | LessonKnowledgeReference | LessonProgress | PolicyAcceptance | PolicyDraft | PolicyVersion | Project | ProjectAttachment | Question | QuestionAttachment | RestrictedAccessGrant | Role | RolePermission | Sop | SopAttachment | StorageLocation | StoredFile | Tag | Test | TestAttachment | UserRole]` is not assignable to parameter `objs` with type `Iterable[Project]` in function `django.db.models.manager.Manager.bulk_update`",
+      "severity": "error"
+    },
+    {
+      "column": 45,
+      "path": "backups/restore.py",
+      "name": "bad-argument-type",
+      "concise_description": "Argument `list[Answer | Article | ArticleAttachment | ArticleRevision | AuditLog | Bookmark | Category | Collection | CollectionItem | Component | ComponentAttachment | ComponentCategory | Course | CourseCategory | CourseEnrollment | CourseModule | CourseResource | Document | Failure | FailureAttachment | InvitationCode | KnowledgeRelation | LearningObjective | Lesson | LessonKnowledgeReference | LessonProgress | PolicyAcceptance | PolicyDraft | PolicyVersion | Project | ProjectAttachment | Question | QuestionAttachment | RestrictedAccessGrant | Role | RolePermission | Sop | SopAttachment | StorageLocation | StoredFile | Tag | Test | TestAttachment | UserRole]` is not assignable to parameter `objs` with type `Iterable[ProjectAttachment]` in function `django.db.models.manager.Manager.bulk_update`",
+      "severity": "error"
+    },
+    {
+      "column": 45,
+      "path": "backups/restore.py",
+      "name": "bad-argument-type",
+      "concise_description": "Argument `list[Answer | Article | ArticleAttachment | ArticleRevision | AuditLog | Bookmark | Category | Collection | CollectionItem | Component | ComponentAttachment | ComponentCategory | Course | CourseCategory | CourseEnrollment | CourseModule | CourseResource | Document | Failure | FailureAttachment | InvitationCode | KnowledgeRelation | LearningObjective | Lesson | LessonKnowledgeReference | LessonProgress | PolicyAcceptance | PolicyDraft | PolicyVersion | Project | ProjectAttachment | Question | QuestionAttachment | RestrictedAccessGrant | Role | RolePermission | Sop | SopAttachment | StorageLocation | StoredFile | Tag | Test | TestAttachment | UserRole]` is not assignable to parameter `objs` with type `Iterable[Question]` in function `django.db.models.manager.Manager.bulk_update`",
+      "severity": "error"
+    },
+    {
+      "column": 45,
+      "path": "backups/restore.py",
+      "name": "bad-argument-type",
+      "concise_description": "Argument `list[Answer | Article | ArticleAttachment | ArticleRevision | AuditLog | Bookmark | Category | Collection | CollectionItem | Component | ComponentAttachment | ComponentCategory | Course | CourseCategory | CourseEnrollment | CourseModule | CourseResource | Document | Failure | FailureAttachment | InvitationCode | KnowledgeRelation | LearningObjective | Lesson | LessonKnowledgeReference | LessonProgress | PolicyAcceptance | PolicyDraft | PolicyVersion | Project | ProjectAttachment | Question | QuestionAttachment | RestrictedAccessGrant | Role | RolePermission | Sop | SopAttachment | StorageLocation | StoredFile | Tag | Test | TestAttachment | UserRole]` is not assignable to parameter `objs` with type `Iterable[QuestionAttachment]` in function `django.db.models.manager.Manager.bulk_update`",
+      "severity": "error"
+    },
+    {
+      "column": 45,
+      "path": "backups/restore.py",
+      "name": "bad-argument-type",
+      "concise_description": "Argument `list[Answer | Article | ArticleAttachment | ArticleRevision | AuditLog | Bookmark | Category | Collection | CollectionItem | Component | ComponentAttachment | ComponentCategory | Course | CourseCategory | CourseEnrollment | CourseModule | CourseResource | Document | Failure | FailureAttachment | InvitationCode | KnowledgeRelation | LearningObjective | Lesson | LessonKnowledgeReference | LessonProgress | PolicyAcceptance | PolicyDraft | PolicyVersion | Project | ProjectAttachment | Question | QuestionAttachment | RestrictedAccessGrant | Role | RolePermission | Sop | SopAttachment | StorageLocation | StoredFile | Tag | Test | TestAttachment | UserRole]` is not assignable to parameter `objs` with type `Iterable[RestrictedAccessGrant]` in function `django.db.models.manager.Manager.bulk_update`",
+      "severity": "error"
+    },
+    {
+      "column": 45,
+      "path": "backups/restore.py",
+      "name": "bad-argument-type",
+      "concise_description": "Argument `list[Answer | Article | ArticleAttachment | ArticleRevision | AuditLog | Bookmark | Category | Collection | CollectionItem | Component | ComponentAttachment | ComponentCategory | Course | CourseCategory | CourseEnrollment | CourseModule | CourseResource | Document | Failure | FailureAttachment | InvitationCode | KnowledgeRelation | LearningObjective | Lesson | LessonKnowledgeReference | LessonProgress | PolicyAcceptance | PolicyDraft | PolicyVersion | Project | ProjectAttachment | Question | QuestionAttachment | RestrictedAccessGrant | Role | RolePermission | Sop | SopAttachment | StorageLocation | StoredFile | Tag | Test | TestAttachment | UserRole]` is not assignable to parameter `objs` with type `Iterable[Role]` in function `django.db.models.manager.Manager.bulk_update`",
+      "severity": "error"
+    },
+    {
+      "column": 45,
+      "path": "backups/restore.py",
+      "name": "bad-argument-type",
+      "concise_description": "Argument `list[Answer | Article | ArticleAttachment | ArticleRevision | AuditLog | Bookmark | Category | Collection | CollectionItem | Component | ComponentAttachment | ComponentCategory | Course | CourseCategory | CourseEnrollment | CourseModule | CourseResource | Document | Failure | FailureAttachment | InvitationCode | KnowledgeRelation | LearningObjective | Lesson | LessonKnowledgeReference | LessonProgress | PolicyAcceptance | PolicyDraft | PolicyVersion | Project | ProjectAttachment | Question | QuestionAttachment | RestrictedAccessGrant | Role | RolePermission | Sop | SopAttachment | StorageLocation | StoredFile | Tag | Test | TestAttachment | UserRole]` is not assignable to parameter `objs` with type `Iterable[RolePermission]` in function `django.db.models.manager.Manager.bulk_update`",
+      "severity": "error"
+    },
+    {
+      "column": 45,
+      "path": "backups/restore.py",
+      "name": "bad-argument-type",
+      "concise_description": "Argument `list[Answer | Article | ArticleAttachment | ArticleRevision | AuditLog | Bookmark | Category | Collection | CollectionItem | Component | ComponentAttachment | ComponentCategory | Course | CourseCategory | CourseEnrollment | CourseModule | CourseResource | Document | Failure | FailureAttachment | InvitationCode | KnowledgeRelation | LearningObjective | Lesson | LessonKnowledgeReference | LessonProgress | PolicyAcceptance | PolicyDraft | PolicyVersion | Project | ProjectAttachment | Question | QuestionAttachment | RestrictedAccessGrant | Role | RolePermission | Sop | SopAttachment | StorageLocation | StoredFile | Tag | Test | TestAttachment | UserRole]` is not assignable to parameter `objs` with type `Iterable[Sop]` in function `django.db.models.manager.Manager.bulk_update`",
+      "severity": "error"
+    },
+    {
+      "column": 45,
+      "path": "backups/restore.py",
+      "name": "bad-argument-type",
+      "concise_description": "Argument `list[Answer | Article | ArticleAttachment | ArticleRevision | AuditLog | Bookmark | Category | Collection | CollectionItem | Component | ComponentAttachment | ComponentCategory | Course | CourseCategory | CourseEnrollment | CourseModule | CourseResource | Document | Failure | FailureAttachment | InvitationCode | KnowledgeRelation | LearningObjective | Lesson | LessonKnowledgeReference | LessonProgress | PolicyAcceptance | PolicyDraft | PolicyVersion | Project | ProjectAttachment | Question | QuestionAttachment | RestrictedAccessGrant | Role | RolePermission | Sop | SopAttachment | StorageLocation | StoredFile | Tag | Test | TestAttachment | UserRole]` is not assignable to parameter `objs` with type `Iterable[SopAttachment]` in function `django.db.models.manager.Manager.bulk_update`",
+      "severity": "error"
+    },
+    {
+      "column": 45,
+      "path": "backups/restore.py",
+      "name": "bad-argument-type",
+      "concise_description": "Argument `list[Answer | Article | ArticleAttachment | ArticleRevision | AuditLog | Bookmark | Category | Collection | CollectionItem | Component | ComponentAttachment | ComponentCategory | Course | CourseCategory | CourseEnrollment | CourseModule | CourseResource | Document | Failure | FailureAttachment | InvitationCode | KnowledgeRelation | LearningObjective | Lesson | LessonKnowledgeReference | LessonProgress | PolicyAcceptance | PolicyDraft | PolicyVersion | Project | ProjectAttachment | Question | QuestionAttachment | RestrictedAccessGrant | Role | RolePermission | Sop | SopAttachment | StorageLocation | StoredFile | Tag | Test | TestAttachment | UserRole]` is not assignable to parameter `objs` with type `Iterable[StorageLocation]` in function `django.db.models.manager.Manager.bulk_update`",
+      "severity": "error"
+    },
+    {
+      "column": 45,
+      "path": "backups/restore.py",
+      "name": "bad-argument-type",
+      "concise_description": "Argument `list[Answer | Article | ArticleAttachment | ArticleRevision | AuditLog | Bookmark | Category | Collection | CollectionItem | Component | ComponentAttachment | ComponentCategory | Course | CourseCategory | CourseEnrollment | CourseModule | CourseResource | Document | Failure | FailureAttachment | InvitationCode | KnowledgeRelation | LearningObjective | Lesson | LessonKnowledgeReference | LessonProgress | PolicyAcceptance | PolicyDraft | PolicyVersion | Project | ProjectAttachment | Question | QuestionAttachment | RestrictedAccessGrant | Role | RolePermission | Sop | SopAttachment | StorageLocation | StoredFile | Tag | Test | TestAttachment | UserRole]` is not assignable to parameter `objs` with type `Iterable[StoredFile]` in function `django.db.models.manager.Manager.bulk_update`",
+      "severity": "error"
+    },
+    {
+      "column": 45,
+      "path": "backups/restore.py",
+      "name": "bad-argument-type",
+      "concise_description": "Argument `list[Answer | Article | ArticleAttachment | ArticleRevision | AuditLog | Bookmark | Category | Collection | CollectionItem | Component | ComponentAttachment | ComponentCategory | Course | CourseCategory | CourseEnrollment | CourseModule | CourseResource | Document | Failure | FailureAttachment | InvitationCode | KnowledgeRelation | LearningObjective | Lesson | LessonKnowledgeReference | LessonProgress | PolicyAcceptance | PolicyDraft | PolicyVersion | Project | ProjectAttachment | Question | QuestionAttachment | RestrictedAccessGrant | Role | RolePermission | Sop | SopAttachment | StorageLocation | StoredFile | Tag | Test | TestAttachment | UserRole]` is not assignable to parameter `objs` with type `Iterable[Tag]` in function `django.db.models.manager.Manager.bulk_update`",
+      "severity": "error"
+    },
+    {
+      "column": 45,
+      "path": "backups/restore.py",
+      "name": "bad-argument-type",
+      "concise_description": "Argument `list[Answer | Article | ArticleAttachment | ArticleRevision | AuditLog | Bookmark | Category | Collection | CollectionItem | Component | ComponentAttachment | ComponentCategory | Course | CourseCategory | CourseEnrollment | CourseModule | CourseResource | Document | Failure | FailureAttachment | InvitationCode | KnowledgeRelation | LearningObjective | Lesson | LessonKnowledgeReference | LessonProgress | PolicyAcceptance | PolicyDraft | PolicyVersion | Project | ProjectAttachment | Question | QuestionAttachment | RestrictedAccessGrant | Role | RolePermission | Sop | SopAttachment | StorageLocation | StoredFile | Tag | Test | TestAttachment | UserRole]` is not assignable to parameter `objs` with type `Iterable[Test]` in function `django.db.models.manager.Manager.bulk_update`",
+      "severity": "error"
+    },
+    {
+      "column": 45,
+      "path": "backups/restore.py",
+      "name": "bad-argument-type",
+      "concise_description": "Argument `list[Answer | Article | ArticleAttachment | ArticleRevision | AuditLog | Bookmark | Category | Collection | CollectionItem | Component | ComponentAttachment | ComponentCategory | Course | CourseCategory | CourseEnrollment | CourseModule | CourseResource | Document | Failure | FailureAttachment | InvitationCode | KnowledgeRelation | LearningObjective | Lesson | LessonKnowledgeReference | LessonProgress | PolicyAcceptance | PolicyDraft | PolicyVersion | Project | ProjectAttachment | Question | QuestionAttachment | RestrictedAccessGrant | Role | RolePermission | Sop | SopAttachment | StorageLocation | StoredFile | Tag | Test | TestAttachment | UserRole]` is not assignable to parameter `objs` with type `Iterable[TestAttachment]` in function `django.db.models.manager.Manager.bulk_update`",
+      "severity": "error"
+    },
+    {
+      "column": 45,
+      "path": "backups/restore.py",
+      "name": "bad-argument-type",
+      "concise_description": "Argument `list[Answer | Article | ArticleAttachment | ArticleRevision | AuditLog | Bookmark | Category | Collection | CollectionItem | Component | ComponentAttachment | ComponentCategory | Course | CourseCategory | CourseEnrollment | CourseModule | CourseResource | Document | Failure | FailureAttachment | InvitationCode | KnowledgeRelation | LearningObjective | Lesson | LessonKnowledgeReference | LessonProgress | PolicyAcceptance | PolicyDraft | PolicyVersion | Project | ProjectAttachment | Question | QuestionAttachment | RestrictedAccessGrant | Role | RolePermission | Sop | SopAttachment | StorageLocation | StoredFile | Tag | Test | TestAttachment | UserRole]` is not assignable to parameter `objs` with type `Iterable[UserRole]` in function `django.db.models.manager.Manager.bulk_update`",
+      "severity": "error"
+    },
+    {
+      "column": 20,
+      "path": "backups/services.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `OrganizationSettings` has no attribute `logo_id`",
+      "severity": "error"
+    },
+    {
+      "column": 20,
+      "path": "backups/services.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `OrganizationSettings` has no attribute `favicon_id`",
+      "severity": "error"
+    },
+    {
+      "column": 13,
+      "path": "backups/services.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `NoneType` has no attribute `save`",
+      "severity": "error"
+    },
+    {
+      "column": 45,
+      "path": "backups/services.py",
+      "name": "bad-argument-type",
+      "concise_description": "Argument `_TemporaryFileWrapper[bytes]` is not assignable to parameter `destination` with type `BinaryIO` in function `core.crypto.decrypt_file`",
+      "severity": "error"
+    },
+    {
+      "column": 14,
+      "path": "backups/tests.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `NoneType` has no attribute `open`",
+      "severity": "error"
+    },
+    {
+      "column": 34,
+      "path": "backups/tests.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `_MonkeyPatchedResponse` has no attribute `streaming_content`",
+      "severity": "error"
+    },
+    {
+      "column": 24,
+      "path": "backups/tests.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `NoneType` has no attribute `name`",
+      "severity": "error"
+    },
+    {
+      "column": 25,
+      "path": "backups/tests.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `NoneType` has no attribute `storage`",
+      "severity": "error"
+    },
+    {
+      "column": 26,
+      "path": "backups/tests.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `NoneType` has no attribute `storage`",
+      "severity": "error"
+    },
+    {
+      "column": 26,
+      "path": "backups/tests.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `Project` has no attribute `created_by_id`",
+      "severity": "error"
+    },
+    {
+      "column": 26,
+      "path": "backups/tests.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `Article` has no attribute `author_id`",
+      "severity": "error"
+    },
+    {
+      "column": 26,
+      "path": "backups/tests.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `Collection` has no attribute `created_by_id`",
+      "severity": "error"
+    },
+    {
+      "column": 26,
+      "path": "backups/tests.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `Course` has no attribute `author_id`",
+      "severity": "error"
+    },
+    {
+      "column": 26,
+      "path": "backups/tests.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `CourseEnrollment` has no attribute `user_id`",
+      "severity": "error"
+    },
+    {
+      "column": 25,
+      "path": "backups/tests.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `_MonkeyPatchedResponse` has no attribute `streaming_content`",
+      "severity": "error"
+    },
+    {
+      "column": 34,
+      "path": "backups/tests.py",
+      "name": "bad-assignment",
+      "concise_description": "`str | Unknown` is not assignable to dict key `passphrase` with type `SimpleUploadedFile`",
+      "severity": "error"
+    },
+    {
+      "column": 26,
+      "path": "backups/tests.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `Article` has no attribute `deleted_by_id`",
+      "severity": "error"
+    },
+    {
+      "column": 26,
+      "path": "backups/tests.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `Article` has no attribute `author_id`",
+      "severity": "error"
+    },
+    {
+      "column": 27,
+      "path": "backups/tests.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `Project` has no attribute `created_by_id`",
+      "severity": "error"
+    },
+    {
+      "column": 26,
+      "path": "backups/tests.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `NoneType` has no attribute `name`",
+      "severity": "error"
+    },
+    {
+      "column": 26,
+      "path": "backups/tests.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `NoneType` has no attribute `name`",
+      "severity": "error"
+    },
+    {
+      "column": 26,
+      "path": "backups/tests.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `Component` has no attribute `updated_by_id`",
+      "severity": "error"
+    },
+    {
+      "column": 17,
+      "path": "backups/views.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `NoneType` has no attribute `save`",
+      "severity": "error"
+    },
+    {
+      "column": 32,
+      "path": "billing/models.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `Subscription` has no attribute `organization_id`",
+      "severity": "error"
+    },
+    {
+      "column": 81,
+      "path": "billing/reminders.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `Subscription` has no attribute `organization_id`",
+      "severity": "error"
+    },
+    {
+      "column": 49,
+      "path": "billing/tests.py",
+      "name": "unsupported-operation",
+      "concise_description": "`+` is not supported between `None` and `timedelta`",
+      "severity": "error"
+    },
+    {
+      "column": 16,
+      "path": "billing/tests.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `Organization` has no attribute `subscription`",
+      "severity": "error"
+    },
+    {
+      "column": 20,
+      "path": "config/settings.py",
+      "name": "bad-assignment",
+      "concise_description": "`dict[str, bool | str | Unknown]` is not assignable to dict value type `str`",
+      "severity": "error"
+    },
+    {
+      "column": 66,
+      "path": "core/crypto.py",
+      "name": "bad-argument-type",
+      "concise_description": "Argument `bytes | None` is not assignable to parameter `data` with type `bytearray | bytes | memoryview` in function `cryptography.hazmat.bindings._rust.openssl.aead.AESGCM.encrypt`",
+      "severity": "error"
+    },
+    {
+      "column": 41,
+      "path": "core/management/commands/create_full_backup.py",
+      "name": "bad-argument-type",
+      "concise_description": "Argument `IO[bytes] | None` is not assignable to parameter `source` with type `BinaryIO` in function `core.crypto.encrypt_file`",
+      "severity": "error"
+    },
+    {
+      "column": 37,
+      "path": "core/management/commands/create_full_backup.py",
+      "name": "bad-argument-type",
+      "concise_description": "Argument `_TemporaryFileWrapper[bytes]` is not assignable to parameter `source` with type `BinaryIO` in function `core.crypto.encrypt_file`",
+      "severity": "error"
+    },
+    {
+      "column": 40,
+      "path": "core/testing.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `RoleLoginMixin` has no attribute `organization`",
+      "severity": "error"
+    },
+    {
+      "column": 20,
+      "path": "core/testing.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `RoleLoginMixin` has no attribute `client`",
+      "severity": "error"
+    },
+    {
+      "column": 35,
+      "path": "files/tests.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `_MonkeyPatchedResponse` has no attribute `streaming_content`",
+      "severity": "error"
+    },
+    {
+      "column": 53,
+      "path": "files/tests.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `_MonkeyPatchedResponse` has no attribute `streaming_content`",
+      "severity": "error"
+    },
+    {
+      "column": 35,
+      "path": "files/tests.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `_MonkeyPatchedResponse` has no attribute `streaming_content`",
+      "severity": "error"
+    },
+    {
+      "column": 44,
+      "path": "knowledge/models.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `RestrictedAccessGrant` has no attribute `granted_user_id`",
+      "severity": "error"
+    },
+    {
+      "column": 19,
+      "path": "knowledge/models.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `Bookmark` has no attribute `user_id`",
+      "severity": "error"
+    },
+    {
+      "column": 22,
+      "path": "knowledge/search.py",
+      "name": "bad-argument-type",
+      "concise_description": "Argument `str` is not assignable to parameter `object` with type `Value` in function `list.append`",
+      "severity": "error"
+    },
+    {
+      "column": 24,
+      "path": "knowledge/search.py",
+      "name": "bad-argument-type",
+      "concise_description": "Argument `Concat | str` is not assignable to parameter `expression` with type `Expression` in function `django.db.models.fields.generated.GeneratedField.__init__`",
+      "severity": "error"
+    },
+    {
+      "column": 20,
+      "path": "knowledge/serializers.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `NoneType` has no attribute `none`",
+      "severity": "error"
+    },
+    {
+      "column": 20,
+      "path": "knowledge/serializers.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `NoneType` has no attribute `filter`",
+      "severity": "error"
+    },
+    {
+      "column": 30,
+      "path": "knowledge/serializers.py",
+      "name": "no-matching-overload",
+      "concise_description": "No matching overload found for function `getattr` called with arguments: (Unknown, str | None, None)",
+      "severity": "error"
+    },
+    {
+      "column": 9,
+      "path": "knowledge/serializers.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `NoneType` has no attribute `_can_see_all_emails`",
+      "severity": "error"
+    },
+    {
+      "column": 26,
+      "path": "knowledge/serializers.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `NoneType` has no attribute `_can_see_all_emails`",
+      "severity": "error"
+    },
+    {
+      "column": 16,
+      "path": "knowledge/serializers.py",
+      "name": "bad-return",
+      "concise_description": "Returned type `ReturnDict[Unknown, Unknown]` is not assignable to declared return type `list[Unknown]`",
+      "severity": "error"
+    },
+    {
+      "column": 96,
+      "path": "knowledge/serializers.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `ContributorsMixin` has no attribute `context`",
+      "severity": "error"
+    },
+    {
+      "column": 94,
+      "path": "knowledge/serializers.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `RestrictedAccessMixin` has no attribute `context`",
+      "severity": "error"
+    },
+    {
+      "column": 19,
+      "path": "knowledge/serializers.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `CollectionsContextMixin` has no attribute `context`",
+      "severity": "error"
+    },
+    {
+      "column": 19,
+      "path": "knowledge/serializers.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `BookmarkMixin` has no attribute `context`",
+      "severity": "error"
+    },
+    {
+      "column": 16,
+      "path": "knowledge/serializers.py",
+      "name": "bad-return",
+      "concise_description": "Returned type `ReturnDict[Unknown, Unknown]` is not assignable to declared return type `list[Unknown]`",
+      "severity": "error"
+    },
+    {
+      "column": 16,
+      "path": "knowledge/serializers.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `object` has no attribute `to_representation`",
+      "severity": "error"
+    },
+    {
+      "column": 9,
+      "path": "knowledge/serializers.py",
+      "name": "unsupported-operation",
+      "concise_description": "Cannot set item in `Mapping[str, Any]`",
+      "severity": "error"
+    },
+    {
+      "column": 16,
+      "path": "knowledge/serializers.py",
+      "name": "bad-return",
+      "concise_description": "Returned type `ReturnDict[Unknown, Unknown]` is not assignable to declared return type `list[Unknown]`",
+      "severity": "error"
+    },
+    {
+      "column": 9,
+      "path": "knowledge/serializers.py",
+      "name": "bad-override-param-name",
+      "concise_description": "Class member `TrashedItemSerializer.to_representation` overrides parent class `Serializer` in an inconsistent manner",
+      "severity": "error"
+    },
+    {
+      "column": 12,
+      "path": "knowledge/services.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `Collection` has no attribute `organization_id`",
+      "severity": "error"
+    },
+    {
+      "column": 66,
+      "path": "knowledge/services.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `RestrictedAccessGrant` has no attribute `granted_user_id`",
+      "severity": "error"
+    },
+    {
+      "column": 17,
+      "path": "knowledge/services.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `ForeignObjectRel` has no attribute `max_length`",
+      "severity": "error"
+    },
+    {
+      "column": 17,
+      "path": "knowledge/services.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `ForeignObjectRel` has no attribute `max_length`",
+      "severity": "error"
+    },
+    {
+      "column": 54,
+      "path": "knowledge/services.py",
+      "name": "bad-assignment",
+      "concise_description": "`dict[Unknown, Unknown]` is not assignable to dict value type `int | str`",
+      "severity": "error"
+    },
+    {
+      "column": 70,
+      "path": "knowledge/services.py",
+      "name": "bad-assignment",
+      "concise_description": "`dict[Unknown, Unknown]` is not assignable to dict value type `int | str`",
+      "severity": "error"
+    },
+    {
+      "column": 88,
+      "path": "knowledge/services.py",
+      "name": "bad-assignment",
+      "concise_description": "`list[@_]` is not assignable to dict value type `int | str`",
+      "severity": "error"
+    },
+    {
+      "column": 38,
+      "path": "knowledge/services.py",
+      "name": "bad-index",
+      "concise_description": "Cannot index into `int`",
+      "severity": "error"
+    },
+    {
+      "column": 38,
+      "path": "knowledge/services.py",
+      "name": "bad-index",
+      "concise_description": "Cannot index into `str`",
+      "severity": "error"
+    },
+    {
+      "column": 20,
+      "path": "knowledge/services.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of type `dict[@_, @_] | int | str` has no attribute `get`",
+      "severity": "error"
+    },
+    {
+      "column": 38,
+      "path": "knowledge/services.py",
+      "name": "unsupported-operation",
+      "concise_description": "Cannot set item in `dict[str, int]`",
+      "severity": "error"
+    },
+    {
+      "column": 32,
+      "path": "knowledge/services.py",
+      "name": "bad-index",
+      "concise_description": "Cannot index into `int`",
+      "severity": "error"
+    },
+    {
+      "column": 32,
+      "path": "knowledge/services.py",
+      "name": "bad-index",
+      "concise_description": "Cannot index into `str`",
+      "severity": "error"
+    },
+    {
+      "column": 16,
+      "path": "knowledge/services.py",
+      "name": "bad-index",
+      "concise_description": "Cannot index into `int`",
+      "severity": "error"
+    },
+    {
+      "column": 16,
+      "path": "knowledge/services.py",
+      "name": "bad-index",
+      "concise_description": "Cannot index into `str`",
+      "severity": "error"
+    },
+    {
+      "column": 17,
+      "path": "knowledge/services.py",
+      "name": "unsupported-operation",
+      "concise_description": "Cannot set item in `dict[int, dict[Unknown, Unknown]]`",
+      "severity": "error"
+    },
+    {
+      "column": 21,
+      "path": "knowledge/services.py",
+      "name": "unsupported-operation",
+      "concise_description": "Cannot set item in `dict[int, dict[Unknown, Unknown]]`",
+      "severity": "error"
+    },
+    {
+      "column": 21,
+      "path": "knowledge/services.py",
+      "name": "unsupported-operation",
+      "concise_description": "Cannot set item in `dict[int, dict[Unknown, Unknown]]`",
+      "severity": "error"
+    },
+    {
+      "column": 25,
+      "path": "knowledge/services.py",
+      "name": "bad-index",
+      "concise_description": "Cannot index into `int`",
+      "severity": "error"
+    },
+    {
+      "column": 25,
+      "path": "knowledge/services.py",
+      "name": "bad-index",
+      "concise_description": "Cannot index into `str`",
+      "severity": "error"
+    },
+    {
+      "column": 8,
+      "path": "knowledge/sharing.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `NoneType` has no attribute `visibility`",
+      "severity": "error"
+    },
+    {
+      "column": 12,
+      "path": "knowledge/sharing.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `ShareLink` has no attribute `created_by_id`",
+      "severity": "error"
+    },
+    {
+      "column": 26,
+      "path": "knowledge/tests.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `NoneType` has no attribute `content`",
+      "severity": "error"
+    },
+    {
+      "column": 26,
+      "path": "knowledge/tests.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `NoneType` has no attribute `name`",
+      "severity": "error"
+    },
+    {
+      "column": 26,
+      "path": "knowledge/tests.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `NoneType` has no attribute `name`",
+      "severity": "error"
+    },
+    {
+      "column": 26,
+      "path": "knowledge/tests.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `NoneType` has no attribute `name`",
+      "severity": "error"
+    },
+    {
+      "column": 64,
+      "path": "knowledge/tests.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `NoneType` has no attribute `pk`",
+      "severity": "error"
+    },
+    {
+      "column": 51,
+      "path": "knowledge/tests.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `NoneType` has no attribute `pk`",
+      "severity": "error"
+    },
+    {
+      "column": 60,
+      "path": "knowledge/tests.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `NoneType` has no attribute `pk`",
+      "severity": "error"
+    },
+    {
+      "column": 26,
+      "path": "knowledge/tests.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `_MonkeyPatchedResponse` has no attribute `streaming_content`",
+      "severity": "error"
+    },
+    {
+      "column": 18,
+      "path": "knowledge/views.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `Sop` has no attribute `author`",
+      "severity": "error"
+    },
+    {
+      "column": 66,
+      "path": "knowledge/views.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `Article` has no attribute `created_by`",
+      "severity": "error"
+    },
+    {
+      "column": 35,
+      "path": "organization/tests.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `_MonkeyPatchedResponse` has no attribute `streaming_content`",
+      "severity": "error"
+    },
+    {
+      "column": 65,
+      "path": "platform_admin/serializers.py",
+      "name": "bad-argument-type",
+      "concise_description": "Argument `list[(value: str) -> str]` is not assignable to parameter `validators` with type `Sequence[Validator] | None` in function `rest_framework.fields.CharField.__init__`",
+      "severity": "error"
+    },
+    {
+      "column": 19,
+      "path": "platform_admin/services.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `BackupJob` has no attribute `organization_id`",
+      "severity": "error"
+    },
+    {
+      "column": 52,
+      "path": "platform_admin/services.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `BackupJob` has no attribute `organization_id`",
+      "severity": "error"
+    },
+    {
+      "column": 78,
+      "path": "platform_admin/services.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `NoneType` has no attribute `size`",
+      "severity": "error"
+    },
+    {
+      "column": 22,
+      "path": "platform_admin/services.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `Subscription` has no attribute `organization_id`",
+      "severity": "error"
+    },
+    {
+      "column": 27,
+      "path": "platform_admin/services.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `User` has no attribute `organization_id`",
+      "severity": "error"
+    },
+    {
+      "column": 82,
+      "path": "policies/tests.py",
+      "name": "bad-argument-type",
+      "concise_description": "Unpacked keyword argument `str` is not assignable to parameter `data` with type `Iterable[tuple[str, Iterable[bytes | float | str] | bytes | float | str]] | Mapping[str, Iterable[bytes | float | str] | bytes | float | str] | None` in function `rest_framework.test.APIClient.get`",
+      "severity": "error"
+    },
+    {
+      "column": 82,
+      "path": "policies/tests.py",
+      "name": "bad-argument-type",
+      "concise_description": "Unpacked keyword argument `str` is not assignable to parameter `follow` with type `bool` in function `rest_framework.test.APIClient.get`",
+      "severity": "error"
+    },
+    {
+      "column": 19,
+      "path": "training/models.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `CourseEnrollment` has no attribute `user_id`",
+      "severity": "error"
+    },
+    {
+      "column": 16,
+      "path": "training/serializers.py",
+      "name": "bad-return",
+      "concise_description": "Returned type `ReturnDict[Unknown, Unknown]` is not assignable to declared return type `list[Unknown]`",
+      "severity": "error"
+    },
+    {
+      "column": 16,
+      "path": "training/services.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `Course` has no attribute `author_id`",
+      "severity": "error"
+    },
+    {
+      "column": 66,
+      "path": "training/services.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `RestrictedAccessGrant` has no attribute `granted_user_id`",
+      "severity": "error"
+    },
+    {
+      "column": 8,
+      "path": "training/visibility.py",
+      "name": "missing-attribute",
+      "concise_description": "Object of class `Course` has no attribute `author_id`",
+      "severity": "error"
+    }
+  ]
+}

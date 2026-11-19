@@ -82,6 +82,11 @@ jobs:
       - name: Formatting (ruff format)
         run: uvx ruff@0.14.0 format --check .
 
+      # Pyrefly + django-stubs/drf-stubs, versions pinned via uv.lock (dev group).
+      # Pre-existing errors live in pyrefly-baseline.json, so this fails only on new ones.
+      - name: Type check (pyrefly)
+        run: uv run pyrefly check
+
       - name: Django system check
         run: uv run manage.py check
 
