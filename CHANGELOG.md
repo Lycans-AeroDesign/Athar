@@ -1,3 +1,15 @@
+## [1.39.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.38.0...v1.39.0) (2026-11-19)
+
+### Features
+
+* **deploy:** opt-in image update alerts and scheduled image/EOL scans ([4d8c485](https://github.com/Lycans-AeroDesign/Athar/commit/4d8c4856d00f5dcac3c5191286ddf9f94c119bb2))
+* **platform:** show the client IP address in the error log ([a5558fd](https://github.com/Lycans-AeroDesign/Athar/commit/a5558fdce21f400a147a36316c182255900acaef))
+
+### Bug Fixes
+
+* **auth:** stop refresh-token reuse alarms from logging users out in a loop ([ecc38d1](https://github.com/Lycans-AeroDesign/Athar/commit/ecc38d1aa8c18db366032711f653dc9a280eccfe))
+* make None-guards explicit so type checkers can follow them ([b6ee31f](https://github.com/Lycans-AeroDesign/Athar/commit/b6ee31f309a2ceba9a1293beffdee55229e2234b))
+
 ## [1.38.0](https://github.com/Lycans-AeroDesign/Athar/compare/v1.37.0...v1.38.0) (2026-11-18)
 
 ### Features
