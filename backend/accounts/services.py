@@ -18,7 +18,7 @@ from billing.services import check_user_limit, is_read_only
 from files.services import confirm_stored_files
 from rbac.models import Role
 
-from .models import InvitationCode, PasswordResetLink, User
+from .models import InvitationCode, PasswordResetLink, RefreshTokenRotation, User
 
 logger = logging.getLogger(__name__)
 security_logger = logging.getLogger("athar.security")
@@ -385,18 +385,37 @@ def revoke_all_refresh_tokens(user: User) -> int:
     return len(live)
 
 
+def record_refresh_rotation(probe: RotationProbeToken) -> None:
+    """Remembers that `probe` was just exchanged for a newer token (see RefreshTokenRotation)."""
+    RefreshTokenRotation.objects.get_or_create(
+        jti=probe.payload["jti"],
+        defaults={"expires_at": datetime.datetime.fromtimestamp(probe.payload["exp"], tz=datetime.UTC)},
+    )
+
+
+def purge_expired_token_rotations() -> int:
+    deleted, _ = RefreshTokenRotation.objects.filter(expires_at__lte=timezone.now()).delete()
+    return deleted
+
+
 def handle_refresh_token_reuse(probe: RotationProbeToken, *, request=None) -> bool:
-    """Called when a refresh was rejected. If `probe` is a token that was already rotated or logged
-    out, the cookie was copied somewhere: revoke all of the user's sessions and audit it. A replay
-    within JWT_REFRESH_REUSE_GRACE_SECONDS of the rotation is a benign race (e.g. two tabs) and
-    only fails that request. Returns True when sessions were revoked."""
-    blacklisted = BlacklistedToken.objects.filter(token__jti=probe.payload["jti"]).select_related("token__user").first()
-    if blacklisted is None:
+    """Called when a refresh was rejected. If `probe` was already *rotated* (exchanged for a newer
+    token), the real browser holds the newer one, so whoever sent this one copied the cookie:
+    revoke all of the user's sessions and audit it. A replay within
+    JWT_REFRESH_REUSE_GRACE_SECONDS of the rotation is a benign race (e.g. two tabs) and only
+    fails that request. A token that was logged out or revoked (password reset, account
+    deletion, an earlier reuse alarm) is just a browser that hasn't learned its session ended -
+    rejecting it is enough; treating it as theft would end the user's *new* sessions on every
+    other device each time that browser came back. Returns True when sessions were revoked."""
+    jti = probe.payload["jti"]
+    rotation = RefreshTokenRotation.objects.filter(jti=jti).first()
+    if rotation is None:
         return False
-    age = (timezone.now() - blacklisted.blacklisted_at).total_seconds()
+    age = (timezone.now() - rotation.rotated_at).total_seconds()
     if age <= settings.JWT_REFRESH_REUSE_GRACE_SECONDS:
         return False
-    user = blacklisted.token.user
+    blacklisted = BlacklistedToken.objects.filter(token__jti=jti).select_related("token__user").first()
+    user = blacklisted.token.user if blacklisted else None
     if user is None:
         return False
     revoked = revoke_all_refresh_tokens(user)
@@ -407,7 +426,10 @@ def handle_refresh_token_reuse(probe: RotationProbeToken, *, request=None) -> bo
         metadata={"revoked_sessions": revoked},
         request=request,
     )
-    security_logger.error("Refresh token reuse detected for user %s; revoked %s sessions", user.pk, revoked)
+    # `request` lets the error log record where the replay came from (IP, browser, path).
+    security_logger.error(
+        "Refresh token reuse detected for user %s; revoked %s sessions", user.pk, revoked, extra={"request": request}
+    )
     return True
 
 

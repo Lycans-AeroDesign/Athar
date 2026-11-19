@@ -401,6 +401,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "knowledge.tasks.purge_expired_trash",
         "schedule": 86400.0,
     },
+    "purge-expired-token-rotations": {
+        "task": "accounts.tasks.purge_expired_token_rotations",
+        "schedule": 86400.0,
+    },
     "purge-old-error-events": {
         "task": "platform_admin.tasks.purge_old_error_events",
         "schedule": 86400.0,

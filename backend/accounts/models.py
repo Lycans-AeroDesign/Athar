@@ -233,6 +233,24 @@ class PasswordResetLink(UUIDPrimaryKeyModel, OrganizationScopedModel, TimeStampe
         return self.used_at is None and self.revoked_at is None and self.expires_at > timezone.now()
 
 
+class RefreshTokenRotation(UUIDPrimaryKeyModel):
+    """The jti of a refresh token that was exchanged for a newer one (accounts.views.TokenRefreshView).
+
+    simplejwt blacklists a token the same way whether it was rotated, logged out, revoked by a
+    password reset or revoked by a reuse alarm. Only a *rotated* token coming back is evidence
+    that the cookie was copied (the real browser already holds its successor); the others are a
+    browser that simply hasn't heard its session ended. See services.handle_refresh_token_reuse.
+    Rows are useless once the token itself expires (it then fails verification before the reuse
+    check) and are purged daily by accounts.tasks.purge_expired_token_rotations."""
+
+    jti = models.CharField(max_length=255, unique=True)
+    rotated_at = models.DateTimeField(default=timezone.now)
+    expires_at = models.DateTimeField(db_index=True)
+
+    def __str__(self) -> str:
+        return f"rotated {self.jti}"
+
+
 @receiver(m2m_changed, sender=User.roles.through)
 def _clear_permission_cache(sender, instance, action, **kwargs):
     """A role added/removed through this user instance is visible to its next

@@ -48,6 +48,7 @@ from .services import (
     delete_own_account,
     get_valid_password_reset_link,
     handle_refresh_token_reuse,
+    record_refresh_rotation,
     register_user,
     reset_password_with_link,
     revoke_invitation_code,
@@ -131,7 +132,18 @@ class RefreshView(APIView):
             raise AuthenticationFailed("No refresh token cookie present.")
 
         try:
-            probe = RotationProbeToken(refresh_token)
+            return self._refresh(request, refresh_token)
+        except AuthenticationFailed as exc:
+            # A rejected cookie will never work again, so delete it: otherwise the browser sends
+            # the same dead token on every page load, forever.
+            response = self.handle_exception(exc)
+            _clear_refresh_cookie(response)
+            return response
+
+    def _refresh(self, request, refresh_token: str) -> Response:
+        try:
+            # simplejwt annotates `token` as Token, but it takes (and is always given) the encoded string.
+            probe = RotationProbeToken(refresh_token)  # pyrefly: ignore[bad-argument-type]
         except TokenError as exc:
             # A blanket client-facing message - the underlying token classes'
             # wording varies by failure mode and mustn't flow to the response
@@ -157,6 +169,8 @@ class RefreshView(APIView):
                 serializer.is_valid(raise_exception=True)
             except TokenError as exc:
                 rejection = exc
+            else:
+                record_refresh_rotation(probe)
         if rejection is not None:
             handle_refresh_token_reuse(probe, request=request)
             logger.info("Refresh rotation rejected: %s", rejection)

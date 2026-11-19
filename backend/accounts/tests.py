@@ -1121,7 +1121,9 @@ class RefreshTokenSecurityTests(APITestCase):
 
         self.assertEqual(bystander.post(reverse("auth-refresh")).status_code, 200)
 
-    def test_replaying_a_logged_out_token_revokes_sessions(self):
+    def test_replaying_a_logged_out_token_is_rejected_without_touching_other_sessions(self):
+        # A logged-out (not rotated) token coming back is a browser that missed the logout, not
+        # a copied cookie - ending the user's sessions elsewhere would only punish them.
         client = _login_client("rt@example.com")
         other_device = _login_client("rt@example.com")
         cookie = _refresh_cookie(client)
@@ -1130,7 +1132,56 @@ class RefreshTokenSecurityTests(APITestCase):
         with override_settings(JWT_REFRESH_REUSE_GRACE_SECONDS=0):
             self.assertEqual(self._refresh_with(cookie).status_code, 401)
 
-        self.assertEqual(other_device.post(reverse("auth-refresh")).status_code, 401)
+        self.assertEqual(other_device.post(reverse("auth-refresh")).status_code, 200)
+        self.assertFalse(AuditLog.objects.filter(action="auth.refresh_reuse").exists())
+
+    def test_a_session_revoked_by_a_reuse_alarm_coming_back_does_not_raise_the_alarm_again(self):
+        # The cascade this guards against: an alarm revokes the laptop's session, the user logs in
+        # again on their phone, then reopens the laptop - whose dead cookie must not end the phone's
+        # new session too.
+        laptop = _login_client("rt@example.com")
+        old_cookie = _refresh_cookie(laptop)
+        laptop.post(reverse("auth-refresh"))
+        laptop_cookie = _refresh_cookie(laptop)
+        with override_settings(JWT_REFRESH_REUSE_GRACE_SECONDS=0):
+            self._refresh_with(old_cookie)  # alarm: every session revoked
+            phone = _login_client("rt@example.com")
+
+            self.assertEqual(self._refresh_with(laptop_cookie).status_code, 401)
+
+        self.assertEqual(phone.post(reverse("auth-refresh")).status_code, 200)
+        self.assertEqual(AuditLog.objects.filter(action="auth.refresh_reuse").count(), 1)
+
+    def test_a_rejected_refresh_deletes_the_cookie(self):
+        # Otherwise the browser resends the dead cookie on every page load.
+        client = _login_client("rt@example.com")
+        client.post(reverse("auth-logout"))
+        client.cookies[settings.JWT_REFRESH_COOKIE_NAME] = "not-a-token"
+
+        response = client.post(reverse("auth-refresh"))
+
+        self.assertEqual(response.status_code, 401)
+        cookie = response.cookies[settings.JWT_REFRESH_COOKIE_NAME]
+        self.assertEqual(cookie.value, "")
+        self.assertEqual(cookie["max-age"], 0)
+
+    def test_reuse_alarm_records_where_the_replay_came_from_in_the_error_log(self):
+        from platform_admin.models import ErrorEvent
+
+        client = _login_client("rt@example.com")
+        old_cookie = _refresh_cookie(client)
+        client.post(reverse("auth-refresh"))
+        thief = APIClient(REMOTE_ADDR="203.0.113.7", HTTP_USER_AGENT="ThiefBrowser/1.0")
+        thief.cookies[settings.JWT_REFRESH_COOKIE_NAME] = old_cookie
+
+        # No assertLogs here: it would stop the record reaching the root logger's error-log handler.
+        with override_settings(JWT_REFRESH_REUSE_GRACE_SECONDS=0):
+            thief.post(reverse("auth-refresh"))
+
+        event = ErrorEvent.objects.get(logger="athar.security")
+        self.assertEqual(event.ip_address, "203.0.113.7")
+        self.assertEqual(event.user_agent, "ThiefBrowser/1.0")
+        self.assertEqual(event.path, reverse("auth-refresh"))
 
 
 class RefreshTokenConcurrencyTests(TransactionTestCase):
