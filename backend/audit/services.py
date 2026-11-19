@@ -9,7 +9,7 @@ from django.utils import timezone
 from .models import AuditLog
 
 
-def _client_ip(request) -> str | None:
+def client_ip(request) -> str | None:
     """The address nginx saw the request come from - the *last*
     X-Forwarded-For entry, matching DRF's NUM_PROXIES=1 (see
     config/settings.py). nginx overwrites that header with $remote_addr
@@ -49,7 +49,7 @@ def log_action(
         metadata=metadata or {},
     )
     if request is not None:
-        entry.ip_address = _client_ip(request)
+        entry.ip_address = client_ip(request)
         entry.user_agent = request.META.get("HTTP_USER_AGENT", "")
     entry.save()
     if entry.organization_id is not None:

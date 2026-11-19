@@ -15,6 +15,7 @@ from rest_framework.views import APIView
 
 from accounts.models import User
 from accounts.services import send_password_reset_email
+from audit.services import client_ip
 from billing import services as billing_services
 from billing.models import Subscription
 from billing.services import evaluate
@@ -339,6 +340,7 @@ class ErrorReportView(APIView):
             logger="browser",
             path=_url_path(data["url"]),
             user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            ip_address=client_ip(request),
             user=request.user,
         )
         return Response(status=status.HTTP_204_NO_CONTENT)

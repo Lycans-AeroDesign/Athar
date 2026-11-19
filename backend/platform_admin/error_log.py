@@ -51,6 +51,7 @@ def record_error(
     method: str = "",
     path: str = "",
     user_agent: str = "",
+    ip_address: str | None = None,
     user=None,
 ):
     """Store one occurrence. Never raises: a failure to record an error must not turn into a
@@ -70,6 +71,7 @@ def record_error(
         "method": method[:10],
         "path": path.split("?", 1)[0].split("#", 1)[0][:500],
         "user_agent": user_agent[:300],
+        "ip_address": ip_address,
         "user": user,
         "organization_id": getattr(user, "organization_id", None),
     }
@@ -115,6 +117,8 @@ class DatabaseErrorHandler(logging.Handler):
             elif record.stack_info:
                 traceback = record.stack_info
             request = getattr(record, "request", None)
+            from audit.services import client_ip
+
             record_error(
                 source="backend",
                 message=record.getMessage(),
@@ -125,6 +129,7 @@ class DatabaseErrorHandler(logging.Handler):
                 method=getattr(request, "method", "") or "",
                 path=getattr(request, "path", "") or "",
                 user_agent=(getattr(request, "META", {}) or {}).get("HTTP_USER_AGENT", "") if request else "",
+                ip_address=client_ip(request) if request is not None and hasattr(request, "META") else None,
                 user=getattr(request, "user", None),
             )
         except Exception:  # noqa: BLE001

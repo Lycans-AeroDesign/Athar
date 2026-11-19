@@ -161,6 +161,7 @@ export function PlatformErrorDetail({ id }: { id: string }) {
               </Detail>
               {event.organization_name && <Detail label={t("organization")}>{event.organization_name}</Detail>}
               {event.user_email && <Detail label={t("user")}>{event.user_email}</Detail>}
+              {event.ip_address && <Detail label={t("ipAddress")}>{event.ip_address}</Detail>}
               {event.user_agent && (
                 <Detail label={t("userAgent")} wide>
                   {event.user_agent}

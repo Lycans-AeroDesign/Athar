@@ -204,6 +204,7 @@
       "organization": "Organization",
       "user": "User",
       "userAgent": "Browser",
+      "ipAddress": "IP address",
       "latestNote": "Request, user and traceback are from the latest occurrence. A resolved error reopens if it happens again.",
       "traceback": "Traceback",
       "noTraceback": "No traceback was recorded for this error.",

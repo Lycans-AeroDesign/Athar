@@ -230,6 +230,7 @@ export interface PlatformErrorDetail extends PlatformError {
   logger: string;
   traceback: string;
   user_agent: string;
+  ip_address: string | null;
   user_email: string | null;
 }
 

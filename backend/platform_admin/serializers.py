@@ -198,7 +198,13 @@ class ErrorEventSerializer(ErrorEventListSerializer):
     user_email = serializers.EmailField(source="user.email", default=None, read_only=True)
 
     class Meta(ErrorEventListSerializer.Meta):
-        fields = ErrorEventListSerializer.Meta.fields + ["logger", "traceback", "user_agent", "user_email"]
+        fields = ErrorEventListSerializer.Meta.fields + [
+            "logger",
+            "traceback",
+            "user_agent",
+            "ip_address",
+            "user_email",
+        ]
         read_only_fields = fields
 
 

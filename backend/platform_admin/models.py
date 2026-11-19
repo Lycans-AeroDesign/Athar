@@ -61,6 +61,9 @@ class ErrorEvent(UUIDPrimaryKeyModel):
     method = models.CharField(max_length=10, blank=True)
     path = models.CharField(max_length=500, blank=True)
     user_agent = models.CharField(max_length=300, blank=True)
+    # Where the request came from (audit.services.client_ip). Kept for ERROR_LOG_RETENTION_DAYS
+    # like the rest of the row, and only ever shown to platform admins.
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
     )
