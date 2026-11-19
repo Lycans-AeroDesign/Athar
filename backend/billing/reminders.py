@@ -80,13 +80,15 @@ def _app_link() -> str:
 
 def _message(stage: str, access: Access, now, org_name: str, payment_instructions: str) -> tuple[str, str]:
     """Subject and plain-text body, English then Arabic (the language isn't stored per user)."""
+    access_until = access.access_until
+    assert access_until is not None  # only called once reminder_stage() found a stage
     parts, subjects = [], []
     for language in ("en", "ar"):
         strings = STRINGS[language]
         values = {
             "org": org_name,
-            "days": max(math.ceil((access.access_until - now) / timedelta(days=1)), 0),
-            "date": access.access_until.date().isoformat(),
+            "days": max(math.ceil((access_until - now) / timedelta(days=1)), 0),
+            "date": access_until.date().isoformat(),
             "read_only_date": access.read_only_from.date().isoformat() if access.read_only_from else "",
         }
         key = "due" if stage.isdigit() else stage
@@ -113,7 +115,7 @@ def send_due_reminders(now=None) -> int:
     for subscription in subscriptions:
         access = evaluate(subscription, now)
         stage = reminder_stage(access, now)
-        if stage is None:
+        if stage is None or access.access_until is None:  # the second is implied by the first
             continue
         key = f"{access.access_until.isoformat()}|{stage}"
         if subscription.last_reminder == key:

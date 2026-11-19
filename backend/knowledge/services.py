@@ -535,9 +535,9 @@ def reopen_question(*, question: Question, actor, request=None) -> Question:
 def promote_question_to_article(*, question: Question, actor, request=None) -> Article:
     if question.promoted_to_article_id:
         raise ValidationError("This question has already been promoted to an article.")
-    if not question.accepted_answer_id:
-        raise ValidationError("Only a question with an accepted answer can be promoted to an article.")
     accepted = question.accepted_answer
+    if accepted is None:
+        raise ValidationError("Only a question with an accepted answer can be promoted to an article.")
     content = f"{question.body}\n\n---\n\n**Accepted answer:**\n\n{accepted.body}"
     article = Article.objects.create(
         organization=actor.organization,
@@ -2332,7 +2332,7 @@ def _compute_contribution_scores(organization, *, since=None) -> dict:
         for action, target_id, actor_id in co_credited:
             if CO_AUTHOR_CREDITED_ACTIONS[action] != model_name:
                 continue
-            for user_id in co_authors_by_item.get(str(target_id), []):
+            for user_id in co_authors_by_item.get(target_id, []):
                 if user_id != actor_id:
                     scores[user_id] = scores.get(user_id, 0) + CONTRIBUTION_POINTS[action]
 

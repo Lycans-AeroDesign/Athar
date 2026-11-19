@@ -23,6 +23,7 @@ Revoking: the link's creator, or share_link.manage.
 
 import datetime
 import re
+from uuid import UUID
 
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied
@@ -242,7 +243,7 @@ def shared_file_ids(model_name: str, instance) -> set[str]:
     return ids
 
 
-def shared_file(link: ShareLink, instance, file_id: str) -> StoredFile | None:
+def shared_file(link: ShareLink, instance, file_id: UUID | str) -> StoredFile | None:
     if str(file_id).lower() not in shared_file_ids(_model_name(link), instance):
         return None
     return StoredFile.objects.filter(pk=file_id, organization=link.organization).first()

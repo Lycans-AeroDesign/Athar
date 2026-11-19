@@ -2823,7 +2823,7 @@ def _public_headers(response):
 def _shared_item_or_404(token):
     link = sharing.link_for_token(token)
     instance = sharing.link_target(link)
-    if instance is None:
+    if link is None or instance is None:
         # One answer for forged, revoked, expired, switched-off, unpublished
         # and deleted alike - nothing to learn from probing.
         raise Http404

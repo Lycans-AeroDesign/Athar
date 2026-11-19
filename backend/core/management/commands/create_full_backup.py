@@ -81,6 +81,7 @@ class Command(BaseCommand):
                         "pg_dump isn't installed in this image - add the postgresql-client "
                         "package to backend/Dockerfile."
                     ) from exc
+                assert process.stdout is not None  # always set with stdout=PIPE
                 try:
                     crypto.encrypt_file(process.stdout, destination, passphrase)
                 except BaseException:
