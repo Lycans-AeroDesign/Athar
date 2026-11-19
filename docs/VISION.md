@@ -582,7 +582,7 @@ This allows useful questions to become permanent documentation.
 
 Training is integrated into the KMS.
 
-**Status: implemented (V1 scope), added beyond the original roadmap** — see [`README.md`](../README.md#roadmap). A `training` Django app, structurally separate from Knowledge (lessons *reference* existing Knowledge content instead of duplicating it, respecting Knowledge's own RESTRICTED-visibility rules rather than a second authorization system), mirroring Article's DRAFT → IN_REVIEW → PUBLISHED → REJECTED → ARCHIVED workflow for courses.
+**Status: implemented (V1 scope), added beyond the original roadmap** — see [§41](#41-development-roadmap). A `training` Django app, structurally separate from Knowledge (lessons *reference* existing Knowledge content instead of duplicating it, respecting Knowledge's own RESTRICTED-visibility rules rather than a second authorization system), mirroring Article's DRAFT → IN_REVIEW → PUBLISHED → REJECTED → ARCHIVED workflow for courses.
 
 Features:
 

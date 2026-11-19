@@ -1,176 +1,159 @@
+<div align="center">
+
 # Athar (أثر)
 
+**An open-source, self-hosted knowledge management system for student engineering teams.**
+
+Projects, components, SOPs, failures, tests and lessons learned, linked together in one searchable knowledge base, so what your team knows outlives the people who learned it.
+
+[![Latest release](https://img.shields.io/github/v/release/Lycans-AeroDesign/Athar?label=release)](https://github.com/Lycans-AeroDesign/Athar/releases/latest)
+[![CI](https://github.com/Lycans-AeroDesign/Athar/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Lycans-AeroDesign/Athar/actions/workflows/ci.yml)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
-Athar (أثر) is an **open-source, self-hosted knowledge management system for student engineering teams and technical organizations**. It connects projects, components, standard operating procedures (SOPs), engineering failures, tests, and lessons learned in one searchable knowledge base, helping teams preserve institutional knowledge as members graduate or leave.
+[Quickstart](#quickstart-docker) · [Features](#features) · [Deployment](DEPLOYMENT.md) · [Product spec](docs/VISION.md) · [Contributing](CONTRIBUTING.md)
 
-Developed by [Lycans AeroDesign](https://github.com/Lycans-AeroDesign), Athar began as a knowledge management solution for a university AeroDesign team and is designed to support other engineering teams as well.
+</div>
 
 ![An Athar article: an incident post-mortem with an auto-generated table of contents and a Related Content panel linking the failure record, components, SOPs, tests, project and documents](docs/marketing/screenshots/readme-article.png)
 
-> **Don't want to manage your own deployment?**  
-> We are exploring a managed hosting option for teams that want to use Athar without maintaining their own infrastructure. Hosting would be provided by Lycans AeroDesign and may be offered through a subscription-based plan.
->
-> If your team would be interested in a hosted Athar instance, [contact Lycans](https://www.lycansteam.com/contact) and let us know. Your interest will help us determine whether there is enough demand to launch a shared hosted service for teams.
->
-> **Self-hosting will always remain available** — you can deploy your own independent instance, own your data, and manage your infrastructure yourself.
+## Why Athar?
 
-## Why
+Student engineering teams build up a huge amount of knowledge: designs, failures, procedures, flight history, decisions. Most of it lives in people's heads and leaves when they graduate. Athar lets a new member search the system and understand not just **what** the team does, but **why**.
 
-Student engineering teams accumulate a huge amount of knowledge — designs, failures, SOPs, flight history, decisions, lessons learned — that mostly lives in people's heads and disappears when they graduate. Athar exists so a new member can search the system and understand not just **what** the team does, but **why**.
+> **athar** (أثر) `/ˈæ.θɑːr/` — _Arabic_: a trace or mark left behind by something that has passed.
 
-> **athar** (أثر) `/ˈæ.θɑːr/` — _Arabic_: a trace, mark, or remnant left behind by something that has passed.
+Unlike a general-purpose wiki, Athar connects knowledge to the work itself:
 
-The name reflects that purpose — the system exists to preserve the trace a team's work and decisions leave behind, so that knowledge outlives the people who created it.
+- **Connected records.** A failure links to the components, tests, SOPs and project it involved, so context is never lost.
+- **Built for onboarding.** Existing knowledge becomes structured courses for new members.
+- **Yours to run.** Self-host it, own your data, and keep it running long after this season's team moves on.
 
-The full product specification (vision, feature areas, roles/permissions, roadmap) lives in [`docs/VISION.md`](docs/VISION.md). Three principles sit above everything else in it:
+Athar was built by [Lycans AeroDesign](https://github.com/Lycans-AeroDesign) for a university AeroDesign team, and is designed for any engineering team.
 
-1. **Self-hosted-first, multi-tenant-capable** — a team can still clone/deploy their own fully independent instance and own their data outright, same as always; the backend is also genuinely multi-tenant now (an `Organization` model, every row scoped to it, self-service org creation alongside invite-based joining), so one deployment can serve several isolated organizations instead of exactly one. See [`docs/VISION.md` §2](docs/VISION.md#2-open-source-philosophy) for the fuller status note on this.
-2. **Connected knowledge** — knowledge objects (articles, components, projects, failures, SOPs, tests, documents, decisions...) link to each other so context is discoverable, not siloed.
-3. **Backend-enforced authorization** — the frontend is never a security boundary; every API request is authorized server-side, regardless of client.
+## Features
 
-## What makes Athar different?
-
-General-purpose documentation tools can store engineering knowledge, but Athar is designed to connect that knowledge to the work itself.
-
-- **Connected engineering records:** Link projects, components, failures, SOPs, tests, and lessons learned so information retains its context.
-- **Knowledge preservation:** Keep engineering decisions and lessons accessible beyond the students who originally documented them.
-- **Training and onboarding:** Turn existing team knowledge into structured courses and learning paths for new members.
-- **Self-hosted and open source:** Deploy your own instance, control your infrastructure, and retain ownership of your team's data.
-- **Built for engineering teams:** Combine documentation with structured engineering records rather than relying exclusively on pages and folders.
-
-## What's inside
-
-Athar is a set of modules that build on each other — Knowledge is the foundation everything else links back to; Training turns that knowledge into something new members can actually learn from; the platform pieces (RBAC, search, backups, i18n) exist so the other two are trustworthy and usable day to day.
-
-- **Knowledge** — articles, Q&A, categories/tags (including a dedicated "everything tagged X" browse page, not just a search-box filter), attachments, and cross-linking between any two items, with a full draft → review → publish workflow and revision history. Use it for anything written down for other people to read: write-ups, decisions, answers to recurring questions. This is the wiki that stops answers from living only in someone's head or a lost chat thread.
-- **Engineering domain** (Projects, Components, Failures, SOPs, Tests/experiments, Documents) — structured records for the practical side of the work: what you're building, the parts in it, what broke and why, the procedures you follow, and the tests that proved something worked. Use it instead of scattered spreadsheets/PDFs so a project's failures, tests, and procedures stay linked to each other and to the components involved, not just filed away separately. Components double as the workshop inventory — grid location, quantity and unit, condition, and a stock status that follows the quantity (In Stock / Low Stock / Missing, plus On Order and Retired), with a live summary and a "needs ordering" view — and sync both ways with an inventory spreadsheet through CSV import/export (matched by an Athar ID column, with a preview before anything changes).
-- **Training Center** — structured courses (Course → Module → Lesson), with text/video/document/external-link/exercise lesson types, enrollment, per-lesson completion tracking, and lessons that reference existing Knowledge content instead of duplicating it. Use it to turn "what the team knows" into "how a new member learns it" — an actual onboarding path instead of relying on ad hoc mentorship.
-- **RBAC & multi-tenancy** — five seeded roles (Guest, Member, Mentor, Subteam Head, Organization Admin), enforced on every API request server-side, plus full per-organization data isolation. Use it to trust that permissions are real access control, not just hidden buttons in the UI — and to safely host more than one team's data in a single deployment if you need to.
-- **Search** — Postgres full-text search (ranked) with a trigram-similarity fallback for typos/partial matches, across every content type. A knowledge base only pays off if people can actually find what's already in it.
-- **Contribution scoring & activity feed** — a weighted leaderboard (monthly/yearly/lifetime standings) and a live feed of publish/answer/review events. Use it to give visible credit for maintaining the knowledge base, which is otherwise thankless, unrewarded work.
-- **Backups** — an org-scoped in-app export/restore (Settings > Backups) for admins, plus a whole-instance CLI backup for self-hosters. See [Backups](#backups) below.
-- **Internationalization** — the full UI in English and Arabic (with RTL layout), not just the content. Use it if your team doesn't operate primarily in English.
-
-## Tech stack
-
-| | |
+| Module | What it gives you |
 |---|---|
-| Backend | Django 6.1, Django REST Framework, `drf-spectacular` (OpenAPI), `uv`, Python 3.14 |
-| Frontend | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS v4, a small custom Radix/cmdk-based UI kit (`frontend/components/ui/`) |
-| Database | PostgreSQL 18 (via Docker), no SQLite fallback; search uses Postgres full-text search (`SearchVector`/`SearchRank`) with a trigram-similarity fallback for substring/typo matches, ranked by relevance |
-| Background work | Redis + Celery (org-scoped backup export/restore - see [Backups](#backups) below - plus an hourly cleanup of uploads that were never attached to anything) |
-| File storage | Local filesystem by default; set `AWS_STORAGE_BUCKET_NAME` to switch to any S3-compatible object storage instead (AWS S3, Cloudflare R2, Backblaze B2, self-hosted MinIO, ...) — see `backend/.env.example` |
-| Deployment | Docker, Docker Compose, nginx reverse proxy in front of both the API and the frontend (rate limiting, security headers, health check, real HTTPS via Let's Encrypt/certbot in production - see `nginx/templates/` and [`DEPLOYMENT.md`](DEPLOYMENT.md)) |
-| CI/CD | GitHub Actions (backend + frontend CI, PR checks, manual release/publish) |
-| Testing | Backend: DRF `APITestCase` suite (`backend/*/tests.py`), run via `manage.py test` |
+| **Knowledge** | Articles and Q&A with categories, tags, attachments, cross-links, a draft → review → publish workflow and revision history. |
+| **Engineering records** | Projects, components, failures, SOPs, tests and documents, all linked to each other. |
+| **Workshop inventory** | Components double as inventory: location, quantity, stock status, a "needs ordering" view, and two-way CSV sync with your spreadsheet. |
+| **Training Center** | Courses → modules → lessons with enrollment and progress tracking. Lessons reference existing knowledge instead of copying it. |
+| **Search** | Ranked Postgres full-text search across every content type, tolerant of typos. |
+| **Roles & organizations** | Five built-in roles enforced on every API request, and full data isolation, so one server can host several teams. |
+| **Recognition** | Contribution leaderboard (monthly, yearly, lifetime) and a live activity feed. |
+| **Backups** | Encrypted per-organization export and restore in the app, plus whole-server backups from the command line. |
+| **English & Arabic** | The full interface in both languages, with right-to-left layout for Arabic. |
+
+Also included: bookmarks and collections, public share links, a 30-day trash, and terms/privacy policy acceptance.
+
+Three principles guide the design (see [`docs/VISION.md`](docs/VISION.md)):
+
+1. **Self-hosted first.** Every team can run its own independent instance; one instance can also serve several isolated organizations.
+2. **Connected knowledge.** Information links to related information, so context is discoverable instead of siloed.
+3. **Server-enforced permissions.** The interface is never a security boundary; every request is authorized on the backend.
 
 ## Quickstart (Docker)
 
 ```bash
 git clone https://github.com/Lycans-AeroDesign/Athar.git
 cd Athar
-python scripts/generate_env.py   # generates .env / backend/.env / frontend/.env with real secrets
+python scripts/generate_env.py   # creates the .env files with real secrets
 docker compose up
 ```
 
-- Frontend: http://localhost:3000
-- Backend: http://localhost:8000
-- Nginx (reverse proxy in front of both the backend and frontend - see `nginx/templates/`): http://localhost:80
+Open **http://localhost** (nginx in front of both apps). The frontend alone is on http://localhost:3000 and the API on http://localhost:8000.
 
-For a production-shaped stack (gunicorn, standalone Next.js server, no bind mounts), pulling prebuilt images published by CI rather than building locally:
+**Deploying to a real server?** Use the production stack, which pulls the prebuilt images:
 
 ```bash
 docker compose -f docker-compose.prod.yml pull
 docker compose -f docker-compose.prod.yml up -d
 ```
 
-`docker-compose.prod.yml` requires `SECRET_KEY`, `ALLOWED_HOSTS`, `CORS_ALLOWED_ORIGINS`, and `DOMAIN` to be set explicitly (no dev fallbacks). See [`DEPLOYMENT.md`](DEPLOYMENT.md) for the full checklist of what to change when deploying to a real server.
+It requires `SECRET_KEY`, `ALLOWED_HOSTS`, `CORS_ALLOWED_ORIGINS` and `DOMAIN` to be set. [`DEPLOYMENT.md`](DEPLOYMENT.md) has the full checklist, including HTTPS.
 
-## Manual setup (without Docker)
+<details>
+<summary><b>Running without Docker</b></summary>
 
-**Backend** (from `backend/`):
-
-Requires a running Postgres instance and `DATABASE_URL` set in `backend/.env` (copy from `backend/.env.example`) - there is no SQLite fallback.
-
-```bash
-uv sync                          # install dependencies into .venv
-uv run manage.py migrate         # apply migrations
-uv run manage.py runserver       # start dev server
-```
-
-**Frontend** (from `frontend/`):
+You need a running PostgreSQL server (there is no SQLite fallback). Create the `.env` files first, either with `python scripts/generate_env.py` or by copying `backend/.env.example` and `frontend/.env.example`, and set `DATABASE_URL` in `backend/.env`.
 
 ```bash
+# Backend (from backend/)
+uv sync
+uv run manage.py migrate
+uv run manage.py runserver
+
+# Frontend (from frontend/)
 npm install
-npm run dev                      # start dev server (Turbopack) at http://localhost:3000
+npm run dev        # http://localhost:3000
 ```
 
-Copy `backend/.env.example` → `backend/.env` and `frontend/.env.example` → `frontend/.env` first (or run `python scripts/generate_env.py`).
+</details>
 
-## Project structure
+> **Prefer not to host it yourself?** We're exploring a managed Athar service run by Lycans AeroDesign. If your team would use it, [let us know](https://www.lycansteam.com/contact). Self-hosting will always remain available.
+
+## Tech stack
+
+| | |
+|---|---|
+| **Backend** | Django 6.1, Django REST Framework, OpenAPI via `drf-spectacular`, Python 3.14, `uv` |
+| **Frontend** | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS v4 |
+| **Data** | PostgreSQL 18, Redis + Celery for background jobs |
+| **Files** | Local disk by default, or any S3-compatible storage (AWS S3, Cloudflare R2, Backblaze B2, MinIO) |
+| **Deployment** | Docker Compose, nginx, Let's Encrypt HTTPS |
+| **CI** | GitHub Actions: tests, linting, type checking (pyrefly), security scans |
+
+<details>
+<summary><b>Project structure</b></summary>
 
 ```text
-backend/            Django project (config/, manage.py, pyproject.toml)
-frontend/            Next.js app (app/, package.json)
-nginx/templates/              reverse proxy config templates (dev vs. prod+HTTPS), see DEPLOYMENT.md
-scripts/init_letsencrypt.sh   one-time HTTPS bootstrap for a fresh deploy
-DEPLOYMENT.md                 checklist for deploying to a real server
-docker-compose.yml           dev stack (hot reload, Postgres, nginx)
-docker-compose.prod.yml      prod-shaped stack (gunicorn, standalone Next.js, nginx)
-scripts/generate_env.py      generates local .env files with real secrets
-docs/VISION.md                full product specification
-.github/                      CI, PR automation, issue/PR templates
+backend/                  Django API
+frontend/                 Next.js app
+nginx/templates/          reverse proxy config (dev and production + HTTPS)
+scripts/                  .env generator, HTTPS bootstrap, end-of-life check
+docs/                     product spec, backups, operations, security notes
+docker-compose.yml        development stack (hot reload)
+docker-compose.prod.yml   production stack
+DEPLOYMENT.md             server deployment checklist
 ```
 
-## Internationalization
-
-The frontend is fully translation-driven (`next-intl`) — no UI text is hardcoded, it all comes from `frontend/i18n/messages/<locale>.json`. Routes are locale-prefixed (`/en/...`, `/ar/...`).
-
-**Supported languages:**
-
-| Code | Language | Direction | Status |
-|---|---|---|---|
-| `en` | English | LTR | ✅ Fully supported (source language) |
-| `ar` | العربية (Arabic) | RTL | ✅ Fully supported — `frontend/i18n/messages/ar.json` is kept in parallel with every key in `en.json`, genuinely translated (not a copy) |
-
-A language only reaches "file exists" status once it's registered in `frontend/i18n/request.ts` (see below) *and* has a `messages/<code>.json` file — at that point it's selectable in Settings > General even before translation is complete, since next-intl has no per-key fallback. Update this table whenever a language's status changes.
-
-**To add a new language:**
-
-1. Add its code to `locales` in `frontend/i18n/request.ts`.
-2. Give it a display name (`localeNames`) and text direction (`localeDirections`), also in `frontend/i18n/request.ts`.
-3. Copy `frontend/i18n/messages/en.json` to `frontend/i18n/messages/<code>.json` and translate the values (keep the same keys).
-
-The language picker in Settings > General is generated from `locales`/`localeNames`, so the new language appears there automatically once its message file exists.
+</details>
 
 ## Backups
 
-Two independent backup-and-restore paths, at two different scopes:
+There are two ways to back up, for two different scopes:
 
-- **An organization's own data** (Settings > Backups, requires `organization.manage`) — exports everything that organization owns as a downloadable, encrypted `.athar` file (inside: a `manifest.json`, a CSV per table, plus the actual uploaded files): members, roles and role assignments, invitation codes, settings and branding, policies and acceptances, all knowledge/engineering/training content, attachments, and the audit log. Runs as a background Celery job so triggering it never ties up a request, however large the export - `docker compose up` already starts the `redis` and `celery-worker` services needed for this, no extra setup step. The same page can **restore** from one of the organization's stored backups, or from an uploaded `.athar` file (for example onto a fresh server after losing the old one). A restore is a full wipe-and-replace of the organization with original IDs and timestamps preserved. Members are matched by ID, then by email, and updated in place; anyone missing from the backup is deactivated rather than deleted; and the admin running the restore always keeps their account and admin access. **Archives include members' password hashes** (so everyone logs in as before after a restore), so they're always encrypted (AES-256-GCM, see `backend/core/crypto.py`). Archives kept on the server are encrypted with a server key (`BACKUP_ENCRYPTION_KEY`, or derived from `SECRET_KEY` when unset), and every download is encrypted with a passphrase the admin picks at download time. A downloaded file can be restored on any server with just that passphrase. Nothing else has to be copied across, and a lost passphrase can't be recovered. Plaintext `.zip` backups downloaded before encryption existed can still be uploaded and restored. Uploaded archives are treated as untrusted: nothing in one can reference another organization's data, and a backup of a different organization that still exists on the server is rejected. Uploaded archives are capped at 5 GB, both in Django (`BACKUP_UPLOAD_MAX_SIZE_MB`) and in nginx for that one route (`nginx/templates/locations.inc.template`); raise both together if an organization outgrows it.
-- **The whole instance** (every organization) — a real `pg_dump` of the entire database plus a tarball of the local media directory (skipped if file storage is S3-compatible - see the Tech stack table above), written to `backend/backup_archives/`. Deliberately CLI-only, not a web feature: `is_superuser` is break-glass/CLI-only everywhere else in this app, and Django admin itself isn't even registered outside `DEBUG` (see `backend/config/urls.py`), so there's no web-exposed "download/restore every organization's data" surface to get wrong. Restoring is a full wipe-and-replace of the *entire* database via `pg_restore --clean --if-exists`, gated behind an explicit `--yes` flag. Both files are encrypted with a passphrase. It's read from `--passphrase-file`, otherwise from the `BACKUP_PASSPHRASE` environment variable (for cron), otherwise prompted for. The database dump is encrypted as `pg_dump` writes it, so a plaintext dump never touches disk.
+- **One organization**, from **Settings > Backups**: an encrypted `.athar` archive of all that organization's data and files. It can be restored on the same server or on a new one.
+- **The whole server**, from the command line: an encrypted database dump plus an archive of uploaded files.
 
 ```bash
 docker compose exec backend python manage.py create_full_backup
-docker compose exec backend python manage.py restore_full_backup backup_archives/athar-db-<timestamp>.dump.enc --media-archive-path backup_archives/athar-media-<timestamp>.tar.gz.enc --yes
 ```
 
-### Moving to a new server
+See [`docs/BACKUPS.md`](docs/BACKUPS.md) for what's included, how encryption works, restoring, and moving to a new server.
 
-1. On the old server, go to Settings > Backups, create a backup, and download it with a passphrase. Keep that passphrase in a password manager.
-2. Set up the new server (see [`DEPLOYMENT.md`](DEPLOYMENT.md)) and create an admin account there.
-3. On the new server, go to Settings > Backups > Restore from File, pick the `.athar` file, and enter the passphrase.
+## Languages
 
-For a whole-instance move, copy the `.dump.enc` and `.tar.gz.enc` files instead and run `restore_full_backup` with the same passphrase.
+| Language | Direction | Status |
+|---|---|---|
+| English | LTR | ✅ Source language |
+| العربية (Arabic) | RTL | ✅ Fully translated |
+
+<details>
+<summary><b>Adding a language</b></summary>
+
+All UI text comes from `frontend/i18n/messages/<locale>.json`, and routes are prefixed with the locale (`/en/...`, `/ar/...`).
+
+1. Add the language code to `locales` in `frontend/i18n/request.ts`, along with its display name (`localeNames`) and text direction (`localeDirections`).
+2. Copy `frontend/i18n/messages/en.json` to `<code>.json` and translate the values, keeping the keys.
+
+The language then appears in Settings > General automatically. There is no per-key fallback, so translate every key before release, and update the table above.
+
+</details>
 
 ## Contributing
 
-See [`CONTRIBUTING.md`](CONTRIBUTING.md) for commit conventions, backend/frontend conventions, and the PR checklist.
-
-## Security
-
-See [`SECURITY.md`](SECURITY.md) to report a vulnerability.
+Contributions are welcome. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for conventions and the PR checklist. To report a vulnerability, see [`SECURITY.md`](SECURITY.md).
 
 ## License
 

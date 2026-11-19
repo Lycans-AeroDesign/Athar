@@ -2,7 +2,7 @@
 
 ## Supported Versions
 
-Athar doesn't have a formal release/versioning scheme yet (see [`README.md`](README.md#roadmap) — versioned Docker images are part of the V1.0 milestone). Until then, please report vulnerabilities against the latest `main`.
+Only the [latest release](https://github.com/Lycans-AeroDesign/Athar/releases/latest) receives security fixes. Please report vulnerabilities against the latest release or the current `main` branch.
 
 ## Reporting a Vulnerability
 
