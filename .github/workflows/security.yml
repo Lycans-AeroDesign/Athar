@@ -8,6 +8,7 @@ on:
   schedule:
     # Weekly, so newly published advisories surface without a code change.
     - cron: "47 5 * * 1"
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -62,3 +63,56 @@ jobs:
             docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.58.0 image \
               --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 "$image"
           done
+
+  # What the server actually runs, rather than a fresh build: the published
+  # app images, plus the third-party images docker-compose.prod.yml pulls
+  # as-is (postgres, redis, nginx, certbot), which nothing else here scans.
+  # Scheduled/manual only - these fail on upstream issues that a PR can't
+  # fix, so a failure here means "pull newer images" or "change a tag".
+  deployed-images:
+    name: Deployed image scan (Trivy)
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Reads the image list from the compose file, so a new or changed
+      # service is picked up without editing this workflow.
+      - name: Scan images
+        env:
+          IMAGE_TAG: latest
+        run: |
+          repo=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')
+          images=$(grep -E '^\s*image:' docker-compose.prod.yml | awk '{print $2}' \
+            | sed -e "s#ghcr.io/[^/]*/athar-#ghcr.io/${repo%/*}/athar-#" -e "s#\${IMAGE_TAG:-latest}#${IMAGE_TAG}#" | sort -u)
+          status=0
+          for image in $images; do
+            echo "::group::$image"
+            docker pull --quiet "$image" || { status=1; echo "::endgroup::"; continue; }
+            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.58.0 image \
+              --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 "$image" || status=1
+            echo "::endgroup::"
+          done
+          exit $status
+
+  # CVE scanners don't flag a release line that is simply past end-of-life
+  # (no more fixes at all), e.g. a numbered nginx branch or an old Postgres
+  # major. See scripts/check_eol.py.
+  eol:
+    name: End-of-life check
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check pinned runtimes against endoflife.date
+        run: python3 scripts/check_eol.py

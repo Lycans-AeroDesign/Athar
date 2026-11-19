@@ -109,6 +109,13 @@ Check `docker compose -f docker-compose.prod.yml logs -f` for startup issues, an
 - Set up periodic `manage.py create_full_backup` runs (cron, or your own scheduler) if you want off-server backups. Give them a passphrase through `BACKUP_PASSPHRASE` or `--passphrase-file`, since cron can't answer a prompt. See [Backups](README.md#backups).
 - Once HTTPS is confirmed working, consider setting `SECURE_HSTS_SECONDS=31536000` in `.env`. Browsers will then refuse plain HTTP to your domain for a year.
 
+### Keeping images up to date
+
+The compose file uses floating tags (`postgres:18-alpine`, `redis:7-alpine`, `nginx:stable-alpine`). Upstream keeps publishing patch and security builds under those tags, but the server keeps running whatever it pulled last until you run the `pull` + `up -d` from [step 6](#6-every-deploy-after-the-first).
+
+- **On the server (optional):** the `diun` service checks every running container's tag once a day and reports when a newer build exists. It never pulls or restarts anything itself. It's off by default; turn it on with `docker compose -f docker-compose.prod.yml --profile updates up -d` (or add `COMPOSE_PROFILES=updates` to `.env` so plain `up -d` includes it). Diun reaches Docker only through the `docker-socket-proxy` service, which allows reading the container and image lists and refuses everything else; the raw Docker socket gives full control of the host, even when mounted `:ro`. Without setup it only logs (`docker compose -f docker-compose.prod.yml logs diun`). To get an email, copy `diun.env.example` to `diun.env`, fill in your SMTP details (usually the same account as `EMAIL_*`), then run `docker compose -f docker-compose.prod.yml --profile updates up -d diun`. If your GHCR packages are private, Diun can't see the `athar-*` images and logs an error for them; the other images are still checked.
+- **In CI:** the weekly *Security scans* workflow also scans the images the server runs (the published app images plus postgres/redis/nginx/certbot) for known vulnerabilities, and checks that the pinned Postgres, Redis, Python and Node versions aren't past end-of-life (`scripts/check_eol.py`). If either job fails, pull newer images, or move the flagged tag to a supported version.
+
 ## Troubleshooting
 
 - **`nano`/`dig`: command not found** — minimal cloud VM images (e.g. GCE's `ubuntu-minimal` family) often ship without either. Use `vi` in place of `nano`, and in place of `dig` for checking DNS propagation: `getent hosts <your-domain>`, or `curl -s "https://dns.google/resolve?name=<your-domain>&type=A"` if you want to bypass the server's own resolver cache.

@@ -167,7 +167,7 @@ services:
   # limiting/security headers/health checks before docker-compose.prod.yml's
   # copy of this same config is ever pointed at a real domain.
   nginx:
-    image: nginx:1.27-alpine
+    image: nginx:stable-alpine
     restart: unless-stopped
     environment:
       DOMAIN: ${DOMAIN:-localhost}

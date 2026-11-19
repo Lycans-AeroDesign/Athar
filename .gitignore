@@ -47,6 +47,8 @@ backend/celerybeat-schedule*
 .env
 .env.*
 !.env.example
+# Notification settings for the diun service (see diun.env.example).
+diun.env
 
 # ------------------------------------------------------------
 # uv

@@ -201,7 +201,9 @@ services:
   # actually start with a real cert - see DEPLOYMENT.md /
   # scripts/init_letsencrypt.sh.
   nginx:
-    image: nginx:1.27-alpine
+    # `stable` follows nginx's supported stable branch; a numbered tag like
+    # 1.27 stops getting fixes once that branch ends.
+    image: nginx:stable-alpine
     restart: unless-stopped
     logging: *default-logging
     # nginx only reads its certificate at start/reload, and the certbot
@@ -248,6 +250,65 @@ services:
       - certbot_www:/var/www/certbot
     entrypoint: sh -c "trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot --quiet; sleep 12h & wait $$!; done"
 
+  # Tells you when an image tag this stack runs has a newer build upstream.
+  # The tags above float (postgres:18-alpine, redis:7-alpine, ...), so patch
+  # releases and security rebuilds land on the registry, but this server
+  # keeps running the old image until someone runs `pull` + `up -d`. Diun
+  # checks every running container's tag once a day and only *notifies* -
+  # it never pulls or restarts anything, so the database is never upgraded
+  # behind your back. Without diun.env it just logs (`logs diun`); copy
+  # diun.env.example to diun.env to get an email instead - see DEPLOYMENT.md.
+  #
+  # Opt-in: only started with `--profile updates` (or COMPOSE_PROFILES=updates
+  # in .env), since it needs access to the Docker API.
+  diun:
+    image: crazymax/diun:4
+    command: serve
+    restart: unless-stopped
+    profiles: ["updates"]
+    logging: *default-logging
+    depends_on:
+      - docker-socket-proxy
+    environment:
+      TZ: ${TZ:-UTC}
+      LOG_LEVEL: info
+      DIUN_WATCH_SCHEDULE: "0 6 * * *"
+      DIUN_WATCH_JITTER: 30s
+      DIUN_PROVIDERS_DOCKER: "true"
+      DIUN_PROVIDERS_DOCKER_WATCHBYDEFAULT: "true"
+      # Through the filtering proxy below, never the raw socket.
+      DIUN_PROVIDERS_DOCKER_ENDPOINT: tcp://docker-socket-proxy:2375
+    env_file:
+      - path: diun.env
+        required: false
+    networks:
+      - default # registries + SMTP
+      - docker-api
+    volumes:
+      - diun_data:/data
+
+  # Diun only needs to list containers and read image info, but the Docker
+  # socket itself is all-or-nothing: whoever can reach it can start a
+  # privileged container, i.e. is root on the host - and mounting it `:ro`
+  # does NOT change that (it only stops the socket file being replaced; API
+  # calls still go through). This proxy is the only thing that touches the
+  # socket and answers read-only GETs for containers/images; every write
+  # (POST/DELETE) and every other endpoint gets a 403. It sits alone on an
+  # internal network with Diun, so nothing else can reach it.
+  docker-socket-proxy:
+    image: tecnativa/docker-socket-proxy:v0.5.0
+    restart: unless-stopped
+    profiles: ["updates"]
+    logging: *default-logging
+    environment:
+      CONTAINERS: 1
+      IMAGES: 1
+      POST: 0
+    networks:
+      - docker-api
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
 # Most cloud VM NICs (GCE in particular) cap real frames at 1460, not the
 # Ethernet-standard 1500 Docker's bridge networks default to - packets in
 # that 1460-1500 gap silently vanish once they leave the host's real NIC
@@ -261,6 +322,10 @@ networks:
   default:
     driver_opts:
       com.docker.network.driver.mtu: ${DOCKER_NETWORK_MTU:-1460}
+  # Diun <-> docker-socket-proxy only. `internal` = no route in or out, so the
+  # proxy can't be reached from the internet or from the other services.
+  docker-api:
+    internal: true
 
 volumes:
   postgres_data:
@@ -277,3 +342,5 @@ volumes:
   # it). See scripts/init_letsencrypt.sh.
   certbot_conf:
   certbot_www:
+  # Diun's record of which image digests it has already seen.
+  diun_data:
